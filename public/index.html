@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Jeu de Zombie Multijoueur</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="addictionStyles.css">
+</head>
+<body>
+    <div id="ui">
+        <div id="nickname-screen" style="display: flex;">
+            <div class="nickname-container">
+                <h1>🧟 ZOMBIE SURVIVAL 🧟</h1>
+                <p class="nickname-subtitle">Entrez votre pseudo pour commencer</p>
+                <input type="text" id="nickname-input" placeholder="Votre pseudo..." maxlength="15" autofocus>
+                <button id="start-game-btn">Commencer la partie</button>
+                <div class="game-info">
+                    <p>🎮 Mode infini avec vagues progressives</p>
+                    <p>⬆️ Montez en niveau et débloquez des upgrades</p>
+                    <p>🏆 Survivez le plus longtemps possible !</p>
+                </div>
+                <!-- Widgets sur l'écran d'accueil -->
+                <div id="home-widgets" class="home-widgets"></div>
+            </div>
+        </div>
+
+        <!-- Menu de navigation -->
+        <div id="game-menu" style="display: none;">
+            <div class="menu-buttons">
+                <button id="menu-btn-achievements" class="menu-btn" title="Achievements">🏆</button>
+                <button id="menu-btn-challenges" class="menu-btn" title="Défis">🎯</button>
+                <button id="menu-btn-leaderboard" class="menu-btn" title="Leaderboard">📊</button>
+                <button id="menu-btn-unlocks" class="menu-btn" title="Armes">🔓</button>
+                <button id="menu-btn-synergies" class="menu-btn" title="Synergies">⚡</button>
+                <button id="menu-btn-lifetime-stats" class="menu-btn" title="Statistiques">📈</button>
+                <button id="menu-btn-gem-shop" class="menu-btn" title="Gem Shop">💎</button>
+            </div>
+        </div>
+
+        <div id="stats">
+            <div id="player-name-display"></div>
+            <div id="health-container">
+                <span>Vie:</span>
+                <div id="health-bar">
+                    <div id="health-fill"></div>
+                </div>
+                <span id="health-text">100</span>
+            </div>
+            <div id="xp-container">
+                <span>Niveau <span id="level-text">1</span>:</span>
+                <div id="xp-bar">
+                    <div id="xp-fill"></div>
+                </div>
+                <span id="xp-text">0/50</span>
+            </div>
+            <div id="score">Score: <span id="score-value">0</span></div>
+            <div id="wave">Vague: <span id="wave-value">1</span></div>
+            <div id="weapon">Or: <span id="gold-value">0</span> 💰</div>
+            <div id="gems-display">Gems: <span id="gems-value" class="gem-balance">0</span> 💎</div>
+            <div id="players-online">Joueurs en ligne: <span id="players-count">1</span></div>
+            <div id="zombies-alive">Zombies: <span id="zombies-count">0</span></div>
+        </div>
+
+        <div id="spawn-protection" style="display: none;">
+            <div class="protection-message">
+                🛡️ PROTECTION ACTIVE : <span id="protection-timer">3</span>s
+            </div>
+        </div>
+
+        <div id="wave-announcement" style="display: none;">
+            <h1>VAGUE <span id="wave-number">2</span></h1>
+            <p>Préparez-vous!</p>
+        </div>
+
+        <div id="game-over" style="display: none;">
+            <div class="game-over-header">
+                <h1>💀 GAME OVER 💀</h1>
+                <p class="game-over-subtitle">Vous êtes mort...</p>
+            </div>
+            <div class="game-over-stats">
+                <div class="stat-row main-stat">
+                    <span class="stat-label">🏆 Score Final</span>
+                    <span class="stat-value" id="final-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">📊 Vague atteinte</span>
+                    <span class="stat-value" id="final-wave">1</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">⬆️ Niveau atteint</span>
+                    <span class="stat-value" id="final-level">1</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">💰 Or gagné</span>
+                    <span class="stat-value" id="final-gold">0</span>
+                </div>
+            </div>
+            <button id="respawn-btn">🔄 Recommencer</button>
+        </div>
+
+        <div id="shop" style="display: none;">
+            <div class="shop-header">
+                <h1>🛒 SHOP</h1>
+                <p>Or disponible: <span id="shop-gold">0</span> 💰</p>
+                <button id="shop-close-btn">Continuer →</button>
+            </div>
+
+            <div class="shop-content">
+                <div class="shop-section">
+                    <h2>Upgrades Permanents</h2>
+                    <div id="permanent-upgrades"></div>
+                </div>
+
+                <div class="shop-section">
+                    <h2>Items Temporaires</h2>
+                    <div id="temporary-items"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="level-up-screen" style="display: none;">
+            <div class="level-up-container">
+                <h1 class="level-up-title">⬆️ LEVEL UP ! ⬆️</h1>
+                <p class="level-up-subtitle">Choisissez une amélioration</p>
+                <div id="upgrade-choices" class="upgrade-choices"></div>
+            </div>
+        </div>
+
+        <div id="stats-panel" style="display: none;">
+            <div class="stats-panel-header">
+                <h2>📊 STATISTIQUES</h2>
+                <p class="stats-hint">Appuyez sur TAB pour fermer</p>
+            </div>
+            <div class="stats-panel-content">
+                <div class="stats-section">
+                    <h3>🎯 Stats de Base</h3>
+                    <div id="base-stats"></div>
+                </div>
+                <div class="stats-section">
+                    <h3>⬆️ Améliorations Actives</h3>
+                    <div id="active-upgrades"></div>
+                </div>
+                <div class="stats-section">
+                    <h3>🛒 Upgrades Permanents (Shop)</h3>
+                    <div id="permanent-shop-upgrades"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="instructions" class="collapsed">
+            <div id="instructions-header">
+                <h3>🎮 Contrôles</h3>
+                <button id="instructions-toggle" aria-label="Toggle instructions">▼</button>
+            </div>
+            <div id="instructions-content">
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">W</span>
+                        <span class="key">A</span>
+                        <span class="key">S</span>
+                        <span class="key">D</span>
+                        <span class="control-separator">ou</span>
+                        <span class="key">↑</span>
+                        <span class="key">←</span>
+                        <span class="key">↓</span>
+                        <span class="key">→</span>
+                    </div>
+                    <div class="control-description">🏃 Déplacement</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key-icon">🖱️</span>
+                    </div>
+                    <div class="control-description">🎯 Viser</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">Clic</span>
+                    </div>
+                    <div class="control-description">💥 Tirer</div>
+                </div>
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">TAB</span>
+                    </div>
+                    <div class="control-description">📊 Statistiques</div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="minimap"></canvas>
+        <button id="minimap-toggle" aria-label="Toggle minimap" style="display: none;">
+            📍
+        </button>
+
+        <!-- Toast Notifications Container -->
+        <div id="toast-container"></div>
+
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" style="display: none;">
+            <!-- Virtual Joystick -->
+            <div id="joystick-container">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
+            </div>
+
+            <!-- Auto-shoot button -->
+            <div id="auto-shoot-container">
+                <button id="auto-shoot-btn">
+                    <span class="shoot-icon">🎯</span>
+                    <span class="shoot-text">TIR AUTO</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Performance & Math Utilities -->
+    <script src="lib/MathUtils.js"></script>
+    <script src="lib/PerformanceUtils.js"></script>
+    <script src="modules/NetworkManager.js"></script>
+    <!-- Asset Management -->
+    <script src="assetManager.js"></script>
+    <script src="professionalAssetGenerator.js"></script>
+    <script src="demoAssetGenerator.js"></script>
+    <script src="assetIntegration.js"></script>
+    <!-- New Enhanced Systems -->
+    <script src="visualEffects.js"></script>
+    <script src="screenEffects.js"></script>
+    <script src="weaponAudioSystem.js"></script>
+    <script src="audioSystem.js"></script>
+    <script src="skinSystem.js"></script>
+    <script src="enhancedUI.js"></script>
+    <script src="performanceSettings.js"></script>
+    <script src="gameIntegration.js"></script>
+    <!-- Addiction Systems (Phase 1-3) -->
+    <script src="achievementSystem.js"></script>
+    <script src="dailyChallenges.js"></script>
+    <!-- leaderboardSystem.js removed - LeaderboardSystem is now in game.js -->
+    <script src="unlockSystem.js"></script>
+    <script src="synergySystem.js"></script>
+    <script src="missionSystem.js"></script>
+    <script src="lifetimeStats.js"></script>
+    <script src="gemSystem.js"></script>
+    <script src="retentionHooks.js"></script>
+    <script src="eventSystem.js"></script>
+    <!-- Integration Layer -->
+    <script src="addictionIntegration.js"></script>
+    <!-- Main Game -->
+    <script src="game.js"></script>
+    <!-- Game Patch (must be loaded after game.js) -->
+    <script src="gamePatch.js"></script>
+</body>
+</html>

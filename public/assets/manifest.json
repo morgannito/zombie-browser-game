@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "description": "Manifest des assets disponibles - Listez ici uniquement les assets que vous avez téléchargés",
+  "enabled": false,
+  "assets": {
+    "backgrounds": [],
+    "player": {},
+    "zombies": {},
+    "items": {},
+    "effects": {},
+    "music": {},
+    "sfx": {}
+  }
+}

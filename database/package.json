@@ -1,0 +1,28 @@
+{
+  "name": "zombie-game-database",
+  "version": "1.0.0",
+  "description": "SQLite database layer for zombie multiplayer game",
+  "main": "DatabaseManager.js",
+  "scripts": {
+    "db:init": "node scripts/init-database.js",
+    "db:seed": "node scripts/seed-database.js",
+    "db:backup": "node scripts/backup-database.js",
+    "db:migrate": "node scripts/run-migrations.js",
+    "db:reset": "node scripts/reset-database.js",
+    "test": "node test/database.test.js"
+  },
+  "keywords": [
+    "sqlite",
+    "database",
+    "game",
+    "repository-pattern"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.2.2"
+  },
+  "devDependencies": {
+    "uuid": "^9.0.1"
+  }
+}
