@@ -413,6 +413,7 @@ body {
   border-radius: var(--radius-xl);
   border: 3px solid var(--color-danger);
   pointer-events: auto;
+  z-index: 9999; /* Au-dessus de tous les widgets addiction */
   -webkit-backdrop-filter: blur(15px);
   backdrop-filter: blur(15px);
   min-width: 350px;
@@ -615,7 +616,7 @@ body {
   border-radius: var(--radius-xl);
   pointer-events: auto;
   overflow-y: auto;
-  z-index: var(--z-modal);
+  z-index: 9999; /* Au-dessus de tous les widgets addiction */
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -777,7 +778,7 @@ body {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.95);
-  z-index: var(--z-overlay);
+  z-index: 9999; /* Au-dessus de tous les widgets addiction (max 3000) */
   pointer-events: auto;
   display: flex;
   align-items: center;
