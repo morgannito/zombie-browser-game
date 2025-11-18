@@ -1,5 +1,13 @@
 # Docker Deployment Guide
 
+## Requirements
+
+- **Docker:** 20.10+
+- **Docker Compose:** 2.0+
+- **Node.js in container:** 20.x LTS (requis par better-sqlite3 v12.4.1)
+
+---
+
 ## Quick Start
 
 ### Build et démarrer avec Docker Compose (Recommandé)
@@ -268,14 +276,14 @@ Pour une image plus légère, modifier le Dockerfile:
 
 ```dockerfile
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
 # Runtime stage
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .

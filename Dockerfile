@@ -1,5 +1,5 @@
-# Utiliser Node.js LTS comme base
-FROM node:18-alpine
+# Utiliser Node.js 20 LTS (requis par better-sqlite3 v12.4.1)
+FROM node:20-alpine
 
 # Installer les dépendances pour better-sqlite3 (compilation native)
 RUN apk add --no-cache python3 make g++
