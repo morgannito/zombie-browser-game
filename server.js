@@ -7,13 +7,29 @@ const http = require('http').createServer(app);
 
 // Security: Configure allowed origins from environment
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+  ? process.env.ALLOWED_ORIGINS.split(',').filter(o => o.length > 0)
   : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
+// CORS strict validation in production
+if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
+  console.error('[SECURITY] ALLOWED_ORIGINS must be set in production');
+  process.exit(1);
+}
+
 const io = require('socket.io')(http, {
-  // CORS Configuration - Production secure
+  // CORS Configuration - Strict validation
   cors: {
-    origin: ALLOWED_ORIGINS,
+    origin: (origin, callback) => {
+      // Allow requests without origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn('[CORS] Blocked request from origin:', origin);
+        callback(new Error('CORS policy violation'));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -38,6 +54,10 @@ const logger = require('./lib/infrastructure/Logger');
 const DatabaseManager = require('./lib/database/DatabaseManager');
 const Container = require('./lib/application/Container');
 const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
+
+// Security infrastructure
+const JwtService = require('./lib/infrastructure/auth/JwtService');
+const { validate, playerReadySchema, playerActionSchema, reconnectSchema } = require('./lib/infrastructure/validation/schemas');
 
 // Import des modules d'optimisation
 const EntityManager = require('./lib/server/EntityManager');
@@ -68,6 +88,14 @@ logger.info('Application container initialized');
 const metricsCollector = MetricsCollector.getInstance();
 metricsCollector.setTargetFPS(perfIntegration.perfConfig.current.tickRate);
 logger.info('Metrics collector initialized');
+
+// Initialize JWT service
+const jwtService = new JwtService(logger);
+logger.info('JWT service initialized');
+
+// Apply JWT authentication to all Socket.IO connections
+io.use(jwtService.socketMiddleware());
+logger.info('Socket.IO JWT middleware applied');
 
 // ===============================================
 // SECURITY MIDDLEWARE
@@ -116,6 +144,61 @@ app.use(express.static('public'));
 // ===============================================
 // REST API ENDPOINTS (Clean Architecture)
 // ===============================================
+
+// ===============================================
+// AUTHENTICATION ENDPOINT
+// ===============================================
+
+/**
+ * POST /api/auth/login - Authentification JWT
+ */
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    // Validation
+    if (!username || username.length < 2 || username.length > 20) {
+      return res.status(400).json({
+        error: 'Invalid username (2-20 characters required)'
+      });
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return res.status(400).json({
+        error: 'Username can only contain letters, numbers, underscore and dash'
+      });
+    }
+
+    // Créer ou récupérer le joueur
+    const createPlayerUseCase = container.get('createPlayer');
+    const player = await createPlayerUseCase.execute({ username });
+
+    // Générer JWT
+    const token = jwtService.generateToken({
+      userId: player.id,
+      username: player.username
+    });
+
+    logger.info('Player authenticated', {
+      userId: player.id,
+      username: player.username
+    });
+
+    res.json({
+      token,
+      player: {
+        id: player.id,
+        username: player.username,
+        highScore: player.highScore || 0,
+        totalKills: player.totalKills || 0,
+        gamesPlayed: player.gamesPlayed || 0
+      }
+    });
+  } catch (error) {
+    logger.error('Login failed', { error: error.message });
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
 
 // Health check endpoint
 // ===============================================
@@ -2131,6 +2214,11 @@ io.on('connection', (socket) => {
 
   // Mouvement du joueur (Rogue-like avec collision)
   socket.on('playerMove', safeHandler('playerMove', function(data) {
+    // JWT Authentication check
+    if (!socket.userId) {
+      return; // Silent fail for unauthenticated players
+    }
+
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateMovementData(data);
     if (!validatedData) {
@@ -2492,6 +2580,17 @@ io.on('connection', (socket) => {
     const player = gameState.players[socket.id];
     if (!player) return;
 
+    // JWT Authentication check
+    if (!socket.userId || !socket.username) {
+      logger.warn('setNickname called without JWT authentication', {
+        socketId: socket.id
+      });
+      socket.emit('nicknameRejected', {
+        reason: 'Authentication required'
+      });
+      return;
+    }
+
     // CORRECTION CRITIQUE: Vérifier si le joueur a déjà un pseudo AVANT rate limiting
     if (player.hasNickname) {
       socket.emit('nicknameRejected', {
@@ -2512,6 +2611,19 @@ io.on('connection', (socket) => {
 
     // VALIDATION STRICTE DU PSEUDO
     let nickname = data.nickname ? data.nickname.trim() : '';
+
+    // JWT validation: nickname must match authenticated username
+    if (nickname.toLowerCase() !== socket.username.toLowerCase()) {
+      logger.warn('Nickname mismatch with JWT', {
+        provided: nickname,
+        expected: socket.username,
+        socketId: socket.id
+      });
+      socket.emit('nicknameRejected', {
+        reason: 'Le pseudo doit correspondre à votre compte'
+      });
+      return;
+    }
 
     // Filtrer caractères non autorisés (lettres, chiffres, espaces, tirets, underscores)
     nickname = nickname.replace(/[^a-zA-Z0-9\s\-_]/g, '');

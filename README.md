@@ -218,6 +218,53 @@ pm2 logs zombie-game
 - [ ] Enable log rotation
 - [ ] Set up automated backups
 
+### Auto-Deploy (Mac mini CI/CD) ✅
+
+**Status:** ✅ Production-ready (validated 2025-11-19)
+
+```
+git push origin main → Auto-deploy in 5 seconds
+```
+
+**Architecture:**
+```
+GitHub Push
+    ↓
+https://zombie.lonewolf.fr/webhook (HTTPS SSL)
+    ↓
+nginx reverse proxy (192.168.50.38:443)
+    ↓
+Mac mini deploy server (192.168.50.68:9000)
+    ↓
+Auto: git pull + npm install + restart
+    ↓
+Game server updated (port 3001)
+```
+
+**Features:**
+- ✅ **HTTPS/TLS** - Let's Encrypt SSL certificate
+- ✅ **HMAC-SHA256** - Webhook signature verification
+- ✅ **Auto-restart** - LaunchAgent KeepAlive
+- ✅ **Zero-downtime** - 5 second deployment
+- ✅ **Production logs** - Structured deployment logging
+
+**Documentation:**
+- `AUTO_DEPLOY_VALIDATED.md` - System validation report
+- `DEPLOYMENT_COMPLETE.md` - Setup guide & troubleshooting
+- `NGINX_REVERSE_PROXY.md` - nginx configuration details
+
+**Quick commands:**
+```bash
+# Monitor deployments
+ssh mac-mini 'tail -f ~/zombie-browser-game/deploy.log'
+
+# Health check
+curl https://zombie.lonewolf.fr/health
+
+# Restart services
+ssh mac-mini 'launchctl restart com.zombiegame.deploy'
+```
+
 ---
 
 ## 📈 Performance Metrics

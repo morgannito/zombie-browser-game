@@ -4558,7 +4558,7 @@ class NicknameManager {
     }
   }
 
-  startGame() {
+  async startGame() {
     const nickname = this.nicknameInput.value.trim();
 
     if (nickname.length < CONSTANTS.NICKNAME.MIN_LENGTH) {
@@ -4576,6 +4576,52 @@ class NicknameManager {
     if (!nicknameRegex.test(nickname)) {
       alert('Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
       return;
+    }
+
+    // JWT Authentication
+    if (window.authManager && !window.authManager.isAuthenticated()) {
+      try {
+        console.log('[Auth] Logging in with username:', nickname);
+        await window.authManager.login(nickname);
+        console.log('[Auth] Login successful, reconnecting socket...');
+
+        // Reconnect socket with JWT token
+        if (window.networkManager && window.networkManager.socket) {
+          const oldSocket = window.networkManager.socket;
+          oldSocket.disconnect();
+
+          // Create new socket with JWT token
+          const newSocket = io({
+            transports: ['polling', 'websocket'],
+            upgrade: true,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: 5,
+            timeout: 45000,
+            auth: {
+              sessionId: window.sessionManager ? window.sessionManager.getSessionId() : null,
+              token: window.authManager.getToken()
+            }
+          });
+
+          // Replace socket in networkManager
+          window.networkManager.socket = newSocket;
+
+          // Wait for connection
+          await new Promise((resolve, reject) => {
+            newSocket.once('connect', resolve);
+            newSocket.once('connect_error', reject);
+            setTimeout(() => reject(new Error('Connection timeout')), 10000);
+          });
+
+          console.log('[Auth] Socket reconnected with JWT token');
+        }
+      } catch (error) {
+        console.error('[Auth] Login failed:', error);
+        alert('Échec de l\'authentification: ' + error.message);
+        return;
+      }
     }
 
     // Hide nickname screen
@@ -4770,7 +4816,7 @@ class GameEngine {
     const camera = new CameraManager();
 
     // Socket.IO client configuration with proper transports and error handling
-    // Include sessionId for reconnection recovery
+    // Include sessionId for reconnection recovery + JWT token
     const socket = io({
       transports: ['polling', 'websocket'],
       upgrade: true,
@@ -4780,7 +4826,20 @@ class GameEngine {
       reconnectionAttempts: 5,
       timeout: 45000,
       auth: {
-        sessionId: window.sessionManager.getSessionId()
+        sessionId: window.sessionManager.getSessionId(),
+        token: window.authManager ? window.authManager.getToken() : null
+      }
+    });
+
+    // Handle JWT authentication errors
+    socket.on('connect_error', (error) => {
+      if (error.message === 'Authentication required' || error.message === 'Invalid or expired token') {
+        console.error('[Socket] Authentication failed:', error.message);
+        if (window.authManager) {
+          window.authManager.logout();
+        }
+        // Show error to user
+        alert('Session expirée. Veuillez entrer votre pseudo pour vous reconnecter.');
       }
     });
 
