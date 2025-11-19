@@ -924,12 +924,12 @@ class PerformanceSettingsManager {
       adjusted = true;
       console.log(`→ Reduced resolution to ${Math.round(this.settings.resolutionScale * 100)}%`);
     }
-    // Step 4: Lower target FPS as last resort
-    else if (this.settings.targetFPS > 30) {
-      this.settings.targetFPS = 30;
-      adjusted = true;
-      console.log('→ Lowered target FPS to 30');
-    }
+    // Step 4: DISABLED - Keep 60 FPS always for smooth gameplay
+    // else if (this.settings.targetFPS > 30) {
+    //   this.settings.targetFPS = 30;
+    //   adjusted = true;
+    //   console.log('→ Lowered target FPS to 30');
+    // }
 
     if (adjusted) {
       this.saveSettings();
