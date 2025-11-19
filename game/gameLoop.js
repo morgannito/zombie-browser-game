@@ -472,6 +472,8 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
   if (zombie.type !== 'bossInfect') return;
 
   const bossType = ZOMBIE_TYPES.bossInfect;
+
+  // Flaques toxiques
   if (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown) {
     zombie.lastToxicPool = now;
 
@@ -489,6 +491,33 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
 
     createParticles(zombie.x, zombie.y, bossType.color, 25, entityManager);
   }
+
+  // Aura de mort passive - 5 dégâts/sec dans 80px
+  if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
+    zombie.lastAuraDamage = now;
+
+    // Trouver tous les joueurs dans le rayon de l'aura
+    for (let playerId in gameState.players) {
+      const player = gameState.players[playerId];
+      if (!player.alive || player.spawnProtection || player.invisible) continue;
+
+      const dist = distance(zombie.x, zombie.y, player.x, player.y);
+      if (dist < bossType.deathAuraRadius) {
+        player.health -= bossType.deathAuraDamage;
+
+        // Particules vertes toxiques
+        createParticles(player.x, player.y, '#00ff00', 5, entityManager);
+
+        if (player.health <= 0) {
+          player.health = 0;
+          player.alive = false;
+        }
+      }
+    }
+
+    // Effet visuel de l'aura autour du boss
+    createParticles(zombie.x, zombie.y, '#00ff00', 12, entityManager);
+  }
 }
 
 /**
@@ -500,8 +529,21 @@ function updateBossColosse(zombie, zombieId, now, io, entityManager) {
   const bossType = ZOMBIE_TYPES.bossColosse;
   const healthPercent = zombie.health / zombie.maxHealth;
 
+  // Bouclier pré-rage (actif tant que NOT enragé)
+  if (!zombie.isEnraged) {
+    zombie.hasShield = true;
+    // Effet visuel de bouclier toutes les secondes
+    if (!zombie.lastShieldEffect || now - zombie.lastShieldEffect >= 1000) {
+      zombie.lastShieldEffect = now;
+      createParticles(zombie.x, zombie.y, bossType.shieldColor, 8, entityManager);
+    }
+  } else {
+    zombie.hasShield = false;
+  }
+
   if (!zombie.isEnraged && healthPercent <= bossType.enrageThreshold) {
     zombie.isEnraged = true;
+    zombie.hasShield = false; // Désactiver le bouclier
     zombie.speed *= bossType.enrageSpeedMultiplier;
     zombie.damage = Math.floor(zombie.damage * bossType.enrageDamageMultiplier);
 
@@ -571,6 +613,58 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
       }
     }
     createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+  }
+
+  // Clones (Phase 3) - 2 clones de 500 HP pour 30 secondes
+  if (zombie.phase >= 3 && (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)) {
+    zombie.lastClone = now;
+
+    // Créer 2 clones autour du boss
+    for (let i = 0; i < bossType.cloneCount; i++) {
+      const angle = (Math.PI * 2 * i) / bossType.cloneCount; // Répartition circulaire
+      const spawnDistance = 150; // Distance de spawn autour du boss
+      const cloneX = zombie.x + Math.cos(angle) * spawnDistance;
+      const cloneY = zombie.y + Math.sin(angle) * spawnDistance;
+
+      const cloneId = gameState.nextZombieId++;
+      gameState.zombies[cloneId] = {
+        id: cloneId,
+        x: cloneX,
+        y: cloneY,
+        size: bossType.size * 0.7, // Clones plus petits (70%)
+        color: '#ff69b4', // Rose pour différencier des vrais boss
+        type: 'bossRoi',
+        health: bossType.cloneHealth,
+        maxHealth: bossType.cloneHealth,
+        speed: bossType.speed * 1.2, // Clones plus rapides
+        damage: bossType.damage * 0.5, // Clones moins puissants
+        goldDrop: 100,
+        xpDrop: 50,
+        isBoss: false, // Les clones ne sont pas des vrais boss
+        isClone: true, // Marqueur de clone
+        phase: 1,
+        createdAt: now,
+        despawnTime: now + bossType.cloneDuration // Despawn après 30 secondes
+      };
+
+      // Effet visuel de spawn
+      createParticles(cloneX, cloneY, '#ff69b4', 30, entityManager);
+    }
+
+    // Effet visuel massif au boss principal
+    createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
+
+    // Notifier les clients de la création des clones
+    io.emit('bossClones', {
+      bossId: zombieId,
+      message: 'LE ROI INVOQUE SES CLONES!'
+    });
+  }
+
+  // Despawn des clones expirés
+  if (zombie.isClone && now >= zombie.despawnTime) {
+    createParticles(zombie.x, zombie.y, '#ff69b4', 20, entityManager);
+    delete gameState.zombies[zombieId];
   }
 }
 
@@ -644,6 +738,69 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
       }
     }
     createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
+  }
+
+  // Laser (Phase 4)
+  if (zombie.phase >= 4 && (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)) {
+    zombie.lastLaser = now;
+
+    // Trouver le joueur le plus proche pour cibler le laser
+    const closestPlayer = collisionManager.findClosestPlayer(
+      zombie.x, zombie.y, bossType.laserRange,
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
+    );
+
+    if (closestPlayer) {
+      // Angle vers le joueur
+      const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+
+      // Créer le laser (ligne de particules + dégâts en ligne)
+      const laserSteps = 40; // Nombre de points du laser
+      for (let i = 0; i < laserSteps; i++) {
+        const laserX = zombie.x + Math.cos(angle) * (i * (bossType.laserRange / laserSteps));
+        const laserY = zombie.y + Math.sin(angle) * (i * (bossType.laserRange / laserSteps));
+
+        // Créer particules visuelles du laser
+        createParticles(laserX, laserY, bossType.laserColor, 2, entityManager);
+      }
+
+      // Dégâts aux joueurs touchés par le laser
+      for (let playerId in gameState.players) {
+        const player = gameState.players[playerId];
+        if (!player.alive || player.spawnProtection || player.invisible) continue;
+
+        // Vérifier si le joueur est dans la trajectoire du laser
+        const playerAngle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
+        const angleDiff = Math.abs(playerAngle - angle);
+        const distToZombie = distance(zombie.x, zombie.y, player.x, player.y);
+
+        // Si dans la largeur du laser et dans la portée
+        if (angleDiff < (bossType.laserWidth / 2) / distToZombie && distToZombie < bossType.laserRange) {
+          player.health -= bossType.laserDamage;
+
+          // Particules d'impact
+          createParticles(player.x, player.y, '#ff0000', 15, entityManager);
+
+          if (player.health <= 0) {
+            player.health = 0;
+            player.alive = false;
+          }
+        }
+      }
+
+      // Effet visuel explosif au départ du laser
+      createParticles(zombie.x, zombie.y, bossType.laserColor, 30, entityManager);
+
+      // Notifier les clients du laser pour effet visuel
+      io.emit('bossLaser', {
+        bossId: zombieId,
+        x: zombie.x,
+        y: zombie.y,
+        angle: angle,
+        range: bossType.laserRange,
+        color: bossType.laserColor
+      });
+    }
   }
 }
 
@@ -954,6 +1111,14 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
         // Effet visuel de bouclier (particules cyan)
         createParticles(zombie.x, zombie.y, '#00ffff', 10, entityManager);
       }
+    }
+
+    // Bouclier de HAIER (Boss Colosse) - 80% de réduction avant rage
+    if (zombie.type === 'bossColosse' && zombie.hasShield) {
+      const bossType = ZOMBIE_TYPES.bossColosse;
+      finalDamage *= (1 - bossType.shieldDamageReduction); // 20% des dégâts seulement
+      // Effet visuel intense du bouclier
+      createParticles(zombie.x, zombie.y, bossType.shieldColor, 15, entityManager);
     }
 
     zombie.health -= finalDamage;
