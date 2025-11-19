@@ -270,9 +270,10 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
       // Vérifier le cooldown de tir
       if (!zombie.lastShot || now - zombie.lastShot >= shooterType.shootCooldown) {
         // Trouver le joueur le plus proche dans la portée (OPTIMISÉ)
+        // CORRECTION: Respecter l'invisibilité (pendant choix d'amélioration)
         const targetPlayer = collisionManager.findClosestPlayer(
           zombie.x, zombie.y, shooterType.shootRange,
-          { ignoreSpawnProtection: true, ignoreInvisible: true }
+          { ignoreSpawnProtection: true, ignoreInvisible: false }
         );
 
         // Tirer sur le joueur cible
@@ -359,9 +360,10 @@ function updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityM
 
   const teleporterType = ZOMBIE_TYPES.teleporter;
   if (!zombie.lastTeleport || now - zombie.lastTeleport >= teleporterType.teleportCooldown) {
+    // CORRECTION: Respecter l'invisibilité (pendant choix d'amélioration)
     const closestPlayer = collisionManager.findClosestPlayer(
       zombie.x, zombie.y, Infinity,
-      { ignoreSpawnProtection: true, ignoreInvisible: true }
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
 
     if (closestPlayer) {
@@ -650,9 +652,10 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
  */
 function moveZombie(zombie, zombieId, collisionManager, gameState) {
   // Trouver le joueur le plus proche (OPTIMISÉ avec Quadtree)
+  // CORRECTION: Respecter l'invisibilité (pendant choix d'amélioration)
   const closestPlayer = collisionManager.findClosestPlayer(
     zombie.x, zombie.y, Infinity,
-    { ignoreSpawnProtection: true, ignoreInvisible: true }
+    { ignoreSpawnProtection: true, ignoreInvisible: false }
   );
 
   const now = Date.now();
@@ -1416,9 +1419,10 @@ function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityMa
 
     // Try to start a new dash
     if (!zombie.isDashing && (!zombie.lastDash || now - zombie.lastDash >= berserkerType.dashCooldown)) {
+      // CORRECTION: Respecter l'invisibilité (pendant choix d'amélioration)
       const closestPlayer = collisionManager.findClosestPlayer(
         zombie.x, zombie.y, 400, // Dash range of 400 pixels
-        { ignoreSpawnProtection: false, ignoreInvisible: true }
+        { ignoreSpawnProtection: false, ignoreInvisible: false }
       );
 
       if (closestPlayer) {
