@@ -828,8 +828,56 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId) 
     if (sessionId && player) {
       // Only save state if player has actually started playing (has nickname)
       if (player.hasNickname && player.alive) {
-        // Create a deep copy of player state
-        const playerStateCopy = JSON.parse(JSON.stringify(player));
+        // Create a safe copy of player state (avoiding circular references)
+        const playerStateCopy = {
+          id: player.id,
+          nickname: player.nickname,
+          hasNickname: player.hasNickname,
+          spawnProtection: player.spawnProtection,
+          spawnProtectionEndTime: player.spawnProtectionEndTime,
+          invisible: player.invisible,
+          invisibleEndTime: player.invisibleEndTime,
+          lastActivityTime: player.lastActivityTime,
+          x: player.x,
+          y: player.y,
+          health: player.health,
+          maxHealth: player.maxHealth,
+          level: player.level,
+          xp: player.xp,
+          gold: player.gold,
+          score: player.score,
+          alive: player.alive,
+          angle: player.angle,
+          weapon: player.weapon,
+          lastShot: player.lastShot,
+          speedBoost: player.speedBoost,
+          weaponTimer: player.weaponTimer,
+          kills: player.kills,
+          zombiesKilled: player.zombiesKilled,
+          combo: player.combo,
+          comboTimer: player.comboTimer,
+          highestCombo: player.highestCombo,
+          totalScore: player.totalScore,
+          survivalTime: player.survivalTime,
+          upgrades: { ...player.upgrades },
+          damageMultiplier: player.damageMultiplier,
+          speedMultiplier: player.speedMultiplier,
+          fireRateMultiplier: player.fireRateMultiplier,
+          regeneration: player.regeneration,
+          bulletPiercing: player.bulletPiercing,
+          lifeSteal: player.lifeSteal,
+          criticalChance: player.criticalChance,
+          goldMagnetRadius: player.goldMagnetRadius,
+          dodgeChance: player.dodgeChance,
+          explosiveRounds: player.explosiveRounds,
+          explosionRadius: player.explosionRadius,
+          explosionDamagePercent: player.explosionDamagePercent,
+          extraBullets: player.extraBullets,
+          thorns: player.thorns,
+          lastRegenTick: player.lastRegenTick,
+          autoTurrets: player.autoTurrets,
+          lastAutoShot: player.lastAutoShot
+        };
 
         disconnectedPlayers.set(sessionId, {
           playerState: playerStateCopy,
