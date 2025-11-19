@@ -25,7 +25,7 @@
         func.apply(this, args);
       };
       clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
+      timeout = (window.timerManager ? window.timerManager.setTimeout : setTimeout)(later, wait);
     };
   }
 
@@ -41,7 +41,7 @@
       if (!inThrottle) {
         func.apply(this, args);
         inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => inThrottle = false, limit);
       }
     };
   }

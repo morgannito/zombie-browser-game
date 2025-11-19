@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Zombie Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0a0e27;
+      color: #fff;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+
+    .status.healthy {
+      background: #10b981;
+    }
+
+    .status.unhealthy {
+      background: #ef4444;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #1a1f3a;
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid #2d3561;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .card-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #2d3561;
+    }
+
+    .metric:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      color: #94a3b8;
+    }
+
+    .metric-value {
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .metric-value.good {
+      color: #10b981;
+    }
+
+    .metric-value.warning {
+      color: #f59e0b;
+    }
+
+    .metric-value.danger {
+      color: #ef4444;
+    }
+
+    .refresh-info {
+      text-align: center;
+      padding: 15px;
+      background: #1a1f3a;
+      border-radius: 10px;
+      color: #94a3b8;
+      margin-top: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.5em;
+      color: #667eea;
+    }
+
+    .error {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.5em;
+      color: #ef4444;
+      background: #1a1f3a;
+      border-radius: 10px;
+      border: 2px solid #ef4444;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎮 Zombie Game - Admin Dashboard</h1>
+      <p id="server-status" class="status healthy">Chargement...</p>
+    </header>
+
+    <div id="loading" class="loading pulse">
+      Chargement des métriques...
+    </div>
+
+    <div id="error" class="error" style="display: none;">
+      ❌ Erreur de connexion au serveur
+    </div>
+
+    <div id="dashboard" style="display: none;">
+      <!-- Game State -->
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎮 État du Jeu</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Joueurs actuels</span>
+            <span class="metric-value" id="players-current">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Pic de joueurs</span>
+            <span class="metric-value" id="players-peak">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Zombies actifs</span>
+            <span class="metric-value" id="zombies-current">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Vague actuelle</span>
+            <span class="metric-value" id="wave-current">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Sessions actives</span>
+            <span class="metric-value" id="sessions-active">-</span>
+          </div>
+        </div>
+
+        <!-- Performance -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚡ Performance</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Mode</span>
+            <span class="metric-value" id="perf-mode">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">FPS Serveur</span>
+            <span class="metric-value" id="fps">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Temps frame (avg)</span>
+            <span class="metric-value" id="frame-avg">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Temps frame (max)</span>
+            <span class="metric-value" id="frame-max">-</span>
+          </div>
+        </div>
+
+        <!-- System Resources -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💻 Ressources Système</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">RAM Heap Utilisée</span>
+            <span class="metric-value" id="mem-heap">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">RAM Total (RSS)</span>
+            <span class="metric-value" id="mem-rss">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Système (%)</span>
+            <span class="metric-value" id="mem-system">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Cores CPU</span>
+            <span class="metric-value" id="cpu-cores">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Load Average (1m)</span>
+            <span class="metric-value" id="cpu-load">-</span>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Statistiques</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Zombies tués</span>
+            <span class="metric-value" id="zombies-killed">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Total joueurs</span>
+            <span class="metric-value" id="players-total">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Uptime</span>
+            <span class="metric-value" id="uptime">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Database</span>
+            <span class="metric-value" id="db-status">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="refresh-info">
+        🔄 Actualisation automatique toutes les 2 secondes
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let refreshInterval;
+
+    async function fetchMetrics() {
+      try {
+        const response = await fetch('/health');
+        if (!response.ok) throw new Error('Server error');
+
+        const data = await response.json();
+        updateDashboard(data);
+
+        // Masquer loading/error, afficher dashboard
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+
+      } catch (error) {
+        console.error('Failed to fetch metrics:', error);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('dashboard').style.display = 'none';
+      }
+    }
+
+    function updateDashboard(data) {
+      // Server status
+      const statusEl = document.getElementById('server-status');
+      statusEl.textContent = data.status === 'healthy' ? '✅ Serveur Opérationnel' : '❌ Serveur en Difficulté';
+      statusEl.className = 'status ' + data.status;
+
+      // Game state
+      document.getElementById('players-current').textContent = data.game.players.current;
+      document.getElementById('players-peak').textContent = data.game.players.peak;
+      document.getElementById('zombies-current').textContent = data.game.zombies.current;
+      document.getElementById('wave-current').textContent = data.game.wave;
+      document.getElementById('sessions-active').textContent = data.game.activeSessions;
+
+      // Performance
+      document.getElementById('perf-mode').textContent = data.performanceMode.toUpperCase();
+
+      const fpsEl = document.getElementById('fps');
+      const actualFps = data.performance.fps.actual;
+      const targetFps = data.performance.fps.target;
+      fpsEl.textContent = `${actualFps} / ${targetFps}`;
+      fpsEl.className = 'metric-value ' + (actualFps >= targetFps * 0.9 ? 'good' : actualFps >= targetFps * 0.7 ? 'warning' : 'danger');
+
+      document.getElementById('frame-avg').textContent = data.performance.frameTime.avg.toFixed(2) + ' ms';
+
+      const frameMaxEl = document.getElementById('frame-max');
+      const frameMax = data.performance.frameTime.max;
+      frameMaxEl.textContent = frameMax.toFixed(2) + ' ms';
+      frameMaxEl.className = 'metric-value ' + (frameMax < 50 ? 'good' : frameMax < 100 ? 'warning' : 'danger');
+
+      // System
+      const heapMB = parseFloat(data.system.memory.heapUsedMB);
+      const heapTotalMB = parseFloat(data.system.memory.heapTotalMB);
+      document.getElementById('mem-heap').textContent = `${heapMB.toFixed(0)} / ${heapTotalMB.toFixed(0)} MB`;
+
+      document.getElementById('mem-rss').textContent = data.system.memory.rssMB + ' MB';
+
+      const memUsageEl = document.getElementById('mem-system');
+      const memUsage = parseFloat(data.system.memory.systemUsagePercent);
+      memUsageEl.textContent = memUsage.toFixed(1) + '%';
+      memUsageEl.className = 'metric-value ' + (memUsage < 70 ? 'good' : memUsage < 85 ? 'warning' : 'danger');
+
+      document.getElementById('cpu-cores').textContent = data.system.cpu.cores;
+      document.getElementById('cpu-load').textContent = data.system.cpu.loadAverage[0].toFixed(2);
+
+      // Stats
+      document.getElementById('zombies-killed').textContent = data.game.zombies.killed || '-';
+      document.getElementById('players-total').textContent = data.game.players.peak; // Using peak as approximation
+      document.getElementById('uptime').textContent = formatUptime(data.uptime);
+      document.getElementById('db-status').textContent = data.database === 'healthy' ? '✅ Connectée' : '❌ Déconnectée';
+    }
+
+    function formatUptime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours}h ${minutes}m ${secs}s`;
+    }
+
+    // Fetch initial data
+    fetchMetrics();
+
+    // Auto-refresh every 2 seconds
+    refreshInterval = setInterval(fetchMetrics, 2000);
+  </script>
+</body>
+</html>

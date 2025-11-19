@@ -175,11 +175,45 @@ ports:
 
 ## Performance
 
+### Modes de Performance
+
+Le serveur propose 4 modes de performance adaptés à différentes configurations:
+
+| Mode | FPS | Max Zombies | Max Players | Max Power-ups | Recommandation |
+|------|-----|-------------|-------------|---------------|----------------|
+| **high** | 60 | 200 | 50 | 20 | Serveurs puissants (2+ CPU cores, 2GB+ RAM) |
+| **balanced** | 45 | 150 | 30 | 15 | Configuration par défaut (1-2 cores, 1GB RAM) |
+| **low-memory** | 30 | 100 | 20 | 10 | VPS économiques (1 core, 512MB RAM) |
+| **minimal** | 20 | 50 | 10 | 5 | Ressources très limitées |
+
+### Configuration du Mode
+
+#### Docker Compose
+
+Modifier `PERFORMANCE_MODE` dans docker-compose.yml:
+
+```yaml
+environment:
+  - PERFORMANCE_MODE=low-memory  # Pour serveur avec peu de RAM
+```
+
+#### Manuel
+
+```bash
+docker run -e PERFORMANCE_MODE=low-memory zombie-game
+```
+
 ### Ressources recommandées
 
+#### Mode Balanced (défaut)
 - **CPU:** 1 core minimum, 2 cores recommandé
 - **RAM:** 512MB minimum, 1GB recommandé
 - **Disk:** 1GB pour app + logs + database
+
+#### Mode Low-Memory
+- **CPU:** 1 core
+- **RAM:** 512MB (avec swap recommandé)
+- **Disk:** 500MB minimum
 
 ### Limiter les ressources
 
@@ -193,6 +227,20 @@ deploy:
     reservations:
       cpus: '0.5'
       memory: 512M
+```
+
+### Garbage Collection Forcé
+
+En mode `low-memory`, le serveur force le garbage collection toutes les 30s.
+
+Démarrer avec GC activé:
+```bash
+docker run --init -e PERFORMANCE_MODE=low-memory zombie-game
+```
+
+Ou avec Node.js flag:
+```dockerfile
+CMD ["node", "--expose-gc", "server.js"]
 ```
 
 ---

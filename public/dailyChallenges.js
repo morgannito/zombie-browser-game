@@ -367,11 +367,11 @@ class DailyChallengeSystem {
 
     document.body.appendChild(popup);
 
-    setTimeout(() => popup.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.classList.add('show'), 100);
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       popup.classList.remove('show');
-      setTimeout(() => popup.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.remove(), 500);
     }, 6000);
   }
 

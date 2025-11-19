@@ -146,7 +146,7 @@ class MissionSystem {
 
     // Créer une notification spéciale pour chaque mission
     this.currentMissions.forEach((mission, index) => {
-      setTimeout(() => {
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         this.showMissionCard(mission);
       }, 500 + index * 1000);
     });
@@ -171,11 +171,11 @@ class MissionSystem {
 
     document.body.appendChild(card);
 
-    setTimeout(() => card.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => card.classList.add('show'), 100);
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       card.classList.remove('show');
-      setTimeout(() => card.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => card.remove(), 500);
     }, 5000);
   }
 
@@ -405,11 +405,11 @@ class MissionSystem {
 
     document.body.appendChild(popup);
 
-    setTimeout(() => popup.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.classList.add('show'), 100);
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       popup.classList.remove('show');
-      setTimeout(() => popup.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.remove(), 500);
     }, 5000);
   }
 

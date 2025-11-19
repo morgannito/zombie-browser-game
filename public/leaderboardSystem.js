@@ -204,7 +204,7 @@ class LeaderboardSystem {
     });
 
     container.querySelectorAll('.leaderboard-tab').forEach(tab => {
-      tab.addEventListener('click', (e) => {
+      (window.eventListenerManager ? window.eventListenerManager.add(tab, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(tab, 'click', (e)) : tab.addEventListener('click', (e))) => {
         container.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
         const period = e.target.dataset.period;

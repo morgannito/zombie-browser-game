@@ -13,6 +13,7 @@ services:
       - LOG_DIR=/app/logs
       - LOG_LEVEL=info
       - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - PERFORMANCE_MODE=balanced  # Options: high | balanced | low-memory | minimal
     volumes:
       # Volumes persistants pour données et logs
       - ./data:/app/data

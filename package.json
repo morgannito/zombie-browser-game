@@ -5,7 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "deploy:server": "node deploy-server.js",
+    "deploy:install": "cp com.zombiegame.deploy.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.zombiegame.deploy.plist",
+    "deploy:uninstall": "launchctl unload ~/Library/LaunchAgents/com.zombiegame.deploy.plist && rm ~/Library/LaunchAgents/com.zombiegame.deploy.plist",
+    "deploy:restart": "launchctl stop com.zombiegame.deploy && launchctl start com.zombiegame.deploy",
+    "deploy:logs": "tail -f deploy.log"
   },
   "keywords": [
     "game",

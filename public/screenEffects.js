@@ -49,7 +49,7 @@ class ScreenFlash {
     this.overlay.style.opacity = '1';
 
     // Fade out rapide
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.overlay.style.opacity = '0';
     }, 50);
   }
@@ -66,7 +66,7 @@ class ScreenFlash {
     this.overlay.style.background = `rgba(255, 255, 255, ${intensity})`;
     this.overlay.style.opacity = '1';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.overlay.style.opacity = '0';
     }, 80);
   }
@@ -83,7 +83,7 @@ class ScreenFlash {
     this.overlay.style.background = `radial-gradient(circle, rgba(0,255,0,${intensity * 0.2}) 0%, rgba(0,255,0,${intensity * 0.4}) 100%)`;
     this.overlay.style.opacity = '1';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.overlay.style.opacity = '0';
     }, 100);
   }
@@ -197,7 +197,7 @@ class SlowMotionEffect {
     this.notifyCallbacks();
 
     // Désactiver après la durée
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.deactivate();
     }, duration);
   }

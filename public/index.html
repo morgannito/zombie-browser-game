@@ -220,6 +220,9 @@
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
+    <!-- Memory Leak Prevention (MUST be loaded first) -->
+    <script src="EventListenerManager.js"></script>
+    <script src="TimerManager.js"></script>
     <!-- Performance & Math Utilities -->
     <script src="lib/MathUtils.js"></script>
     <script src="lib/PerformanceUtils.js"></script>

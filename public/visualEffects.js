@@ -504,7 +504,7 @@ class AdvancedEffectsManager {
 
     // Onde de choc réduite (20 -> 10 ondes, 10 -> 5 particules)
     for (let i = 0; i < 10; i++) {
-      setTimeout(() => {
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         this.particles.createExplosion(x, y, 'rgba(255, 100, 0, 0.3)', 5, 2);
       }, i * 30);
     }

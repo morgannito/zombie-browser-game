@@ -237,15 +237,15 @@ class EventSystem {
 
     announcement.querySelector('.event-close-btn').addEventListener('click', () => {
       announcement.classList.remove('show');
-      setTimeout(() => announcement.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.remove(), 500);
     });
 
-    setTimeout(() => announcement.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.classList.add('show'), 100);
 
     // Auto-fermer après 10 secondes
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       announcement.classList.remove('show');
-      setTimeout(() => announcement.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.remove(), 500);
     }, 10000);
 
     // Toast aussi

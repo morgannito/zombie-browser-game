@@ -435,17 +435,17 @@ class AchievementSystem {
     document.body.appendChild(popup);
 
     // Animation d'entrée
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       if (popup && popup.parentNode) {
         popup.classList.add('show');
       }
     }, 100);
 
     // Retirer après 6 secondes (avec vérification de sécurité)
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       if (popup && popup.parentNode) {
         popup.classList.remove('show');
-        setTimeout(() => {
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
           if (popup && popup.parentNode) {
             popup.remove();
           }
@@ -567,7 +567,7 @@ class AchievementSystem {
     });
 
     container.querySelectorAll('.achievement-category-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e)) : btn.addEventListener('click', (e))) => {
         container.querySelectorAll('.achievement-category-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         const category = e.target.dataset.category;

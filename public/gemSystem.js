@@ -302,7 +302,7 @@ class GemSystem {
     this._safeSetItem('active_boosts', JSON.stringify(activeBoosts));
 
     // Démarrer un timer pour retirer le boost
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.removeBoost(boost);
     }, duration);
   }
@@ -472,7 +472,7 @@ class GemSystem {
 
     // Ajouter listeners pour les boutons d'achat
     container.querySelectorAll('.gem-shop-buy-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e)) : btn.addEventListener('click', (e))) => {
         const itemId = e.target.dataset.itemId;
         this.handlePurchase(itemId);
       });
@@ -551,7 +551,7 @@ class GemSystem {
 
           // Ré-attacher les event listeners
           content.querySelectorAll('.gem-shop-buy-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', (e)) : btn.addEventListener('click', (e))) => {
               const itemId = e.target.dataset.itemId;
               this.handlePurchase(itemId);
             });

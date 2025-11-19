@@ -10,39 +10,90 @@
 
   console.log('Applying game patches for enhanced systems...');
 
-  // Attendre que le jeu soit initialisé avec timeout de sécurité
-  let patchAttempts = 0;
-  const MAX_PATCH_ATTEMPTS = 100; // 10 secondes max
-  const patchInterval = setInterval(() => {
-    if (window.GameEngine && window.Renderer && window.PlayerController) {
-      clearInterval(patchInterval);
+  // Vérifier si les systèmes requis sont prêts
+  function areSystemsReady() {
+    return window.GameEngine &&
+           window.Renderer &&
+           window.PlayerController &&
+           typeof window.GameEngine === 'function' &&
+           typeof window.Renderer === 'function' &&
+           typeof window.PlayerController === 'function';
+  }
+
+  // Attendre que le DOM soit chargé avant de commencer
+  function initPatches() {
+    if (areSystemsReady()) {
       applyPatches();
-    } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
-      clearInterval(patchInterval);
-      console.error('❌ Failed to load game systems after 10 seconds. Game may not work correctly.');
+      return;
     }
-  }, 100);
+
+    // Polling avec timerManager pour éviter memory leak
+    let patchAttempts = 0;
+    const MAX_PATCH_ATTEMPTS = 50; // 5 secondes max (50 * 100ms)
+
+    const patchInterval = window.timerManager ?
+      window.timerManager.setInterval(() => {
+        if (areSystemsReady()) {
+          window.timerManager.clearInterval(patchInterval);
+          applyPatches();
+        } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
+          window.timerManager.clearInterval(patchInterval);
+          console.error('❌ Failed to load game systems after 5 seconds. Required: GameEngine, Renderer, PlayerController');
+          console.error('Available:', {
+            GameEngine: !!window.GameEngine,
+            Renderer: !!window.Renderer,
+            PlayerController: !!window.PlayerController
+          });
+        }
+      }, 100) :
+      // Fallback si timerManager pas encore chargé
+      (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+        if (areSystemsReady()) {
+          clearInterval(patchInterval);
+          applyPatches();
+        } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
+          clearInterval(patchInterval);
+          console.error('❌ Failed to load game systems after 5 seconds.');
+        }
+      }, 100);
+  }
+
+  // Attendre DOMContentLoaded avant d'initialiser
+  if (document.readyState === 'loading') {
+    if (window.eventListenerManager) {
+      window.eventListenerManager.add(document, 'DOMContentLoaded', initPatches);
+    } else {
+      document.addEventListener('DOMContentLoaded', initPatches);
+    }
+  } else {
+    // DOM déjà chargé
+    initPatches();
+  }
 
   function applyPatches() {
     console.log('Patching game systems...');
 
     // ===============================================
-    // PATCH 1: Améliorer la boucle de jeu
+    // PATCH 1: Améliorer la boucle de jeu via update()
     // ===============================================
-    const originalGameLoop = GameEngine.prototype.gameLoop;
-    GameEngine.prototype.gameLoop = function() {
-      try {
-        this.update();
-        this.render();
-
-        // Mise à jour des systèmes améliorés
-        if (window.updateEnhancedSystems) {
-          window.updateEnhancedSystems(16);
-        }
-      } catch (error) {
-        console.error('Game loop error:', error);
+    // On patche update() plutôt que gameLoop() pour éviter les animation frame leaks
+    const originalUpdate = GameEngine.prototype.update;
+    GameEngine.prototype.update = function(deltaTime) {
+      // Appeler l'update original
+      if (originalUpdate) {
+        originalUpdate.call(this, deltaTime);
       }
-      this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
+
+      // Mise à jour des systèmes améliorés
+      if (window.updateEnhancedSystems) {
+        try {
+          // deltaTime peut être undefined si pas fourni, utiliser 16ms par défaut (60 FPS)
+          const dt = deltaTime !== undefined ? deltaTime : 16;
+          window.updateEnhancedSystems(dt);
+        } catch (error) {
+          console.error('Enhanced systems error:', error);
+        }
+      }
     };
 
     // ===============================================
@@ -111,7 +162,11 @@
     if (window.NetworkManager) {
       const setupNetworkHooks = () => {
         if (!window.networkManager || !window.networkManager.socket) {
-          setTimeout(setupNetworkHooks, 100);
+          if (window.timerManager) {
+            window.timerManager.setTimeout(setupNetworkHooks, 100);
+          } else {
+            (window.timerManager ? window.timerManager.setTimeout : setTimeout)(setupNetworkHooks, 100);
+          }
           return;
         }
 
@@ -272,13 +327,19 @@
         font-size: 20px;
       `;
 
-      musicBtn.addEventListener('click', () => {
+      const musicClickHandler = () => {
         if (window.advancedAudio) {
           const enabled = window.advancedAudio.toggleMusic();
           musicBtn.style.opacity = enabled ? '1' : '0.5';
           musicBtn.textContent = enabled ? '🎵' : '🔇';
         }
-      });
+      };
+
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(musicBtn, 'click', musicClickHandler);
+      } else {
+        musicBtn.addEventListener('click', musicClickHandler);
+      }
 
       // Bouton sons
       const soundBtn = document.createElement('button');
@@ -286,13 +347,19 @@
       soundBtn.title = 'Sons On/Off';
       soundBtn.style.cssText = musicBtn.style.cssText;
 
-      soundBtn.addEventListener('click', () => {
+      const soundClickHandler = () => {
         if (window.advancedAudio) {
           const enabled = window.advancedAudio.toggleSound();
           soundBtn.style.opacity = enabled ? '1' : '0.5';
           soundBtn.textContent = enabled ? '🔊' : '🔇';
         }
-      });
+      };
+
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(soundBtn, 'click', soundClickHandler);
+      } else {
+        soundBtn.addEventListener('click', soundClickHandler);
+      }
 
       controlsContainer.appendChild(musicBtn);
       controlsContainer.appendChild(soundBtn);

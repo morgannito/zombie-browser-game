@@ -286,8 +286,8 @@ class InputManager {
 
   setupEventListeners() {
     // Keyboard events
-    window.addEventListener('keydown', this.handlers.keydown);
-    window.addEventListener('keyup', this.handlers.keyup);
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'keydown', this.handlers.keydown) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'keydown', this.handlers.keydown)) : window.addEventListener('keydown', this.handlers.keydown)));
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'keyup', this.handlers.keyup) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'keyup', this.handlers.keyup)) : window.addEventListener('keyup', this.handlers.keyup)));
   }
 
   cleanup() {
@@ -607,10 +607,10 @@ class MobileControlsManager {
     this.handlers.joystickMove = handleTouchMove;
     this.handlers.joystickEnd = handleTouchEnd;
 
-    joystickBase.addEventListener('touchstart', handleTouchStart, { passive: false });
-    joystickBase.addEventListener('touchmove', handleTouchMove, { passive: false });
-    joystickBase.addEventListener('touchend', handleTouchEnd, { passive: false });
-    joystickBase.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchstart', handleTouchStart, { passive: false }) : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchstart', handleTouchStart, { passive: false }) : joystickBase.addEventListener('touchstart', handleTouchStart, { passive: false })));
+    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchmove', handleTouchMove, { passive: false }) : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchmove', handleTouchMove, { passive: false }) : joystickBase.addEventListener('touchmove', handleTouchMove, { passive: false })));
+    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchend', handleTouchEnd, { passive: false }) : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchend', handleTouchEnd, { passive: false }) : joystickBase.addEventListener('touchend', handleTouchEnd, { passive: false })));
+    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchcancel', handleTouchEnd, { passive: false }) : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchcancel', handleTouchEnd, { passive: false }) : joystickBase.addEventListener('touchcancel', handleTouchEnd, { passive: false })));
   }
 
   updateJoystickPosition(touch, base, stick, maxDistance) {
@@ -656,7 +656,7 @@ class MobileControlsManager {
     };
 
     this.handlers.autoShoot = handleAutoShoot;
-    autoShootBtn.addEventListener('touchstart', handleAutoShoot);
+    (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchstart', handleAutoShoot) : (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchstart', handleAutoShoot)) : autoShootBtn.addEventListener('touchstart', handleAutoShoot)));
   }
 
   toggleAutoShoot() {
@@ -795,7 +795,7 @@ class MobileControlsManager {
       this.swipeStartTime = Date.now();
 
       // Long press detection
-      this.longPressTimer = setTimeout(() => {
+      this.longPressTimer = (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         this.handleLongPress(touch.clientX, touch.clientY);
       }, 500);
     };
@@ -836,9 +836,9 @@ class MobileControlsManager {
     this.handlers.gestureTouchMove = handleGestureTouchMove;
     this.handlers.gestureTouchEnd = handleGestureTouchEnd;
 
-    canvas.addEventListener('touchstart', handleGestureTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', handleGestureTouchMove, { passive: true });
-    canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: true });
+    (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchstart', handleGestureTouchStart, { passive: true }) : (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchstart', handleGestureTouchStart, { passive: true }) : canvas.addEventListener('touchstart', handleGestureTouchStart, { passive: true })));
+    (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchmove', handleGestureTouchMove, { passive: true }) : (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchmove', handleGestureTouchMove, { passive: true }) : canvas.addEventListener('touchmove', handleGestureTouchMove, { passive: true })));
+    (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchend', handleGestureTouchEnd, { passive: true }) : (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'touchend', handleGestureTouchEnd, { passive: true }) : canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: true })));
 
     // Double-tap on auto-shoot for burst mode
     const autoShootBtn = this.elements.autoShootBtn || document.getElementById('auto-shoot-btn');
@@ -858,7 +858,7 @@ class MobileControlsManager {
       };
 
       this.handlers.doubleTapDetect = handleDoubleTapDetect;
-      autoShootBtn.addEventListener('touchend', handleDoubleTapDetect, { passive: true });
+      (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchend', handleDoubleTapDetect, { passive: true }) : (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchend', handleDoubleTapDetect, { passive: true }) : autoShootBtn.addEventListener('touchend', handleDoubleTapDetect, { passive: true })));
     }
   }
 
@@ -1120,7 +1120,7 @@ class ComboSystem {
       // Animation de pulsation (réduite sur mobile)
       const scaleAmount = this.isMobile ? 1.1 : 1.2;
       this.comboElement.style.transform = `scale(${scaleAmount})`;
-      setTimeout(() => {
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         if (this.comboElement) {
           this.comboElement.style.transform = 'scale(1)';
         }
@@ -1131,7 +1131,7 @@ class ComboSystem {
         const bigFontSize = this.isMobile ? '20px' : '40px';
         const normalFontSize = this.isMobile ? '16px' : '32px';
         this.comboElement.style.fontSize = bigFontSize;
-        setTimeout(() => {
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
           if (this.comboElement) {
             this.comboElement.style.fontSize = normalFontSize;
           }
@@ -1151,7 +1151,7 @@ class ComboSystem {
     if (this.comboElement) {
       this.comboElement.style.transform = 'scale(0.5)';
       this.comboElement.style.opacity = '0';
-      setTimeout(() => {
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         if (this.comboElement) {
           this.comboElement.style.display = 'none';
           this.comboElement.style.transform = 'scale(1)';
@@ -1198,7 +1198,7 @@ class ToastManager {
 
     // Auto remove after duration
     if (duration > 0) {
-      setTimeout(() => {
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
         this.remove(toast);
       }, duration);
     }
@@ -1208,7 +1208,7 @@ class ToastManager {
 
   remove(toast) {
     toast.classList.add('removing');
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
       }
@@ -1767,7 +1767,7 @@ class NetworkManager {
   handleNewWave(data) {
     if (window.gameUI) {
       window.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
-      setTimeout(() => window.gameUI.showShop(), CONSTANTS.ANIMATIONS.SHOP_DELAY);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => window.gameUI.showShop(), CONSTANTS.ANIMATIONS.SHOP_DELAY);
     }
   }
 
@@ -1775,7 +1775,7 @@ class NetworkManager {
     if (window.gameUI) {
       if (data.milestoneBonus) {
         window.gameUI.showMilestoneBonus(data.milestoneBonus, data.newLevel);
-        setTimeout(() => {
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
           if (window.gameUI) {
             window.gameUI.showLevelUpScreen(data.newLevel, data.upgradeChoices);
           }
@@ -1829,7 +1829,7 @@ class NetworkManager {
     }
 
     // Show alert with option to reload
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       if (confirm('Votre session a expiré. Voulez-vous recharger la page ?')) {
         window.location.reload();
       }
@@ -4093,7 +4093,7 @@ class UIManager {
   setupEventListeners() {
     // Shop close button
     if (this.shopCloseBtn) {
-      this.shopCloseBtn.addEventListener('click', this.handlers.shopClose);
+      this.(window.eventListenerManager ? window.eventListenerManager.add(shopCloseBtn, 'click', this.handlers.shopClose) : (window.eventListenerManager ? window.eventListenerManager.add(shopCloseBtn, 'click', this.handlers.shopClose)) : shopCloseBtn.addEventListener('click', this.handlers.shopClose)));
     }
 
     // Make buyItem global for onclick handlers
@@ -4192,7 +4192,7 @@ class UIManager {
     announcement.style.background = 'rgba(255, 0, 0, 0.9)';
     announcement.style.display = 'block';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       announcement.style.display = 'none';
       announcement.style.background = 'rgba(255, 170, 0, 0.9)';
     }, CONSTANTS.ANIMATIONS.BOSS_ANNOUNCEMENT);
@@ -4205,7 +4205,7 @@ class UIManager {
     announcement.style.background = 'rgba(0, 255, 100, 0.9)';
     announcement.style.display = 'block';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       announcement.style.display = 'none';
       announcement.style.background = 'rgba(255, 170, 0, 0.9)';
     }, 3000);
@@ -4220,7 +4220,7 @@ class UIManager {
     announcement.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.8)';
     announcement.style.display = 'block';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       announcement.style.display = 'none';
       announcement.style.background = 'rgba(255, 170, 0, 0.9)';
       announcement.style.border = 'none';
@@ -4237,7 +4237,7 @@ class UIManager {
 
     // Animate title
     levelUpTitle.style.animation = 'none';
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       levelUpTitle.style.animation = 'pulse 1s ease-in-out infinite';
     }, 10);
 
@@ -4254,7 +4254,7 @@ class UIManager {
         <div class="upgrade-description">${upgrade.description}</div>
       `;
 
-      card.addEventListener('click', () => {
+      (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', ()) : card.addEventListener('click', ())) => {
         if (window.networkManager) {
           window.networkManager.selectUpgrade(upgrade.id);
         }
@@ -4273,7 +4273,7 @@ class UIManager {
     announcement.querySelector('p').textContent = 'En avant!';
     announcement.style.display = 'block';
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       announcement.style.display = 'none';
     }, 2000);
   }
@@ -4513,15 +4513,15 @@ class NicknameManager {
 
   setupEventListeners() {
     if (this.nicknameInput) {
-      this.nicknameInput.addEventListener('keypress', this.handlers.keypress);
+      this.(window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress) : (window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress)) : nicknameInput.addEventListener('keypress', this.handlers.keypress)));
     }
 
     if (this.startGameBtn) {
-      this.startGameBtn.addEventListener('click', this.handlers.startGame);
+      this.(window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame) : (window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame)) : startGameBtn.addEventListener('click', this.handlers.startGame)));
     }
 
     if (this.respawnBtn) {
-      this.respawnBtn.addEventListener('click', this.handlers.respawn);
+      this.(window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn) : (window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn)) : respawnBtn.addEventListener('click', this.handlers.respawn)));
     }
   }
 
@@ -4604,7 +4604,7 @@ class NicknameManager {
       clearInterval(this.spawnProtectionInterval);
     }
 
-    this.spawnProtectionInterval = setInterval(() => {
+    this.spawnProtectionInterval = (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
       const remaining = Math.ceil((this.playerController.spawnProtectionEndTime - Date.now()) / 1000);
 
       if (remaining <= 0) {
@@ -4666,7 +4666,7 @@ class GameEngine {
     this.start();
 
     // Debug mode toggle (press 'D' key)
-    window.addEventListener('keydown', (e) => {
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'keydown', (e) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'keydown', (e)) : window.addEventListener('keydown', (e))) => {
       if (e.key === 'd' || e.key === 'D') {
         if (!document.querySelector('input:focus')) { // Only if not typing in input
           window.gameState.toggleDebug();
@@ -4675,7 +4675,7 @@ class GameEngine {
     });
 
     // Cleanup on page unload
-    window.addEventListener('beforeunload', () => this.cleanup());
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'beforeunload', () => this.cleanup()) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'beforeunload', () => this.cleanup())) : window.addEventListener('beforeunload', () => this.cleanup())));
   }
 
   setupCanvas() {
@@ -4686,10 +4686,10 @@ class GameEngine {
 
     // Resize canvas
     this.resizeCanvas();
-    window.addEventListener('resize', this.handlers.resize);
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'resize', this.handlers.resize) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'resize', this.handlers.resize)) : window.addEventListener('resize', this.handlers.resize)));
 
     // Handle orientation changes on mobile
-    window.addEventListener('orientationchange', this.handlers.resize);
+    (window.eventListenerManager ? window.eventListenerManager.add(window, 'orientationchange', this.handlers.resize) : (window.eventListenerManager ? window.eventListenerManager.add(window, 'orientationchange', this.handlers.resize)) : window.addEventListener('orientationchange', this.handlers.resize)));
   }
 
   resizeCanvas() {
@@ -4801,8 +4801,8 @@ class GameEngine {
         this.playerController.shoot(window.innerWidth, window.innerHeight);
       };
 
-      this.canvas.addEventListener('mousemove', this.handlers.mousemove);
-      this.canvas.addEventListener('click', this.handlers.click);
+      this.(window.eventListenerManager ? window.eventListenerManager.add(canvas, 'mousemove', this.handlers.mousemove) : (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'mousemove', this.handlers.mousemove)) : canvas.addEventListener('mousemove', this.handlers.mousemove)));
+      this.(window.eventListenerManager ? window.eventListenerManager.add(canvas, 'click', this.handlers.click) : (window.eventListenerManager ? window.eventListenerManager.add(canvas, 'click', this.handlers.click)) : canvas.addEventListener('click', this.handlers.click)));
     }
   }
 
@@ -5020,10 +5020,10 @@ function initInstructionsToggle() {
   };
 
   // Add click event listeners
-  instructionsHeader.addEventListener('click', toggleInstructions);
+  (window.eventListenerManager ? window.eventListenerManager.add(instructionsHeader, 'click', toggleInstructions) : (window.eventListenerManager ? window.eventListenerManager.add(instructionsHeader, 'click', toggleInstructions)) : instructionsHeader.addEventListener('click', toggleInstructions)));
 
   // Prevent double-toggle when clicking the button directly
-  instructionsToggle.addEventListener('click', (e) => {
+  (window.eventListenerManager ? window.eventListenerManager.add(instructionsToggle, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(instructionsToggle, 'click', (e)) : instructionsToggle.addEventListener('click', (e))) => {
     e.stopPropagation();
   });
 
@@ -5051,7 +5051,7 @@ function initMinimapToggle() {
     minimap.classList.add('hidden-mobile');
 
     // Toggle function
-    minimapToggle.addEventListener('click', () => {
+    (window.eventListenerManager ? window.eventListenerManager.add(minimapToggle, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(minimapToggle, 'click', ()) : minimapToggle.addEventListener('click', ())) => {
       minimap.classList.toggle('hidden-mobile');
       minimapToggle.classList.toggle('active');
     });
@@ -5075,7 +5075,7 @@ window.PlayerController = PlayerController;
 
 // Start the game when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+  (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', ()) : document.addEventListener('DOMContentLoaded', ())) => {
     initInstructionsToggle();
     initMinimapToggle();
     new GameEngine();

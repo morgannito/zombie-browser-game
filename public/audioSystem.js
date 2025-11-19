@@ -62,7 +62,7 @@ class MusicGenerator {
     this.oscillators.push(oscillator);
 
     // Nettoyage
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       const index = this.oscillators.indexOf(oscillator);
       if (index > -1) this.oscillators.splice(index, 1);
     }, duration * 1000);
@@ -102,7 +102,7 @@ class MusicGenerator {
       this.playChord(progression[currentChord], beatDuration * 4, 0.15);
       currentChord = (currentChord + 1) % progression.length;
 
-      setTimeout(playLoop, beatDuration * 4 * 1000);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(playLoop, beatDuration * 4 * 1000);
     };
 
     playLoop();
@@ -130,12 +130,12 @@ class MusicGenerator {
 
       // Mélodie par dessus de temps en temps
       if (noteIndex % 4 === 0) {
-        setTimeout(() => {
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
           this.playNote(440 + Math.random() * 100, beatDuration * 0.3, 'sawtooth', 0.1);
         }, beatDuration * 500);
       }
 
-      setTimeout(playLoop, beatDuration * 1000);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(playLoop, beatDuration * 1000);
     };
 
     playLoop();
@@ -163,13 +163,13 @@ class MusicGenerator {
 
       // Effets dramatiques
       if (noteIndex % 2 === 0) {
-        setTimeout(() => {
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
           this.playNote(bassLine[noteIndex] * 4, beatDuration * 0.2, 'square', 0.15);
         }, beatDuration * 250);
       }
 
       noteIndex = (noteIndex + 1) % bassLine.length;
-      setTimeout(playLoop, beatDuration * 1000);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(playLoop, beatDuration * 1000);
     };
 
     playLoop();
@@ -218,7 +218,7 @@ class MusicGenerator {
     if (newTheme === this.currentTheme) return;
 
     this.stop();
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       this.start(newTheme);
     }, 200);
   }

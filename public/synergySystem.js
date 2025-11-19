@@ -284,14 +284,14 @@ class SynergySystem {
     document.body.appendChild(popup);
 
     // Animation spéciale
-    setTimeout(() => popup.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.classList.add('show'), 100);
 
     // Effet visuel sur l'écran
     this.createScreenEffect();
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       popup.classList.remove('show');
-      setTimeout(() => popup.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.remove(), 500);
     }, 7000);
   }
 
@@ -301,11 +301,11 @@ class SynergySystem {
     effect.className = 'synergy-screen-effect';
     document.body.appendChild(effect);
 
-    setTimeout(() => effect.classList.add('active'), 50);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => effect.classList.add('active'), 50);
 
-    setTimeout(() => {
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       effect.classList.remove('active');
-      setTimeout(() => effect.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => effect.remove(), 500);
     }, 1000);
   }
 

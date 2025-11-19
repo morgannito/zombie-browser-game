@@ -40,3 +40,10 @@ temp/
 
 # Legacy
 legacy/
+
+# Deploy system
+.env.deploy.local
+deploy.log
+deploy-stdout.log
+deploy-stderr.log
+server.log

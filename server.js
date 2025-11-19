@@ -37,12 +37,14 @@ const path = require('path');
 const logger = require('./lib/infrastructure/Logger');
 const DatabaseManager = require('./lib/database/DatabaseManager');
 const Container = require('./lib/application/Container');
+const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
 
 // Import des modules d'optimisation
 const EntityManager = require('./lib/server/EntityManager');
 const CollisionManager = require('./lib/server/CollisionManager');
 const NetworkManager = require('./lib/server/NetworkManager');
 const MathUtils = require('./lib/MathUtils');
+const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 // Import des modules de game logic
 const ConfigManager = require('./lib/server/ConfigManager');
@@ -61,6 +63,11 @@ logger.info('Database initialized', { mode: 'WAL' });
 const container = Container.getInstance();
 container.initialize();
 logger.info('Application container initialized');
+
+// Initialize metrics collector
+const metricsCollector = MetricsCollector.getInstance();
+metricsCollector.setTargetFPS(perfIntegration.perfConfig.current.tickRate);
+logger.info('Metrics collector initialized');
 
 // ===============================================
 // SECURITY MIDDLEWARE
@@ -111,24 +118,77 @@ app.use(express.static('public'));
 // ===============================================
 
 // Health check endpoint
+// ===============================================
+// MONITORING ENDPOINTS
+// ===============================================
+
+/**
+ * GET /health - Health check avancé avec métriques détaillées
+ */
 app.get('/health', (req, res) => {
   const dbStatus = dbManager.isInitialized ? 'healthy' : 'unhealthy';
-  const uptime = process.uptime();
-  const memoryUsage = process.memoryUsage();
+  const metrics = metricsCollector.getMetrics();
 
-  res.json({
-    status: 'ok',
+  const healthStatus = {
+    status: dbStatus === 'healthy' ? 'healthy' : 'unhealthy',
     timestamp: Date.now(),
-    uptime: Math.floor(uptime),
-    database: dbStatus,
-    memory: {
-      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
-      heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
-      rss: Math.round(memoryUsage.rss / 1024 / 1024)
+    uptime: metrics.system.uptime,
+    performanceMode: perfIntegration.perfConfig.mode,
+
+    // Game state
+    game: {
+      players: {
+        current: metrics.players.current,
+        peak: metrics.players.peak
+      },
+      zombies: {
+        current: metrics.zombies.current,
+        killed: metrics.zombies.killed
+      },
+      wave: metrics.game.currentWave,
+      activeSessions: metrics.game.activeGames
     },
-    activePlayers: Object.keys(gameState.players).length,
-    wave: gameState.wave
-  });
+
+    // Performance
+    performance: {
+      fps: {
+        actual: metrics.performance.actualFPS,
+        target: metrics.performance.targetFPS
+      },
+      frameTime: {
+        avg: parseFloat(metrics.performance.avgFrameTime.toFixed(2)),
+        max: parseFloat(metrics.performance.maxFrameTime.toFixed(2))
+      }
+    },
+
+    // System resources
+    system: {
+      memory: {
+        heapUsedMB: metrics.system.memory.heapUsedMB,
+        heapTotalMB: metrics.system.memory.heapTotalMB,
+        rssMB: metrics.system.memory.rssMB,
+        systemUsagePercent: metrics.system.system.memoryUsagePercent
+      },
+      cpu: {
+        cores: metrics.system.system.cpus,
+        loadAverage: metrics.system.system.loadAverage
+      }
+    },
+
+    // Database
+    database: dbStatus
+  };
+
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthStatus);
+});
+
+/**
+ * GET /api/metrics - Métriques Prometheus pour monitoring externe
+ */
+app.get('/api/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain; version=0.0.4');
+  res.send(metricsCollector.getPrometheusMetrics());
 });
 
 // Get leaderboard
@@ -516,6 +576,12 @@ function getXPForLevel(level) {
 
 // Spawn des power-ups
 function spawnPowerup() {
+  // Limite de power-ups selon le mode performance
+  const powerupCount = Object.keys(gameState.powerups).length;
+  if (!perfIntegration.canSpawnPowerup(powerupCount)) {
+    return;
+  }
+
   const types = Object.keys(POWERUP_TYPES);
   const type = types[Math.floor(Math.random() * types.length)];
 
@@ -537,6 +603,9 @@ function spawnPowerup() {
     y: y,
     lifetime: Date.now() + 20000 // 20 secondes
   };
+
+  // Tracker le spawn
+  metricsCollector.incrementPowerupsSpawned();
 }
 
 // Créer du loot (pièces d'or)
@@ -575,6 +644,9 @@ let gameLoopRunning = false;
 
 // Mise à jour de la logique du jeu
 function gameLoop() {
+  // Incrémenter le compteur de tick pour la gestion de performance
+  perfIntegration.incrementTick();
+
   // Protection contre race conditions
   if (gameLoopRunning) {
     console.warn('[RACE] Game loop already running, skipping frame');
@@ -583,8 +655,17 @@ function gameLoop() {
 
   gameLoopRunning = true;
 
+  let frameStart = Date.now();
+
   try {
-    const now = Date.now();
+    const now = frameStart;
+
+    // Mettre à jour les métriques de base
+    metricsCollector.updatePlayers(gameState);
+    metricsCollector.updateZombies(gameState);
+    metricsCollector.updatePowerups(gameState);
+    metricsCollector.updateBullets(gameState);
+    metricsCollector.updateGame(gameState);
 
     // Reconstruire le Quadtree pour les collisions optimisées
     collisionManager.rebuildQuadtree();
@@ -913,9 +994,10 @@ function gameLoop() {
       if (!zombie.lastSpawn || now - zombie.lastSpawn >= bossType.spawnCooldown) {
         zombie.lastSpawn = now;
 
-        // Spawner plusieurs zombies autour du boss
+        // Spawner plusieurs zombies autour du boss (avec limite performance)
         for (let i = 0; i < bossType.spawnCount; i++) {
-          if (zombieManager.spawnSingleZombie()) {
+          const zombieCount = Object.keys(gameState.zombies).length;
+          if (perfIntegration.canSpawnZombie(zombieCount) && zombieManager.spawnSingleZombie()) {
             createParticles(zombie.x, zombie.y, bossType.color, 15);
           }
         }
@@ -1007,9 +1089,12 @@ function gameLoop() {
       if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
         zombie.lastSummon = now;
 
-        // Invoquer 5 zombies normaux
+        // Invoquer 5 zombies normaux (avec limite performance)
         for (let i = 0; i < 5; i++) {
-          zombieManager.spawnSingleZombie();
+          const zombieCount = Object.keys(gameState.zombies).length;
+          if (perfIntegration.canSpawnZombie(zombieCount)) {
+            zombieManager.spawnSingleZombie();
+          }
         }
         createParticles(zombie.x, zombie.y, bossType.color, 40);
       }
@@ -1074,7 +1159,10 @@ function gameLoop() {
       if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
         zombie.lastSummon = now;
         for (let i = 0; i < 8; i++) {
-          zombieManager.spawnSingleZombie();
+          const zombieCount = Object.keys(gameState.zombies).length;
+          if (perfIntegration.canSpawnZombie(zombieCount)) {
+            zombieManager.spawnSingleZombie();
+          }
         }
         createParticles(zombie.x, zombie.y, bossType.color, 50);
       }
@@ -1680,6 +1768,10 @@ function gameLoop() {
   } catch (error) {
     logger.error('Game loop error', { error: error.message, stack: error.stack });
   } finally {
+    // Enregistrer le temps du frame pour calcul FPS
+    const frameTime = Date.now() - frameStart;
+    metricsCollector.recordFrameTime(frameTime);
+
     gameLoopRunning = false;
   }
 }
@@ -1699,14 +1791,17 @@ initializeRooms();
 
 // Delta compression géré par NetworkManager (voir lib/server/NetworkManager.js)
 
-// Game loop à 60 FPS avec Delta Compression (OPTIMISÉ avec NetworkManager)
-// BALANCED: 60 FPS server tick rate for smooth gameplay without excessive overhead
+// Game loop avec tick rate adaptatif selon PERFORMANCE_MODE
+// Modes disponibles: high (60 FPS), balanced (45 FPS), low-memory (30 FPS), minimal (20 FPS)
+// Configuré via env: PERFORMANCE_MODE=low-memory pour serveurs avec peu de RAM
 let gameLoopTimer = setInterval(() => {
   gameLoop();
 
-  // Émettre l'état du jeu (delta compression automatique)
-  networkManager.emitGameState();
-}, 1000 / 60);
+  // Broadcast conditionnel selon le mode performance (réduit la charge réseau)
+  if (perfIntegration.shouldBroadcast()) {
+    networkManager.emitGameState();
+  }
+}, perfIntegration.getTickInterval());
 
 // Vérification périodique de l'inactivité des joueurs
 let heartbeatTimer = setInterval(() => {
@@ -1940,6 +2035,21 @@ io.on('connection', (socket) => {
   if (!playerRecovered) {
     console.log(`[SESSION] Creating new player for ${socket.id}`);
 
+    // Vérifier la limite de joueurs selon le mode performance
+    const playerCount = Object.keys(gameState.players).length;
+    if (!perfIntegration.canAcceptPlayer(playerCount)) {
+      logger.warn('Player connection rejected - server full', {
+        currentPlayers: playerCount,
+        maxPlayers: perfIntegration.perfConfig.current.maxPlayers
+      });
+      socket.emit('serverFull', {
+        message: 'Serveur complet. Réessayez plus tard.',
+        currentPlayers: playerCount
+      });
+      socket.disconnect();
+      return;
+    }
+
     // Créer un nouveau joueur (Rogue-like)
     gameState.players[socket.id] = {
     id: socket.id,
@@ -1998,6 +2108,11 @@ io.on('connection', (socket) => {
     autoTurrets: 0,
     lastAutoShot: Date.now()
   };
+  }
+
+  // Tracker la nouvelle connexion
+  if (!playerRecovered) {
+    metricsCollector.incrementTotalPlayers();
   }
 
   // Envoyer la configuration au client
