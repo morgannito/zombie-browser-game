@@ -848,13 +848,14 @@ class PerformanceSettingsManager {
     setInterval(() => {
       this.updateFPS();
 
+      // DISABLED: Auto-adjust performance
       // Auto-adjust if enabled and FPS is critically low
       // Only adjust every 5 seconds to avoid spam and allow changes to take effect
-      const now = Date.now();
-      if (this.autoAdjust && this.currentFPS < 20 && now - this.autoAdjustCooldown > 5000) {
-        this.autoAdjustPerformance();
-        this.autoAdjustCooldown = now;
-      }
+      // const now = Date.now();
+      // if (this.autoAdjust && this.currentFPS < 20 && now - this.autoAdjustCooldown > 5000) {
+      //   this.autoAdjustPerformance();
+      //   this.autoAdjustCooldown = now;
+      // }
     }, 1000);
   }
 
