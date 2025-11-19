@@ -11,7 +11,15 @@ class NetworkManager {
     this.socket = socket;
     this.justReconnected = false; // Flag to track reconnection state
     this.listeners = []; // Track all listeners for cleanup
+
+    // Latency monitoring
+    this.latency = 0; // Current latency in ms
+    this.lastPingTime = 0;
+    this.latencyHistory = []; // Keep last 10 measurements
+    this.maxLatencyHistory = 10;
+
     this.setupSocketListeners();
+    this.setupLatencyMonitoring();
   }
 
   /**
@@ -30,6 +38,85 @@ class NetworkManager {
       this.socket.off(event, handler);
     });
     this.listeners = [];
+
+    // Clear ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+  }
+
+  setupLatencyMonitoring() {
+    // Monitor ping/pong for latency measurement
+    this.socket.on('ping', () => {
+      this.lastPingTime = Date.now();
+    });
+
+    this.socket.on('pong', () => {
+      if (this.lastPingTime) {
+        const latency = Date.now() - this.lastPingTime;
+        this.updateLatency(latency);
+      }
+    });
+
+    // Manual ping every 2 seconds for more accurate measurements
+    this.pingInterval = setInterval(() => {
+      if (this.socket.connected) {
+        const start = Date.now();
+        this.socket.emit('ping', start, (ack) => {
+          const latency = Date.now() - start;
+          this.updateLatency(latency);
+        });
+      }
+    }, 2000);
+  }
+
+  updateLatency(latency) {
+    this.latency = latency;
+
+    // Add to history
+    this.latencyHistory.push(latency);
+    if (this.latencyHistory.length > this.maxLatencyHistory) {
+      this.latencyHistory.shift();
+    }
+
+    // Update UI indicator if available
+    this.updateLatencyIndicator();
+
+    // Log high latency warnings
+    if (latency > 200) {
+      console.warn(`[Network] High latency detected: ${latency}ms`);
+    }
+  }
+
+  getAverageLatency() {
+    if (this.latencyHistory.length === 0) return 0;
+    const sum = this.latencyHistory.reduce((a, b) => a + b, 0);
+    return Math.round(sum / this.latencyHistory.length);
+  }
+
+  getConnectionQuality() {
+    const avgLatency = this.getAverageLatency();
+
+    if (avgLatency < 50) return { text: 'Excellent', color: '#00ff00', class: 'excellent' };
+    if (avgLatency < 100) return { text: 'Good', color: '#90ee90', class: 'good' };
+    if (avgLatency < 150) return { text: 'Fair', color: '#ffff00', class: 'fair' };
+    if (avgLatency < 250) return { text: 'Poor', color: '#ffa500', class: 'poor' };
+    return { text: 'Bad', color: '#ff0000', class: 'bad' };
+  }
+
+  updateLatencyIndicator() {
+    // Update latency display in UI
+    const latencyElement = document.getElementById('latency-indicator');
+    if (latencyElement) {
+      const avgLatency = this.getAverageLatency();
+      const quality = this.getConnectionQuality();
+
+      latencyElement.textContent = `${avgLatency}ms`;
+      latencyElement.style.color = quality.color;
+      latencyElement.className = `latency-indicator ${quality.class}`;
+      latencyElement.title = `Connection: ${quality.text} (${avgLatency}ms average)`;
+    }
   }
 
   setupSocketListeners() {
@@ -37,7 +124,8 @@ class NetworkManager {
     this.on('connect', () => {
       console.log('[Socket.IO] Connected successfully');
       if (window.toastManager) {
-        window.toastManager.show('✅ Connected to server', 'success');
+        const quality = this.getConnectionQuality();
+        window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
       }
     });
 
@@ -124,12 +212,19 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 100px) = trust server (anti-cheat or major desync)
-      if (distance > 100) {
+      // Large difference (> 200px) = trust server (anti-cheat or major desync)
+      // Increased from 100px to reduce false corrections
+      if (distance > 200) {
         console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
         // Server position is already applied, no change needed
+      } else if (distance > 50) {
+        // Medium difference (50-200px) = smooth interpolation
+        const lerpFactor = 0.3;
+        window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
+        window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
+        window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle; // Keep client angle
       } else {
-        // Small difference = trust client prediction (no rollback)
+        // Small difference (< 50px) = trust client prediction (no rollback)
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
         window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
@@ -207,21 +302,27 @@ class NetworkManager {
     }
 
     // Server reconciliation: check if server position differs significantly
-    // Only correct if difference is large (> 100px = likely desync/cheat detection)
+    // Increased tolerance to 200px to reduce rubber banding
     if (localPlayerState && delta.updated && delta.updated.players && delta.updated.players[window.gameState.playerId]) {
       const serverPlayer = delta.updated.players[window.gameState.playerId];
       const dx = localPlayerState.x - serverPlayer.x;
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference = trust server (anti-cheat correction or major desync)
-      if (distance > 100) {
+      // Large difference (> 200px) = trust server (anti-cheat correction or major desync)
+      // Increased from 100px to reduce false corrections
+      if (distance > 200) {
         console.log('[Socket.IO] Large position difference detected, accepting server position:', distance.toFixed(1), 'px');
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
+      } else if (distance > 50) {
+        // Medium difference (50-200px) = smooth interpolation to reduce rubber banding
+        const lerpFactor = 0.3; // Gentle correction
+        window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
+        window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
       }
-      // Small differences (< 100px) = trust client prediction (no rollback)
+      // Small differences (< 50px) = trust client prediction (no rollback)
     }
 
     // Clear reconnection flag after first delta update
