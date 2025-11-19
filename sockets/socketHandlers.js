@@ -284,10 +284,19 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     const player = gameState.players[socket.id];
     if (!player || !player.alive || !player.hasNickname) return; // Pas de mouvement sans pseudo
 
-    // Clamp position to map boundaries, accounting for player size to prevent leaving map
-    const halfSize = CONFIG.PLAYER_SIZE / 2;
-    const newX = Math.max(halfSize, Math.min(CONFIG.ROOM_WIDTH - halfSize, validatedData.x));
-    const newY = Math.max(halfSize, Math.min(CONFIG.ROOM_HEIGHT - halfSize, validatedData.y));
+    // Clamp position to map boundaries (must match client-side clamping exactly!)
+    // Client uses: wallThickness + playerSize for min, ROOM_WIDTH/HEIGHT - wallThickness - playerSize for max
+    const wallThickness = CONFIG.WALL_THICKNESS || 40;
+    const playerSize = CONFIG.PLAYER_SIZE || 20;
+
+    const newX = Math.max(
+      wallThickness + playerSize,
+      Math.min(CONFIG.ROOM_WIDTH - wallThickness - playerSize, validatedData.x)
+    );
+    const newY = Math.max(
+      wallThickness + playerSize,
+      Math.min(CONFIG.ROOM_HEIGHT - wallThickness - playerSize, validatedData.y)
+    );
 
     // VALIDATION: Vérifier la distance parcourue pour éviter la téléportation
     const distance = Math.sqrt(
