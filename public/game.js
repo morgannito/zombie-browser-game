@@ -4513,15 +4513,27 @@ class NicknameManager {
 
   setupEventListeners() {
     if (this.nicknameInput) {
-      this.(window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress) : (window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress)) : nicknameInput.addEventListener('keypress', this.handlers.keypress)));
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(this.nicknameInput, 'keypress', this.handlers.keypress);
+      } else {
+        this.nicknameInput.addEventListener('keypress', this.handlers.keypress);
+      }
     }
 
     if (this.startGameBtn) {
-      this.(window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame) : (window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame)) : startGameBtn.addEventListener('click', this.handlers.startGame)));
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(this.startGameBtn, 'click', this.handlers.startGame);
+      } else {
+        this.startGameBtn.addEventListener('click', this.handlers.startGame);
+      }
     }
 
     if (this.respawnBtn) {
-      this.(window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn) : (window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn)) : respawnBtn.addEventListener('click', this.handlers.respawn)));
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(this.respawnBtn, 'click', this.handlers.respawn);
+      } else {
+        this.respawnBtn.addEventListener('click', this.handlers.respawn);
+      }
     }
   }
 
