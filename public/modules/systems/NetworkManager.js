@@ -212,13 +212,13 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 100px) = trust server (anti-cheat or major desync)
-      // Reduced from 200px due to more frequent full state updates (10 frames vs 30)
-      if (distance > 100) {
+      // Large difference (> 300px) = trust server (anti-cheat or major desync)
+      // Increased from 100px to avoid snapping during lag spikes
+      if (distance > 300) {
         console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
         // Server position is already applied, no change needed
       } else if (distance > 30) {
-        // Medium difference (30-100px) = smooth interpolation
+        // Medium difference (30-300px) = smooth interpolation
         const lerpFactor = 0.3;
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
@@ -309,15 +309,15 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 100px) = trust server (anti-cheat correction or major desync)
-      // Reduced from 200px due to more frequent full state updates (10 frames vs 30)
-      if (distance > 100) {
+      // Large difference (> 300px) = trust server (anti-cheat or major desync)
+      // Increased from 100px to avoid snapping during lag spikes
+      if (distance > 300) {
         console.log('[Socket.IO] Large position difference detected, accepting server position:', distance.toFixed(1), 'px');
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
       } else if (distance > 30) {
-        // Medium difference (30-100px) = smooth interpolation to reduce rubber banding
+        // Medium difference (30-300px) = smooth interpolation to reduce rubber banding
         const lerpFactor = 0.3; // Gentle correction
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
