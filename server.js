@@ -39,7 +39,7 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // ============================================
 // IMPORTS - Middleware
 // ============================================
-const corsConfig = require('./middleware/cors');
+const { getSocketIOCorsConfig } = require('./middleware/cors');
 const {
   configureHelmet,
   configureApiLimiter,
@@ -93,7 +93,20 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO with CORS configuration
-const io = require('socket.io')(server, corsConfig);
+const io = require('socket.io')(server, {
+  cors: getSocketIOCorsConfig(),
+  // Transport configuration for better WebSocket support
+  transports: ['websocket', 'polling'],
+  allowUpgrades: true,
+  // Ping/pong settings for connection health monitoring
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  // Connection settings
+  connectTimeout: 45000,
+  // Enable compression for better performance
+  perMessageDeflate: true,
+  httpCompression: true
+});
 
 // Initialize database
 const dbManager = DatabaseManager.getInstance();

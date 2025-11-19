@@ -16,17 +16,24 @@ function getSocketIOCorsConfig() {
   return {
     origin: (origin, callback) => {
       // Allow requests without origin (mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('[CORS] Allowing request without origin header');
+        return callback(null, true);
+      }
 
       if (ALLOWED_ORIGINS.includes(origin)) {
+        console.log('[CORS] Allowing request from origin:', origin);
         callback(null, true);
       } else {
-        console.warn('[CORS] Blocked request from origin:', origin);
+        console.warn('[CORS] ⚠️  BLOCKED request from unauthorized origin:', origin);
+        console.warn('[CORS] Allowed origins:', ALLOWED_ORIGINS.join(', '));
+        console.warn('[CORS] 💡 Add this origin to ALLOWED_ORIGINS environment variable');
         callback(new Error('CORS policy violation'));
       }
     },
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["*"]
   };
 }
 
