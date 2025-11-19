@@ -44,9 +44,9 @@ class PlayerController {
 
     for (let wall of walls) {
       if (x + size > wall.x &&
-          x - size < wall.x + wall.width &&
-          y + size > wall.y &&
-          y - size < wall.y + wall.height) {
+        x - size < wall.x + wall.width &&
+        y + size > wall.y &&
+        y - size < wall.y + wall.height) {
         return true;
       }
     }
@@ -127,10 +127,26 @@ class PlayerController {
         }
       }
 
-      // Clamp position to map boundaries to prevent player from leaving the map
-      const halfSize = this.gameState.config.PLAYER_SIZE / 2;
-      finalX = Math.max(halfSize, Math.min(this.gameState.config.ROOM_WIDTH - halfSize, finalX));
-      finalY = Math.max(halfSize, Math.min(this.gameState.config.ROOM_HEIGHT - halfSize, finalY));
+      // Clamp position to map boundaries (inside walls)
+      // Walls are WALL_THICKNESS thick at the edges.
+      // We must keep the player's circle (radius = size) inside the playable area.
+      // However, checkWallCollision uses 'size' as a radius-like margin.
+      // To be safe, we clamp to: WallThickness + Size/2 (if size is diameter) or WallThickness + Size (if size is radius)
+      // CONFIG.PLAYER_SIZE is 20. In checkWallCollision, we use it as a margin.
+      // Let's assume we want to keep the center of the player away from the wall by at least PLAYER_SIZE.
+
+      const wallThickness = this.gameState.config.WALL_THICKNESS || 40;
+      const playerSize = this.gameState.config.PLAYER_SIZE || 20;
+
+      // Clamp X
+      // Min: Left wall end (40) + player radius (20) = 60
+      // Max: Right wall start (2960) - player radius (20) = 2940
+      finalX = Math.max(wallThickness + playerSize, Math.min(this.gameState.config.ROOM_WIDTH - wallThickness - playerSize, finalX));
+
+      // Clamp Y
+      // Min: Top wall end (40) + player radius (20) = 60
+      // Max: Bottom wall start (2360) - player radius (20) = 2340
+      finalY = Math.max(wallThickness + playerSize, Math.min(this.gameState.config.ROOM_HEIGHT - wallThickness - playerSize, finalY));
 
       // Update player position only if it changed
       if (finalX !== player.x || finalY !== player.y) {
