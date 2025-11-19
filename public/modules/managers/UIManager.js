@@ -98,8 +98,9 @@ class UIManager {
       this.deathRecorded = false;
     }
 
-    // Player count
-    document.getElementById('players-count').textContent = Object.keys(this.gameState.state.players).length;
+    // Player count - only count players with nicknames (actually playing)
+    const activePlayers = Object.values(this.gameState.state.players).filter(p => p.hasNickname).length;
+    document.getElementById('players-count').textContent = activePlayers;
     document.getElementById('zombies-count').textContent = Object.keys(this.gameState.state.zombies).length;
   }
 
