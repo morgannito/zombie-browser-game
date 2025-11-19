@@ -271,11 +271,6 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
  */
 function registerPlayerMoveHandler(socket, gameState, roomManager) {
   socket.on('playerMove', safeHandler('playerMove', function (data) {
-    // JWT Authentication check
-    if (!socket.userId) {
-      return; // Silent fail for unauthenticated players
-    }
-
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateMovementData(data);
     if (!validatedData) {

@@ -8,11 +8,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/node</string>
-        <string>/Users/mriu/Downloads/zombie-jeu-claude-zombie-browser-game-01LsByqwV5Bu53dYRWW7nWbA/deploy-server.js</string>
+        <string>/Users/mriu/Downloads/zombiiiii/zombie-browser-game/deploy-server.js</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/mriu/Downloads/zombie-jeu-claude-zombie-browser-game-01LsByqwV5Bu53dYRWW7nWbA</string>
+    <string>/Users/mriu/Downloads/zombiiiii/zombie-browser-game</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -31,9 +31,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/mriu/Downloads/zombie-jeu-claude-zombie-browser-game-01LsByqwV5Bu53dYRWW7nWbA/deploy-stdout.log</string>
+    <string>/Users/mriu/Downloads/zombiiiii/zombie-browser-game/deploy-stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/mriu/Downloads/zombie-jeu-claude-zombie-browser-game-01LsByqwV5Bu53dYRWW7nWbA/deploy-stderr.log</string>
+    <string>/Users/mriu/Downloads/zombiiiii/zombie-browser-game/deploy-stderr.log</string>
 </dict>
 </plist>
