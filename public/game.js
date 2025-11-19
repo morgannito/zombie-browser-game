@@ -4513,27 +4513,15 @@ class NicknameManager {
 
   setupEventListeners() {
     if (this.nicknameInput) {
-      if (window.eventListenerManager) {
-        window.eventListenerManager.add(this.nicknameInput, 'keypress', this.handlers.keypress);
-      } else {
-        this.nicknameInput.addEventListener('keypress', this.handlers.keypress);
-      }
+      this.(window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress) : (window.eventListenerManager ? window.eventListenerManager.add(nicknameInput, 'keypress', this.handlers.keypress)) : nicknameInput.addEventListener('keypress', this.handlers.keypress)));
     }
 
     if (this.startGameBtn) {
-      if (window.eventListenerManager) {
-        window.eventListenerManager.add(this.startGameBtn, 'click', this.handlers.startGame);
-      } else {
-        this.startGameBtn.addEventListener('click', this.handlers.startGame);
-      }
+      this.(window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame) : (window.eventListenerManager ? window.eventListenerManager.add(startGameBtn, 'click', this.handlers.startGame)) : startGameBtn.addEventListener('click', this.handlers.startGame)));
     }
 
     if (this.respawnBtn) {
-      if (window.eventListenerManager) {
-        window.eventListenerManager.add(this.respawnBtn, 'click', this.handlers.respawn);
-      } else {
-        this.respawnBtn.addEventListener('click', this.handlers.respawn);
-      }
+      this.(window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn) : (window.eventListenerManager ? window.eventListenerManager.add(respawnBtn, 'click', this.handlers.respawn)) : respawnBtn.addEventListener('click', this.handlers.respawn)));
     }
   }
 
@@ -4558,7 +4546,7 @@ class NicknameManager {
     }
   }
 
-  async startGame() {
+  startGame() {
     const nickname = this.nicknameInput.value.trim();
 
     if (nickname.length < CONSTANTS.NICKNAME.MIN_LENGTH) {
@@ -4576,52 +4564,6 @@ class NicknameManager {
     if (!nicknameRegex.test(nickname)) {
       alert('Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
       return;
-    }
-
-    // JWT Authentication
-    if (window.authManager && !window.authManager.isAuthenticated()) {
-      try {
-        console.log('[Auth] Logging in with username:', nickname);
-        await window.authManager.login(nickname);
-        console.log('[Auth] Login successful, reconnecting socket...');
-
-        // Reconnect socket with JWT token
-        if (window.networkManager && window.networkManager.socket) {
-          const oldSocket = window.networkManager.socket;
-          oldSocket.disconnect();
-
-          // Create new socket with JWT token
-          const newSocket = io({
-            transports: ['polling', 'websocket'],
-            upgrade: true,
-            reconnection: true,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            reconnectionAttempts: 5,
-            timeout: 45000,
-            auth: {
-              sessionId: window.sessionManager ? window.sessionManager.getSessionId() : null,
-              token: window.authManager.getToken()
-            }
-          });
-
-          // Replace socket in networkManager
-          window.networkManager.socket = newSocket;
-
-          // Wait for connection
-          await new Promise((resolve, reject) => {
-            newSocket.once('connect', resolve);
-            newSocket.once('connect_error', reject);
-            setTimeout(() => reject(new Error('Connection timeout')), 10000);
-          });
-
-          console.log('[Auth] Socket reconnected with JWT token');
-        }
-      } catch (error) {
-        console.error('[Auth] Login failed:', error);
-        alert('Échec de l\'authentification: ' + error.message);
-        return;
-      }
     }
 
     // Hide nickname screen
@@ -4816,7 +4758,7 @@ class GameEngine {
     const camera = new CameraManager();
 
     // Socket.IO client configuration with proper transports and error handling
-    // Include sessionId for reconnection recovery + JWT token
+    // Include sessionId for reconnection recovery
     const socket = io({
       transports: ['polling', 'websocket'],
       upgrade: true,
@@ -4826,20 +4768,7 @@ class GameEngine {
       reconnectionAttempts: 5,
       timeout: 45000,
       auth: {
-        sessionId: window.sessionManager.getSessionId(),
-        token: window.authManager ? window.authManager.getToken() : null
-      }
-    });
-
-    // Handle JWT authentication errors
-    socket.on('connect_error', (error) => {
-      if (error.message === 'Authentication required' || error.message === 'Invalid or expired token') {
-        console.error('[Socket] Authentication failed:', error.message);
-        if (window.authManager) {
-          window.authManager.logout();
-        }
-        // Show error to user
-        alert('Session expirée. Veuillez entrer votre pseudo pour vous reconnecter.');
+        sessionId: window.sessionManager.getSessionId()
       }
     });
 
