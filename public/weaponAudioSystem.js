@@ -58,7 +58,7 @@ class WeaponAudioSystem {
    * Nettoie les nodes audio terminés
    */
   cleanupNode(node, delay) {
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.activeNodes.delete(node);
     }, delay * 1000);
   }
@@ -113,12 +113,12 @@ class WeaponAudioSystem {
     blast.stop(now + 0.1);
 
     // Mechanical click (hammer)
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.playMechanicalClick(attenuation * 0.6);
     }, 10);
 
     // Shell casing
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.playShellCasing(attenuation * 0.5);
     }, 200 + Math.random() * 100);
 
@@ -173,12 +173,12 @@ class WeaponAudioSystem {
     }
 
     // Pump action sound
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.playPumpAction(attenuation);
     }, 600);
 
     // Shell casing
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.playShellCasing(attenuation * 0.7, 'shotgun');
     }, 300);
   }
@@ -225,7 +225,7 @@ class WeaponAudioSystem {
 
     // Shell casing plus discret
     if (Math.random() > 0.7) { // Pas à chaque coup
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
         this.playShellCasing(attenuation * 0.3, 'rifle');
       }, 50 + Math.random() * 50);
     }
@@ -295,7 +295,7 @@ class WeaponAudioSystem {
     blast.stop(now + 0.25);
 
     // Shell casing
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       this.playShellCasing(attenuation * 0.6, 'rifle');
     }, 250);
 
@@ -436,7 +436,7 @@ class WeaponAudioSystem {
     this.playMechanicalClick(volume * 0.8);
 
     // Magazine in (insertion) - délai
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       const insert = this.context.createOscillator();
       const gain = this.context.createGain();
       const filter = this.context.createBiquadFilter();
@@ -460,7 +460,7 @@ class WeaponAudioSystem {
 
     // Bolt/slide action - fin de reload
     if (weaponType !== 'pistol') {
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
         this.playMechanicalClick(volume * 0.9);
       }, 600);
     }
