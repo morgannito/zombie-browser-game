@@ -32,6 +32,14 @@ const CONSTANTS = {
     GESTURE_THRESHOLD: 50, // minimum distance for swipe detection
     LONG_PRESS_DURATION: 500, // ms for long press detection
     DOUBLE_TAP_DELAY: 300 // ms between taps for double-tap
+  },
+  BOSS_NAMES: {
+    boss: 'BOSS ZOMBIE',
+    bossCharnier: 'RAIIVY',
+    bossInfect: 'SORENZA',
+    bossColosse: 'HAIER',
+    bossRoi: 'KUROI TO SUTA',
+    bossOmega: 'MORGANNITO'
   }
 };
 

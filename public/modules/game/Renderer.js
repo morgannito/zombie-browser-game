@@ -1121,13 +1121,14 @@ class Renderer {
 
       // Boss label
       if (zombie.isBoss) {
+        const bossName = CONSTANTS.BOSS_NAMES[zombie.type] || 'BOSS';
         this.ctx.fillStyle = '#fff';
         this.ctx.font = 'bold 14px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.strokeStyle = '#000';
         this.ctx.lineWidth = 3;
-        this.ctx.strokeText('BOSS', zombie.x, zombie.y - zombie.size - 25);
-        this.ctx.fillText('BOSS', zombie.x, zombie.y - zombie.size - 25);
+        this.ctx.strokeText(bossName, zombie.x, zombie.y - zombie.size - 25);
+        this.ctx.fillText(bossName, zombie.x, zombie.y - zombie.size - 25);
       }
 
       // Special zombie indicators
