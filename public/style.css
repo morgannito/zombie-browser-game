@@ -250,9 +250,52 @@ body {
 #wave,
 #weapon,
 #players-online,
-#zombies-alive {
+#zombies-alive,
+#latency-display {
   margin-top: var(--space-xs);
   font-size: var(--font-sm);
+}
+
+/* Latency Indicator */
+.latency-indicator {
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  transition: color 0.3s ease;
+}
+
+.latency-indicator.excellent {
+  color: #00ff00;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.latency-indicator.good {
+  color: #90ee90;
+}
+
+.latency-indicator.fair {
+  color: #ffff00;
+  text-shadow: 0 0 5px rgba(255, 255, 0, 0.3);
+}
+
+.latency-indicator.poor {
+  color: #ffa500;
+  animation: pulse-warning 1s infinite;
+}
+
+.latency-indicator.bad {
+  color: #ff0000;
+  text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+  animation: pulse-danger 0.5s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes pulse-danger {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
 }
 
 #wave {
@@ -1726,7 +1769,8 @@ body {
   #wave,
   #weapon,
   #players-online,
-  #zombies-alive {
+  #zombies-alive,
+  #latency-display {
     margin-top: 0.15rem;
     font-size: 0.55rem;
     line-height: 1.2;

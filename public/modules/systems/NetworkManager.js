@@ -11,7 +11,15 @@ class NetworkManager {
     this.socket = socket;
     this.justReconnected = false; // Flag to track reconnection state
     this.listeners = []; // Track all listeners for cleanup
+
+    // Latency monitoring
+    this.latency = 0; // Current latency in ms
+    this.lastPingTime = 0;
+    this.latencyHistory = []; // Keep last 10 measurements
+    this.maxLatencyHistory = 10;
+
     this.setupSocketListeners();
+    this.setupLatencyMonitoring();
   }
 
   /**
@@ -30,6 +38,85 @@ class NetworkManager {
       this.socket.off(event, handler);
     });
     this.listeners = [];
+
+    // Clear ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+  }
+
+  setupLatencyMonitoring() {
+    // Monitor ping/pong for latency measurement
+    this.socket.on('ping', () => {
+      this.lastPingTime = Date.now();
+    });
+
+    this.socket.on('pong', () => {
+      if (this.lastPingTime) {
+        const latency = Date.now() - this.lastPingTime;
+        this.updateLatency(latency);
+      }
+    });
+
+    // Manual ping every 2 seconds for more accurate measurements
+    this.pingInterval = setInterval(() => {
+      if (this.socket.connected) {
+        const start = Date.now();
+        this.socket.emit('ping', start, (ack) => {
+          const latency = Date.now() - start;
+          this.updateLatency(latency);
+        });
+      }
+    }, 2000);
+  }
+
+  updateLatency(latency) {
+    this.latency = latency;
+
+    // Add to history
+    this.latencyHistory.push(latency);
+    if (this.latencyHistory.length > this.maxLatencyHistory) {
+      this.latencyHistory.shift();
+    }
+
+    // Update UI indicator if available
+    this.updateLatencyIndicator();
+
+    // Log high latency warnings
+    if (latency > 200) {
+      console.warn(`[Network] High latency detected: ${latency}ms`);
+    }
+  }
+
+  getAverageLatency() {
+    if (this.latencyHistory.length === 0) return 0;
+    const sum = this.latencyHistory.reduce((a, b) => a + b, 0);
+    return Math.round(sum / this.latencyHistory.length);
+  }
+
+  getConnectionQuality() {
+    const avgLatency = this.getAverageLatency();
+
+    if (avgLatency < 50) return { text: 'Excellent', color: '#00ff00', class: 'excellent' };
+    if (avgLatency < 100) return { text: 'Good', color: '#90ee90', class: 'good' };
+    if (avgLatency < 150) return { text: 'Fair', color: '#ffff00', class: 'fair' };
+    if (avgLatency < 250) return { text: 'Poor', color: '#ffa500', class: 'poor' };
+    return { text: 'Bad', color: '#ff0000', class: 'bad' };
+  }
+
+  updateLatencyIndicator() {
+    // Update latency display in UI
+    const latencyElement = document.getElementById('latency-indicator');
+    if (latencyElement) {
+      const avgLatency = this.getAverageLatency();
+      const quality = this.getConnectionQuality();
+
+      latencyElement.textContent = `${avgLatency}ms`;
+      latencyElement.style.color = quality.color;
+      latencyElement.className = `latency-indicator ${quality.class}`;
+      latencyElement.title = `Connection: ${quality.text} (${avgLatency}ms average)`;
+    }
   }
 
   setupSocketListeners() {
@@ -37,7 +124,8 @@ class NetworkManager {
     this.on('connect', () => {
       console.log('[Socket.IO] Connected successfully');
       if (window.toastManager) {
-        window.toastManager.show('✅ Connected to server', 'success');
+        const quality = this.getConnectionQuality();
+        window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
       }
     });
 

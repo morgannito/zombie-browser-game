@@ -115,19 +115,23 @@ class GameEngine {
     window.inputManager = new InputManager();
     const camera = new CameraManager();
 
-    // Socket.IO client configuration with proper transports and error handling
+    // Socket.IO client configuration optimized for low latency
+    // Prioritize WebSocket transport for faster connection
     // Include sessionId for reconnection recovery
     const socket = io({
-      transports: ['polling', 'websocket'],
-      upgrade: true,
+      transports: ['websocket', 'polling'], // WebSocket first for lower latency
+      upgrade: false, // Don't upgrade, use WebSocket directly
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      timeout: 45000,
+      reconnectionDelay: 500, // Faster initial reconnection
+      reconnectionDelayMax: 3000, // Reduced max delay
+      reconnectionAttempts: 10, // More attempts with shorter delays
+      timeout: 20000, // Reduced timeout for faster failure detection
       auth: {
         sessionId: window.sessionManager.getSessionId()
-      }
+      },
+      // Enable ping/pong for latency monitoring
+      pingInterval: 10000, // Check connection every 10s
+      pingTimeout: 5000 // Wait 5s for pong response
     });
 
     window.networkManager = new NetworkManager(socket);

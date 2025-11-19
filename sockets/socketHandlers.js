@@ -261,6 +261,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
     registerSetNicknameHandler(socket, gameState, io);
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
+    registerPingHandler(socket);
     registerDisconnectHandler(socket, gameState, entityManager, sessionId);
   };
 }
@@ -781,6 +782,18 @@ function registerShopHandlers(socket, gameState) {
     player.invisible = false;
     player.invisibleEndTime = 0;
     console.log(`${player.nickname || socket.id} n'est plus invisible (shop fermé)`);
+  }));
+}
+
+/**
+ * Register ping handler for latency monitoring
+ */
+function registerPingHandler(socket) {
+  socket.on('ping', safeHandler('ping', function(timestamp, callback) {
+    // Respond immediately to measure round-trip time
+    if (typeof callback === 'function') {
+      callback(Date.now());
+    }
   }));
 }
 
