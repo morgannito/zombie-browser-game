@@ -170,8 +170,15 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Créer ou récupérer le joueur
-    const createPlayerUseCase = container.get('createPlayer');
-    const player = await createPlayerUseCase.execute({ username });
+    const playerRepository = container.get('playerRepository');
+    let player = await playerRepository.findByUsername(username);
+
+    if (!player) {
+      // Créer un nouveau joueur
+      const createPlayerUseCase = container.get('createPlayer');
+      const playerId = require('crypto').randomUUID();
+      player = await createPlayerUseCase.execute({ id: playerId, username });
+    }
 
     // Générer JWT
     const token = jwtService.generateToken({
