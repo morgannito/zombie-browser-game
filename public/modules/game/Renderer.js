@@ -1918,6 +1918,10 @@ class Renderer {
       const isCurrentPlayer = pid === currentPlayerId;
       if (!p.alive) return;
 
+      // Don't render players without nicknames (except current player in waiting state)
+      // This prevents "ghost" players from being visible before they start playing
+      if (!p.hasNickname && !isCurrentPlayer) return;
+
       // Speed effect
       if (p.speedBoost && dateNow < p.speedBoost) {
         this.ctx.shadowBlur = 20;
@@ -2057,7 +2061,7 @@ class Renderer {
     // Other players
     this.minimapCtx.fillStyle = '#ff8800';
     Object.entries(gameState.state.players).forEach(([pid, p]) => {
-      if (pid === playerId || !p.alive) return;
+      if (pid === playerId || !p.alive || !p.hasNickname) return;
       this.minimapCtx.beginPath();
       this.minimapCtx.arc(p.x * scaleX, p.y * scaleY, 4, 0, Math.PI * 2);
       this.minimapCtx.fill();

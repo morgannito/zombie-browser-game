@@ -606,7 +606,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
     if (!checkRateLimit(socket.id, 'selectUpgrade')) return;
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -792,7 +792,7 @@ function registerSetNicknameHandler(socket, gameState, io) {
 function registerSpawnProtectionHandlers(socket, gameState) {
   socket.on('endSpawnProtection', safeHandler('endSpawnProtection', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -807,7 +807,7 @@ function registerSpawnProtectionHandlers(socket, gameState) {
 function registerShopHandlers(socket, gameState) {
   socket.on('shopOpened', safeHandler('shopOpened', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -818,7 +818,7 @@ function registerShopHandlers(socket, gameState) {
 
   socket.on('shopClosed', safeHandler('shopClosed', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
