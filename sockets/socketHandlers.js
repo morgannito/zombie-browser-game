@@ -305,21 +305,42 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
       player.speedMultiplier = 1;
     }
 
+    // Time-based validation to handle network jitter and lag
+    const now = Date.now();
+    const lastMoveTime = player.lastMoveTime || now;
+    const timeDelta = now - lastMoveTime;
+    
+    // Update lastMoveTime for next check
+    player.lastMoveTime = now;
+
+    // Skip validation for very small time steps (e.g. multiple packets in same tick)
+    // or very large ones (first move or after pause)
+    if (timeDelta <= 0) return;
+    
+    // Cap timeDelta to avoid massive jumps after lag spikes (e.g. max 1 second catch-up)
+    const cappedTimeDelta = Math.min(timeDelta, 1000);
+
     // Calculer la vitesse maximale autorisée
     const speedMultiplier = player.speedMultiplier || 1;
     const hasSpeedBoost = player.speedBoost && Date.now() < player.speedBoost;
-    const boostMultiplier = hasSpeedBoost ? 2 : 1;
-
-    // Distance max par update (client sends at 30 FPS, server at 60 FPS)
-    // Account for 2 server ticks between client updates (33ms = 2 * 16.67ms)
-    // Add tolerance for network latency and frame timing variations
-    const ABSOLUTE_MAX_DISTANCE = 800; // pixels per client update (high tolerance for latency + speed boosts)
-    const calculatedMax = CONFIG.PLAYER_SPEED * speedMultiplier * boostMultiplier * 7.0; // Increased tolerance for network latency
-    const MAX_DISTANCE_PER_FRAME = Math.min(calculatedMax, ABSOLUTE_MAX_DISTANCE);
+    const boostMultiplier = hasSpeedBoost ? 2 : 1; // Speed boost gives 50% increase in PlayerController, but let's be generous here (2x)
+    
+    // Base speed is pixels per frame (approx 60fps), convert to pixels per ms
+    // PLAYER_SPEED is 5px/frame at 60fps => 300px/sec => 0.3px/ms
+    const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000; 
+    
+    // Calculate max distance based on time elapsed
+    // Add tolerance (1.5x) for network jitter, diagonal movement approximation, etc.
+    const tolerance = 1.5;
+    const maxAllowedDistance = PIXELS_PER_MS * speedMultiplier * boostMultiplier * cappedTimeDelta * tolerance;
+    
+    // Minimum allowance to prevent getting stuck with tiny movements
+    const minAllowance = 20; 
+    const finalMaxDistance = Math.max(maxAllowedDistance, minAllowance);
 
     // Rejeter le mouvement si distance trop importante (tentative de téléportation)
-    if (distance > MAX_DISTANCE_PER_FRAME) {
-      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} attempted teleport: ${Math.round(distance)}px (max: ${Math.round(MAX_DISTANCE_PER_FRAME)}px)`);
+    if (distance > finalMaxDistance) {
+      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} attempted teleport: ${Math.round(distance)}px in ${timeDelta}ms (max: ${Math.round(finalMaxDistance)}px)`);
       // Corriger la position du client
       socket.emit('positionCorrection', { x: player.x, y: player.y });
       return;
