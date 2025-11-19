@@ -349,8 +349,9 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
 
     if (distance > player.moveBudget + minAllowance) {
       console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} rejected: Dist ${Math.round(distance)}px, Budget ${Math.round(player.moveBudget)}px`);
-      socket.emit('positionCorrection', { x: player.x, y: player.y });
-      return;
+      // DISABLE ANTI-CHEAT FOR NOW: Always accept movement to prevent rollback issues for laggy clients
+      // socket.emit('positionCorrection', { x: player.x, y: player.y });
+      // return;
     }
 
     // Deduct cost from budget
