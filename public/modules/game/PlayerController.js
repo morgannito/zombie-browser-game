@@ -16,10 +16,10 @@ class PlayerController {
     this.gameStarted = false;
     this.spawnProtectionEndTime = 0;
 
-    // BALANCED: Throttle playerMove to 30 FPS for optimal network/performance balance
-    // Smooth movement without excessive network traffic
+    // OPTIMIZED: Send playerMove at 60 FPS for maximum responsiveness
+    // Matches game render rate for instant feedback
     this.lastNetworkUpdate = 0;
-    this.networkUpdateInterval = 1000 / 30; // 33ms = 30 FPS network updates
+    this.networkUpdateInterval = 1000 / 60; // 16.67ms = 60 FPS network updates
   }
 
   setNickname(nickname) {

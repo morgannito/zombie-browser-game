@@ -37,7 +37,7 @@ class GameStateManager {
     // Visual interpolation system for smooth movement
     this.interpolation = {
       enabled: true,
-      factor: 0.3, // Interpolation speed (0 = instant, 1 = no interpolation)
+      factor: 0.15, // Interpolation speed (0 = instant, 1 = no interpolation) - Reduced for snappier movement
       previousPositions: {
         zombies: {},
         players: {},
