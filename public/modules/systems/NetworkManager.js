@@ -217,14 +217,9 @@ class NetworkManager {
       if (distance > 300) {
         console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
         // Server position is already applied, no change needed
-      } else if (distance > 30) {
-        // Medium difference (30-300px) = smooth interpolation
-        const lerpFactor = 0.3;
-        window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
-        window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
-        window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle; // Keep client angle
       } else {
-        // Small difference (< 30px) = trust client prediction (no rollback)
+        // Small/medium difference (< 300px) = ALWAYS trust client prediction for fluid movement
+        // No interpolation to avoid any lag feeling on local player
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
         window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
@@ -316,13 +311,9 @@ class NetworkManager {
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
-      } else if (distance > 30) {
-        // Medium difference (30-300px) = smooth interpolation to reduce rubber banding
-        const lerpFactor = 0.3; // Gentle correction
-        window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
-        window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
       }
-      // Small differences (< 30px) = trust client prediction (no rollback)
+      // Small/medium differences (< 300px) = ALWAYS trust client prediction for fluid movement
+      // No interpolation to avoid any lag feeling on local player
     }
 
     // Clear reconnection flag after first delta update
