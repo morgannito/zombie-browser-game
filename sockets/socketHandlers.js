@@ -174,6 +174,10 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       }
 
       // Créer un nouveau joueur (Rogue-like)
+      // Add random spawn offset to prevent players spawning on top of each other
+      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
+      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
+
       gameState.players[socket.id] = {
         id: socket.id,
         nickname: null, // Pseudo non défini au départ
@@ -183,8 +187,8 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
         invisible: false, // Invisibilité après upgrade ou lors du level up
         invisibleEndTime: 0, // Fin de l'invisibilité
         lastActivityTime: Date.now(), // Pour détecter l'inactivité
-        x: CONFIG.ROOM_WIDTH / 2,
-        y: CONFIG.ROOM_HEIGHT - 100,
+        x: CONFIG.ROOM_WIDTH / 2 + spawnOffsetX,
+        y: CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY,
         health: CONFIG.PLAYER_MAX_HEALTH,
         maxHealth: CONFIG.PLAYER_MAX_HEALTH,
         level: 1,
@@ -250,6 +254,24 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       rooms: gameState.rooms.length,
       currentRoom: gameState.currentRoom,
       recovered: playerRecovered // Indicate if state was recovered
+    });
+
+    // CRITICAL FIX: Send full game state immediately to new player
+    // This ensures they see all existing players, zombies, etc. right away
+    socket.emit('gameState', {
+      players: gameState.players,
+      zombies: gameState.zombies,
+      bullets: gameState.bullets,
+      particles: gameState.particles,
+      poisonTrails: gameState.poisonTrails,
+      explosions: gameState.explosions,
+      powerups: gameState.powerups,
+      loot: gameState.loot,
+      wave: gameState.wave,
+      walls: gameState.walls,
+      currentRoom: gameState.currentRoom,
+      bossSpawned: gameState.bossSpawned,
+      full: true
     });
 
     // Register event handlers
@@ -511,8 +533,11 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.spawnProtectionEndTime = 0;
       player.invisible = false;
       player.invisibleEndTime = 0;
-      player.x = CONFIG.ROOM_WIDTH / 2;
-      player.y = CONFIG.ROOM_HEIGHT - 100;
+      // Add random spawn offset to prevent players spawning on top of each other
+      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
+      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
+      player.x = CONFIG.ROOM_WIDTH / 2 + spawnOffsetX;
+      player.y = CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY;
       player.health = totalMaxHealth;
       player.maxHealth = totalMaxHealth;
       player.alive = true;
@@ -581,7 +606,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
     if (!checkRateLimit(socket.id, 'selectUpgrade')) return;
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -624,7 +649,7 @@ function registerBuyItemHandler(socket, gameState) {
     if (!checkRateLimit(socket.id, 'buyItem')) return;
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -767,7 +792,7 @@ function registerSetNicknameHandler(socket, gameState, io) {
 function registerSpawnProtectionHandlers(socket, gameState) {
   socket.on('endSpawnProtection', safeHandler('endSpawnProtection', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -782,7 +807,7 @@ function registerSpawnProtectionHandlers(socket, gameState) {
 function registerShopHandlers(socket, gameState) {
   socket.on('shopOpened', safeHandler('shopOpened', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -793,7 +818,7 @@ function registerShopHandlers(socket, gameState) {
 
   socket.on('shopClosed', safeHandler('shopClosed', function () {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 

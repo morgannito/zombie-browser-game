@@ -15,11 +15,15 @@ class GameStateManager {
       bullets: {},
       powerups: {},
       particles: {},
+      poisonTrails: {},
+      explosions: {},
       loot: {},
       walls: [],
       currentRoom: 0,
       totalRooms: 5,
-      doors: []
+      doors: [],
+      wave: 1,
+      bossSpawned: false
     };
     this.config = {
       ROOM_WIDTH: 3000,
