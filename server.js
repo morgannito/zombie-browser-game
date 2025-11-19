@@ -169,6 +169,8 @@ const zombieManager = new ZombieManager(
   io
 );
 
+// CRITICAL FIX: Add roomManager to gameState for zombie movement
+gameState.roomManager = roomManager;
 
 // Load first room after roomManager is initialized
 const { loadRoom } = require('./game/roomFunctions');
