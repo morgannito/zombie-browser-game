@@ -1274,6 +1274,80 @@ class Renderer {
       this.ctx.arc(zombie.x, zombie.y, zombie.size + 5, 0, Math.PI * 2);
       this.ctx.stroke();
       this.ctx.restore();
+    } else if (zombie.type === 'berserker') {
+      // Berserker rage indicator
+      if (zombie.isExtremeRaged) {
+        // Extreme rage - pulsing red aura with flames
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 100) * 0.3;
+        this.ctx.strokeStyle = '#ff0000';
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(zombie.x, zombie.y, zombie.size + 15 + Math.sin(Date.now() / 150) * 5, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Inner flame effect
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.4;
+        this.ctx.strokeStyle = '#ff4400';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(zombie.x, zombie.y, zombie.size + 8, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Rage icon - double swords for extreme rage
+        this.ctx.fillStyle = '#fff';
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 2;
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.strokeText('⚔️', zombie.x, zombie.y);
+        this.ctx.fillText('⚔️', zombie.x, zombie.y);
+      } else if (zombie.isRaged) {
+        // Normal rage - orange aura
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 180) * 0.2;
+        this.ctx.strokeStyle = '#ff6600';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(zombie.x, zombie.y, zombie.size + 10 + Math.sin(Date.now() / 200) * 3, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Rage icon
+        this.ctx.fillStyle = '#ff6600';
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 2;
+        this.ctx.font = 'bold 18px Arial';
+        this.ctx.strokeText('💢', zombie.x, zombie.y);
+        this.ctx.fillText('💢', zombie.x, zombie.y);
+      } else {
+        // Not enraged - just a subtle indicator
+        this.ctx.fillStyle = '#ff6600';
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 2;
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.strokeText('💪', zombie.x, zombie.y);
+        this.ctx.fillText('💪', zombie.x, zombie.y);
+      }
+
+      // Dash trail effect
+      if (zombie.isDashing) {
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.strokeStyle = '#ff4400';
+        this.ctx.lineWidth = zombie.size;
+        this.ctx.lineCap = 'round';
+        this.ctx.beginPath();
+        const dashTrailLength = 40;
+        const trailX = zombie.x - Math.cos(zombie.dashAngle || 0) * dashTrailLength;
+        const trailY = zombie.y - Math.sin(zombie.dashAngle || 0) * dashTrailLength;
+        this.ctx.moveTo(trailX, trailY);
+        this.ctx.lineTo(zombie.x, zombie.y);
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
     }
 
     // === BOSS SPÉCIAUX ===

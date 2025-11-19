@@ -334,6 +334,9 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
     // Capacité spéciale : Zombie Invocateur - invoque des mini-zombies
     updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
 
+    // Capacité spéciale : Zombie Berserker - devient enragé et fait des dashes
+    updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+
     // ========== BOSS SPÉCIAUX ==========
     updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
     updateBossInfect(zombie, now, entityManager, gameState);
@@ -657,15 +660,30 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
 
   // Déplacer le zombie vers le joueur ou de manière aléatoire
   if (closestPlayer) {
-    const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+    let angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
 
     // Mettre à jour l'angle de facing pour le Zombie Bouclier
     if (zombie.type === 'shielded') {
       zombie.facingAngle = angle;
     }
 
-    const newX = zombie.x + MathUtils.fastCos(angle) * zombie.speed;
-    const newY = zombie.y + MathUtils.fastSin(angle) * zombie.speed;
+    // Calculate effective speed
+    let effectiveSpeed = zombie.speed;
+
+    // Apply rage speed multiplier for berserker
+    if (zombie.type === 'berserker' && zombie.rageSpeedMultiplier) {
+      effectiveSpeed *= zombie.rageSpeedMultiplier;
+    }
+
+    // Apply dash speed if berserker is dashing
+    if (zombie.type === 'berserker' && zombie.isDashing) {
+      const berserkerType = ZOMBIE_TYPES.berserker;
+      effectiveSpeed = berserkerType.dashSpeed;
+      angle = zombie.dashAngle; // Use stored dash angle
+    }
+
+    const newX = zombie.x + MathUtils.fastCos(angle) * effectiveSpeed;
+    const newY = zombie.y + MathUtils.fastSin(angle) * effectiveSpeed;
 
     // Vérifier collision avec les murs - avec système de glissement
     let finalX = zombie.x;
@@ -719,7 +737,13 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
 
         if (now - lastDamage >= DAMAGE_INTERVAL) {
           // Dégâts par seconde convertis en dégâts par tick
-          const damageDealt = zombie.damage * (DAMAGE_INTERVAL / 1000);
+          let damageDealt = zombie.damage * (DAMAGE_INTERVAL / 1000);
+
+          // Apply berserker rage damage multiplier
+          if (zombie.type === 'berserker' && zombie.rageDamageMultiplier) {
+            damageDealt *= zombie.rageDamageMultiplier;
+          }
+
           player.health -= damageDealt;
           player.lastDamageTime[zombieId] = now;
 
@@ -1322,6 +1346,99 @@ function applyMilestoneBonus(player) {
   }
 
   return milestoneBonus;
+}
+
+/**
+ * Update berserker zombie - becomes enraged and dashes at low health
+ */
+function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+  if (zombie.type !== 'berserker') return;
+
+  const berserkerType = ZOMBIE_TYPES.berserker;
+
+  // Calculate health percentage
+  const healthPercent = zombie.health / zombie.maxHealth;
+
+  // Determine rage state
+  const wasRaged = zombie.isRaged;
+  const wasExtremeRaged = zombie.isExtremeRaged;
+
+  if (healthPercent <= berserkerType.extremeRageThreshold) {
+    zombie.isExtremeRaged = true;
+    zombie.isRaged = true;
+  } else if (healthPercent <= berserkerType.rageThreshold) {
+    zombie.isExtremeRaged = false;
+    zombie.isRaged = true;
+  } else {
+    zombie.isExtremeRaged = false;
+    zombie.isRaged = false;
+  }
+
+  // Trigger visual effects when entering rage state
+  if (!wasRaged && zombie.isRaged) {
+    // Entrer en rage - particules orange/rouges
+    createParticles(zombie.x, zombie.y, '#ff0000', 20, entityManager);
+    zombie.color = berserkerType.rageColor;
+  } else if (!wasExtremeRaged && zombie.isExtremeRaged) {
+    // Entrer en rage extrême - explosion de particules
+    createParticles(zombie.x, zombie.y, '#ff0000', 30, entityManager);
+  }
+
+  // Update zombie color based on rage state
+  if (zombie.isRaged) {
+    zombie.color = berserkerType.rageColor;
+  } else {
+    zombie.color = berserkerType.color;
+  }
+
+  // Apply rage speed and damage multipliers
+  if (zombie.isExtremeRaged) {
+    zombie.rageSpeedMultiplier = berserkerType.extremeRageSpeedMultiplier;
+    zombie.rageDamageMultiplier = berserkerType.extremeRageDamageMultiplier;
+  } else if (zombie.isRaged) {
+    zombie.rageSpeedMultiplier = berserkerType.rageSpeedMultiplier;
+    zombie.rageDamageMultiplier = berserkerType.rageDamageMultiplier;
+  } else {
+    zombie.rageSpeedMultiplier = 1.0;
+    zombie.rageDamageMultiplier = 1.0;
+  }
+
+  // Dash ability (only in extreme rage)
+  if (zombie.isExtremeRaged) {
+    // Check if currently dashing
+    if (zombie.isDashing && now < zombie.dashEndTime) {
+      // Continue dashing - movement is handled in moveZombie with dashSpeed
+      return;
+    } else if (zombie.isDashing && now >= zombie.dashEndTime) {
+      // End dash
+      zombie.isDashing = false;
+    }
+
+    // Try to start a new dash
+    if (!zombie.isDashing && (!zombie.lastDash || now - zombie.lastDash >= berserkerType.dashCooldown)) {
+      const closestPlayer = collisionManager.findClosestPlayer(
+        zombie.x, zombie.y, 400, // Dash range of 400 pixels
+        { ignoreSpawnProtection: false, ignoreInvisible: true }
+      );
+
+      if (closestPlayer) {
+        // Start dash
+        zombie.lastDash = now;
+        zombie.isDashing = true;
+        zombie.dashEndTime = now + berserkerType.dashDuration;
+
+        // Calculate dash direction
+        const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+        zombie.dashAngle = angleToPlayer;
+
+        // Visual effect for dash
+        createParticles(zombie.x, zombie.y, '#ff4400', 15, entityManager);
+      }
+    }
+  } else {
+    // Not in extreme rage, cancel any ongoing dash
+    zombie.isDashing = false;
+  }
 }
 
 module.exports = {
