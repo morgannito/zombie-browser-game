@@ -343,7 +343,7 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
     updateBossInfect(zombie, now, entityManager, gameState);
     updateBossColosse(zombie, zombieId, now, io, entityManager);
     updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
-    updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
 
     // ========== FIN BOSS SPÉCIAUX ==========
 
@@ -671,7 +671,7 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
 /**
  * Update Boss Omega
  */
-function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
+function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
   if (zombie.type !== 'bossOmega') return;
 
   const bossType = ZOMBIE_TYPES.bossOmega;
