@@ -322,3 +322,4 @@ MIT
 **Production Readiness: 90/100** (see `SECURITY_REVIEW.md` for missing 10 pts)
 
 For gameplay documentation, see `README.GAMEPLAY.md`.
+# Test auto-deploy Wed Nov 19 09:48:47 CET 2025
