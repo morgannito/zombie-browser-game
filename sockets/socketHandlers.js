@@ -256,6 +256,24 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       recovered: playerRecovered // Indicate if state was recovered
     });
 
+    // CRITICAL FIX: Send full game state immediately to new player
+    // This ensures they see all existing players, zombies, etc. right away
+    socket.emit('gameState', {
+      players: gameState.players,
+      zombies: gameState.zombies,
+      bullets: gameState.bullets,
+      particles: gameState.particles,
+      poisonTrails: gameState.poisonTrails,
+      explosions: gameState.explosions,
+      powerups: gameState.powerups,
+      loot: gameState.loot,
+      wave: gameState.wave,
+      walls: gameState.walls,
+      currentRoom: gameState.currentRoom,
+      bossSpawned: gameState.bossSpawned,
+      full: true
+    });
+
     // Register event handlers
     registerPlayerMoveHandler(socket, gameState, roomManager);
     registerShootHandler(socket, gameState, entityManager);
