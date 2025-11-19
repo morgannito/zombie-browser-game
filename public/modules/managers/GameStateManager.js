@@ -82,26 +82,41 @@ class GameStateManager {
   applyInterpolation() {
     if (!this.interpolation.enabled) return;
 
-    const factor = this.interpolation.factor;
+    // CORRECTION: Clamp factor to [0, 1] to prevent visual glitches
+    const factor = Math.max(0, Math.min(1, this.interpolation.factor));
     const prev = this.interpolation.previousPositions;
 
     // Interpolate zombies (not local player)
     for (const [id, zombie] of Object.entries(this.state.zombies)) {
+      // Save the new position from server
+      const targetX = zombie.x;
+      const targetY = zombie.y;
+
       if (prev.zombies[id]) {
-        // Smooth interpolation
-        zombie.x += (prev.zombies[id].x - zombie.x) * factor;
-        zombie.y += (prev.zombies[id].y - zombie.y) * factor;
+        // CORRECTION: Interpolate FROM previous displayed position TO new server position
+        // (1 - factor) means we move towards target: factor=0.15 → 85% of the way
+        zombie.x = prev.zombies[id].x + (targetX - prev.zombies[id].x) * (1 - factor);
+        zombie.y = prev.zombies[id].y + (targetY - prev.zombies[id].y) * (1 - factor);
       }
+
+      // Save the displayed position for next frame
       prev.zombies[id] = { x: zombie.x, y: zombie.y };
     }
 
     // Interpolate other players (not local player)
     for (const [id, player] of Object.entries(this.state.players)) {
-      if (id !== this.playerId && prev.players[id]) {
-        player.x += (prev.players[id].x - player.x) * factor;
-        player.y += (prev.players[id].y - player.y) * factor;
+      if (id !== this.playerId) {
+        const targetX = player.x;
+        const targetY = player.y;
+
+        if (prev.players[id]) {
+          // CORRECTION: Same fix as zombies
+          player.x = prev.players[id].x + (targetX - prev.players[id].x) * (1 - factor);
+          player.y = prev.players[id].y + (targetY - prev.players[id].y) * (1 - factor);
+        }
+
+        prev.players[id] = { x: player.x, y: player.y };
       }
-      prev.players[id] = { x: player.x, y: player.y };
     }
 
     // Bullets move too fast for interpolation, skip them
@@ -109,11 +124,12 @@ class GameStateManager {
 
   /**
    * Clean up orphaned entities that no longer exist on server
-   * Entities that haven't been updated in > 3 seconds are removed
+   * Entities that haven't been updated in > 10 seconds are removed
+   * CORRECTION: Increased from 3s to 10s to handle temporary network lag without removing entities
    */
   cleanupOrphanedEntities() {
     const now = Date.now();
-    const ORPHAN_TIMEOUT = 3000; // 3 seconds
+    const ORPHAN_TIMEOUT = 10000; // 10 seconds (increased to handle lag)
 
     // Mark entities with last seen timestamp
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(type => {

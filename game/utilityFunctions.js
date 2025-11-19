@@ -23,6 +23,22 @@ function distance(x1, y1, x2, y2) {
 }
 
 /**
+ * OPTIMISATION: Calculer la distance au carré (évite le sqrt coûteux)
+ * Utilisez cette fonction quand vous comparez des distances (>, <, ===)
+ * car distance1² < distance2² ⟺ distance1 < distance2
+ * @param {number} x1 - X coordinate of first point
+ * @param {number} y1 - Y coordinate of first point
+ * @param {number} x2 - X coordinate of second point
+ * @param {number} y2 - Y coordinate of second point
+ * @returns {number} Squared distance between the two points
+ */
+function distanceSquared(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  return dx * dx + dy * dy;
+}
+
+/**
  * CORRECTION: Fonction partagée pour nettoyer les balles d'un joueur
  * @param {string} playerId - Player ID
  * @param {Object} gameState - Game state object
@@ -39,6 +55,7 @@ function cleanupPlayerBullets(playerId, gameState, entityManager) {
 
 /**
  * Générer 3 choix d'upgrades aléatoires avec pondération par rareté
+ * CORRECTION: Ajout d'une limite de tentatives pour éviter les boucles infinies
  * @returns {Array} Array of upgrade choices
  */
 function generateUpgradeChoices() {
@@ -46,8 +63,13 @@ function generateUpgradeChoices() {
   const choices = [];
   const selectedKeys = new Set();
 
+  // CORRECTION: Limite de tentatives pour éviter boucle infinie si pas assez d'upgrades d'une rareté
+  let attempts = 0;
+  const MAX_ATTEMPTS = 100;
+
   // Pondération par rareté : common: 60%, rare: 30%, legendary: 10%
-  while (choices.length < 3 && selectedKeys.size < upgradeKeys.length) {
+  while (choices.length < 3 && selectedKeys.size < upgradeKeys.length && attempts < MAX_ATTEMPTS) {
+    attempts++;
     const rand = Math.random();
     let targetRarity;
 
@@ -93,6 +115,11 @@ function generateUpgradeChoices() {
     }
   }
 
+  // CORRECTION: Log warning si on n'a pas pu générer 3 choix
+  if (choices.length < 3) {
+    console.warn('[UPGRADE] Could only generate', choices.length, 'upgrade choices out of 3 (total available:', upgradeKeys.length, ')');
+  }
+
   return choices;
 }
 
@@ -116,6 +143,7 @@ function getXPForLevel(level) {
 
 module.exports = {
   distance,
+  distanceSquared,
   cleanupPlayerBullets,
   generateUpgradeChoices,
   getXPForLevel
