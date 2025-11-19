@@ -212,13 +212,13 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 300px) = trust server (anti-cheat or major desync)
-      // Increased from 100px to avoid snapping during lag spikes
-      if (distance > 300) {
+      // Large difference (> 500px) = trust server (anti-cheat or major desync)
+      // Increased threshold to allow more client prediction freedom
+      if (distance > 500) {
         console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
         // Server position is already applied, no change needed
       } else {
-        // Small/medium difference (< 300px) = ALWAYS trust client prediction for fluid movement
+        // Small/medium difference (< 500px) = ALWAYS trust client prediction for fluid movement
         // No interpolation to avoid any lag feeling on local player
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
@@ -304,15 +304,15 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 300px) = trust server (anti-cheat or major desync)
-      // Increased from 100px to avoid snapping during lag spikes
-      if (distance > 300) {
+      // Large difference (> 500px) = trust server (anti-cheat or major desync)
+      // Increased threshold to allow more client prediction freedom
+      if (distance > 500) {
         console.log('[Socket.IO] Large position difference detected, accepting server position:', distance.toFixed(1), 'px');
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
       }
-      // Small/medium differences (< 300px) = ALWAYS trust client prediction for fluid movement
+      // Small/medium differences (< 500px) = ALWAYS trust client prediction for fluid movement
       // No interpolation to avoid any lag feeling on local player
     }
 
