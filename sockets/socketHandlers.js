@@ -174,6 +174,10 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       }
 
       // Créer un nouveau joueur (Rogue-like)
+      // Add random spawn offset to prevent players spawning on top of each other
+      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
+      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
+
       gameState.players[socket.id] = {
         id: socket.id,
         nickname: null, // Pseudo non défini au départ
@@ -183,8 +187,8 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
         invisible: false, // Invisibilité après upgrade ou lors du level up
         invisibleEndTime: 0, // Fin de l'invisibilité
         lastActivityTime: Date.now(), // Pour détecter l'inactivité
-        x: CONFIG.ROOM_WIDTH / 2,
-        y: CONFIG.ROOM_HEIGHT - 100,
+        x: CONFIG.ROOM_WIDTH / 2 + spawnOffsetX,
+        y: CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY,
         health: CONFIG.PLAYER_MAX_HEALTH,
         maxHealth: CONFIG.PLAYER_MAX_HEALTH,
         level: 1,
@@ -511,8 +515,11 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.spawnProtectionEndTime = 0;
       player.invisible = false;
       player.invisibleEndTime = 0;
-      player.x = CONFIG.ROOM_WIDTH / 2;
-      player.y = CONFIG.ROOM_HEIGHT - 100;
+      // Add random spawn offset to prevent players spawning on top of each other
+      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
+      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
+      player.x = CONFIG.ROOM_WIDTH / 2 + spawnOffsetX;
+      player.y = CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY;
       player.health = totalMaxHealth;
       player.maxHealth = totalMaxHealth;
       player.alive = true;
@@ -624,7 +631,7 @@ function registerBuyItemHandler(socket, gameState) {
     if (!checkRateLimit(socket.id, 'buyItem')) return;
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive) return;
+    if (!player || !player.alive || !player.hasNickname) return;
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
