@@ -169,9 +169,15 @@ const zombieManager = new ZombieManager(
   io
 );
 
+
 // Load first room after roomManager is initialized
 const { loadRoom } = require('./game/roomFunctions');
 loadRoom(0, roomManager);
+
+// Start zombie spawner
+zombieManager.startZombieSpawner();
+console.log('[ZOMBIE MANAGER] Zombie spawner started');
+
 
 // ============================================
 // GAME LOOP
