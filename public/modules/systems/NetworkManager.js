@@ -212,19 +212,19 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 200px) = trust server (anti-cheat or major desync)
-      // Increased from 100px to reduce false corrections
-      if (distance > 200) {
+      // Large difference (> 100px) = trust server (anti-cheat or major desync)
+      // Reduced from 200px due to more frequent full state updates (10 frames vs 30)
+      if (distance > 100) {
         console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
         // Server position is already applied, no change needed
-      } else if (distance > 50) {
-        // Medium difference (50-200px) = smooth interpolation
+      } else if (distance > 30) {
+        // Medium difference (30-100px) = smooth interpolation
         const lerpFactor = 0.3;
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
         window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle; // Keep client angle
       } else {
-        // Small difference (< 50px) = trust client prediction (no rollback)
+        // Small difference (< 30px) = trust client prediction (no rollback)
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
         window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
@@ -309,20 +309,20 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 200px) = trust server (anti-cheat correction or major desync)
-      // Increased from 100px to reduce false corrections
-      if (distance > 200) {
+      // Large difference (> 100px) = trust server (anti-cheat correction or major desync)
+      // Reduced from 200px due to more frequent full state updates (10 frames vs 30)
+      if (distance > 100) {
         console.log('[Socket.IO] Large position difference detected, accepting server position:', distance.toFixed(1), 'px');
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
-      } else if (distance > 50) {
-        // Medium difference (50-200px) = smooth interpolation to reduce rubber banding
+      } else if (distance > 30) {
+        // Medium difference (30-100px) = smooth interpolation to reduce rubber banding
         const lerpFactor = 0.3; // Gentle correction
         window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x + (serverPlayer.x - localPlayerState.x) * lerpFactor;
         window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y + (serverPlayer.y - localPlayerState.y) * lerpFactor;
       }
-      // Small differences (< 50px) = trust client prediction (no rollback)
+      // Small differences (< 30px) = trust client prediction (no rollback)
     }
 
     // Clear reconnection flag after first delta update
