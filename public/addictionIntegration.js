@@ -130,7 +130,7 @@ class AddictionIntegration {
     // Achievements
     const achievementsBtn = document.getElementById('menu-btn-achievements');
     if (achievementsBtn && window.achievementSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(achievementsBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(achievementsBtn, 'click', ()) : achievementsBtn.addEventListener('click', ())) => {
+      achievementsBtn.addEventListener('click', () => {
         window.achievementSystem.openPanel();
       });
     }
@@ -138,7 +138,7 @@ class AddictionIntegration {
     // Challenges
     const challengesBtn = document.getElementById('menu-btn-challenges');
     if (challengesBtn && window.dailyChallengeSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(challengesBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(challengesBtn, 'click', ()) : challengesBtn.addEventListener('click', ())) => {
+      challengesBtn.addEventListener('click', () => {
         window.dailyChallengeSystem.openPanel();
       });
     }
@@ -146,7 +146,7 @@ class AddictionIntegration {
     // Leaderboard
     const leaderboardBtn = document.getElementById('menu-btn-leaderboard');
     if (leaderboardBtn && window.leaderboardSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(leaderboardBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(leaderboardBtn, 'click', ()) : leaderboardBtn.addEventListener('click', ())) => {
+      leaderboardBtn.addEventListener('click', () => {
         window.leaderboardSystem.openPanel();
       });
     }
@@ -154,7 +154,7 @@ class AddictionIntegration {
     // Unlocks
     const unlocksBtn = document.getElementById('menu-btn-unlocks');
     if (unlocksBtn && window.unlockSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(unlocksBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(unlocksBtn, 'click', ()) : unlocksBtn.addEventListener('click', ())) => {
+      unlocksBtn.addEventListener('click', () => {
         window.unlockSystem.openPanel();
       });
     }
@@ -162,7 +162,7 @@ class AddictionIntegration {
     // Synergies
     const synergiesBtn = document.getElementById('menu-btn-synergies');
     if (synergiesBtn && window.synergySystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(synergiesBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(synergiesBtn, 'click', ()) : synergiesBtn.addEventListener('click', ())) => {
+      synergiesBtn.addEventListener('click', () => {
         window.synergySystem.openPanel();
       });
     }
@@ -170,7 +170,7 @@ class AddictionIntegration {
     // Lifetime Stats
     const statsBtn = document.getElementById('menu-btn-lifetime-stats');
     if (statsBtn && window.lifetimeStatsSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(statsBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(statsBtn, 'click', ()) : statsBtn.addEventListener('click', ())) => {
+      statsBtn.addEventListener('click', () => {
         window.lifetimeStatsSystem.openPanel();
       });
     }
@@ -178,7 +178,7 @@ class AddictionIntegration {
     // Gem Shop
     const gemShopBtn = document.getElementById('menu-btn-gem-shop');
     if (gemShopBtn && window.gemSystem) {
-      (window.eventListenerManager ? window.eventListenerManager.add(gemShopBtn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(gemShopBtn, 'click', ()) : gemShopBtn.addEventListener('click', ())) => {
+      gemShopBtn.addEventListener('click', () => {
         window.gemSystem.openPanel();
       });
     }
@@ -187,69 +187,69 @@ class AddictionIntegration {
   // Setup event listeners
   setupEventListeners() {
     // Écouter le démarrage du jeu
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'game_started', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'game_started', ()) : document.addEventListener('game_started', ())) => {
+    document.addEventListener('game_started', () => {
       this.onGameStart();
     });
 
     // Écouter la fin du jeu
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'game_over', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'game_over', (e)) : document.addEventListener('game_over', (e))) => {
+    document.addEventListener('game_over', (e) => {
       this.onGameOver(e.detail);
     });
 
     // Écouter les kills de zombies
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'zombie_killed', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'zombie_killed', (e)) : document.addEventListener('zombie_killed', (e))) => {
+    document.addEventListener('zombie_killed', (e) => {
       this.onZombieKilled(e.detail);
     });
 
     // Écouter les level ups
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'level_up', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'level_up', (e)) : document.addEventListener('level_up', (e))) => {
+    document.addEventListener('level_up', (e) => {
       this.onLevelUp(e.detail);
     });
 
     // Écouter les upgrades
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'upgrade_obtained', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'upgrade_obtained', (e)) : document.addEventListener('upgrade_obtained', (e))) => {
+    document.addEventListener('upgrade_obtained', (e) => {
       this.onUpgradeObtained(e.detail);
     });
 
     // Écouter les boss defeats
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'boss_defeated', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'boss_defeated', (e)) : document.addEventListener('boss_defeated', (e))) => {
+    document.addEventListener('boss_defeated', (e) => {
       this.onBossDefeated(e.detail);
     });
 
     // Écouter la collecte d'or
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'gold_collected', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'gold_collected', (e)) : document.addEventListener('gold_collected', (e))) => {
+    document.addEventListener('gold_collected', (e) => {
       this.onGoldCollected(e.detail);
     });
 
     // Écouter les critiques
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'critical_hit', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'critical_hit', ()) : document.addEventListener('critical_hit', ())) => {
+    document.addEventListener('critical_hit', () => {
       this.onCriticalHit();
     });
 
     // Écouter les esquives
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'dodge', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'dodge', ()) : document.addEventListener('dodge', ())) => {
+    document.addEventListener('dodge', () => {
       this.onDodge();
     });
 
     // Écouter le changement de vague
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'wave_changed', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'wave_changed', (e)) : document.addEventListener('wave_changed', (e))) => {
+    document.addEventListener('wave_changed', (e) => {
       this.onWaveChanged(e.detail);
     });
 
     // Écouter le changement de room
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'room_changed', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'room_changed', (e)) : document.addEventListener('room_changed', (e))) => {
+    document.addEventListener('room_changed', (e) => {
       this.onRoomChanged(e.detail);
     });
 
     // Custom events pour missions
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'mission_reward_gold', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'mission_reward_gold', (e)) : document.addEventListener('mission_reward_gold', (e))) => {
+    document.addEventListener('mission_reward_gold', (e) => {
       // Ajouter or au joueur
       if (window.gameEngine) {
         // Sera géré par le jeu principal
       }
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'mission_reward_xp', (e) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'mission_reward_xp', (e)) : document.addEventListener('mission_reward_xp', (e))) => {
+    document.addEventListener('mission_reward_xp', (e) => {
       // Ajouter XP au joueur
       if (window.gameEngine) {
         // Sera géré par le jeu principal
@@ -312,7 +312,7 @@ class AddictionIntegration {
     if (window.retentionHooksSystem) {
       window.retentionHooksSystem.recordRunEnd(stats);
       // Afficher les hooks sur l'écran de game over
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+      setTimeout(() => {
         window.retentionHooksSystem.enhanceGameOverScreen(stats);
       }, 500);
     }
@@ -529,7 +529,7 @@ window.addictionIntegration = new AddictionIntegration();
 
 // Auto-initialiser après le chargement du DOM
 if (document.readyState === 'loading') {
-  (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', ()) : document.addEventListener('DOMContentLoaded', ())) => {
+  document.addEventListener('DOMContentLoaded', () => {
     window.addictionIntegration.initialize();
   });
 } else {
@@ -537,7 +537,7 @@ if (document.readyState === 'loading') {
 }
 
 // Check périodique toutes les 5 secondes
-(window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+setInterval(() => {
   if (window.addictionIntegration) {
     window.addictionIntegration.periodicCheck();
   }

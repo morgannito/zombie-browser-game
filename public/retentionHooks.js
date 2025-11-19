@@ -360,7 +360,7 @@ class RetentionHooksSystem {
     // Ajouter event listener pour revenge bonus
     const revengeHook = hooksContainer.querySelector('.retention-hook.revenge');
     if (revengeHook) {
-      (window.eventListenerManager ? window.eventListenerManager.add(revengeHook, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(revengeHook, 'click', ()) : revengeHook.addEventListener('click', ())) => {
+      revengeHook.addEventListener('click', () => {
         this.activateRevengeBonus();
         revengeHook.classList.add('activated');
       });

@@ -537,7 +537,7 @@
         }
 
         // Vérifier périodiquement
-        (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+        setInterval(() => {
             const waveElement = document.getElementById('wave-value');
             if (waveElement) {
                 const waveNumber = parseInt(waveElement.textContent) || 1;
@@ -592,7 +592,7 @@
         await initializeAssets();
 
         // Attendre que le GameRenderer soit disponible
-        const waitForRenderer = (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+        const waitForRenderer = setInterval(() => {
             if (window.GameRenderer) {
                 clearInterval(waitForRenderer);
 
@@ -609,7 +609,7 @@
 
     // Démarrer l'initialisation quand le DOM est prêt
     if (document.readyState === 'loading') {
-        (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', initialize) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', initialize)) : document.addEventListener('DOMContentLoaded', initialize)));
+        document.addEventListener('DOMContentLoaded', initialize);
     } else {
         initialize();
     }

@@ -87,17 +87,17 @@ class PerformanceSettingsManager {
       backdrop-filter: blur(5px);
     `;
 
-    (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'mouseenter', () : (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'mouseenter', ()) : settingsBtn.addEventListener('mouseenter', ())) => {
+    settingsBtn.addEventListener('mouseenter', () => {
       settingsBtn.style.transform = 'scale(1.1) rotate(90deg)';
       settingsBtn.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.5)';
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'mouseleave', () : (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'mouseleave', ()) : settingsBtn.addEventListener('mouseleave', ())) => {
+    settingsBtn.addEventListener('mouseleave', () => {
       settingsBtn.style.transform = 'scale(1) rotate(0deg)';
       settingsBtn.style.boxShadow = 'none';
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'click', () => this.toggleSettingsPanel()) : (window.eventListenerManager ? window.eventListenerManager.add(settingsBtn, 'click', () => this.toggleSettingsPanel())) : settingsBtn.addEventListener('click', () => this.toggleSettingsPanel())));
+    settingsBtn.addEventListener('click', () => this.toggleSettingsPanel());
 
     document.body.appendChild(settingsBtn);
 
@@ -324,7 +324,7 @@ class PerformanceSettingsManager {
 
     // Performance mode presets
     document.querySelectorAll('input[name="perfMode"]').forEach(radio => {
-      (window.eventListenerManager ? window.eventListenerManager.add(radio, 'change', (e) : (window.eventListenerManager ? window.eventListenerManager.add(radio, 'change', (e)) : radio.addEventListener('change', (e))) => {
+      radio.addEventListener('change', (e) => {
         if (e.target.value === 'performance') {
           document.getElementById('resolution-slider').value = 75;
           document.getElementById('resolution-value').textContent = '75%';
@@ -395,7 +395,7 @@ class PerformanceSettingsManager {
       backdrop-filter: blur(5px);
     `;
 
-    (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', ()) : btn.addEventListener('click', ())) => {
+    btn.addEventListener('click', () => {
       this.settings.immersiveMode = !this.settings.immersiveMode;
       this.applyImmersiveMode();
       this.saveSettings();
@@ -438,17 +438,17 @@ class PerformanceSettingsManager {
       backdrop-filter: blur(5px);
     `;
 
-    (window.eventListenerManager ? window.eventListenerManager.add(btn, 'mouseenter', () : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'mouseenter', ()) : btn.addEventListener('mouseenter', ())) => {
+    btn.addEventListener('mouseenter', () => {
       btn.style.transform = 'scale(1.1)';
       btn.style.boxShadow = '0 0 20px rgba(255, 107, 0, 0.5)';
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(btn, 'mouseleave', () : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'mouseleave', ()) : btn.addEventListener('mouseleave', ())) => {
+    btn.addEventListener('mouseleave', () => {
       btn.style.transform = 'scale(1)';
       btn.style.boxShadow = 'none';
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', ()) : btn.addEventListener('click', ())) => {
+    btn.addEventListener('click', () => {
       this.toggleFullscreen();
       this.updateFullscreenButton();
     });
@@ -508,7 +508,7 @@ class PerformanceSettingsManager {
       backdrop-filter: blur(5px);
     `;
 
-    (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(btn, 'click', ()) : btn.addEventListener('click', ())) => {
+    btn.addEventListener('click', () => {
       // Toggle between hidden and last known position
       if (this.settings.minimapPosition === 'hidden') {
         this.settings.minimapPosition = this.lastMinimapPosition || 'right';
@@ -578,14 +578,14 @@ class PerformanceSettingsManager {
 
       // Resize canvas when entering/exiting fullscreen
       if (window.gameEngine) {
-        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+        setTimeout(() => {
           window.gameEngine.resizeCanvas();
         }, 100);
       }
     };
 
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'fullscreenchange', handleFullscreenChange) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'fullscreenchange', handleFullscreenChange)) : document.addEventListener('fullscreenchange', handleFullscreenChange)));
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'webkitfullscreenchange', handleFullscreenChange) : (window.eventListenerManager ? window.eventListenerManager.add(document, 'webkitfullscreenchange', handleFullscreenChange)) : document.addEventListener('webkitfullscreenchange', handleFullscreenChange))); // Safari
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
   }
 
   /**
@@ -845,7 +845,7 @@ class PerformanceSettingsManager {
   startFPSMonitoring() {
     this.autoAdjustCooldown = 0; // Cooldown to prevent spam adjustments
 
-    (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+    setInterval(() => {
       this.updateFPS();
 
       // Auto-adjust if enabled and FPS is critically low

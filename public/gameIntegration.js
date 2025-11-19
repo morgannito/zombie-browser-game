@@ -32,7 +32,7 @@ function initializeEnhancedSystems() {
     console.log('✓ Audio system loaded');
 
     // Démarrer la musique du menu après interaction utilisateur
-    (window.eventListenerManager ? window.eventListenerManager.add(document, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'click', ()) : document.addEventListener('click', ())) => {
+    document.addEventListener('click', () => {
       if (window.advancedAudio && !window.advancedAudio.music.isPlaying) {
         window.advancedAudio.startMusic('menu');
       }
@@ -373,7 +373,7 @@ function populatePlayerSkins() {
     `;
 
     if (skin.unlocked && !isEquipped) {
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', ()) : card.addEventListener('click', ())) => {
+      card.addEventListener('click', () => {
         window.skinManager.equipPlayerSkin(skin.id);
         populatePlayerSkins(); // Refresh
         if (window.advancedAudio) {
@@ -381,12 +381,12 @@ function populatePlayerSkins() {
         }
       });
 
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseenter', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseenter', ()) : card.addEventListener('mouseenter', ())) => {
+      card.addEventListener('mouseenter', () => {
         card.style.transform = 'scale(1.05)';
         card.style.borderColor = '#00ffff';
       });
 
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseleave', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseleave', ()) : card.addEventListener('mouseleave', ())) => {
+      card.addEventListener('mouseleave', () => {
         card.style.transform = 'scale(1)';
         card.style.borderColor = '#00ff00';
       });
@@ -428,7 +428,7 @@ function populateWeaponSkins() {
     `;
 
     if (skin.unlocked && !isEquipped) {
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'click', ()) : card.addEventListener('click', ())) => {
+      card.addEventListener('click', () => {
         window.skinManager.equipWeaponSkin(skin.id);
         populateWeaponSkins(); // Refresh
         if (window.advancedAudio) {
@@ -436,12 +436,12 @@ function populateWeaponSkins() {
         }
       });
 
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseenter', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseenter', ()) : card.addEventListener('mouseenter', ())) => {
+      card.addEventListener('mouseenter', () => {
         card.style.transform = 'scale(1.05)';
         card.style.borderColor = '#ffff00';
       });
 
-      (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseleave', () : (window.eventListenerManager ? window.eventListenerManager.add(card, 'mouseleave', ()) : card.addEventListener('mouseleave', ())) => {
+      card.addEventListener('mouseleave', () => {
         card.style.transform = 'scale(1)';
         card.style.borderColor = '#ffaa00';
       });
@@ -475,7 +475,7 @@ function addSkinsButton() {
     display: block;
   `;
 
-  (window.eventListenerManager ? window.eventListenerManager.add(button, 'click', () : (window.eventListenerManager ? window.eventListenerManager.add(button, 'click', ()) : button.addEventListener('click', ())) => {
+  button.addEventListener('click', () => {
     const menu = document.getElementById('skins-menu');
     if (menu) {
       menu.style.display = 'block';
@@ -485,11 +485,11 @@ function addSkinsButton() {
     }
   });
 
-  (window.eventListenerManager ? window.eventListenerManager.add(button, 'mouseenter', () : (window.eventListenerManager ? window.eventListenerManager.add(button, 'mouseenter', ()) : button.addEventListener('mouseenter', ())) => {
+  button.addEventListener('mouseenter', () => {
     button.style.transform = 'scale(1.1)';
   });
 
-  (window.eventListenerManager ? window.eventListenerManager.add(button, 'mouseleave', () : (window.eventListenerManager ? window.eventListenerManager.add(button, 'mouseleave', ()) : button.addEventListener('mouseleave', ())) => {
+  button.addEventListener('mouseleave', () => {
     button.style.transform = 'scale(1)';
   });
 
@@ -526,7 +526,7 @@ window.showSkinsButton = showSkinsButton;
 
 // Initialiser dès que le DOM est prêt
 if (document.readyState === 'loading') {
-  (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', () : (window.eventListenerManager ? window.eventListenerManager.add(document, 'DOMContentLoaded', ()) : document.addEventListener('DOMContentLoaded', ())) => {
+  document.addEventListener('DOMContentLoaded', () => {
     initializeEnhancedSystems();
     createSkinsMenu();
     // addSkinsButton(); // Désactivé - bouton skins retiré

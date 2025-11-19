@@ -96,8 +96,9 @@ const jwtService = new JwtService(logger);
 logger.info('JWT service initialized');
 
 // Apply JWT authentication to all Socket.IO connections
-io.use(jwtService.socketMiddleware());
-logger.info('Socket.IO JWT middleware applied');
+// TEMPORARILY DISABLED - Need to implement client-side JWT first
+// io.use(jwtService.socketMiddleware());
+logger.info('Socket.IO JWT middleware DISABLED (temporary)');
 
 // ===============================================
 // SECURITY MIDDLEWARE

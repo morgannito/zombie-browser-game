@@ -64,7 +64,7 @@ class NotificationSystem {
     this.notifications.push(notification);
 
     if (duration > 0) {
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+      setTimeout(() => {
         this.remove(notification);
       }, duration);
     }
@@ -191,12 +191,12 @@ class EnhancedMobileUI {
     joystickStick.style.boxShadow = '0 0 15px rgba(0, 255, 0, 0.5)';
 
     // Animation au toucher
-    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchstart', () : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchstart', ()) : joystickBase.addEventListener('touchstart', ())) => {
+    joystickBase.addEventListener('touchstart', () => {
       joystickBase.style.transform = 'scale(1.05)';
       joystickBase.style.boxShadow = '0 0 30px rgba(0, 255, 0, 0.6)';
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchend', () : (window.eventListenerManager ? window.eventListenerManager.add(joystickBase, 'touchend', ()) : joystickBase.addEventListener('touchend', ())) => {
+    joystickBase.addEventListener('touchend', () => {
       joystickBase.style.transform = 'scale(1)';
       joystickBase.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
     });
@@ -210,14 +210,14 @@ class EnhancedMobileUI {
     if (!autoShootBtn) return;
 
     // Effet de pression
-    (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchstart', (e) : (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchstart', (e)) : autoShootBtn.addEventListener('touchstart', (e))) => {
+    autoShootBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
       autoShootBtn.style.transform = 'scale(0.95)';
       autoShootBtn.style.boxShadow = '0 0 30px rgba(255, 0, 0, 0.8)';
       this.vibrate(10);
     });
 
-    (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchend', (e) : (window.eventListenerManager ? window.eventListenerManager.add(autoShootBtn, 'touchend', (e)) : autoShootBtn.addEventListener('touchend', (e))) => {
+    autoShootBtn.addEventListener('touchend', (e) => {
       e.preventDefault();
       autoShootBtn.style.transform = 'scale(1)';
       autoShootBtn.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
@@ -307,12 +307,12 @@ class ScreenEffects {
     this.overlay.style.backgroundColor = color;
     this.overlay.style.opacity = '0.4';
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    setTimeout(() => {
       this.overlay.style.transition = `opacity ${duration}ms ease`;
       this.overlay.style.opacity = '0';
     }, 50);
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    setTimeout(() => {
       this.overlay.style.transition = '';
       this.overlay.style.backgroundColor = 'transparent';
     }, duration + 50);
@@ -402,7 +402,7 @@ class FloatingTextManager {
     this.container.appendChild(element);
     this.texts.push(element);
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    setTimeout(() => {
       element.remove();
       const index = this.texts.indexOf(element);
       if (index > -1) this.texts.splice(index, 1);
