@@ -699,17 +699,6 @@ function registerSetNicknameHandler(socket, gameState, io) {
     const player = gameState.players[socket.id];
     if (!player) return;
 
-    // JWT Authentication check
-    if (!socket.userId || !socket.username) {
-      logger.warn('setNickname called without JWT authentication', {
-        socketId: socket.id
-      });
-      socket.emit('nicknameRejected', {
-        reason: 'Authentication required'
-      });
-      return;
-    }
-
     // CORRECTION CRITIQUE: Vérifier si le joueur a déjà un pseudo AVANT rate limiting
     if (player.hasNickname) {
       socket.emit('nicknameRejected', {
@@ -730,19 +719,6 @@ function registerSetNicknameHandler(socket, gameState, io) {
 
     // VALIDATION STRICTE DU PSEUDO
     let nickname = data.nickname ? data.nickname.trim() : '';
-
-    // JWT validation: nickname must match authenticated username
-    if (nickname.toLowerCase() !== socket.username.toLowerCase()) {
-      logger.warn('Nickname mismatch with JWT', {
-        provided: nickname,
-        expected: socket.username,
-        socketId: socket.id
-      });
-      socket.emit('nicknameRejected', {
-        reason: 'Le pseudo doit correspondre à votre compte'
-      });
-      return;
-    }
 
     // Filtrer caractères non autorisés (lettres, chiffres, espaces, tirets, underscores)
     nickname = nickname.replace(/[^a-zA-Z0-9\s\-_]/g, '');
