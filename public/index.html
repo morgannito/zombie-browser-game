@@ -256,8 +256,40 @@
     <script src="addictionIntegration.js"></script>
     <!-- JWT Authentication -->
     <script src="auth.js"></script>
-    <!-- Main Game -->
+
+    <!-- Game Modules (refactored from game.js) -->
+    <!-- Core modules -->
+    <script src="modules/core/Constants.js"></script>
+    <script src="modules/core/SessionManager.js"></script>
+
+    <!-- Managers -->
+    <script src="modules/managers/GameStateManager.js"></script>
+    <script src="modules/managers/InputManager.js"></script>
+    <script src="modules/managers/AudioManager.js"></script>
+    <script src="modules/managers/MobileControlsManager.js"></script>
+    <script src="modules/managers/CameraManager.js"></script>
+    <script src="modules/managers/UIManager.js"></script>
+    <script src="modules/managers/NicknameManager.js"></script>
+
+    <!-- Systems -->
+    <script src="modules/systems/ComboSystem.js"></script>
+    <script src="modules/systems/ToastManager.js"></script>
+    <script src="modules/systems/LeaderboardSystem.js"></script>
+    <script src="modules/systems/NetworkManager.js"></script>
+
+    <!-- Game Logic -->
+    <script src="modules/game/PlayerController.js"></script>
+    <script src="modules/game/Renderer.js"></script>
+
+    <!-- Game Engine (must be after all dependencies) -->
+    <script src="modules/core/GameEngine.js"></script>
+
+    <!-- Utilities -->
+    <script src="modules/utils/initHelpers.js"></script>
+
+    <!-- Main Game Initialization -->
     <script src="game.js"></script>
+
     <!-- Game Patch (must be loaded after game.js) -->
     <script src="gamePatch.js"></script>
 </body>
