@@ -99,7 +99,7 @@ function cleanupRateLimits(socketId) {
  * @returns {Function} Handler wrappé avec gestion d'erreurs
  */
 function safeHandler(handlerName, handler) {
-  return function(...args) {
+  return function (...args) {
     try {
       handler.apply(this, args);
     } catch (error) {
@@ -175,62 +175,62 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
       // Créer un nouveau joueur (Rogue-like)
       gameState.players[socket.id] = {
-      id: socket.id,
-      nickname: null, // Pseudo non défini au départ
-      hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
-      spawnProtection: false, // Protection de spawn inactive
-      spawnProtectionEndTime: 0, // Fin de la protection
-      invisible: false, // Invisibilité après upgrade ou lors du level up
-      invisibleEndTime: 0, // Fin de l'invisibilité
-      lastActivityTime: Date.now(), // Pour détecter l'inactivité
-      x: CONFIG.ROOM_WIDTH / 2,
-      y: CONFIG.ROOM_HEIGHT - 100,
-      health: CONFIG.PLAYER_MAX_HEALTH,
-      maxHealth: CONFIG.PLAYER_MAX_HEALTH,
-      level: 1,
-      xp: 0,
-      gold: 0,
-      score: 0,
-      alive: true,
-      angle: 0,
-      weapon: 'pistol',
-      lastShot: 0,
-      speedBoost: null,
-      weaponTimer: null,
-      // Système de combos et score
-      kills: 0,
-      zombiesKilled: 0,
-      combo: 0,
-      comboTimer: 0,
-      highestCombo: 0,
-      totalScore: 0,
-      survivalTime: Date.now(),
-      // Upgrades permanents (shop)
-      upgrades: {
-        maxHealth: 0,
-        damage: 0,
-        speed: 0,
-        fireRate: 0
-      },
-      damageMultiplier: 1,
-      speedMultiplier: 1,
-      fireRateMultiplier: 1,
-      // Stats des upgrades de level-up
-      regeneration: 0,
-      bulletPiercing: 0,
-      lifeSteal: 0,
-      criticalChance: 0,
-      goldMagnetRadius: 0,
-      dodgeChance: 0,
-      explosiveRounds: 0,
-      explosionRadius: 0,
-      explosionDamagePercent: 0,
-      extraBullets: 0,
-      thorns: 0,
-      lastRegenTick: Date.now(),
-      autoTurrets: 0,
-      lastAutoShot: Date.now()
-    };
+        id: socket.id,
+        nickname: null, // Pseudo non défini au départ
+        hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
+        spawnProtection: false, // Protection de spawn inactive
+        spawnProtectionEndTime: 0, // Fin de la protection
+        invisible: false, // Invisibilité après upgrade ou lors du level up
+        invisibleEndTime: 0, // Fin de l'invisibilité
+        lastActivityTime: Date.now(), // Pour détecter l'inactivité
+        x: CONFIG.ROOM_WIDTH / 2,
+        y: CONFIG.ROOM_HEIGHT - 100,
+        health: CONFIG.PLAYER_MAX_HEALTH,
+        maxHealth: CONFIG.PLAYER_MAX_HEALTH,
+        level: 1,
+        xp: 0,
+        gold: 0,
+        score: 0,
+        alive: true,
+        angle: 0,
+        weapon: 'pistol',
+        lastShot: 0,
+        speedBoost: null,
+        weaponTimer: null,
+        // Système de combos et score
+        kills: 0,
+        zombiesKilled: 0,
+        combo: 0,
+        comboTimer: 0,
+        highestCombo: 0,
+        totalScore: 0,
+        survivalTime: Date.now(),
+        // Upgrades permanents (shop)
+        upgrades: {
+          maxHealth: 0,
+          damage: 0,
+          speed: 0,
+          fireRate: 0
+        },
+        damageMultiplier: 1,
+        speedMultiplier: 1,
+        fireRateMultiplier: 1,
+        // Stats des upgrades de level-up
+        regeneration: 0,
+        bulletPiercing: 0,
+        lifeSteal: 0,
+        criticalChance: 0,
+        goldMagnetRadius: 0,
+        dodgeChance: 0,
+        explosiveRounds: 0,
+        explosionRadius: 0,
+        explosionDamagePercent: 0,
+        extraBullets: 0,
+        thorns: 0,
+        lastRegenTick: Date.now(),
+        autoTurrets: 0,
+        lastAutoShot: Date.now()
+      };
     }
 
     // Tracker la nouvelle connexion
@@ -270,7 +270,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
  * Register playerMove handler
  */
 function registerPlayerMoveHandler(socket, gameState, roomManager) {
-  socket.on('playerMove', safeHandler('playerMove', function(data) {
+  socket.on('playerMove', safeHandler('playerMove', function (data) {
     // JWT Authentication check
     if (!socket.userId) {
       return; // Silent fail for unauthenticated players
@@ -305,46 +305,58 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
       player.speedMultiplier = 1;
     }
 
-    // Time-based validation to handle network jitter and lag
+    // Leaky Bucket (Token Bucket) algorithm for movement validation
+    // This handles:
+    // 1. Normal movement (steady stream)
+    // 2. Low FPS (large time gaps, large distance jumps)
+    // 3. Lag bursts (accumulated time, sudden burst of packets)
+    // 4. Speed hacks (drains budget)
+
     const now = Date.now();
     const lastMoveTime = player.lastMoveTime || now;
     const timeDelta = now - lastMoveTime;
-    
-    // Update lastMoveTime for next check
     player.lastMoveTime = now;
 
-    // Skip validation for very small time steps (e.g. multiple packets in same tick)
-    // or very large ones (first move or after pause)
-    if (timeDelta <= 0) return;
-    
-    // Cap timeDelta to avoid massive jumps after lag spikes (e.g. max 1 second catch-up)
-    const cappedTimeDelta = Math.min(timeDelta, 1000);
+    // Initialize budget if not present (start full)
+    // Base speed: 5px/frame @ 60fps = 0.3px/ms
+    const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
+    const MAX_BUDGET = PIXELS_PER_MS * 2000; // 2 seconds buffer (~600px)
 
-    // Calculer la vitesse maximale autorisée
+    if (typeof player.moveBudget === 'undefined') {
+      player.moveBudget = MAX_BUDGET;
+    }
+
+    // Calculate accrual rate
     const speedMultiplier = player.speedMultiplier || 1;
     const hasSpeedBoost = player.speedBoost && Date.now() < player.speedBoost;
-    const boostMultiplier = hasSpeedBoost ? 2 : 1; // Speed boost gives 50% increase in PlayerController, but let's be generous here (2x)
-    
-    // Base speed is pixels per frame (approx 60fps), convert to pixels per ms
-    // PLAYER_SPEED is 5px/frame at 60fps => 300px/sec => 0.3px/ms
-    const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000; 
-    
-    // Calculate max distance based on time elapsed
-    // Add tolerance (1.5x) for network jitter, diagonal movement approximation, etc.
-    const tolerance = 1.5;
-    const maxAllowedDistance = PIXELS_PER_MS * speedMultiplier * boostMultiplier * cappedTimeDelta * tolerance;
-    
-    // Minimum allowance to prevent getting stuck with tiny movements
-    const minAllowance = 20; 
-    const finalMaxDistance = Math.max(maxAllowedDistance, minAllowance);
+    const boostMultiplier = hasSpeedBoost ? 2 : 1;
 
-    // Rejeter le mouvement si distance trop importante (tentative de téléportation)
-    if (distance > finalMaxDistance) {
-      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} attempted teleport: ${Math.round(distance)}px in ${timeDelta}ms (max: ${Math.round(finalMaxDistance)}px)`);
-      // Corriger la position du client
+    // Accrue budget
+    // Allow 20% tolerance for clock drift, network jitter, and diagonal movement approximation
+    const ACCRUAL_FACTOR = 1.2;
+    const accrued = timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR;
+
+    player.moveBudget += accrued;
+
+    // Cap budget
+    if (player.moveBudget > MAX_BUDGET) {
+      player.moveBudget = MAX_BUDGET;
+    }
+
+    // Check if move is valid
+    // We allow a small overdraft (minAllowance) to prevent getting stuck on tiny floating point diffs
+    const minAllowance = 20;
+
+    if (distance > player.moveBudget + minAllowance) {
+      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} rejected: Dist ${Math.round(distance)}px, Budget ${Math.round(player.moveBudget)}px`);
       socket.emit('positionCorrection', { x: player.x, y: player.y });
       return;
     }
+
+    // Deduct cost from budget
+    player.moveBudget -= distance;
+    // Prevent budget from going too negative (optional, but good for recovery)
+    if (player.moveBudget < -100) player.moveBudget = -100;
 
     // Vérifier collision avec les murs
     if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
@@ -374,7 +386,7 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
  * Register shoot handler
  */
 function registerShootHandler(socket, gameState, entityManager) {
-  socket.on('shoot', safeHandler('shoot', function(data) {
+  socket.on('shoot', safeHandler('shoot', function (data) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateShootData(data);
     if (!validatedData) {
@@ -461,7 +473,7 @@ function registerShootHandler(socket, gameState, entityManager) {
  * Register respawn handler
  */
 function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
-  socket.on('respawn', safeHandler('respawn', function() {
+  socket.on('respawn', safeHandler('respawn', function () {
     const player = gameState.players[socket.id];
     if (player) {
       player.lastActivityTime = Date.now(); // Mettre à jour l'activité
@@ -544,7 +556,7 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
  * Register selectUpgrade handler
  */
 function registerSelectUpgradeHandler(socket, gameState) {
-  socket.on('selectUpgrade', safeHandler('selectUpgrade', function(data) {
+  socket.on('selectUpgrade', safeHandler('selectUpgrade', function (data) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateUpgradeData(data);
     if (!validatedData) {
@@ -587,7 +599,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
  * Register buyItem handler
  */
 function registerBuyItemHandler(socket, gameState) {
-  socket.on('buyItem', safeHandler('buyItem', function(data) {
+  socket.on('buyItem', safeHandler('buyItem', function (data) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateBuyItemData(data);
     if (!validatedData) {
@@ -674,7 +686,7 @@ function registerBuyItemHandler(socket, gameState) {
  * Register setNickname handler
  */
 function registerSetNicknameHandler(socket, gameState, io) {
-  socket.on('setNickname', safeHandler('setNickname', function(data) {
+  socket.on('setNickname', safeHandler('setNickname', function (data) {
     const player = gameState.players[socket.id];
     if (!player) return;
 
@@ -768,7 +780,7 @@ function registerSetNicknameHandler(socket, gameState, io) {
  * Register spawn protection handlers
  */
 function registerSpawnProtectionHandlers(socket, gameState) {
-  socket.on('endSpawnProtection', safeHandler('endSpawnProtection', function() {
+  socket.on('endSpawnProtection', safeHandler('endSpawnProtection', function () {
     const player = gameState.players[socket.id];
     if (!player) return;
 
@@ -783,7 +795,7 @@ function registerSpawnProtectionHandlers(socket, gameState) {
  * Register shop handlers
  */
 function registerShopHandlers(socket, gameState) {
-  socket.on('shopOpened', safeHandler('shopOpened', function() {
+  socket.on('shopOpened', safeHandler('shopOpened', function () {
     const player = gameState.players[socket.id];
     if (!player) return;
 
@@ -794,7 +806,7 @@ function registerShopHandlers(socket, gameState) {
     console.log(`${player.nickname || socket.id} est invisible (shop ouvert)`);
   }));
 
-  socket.on('shopClosed', safeHandler('shopClosed', function() {
+  socket.on('shopClosed', safeHandler('shopClosed', function () {
     const player = gameState.players[socket.id];
     if (!player) return;
 
@@ -810,7 +822,7 @@ function registerShopHandlers(socket, gameState) {
  * Register ping handler for latency monitoring
  */
 function registerPingHandler(socket) {
-  socket.on('ping', safeHandler('ping', function(timestamp, callback) {
+  socket.on('ping', safeHandler('ping', function (timestamp, callback) {
     // Respond immediately to measure round-trip time
     if (typeof callback === 'function') {
       callback(Date.now());
@@ -822,7 +834,7 @@ function registerPingHandler(socket) {
  * Register disconnect handler
  */
 function registerDisconnectHandler(socket, gameState, entityManager, sessionId) {
-  socket.on('disconnect', safeHandler('disconnect', function() {
+  socket.on('disconnect', safeHandler('disconnect', function () {
     const player = gameState.players[socket.id];
 
     logger.info('Player disconnected', { socketId: socket.id, sessionId: sessionId || 'none' });
