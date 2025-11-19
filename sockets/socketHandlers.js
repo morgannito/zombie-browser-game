@@ -360,16 +360,20 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     if (player.moveBudget < -100) player.moveBudget = -100;
 
     // Vérifier collision avec les murs
-    if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
+    // Use a smaller hitbox (0.5x) for server validation to prevent "sticky" walls
+    // where server thinks player is colliding but client doesn't.
+    // This allows the client to be the primary authority for smooth collision sliding.
+    if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE * 0.5)) {
       player.x = newX;
       player.y = newY;
     } else {
       // Collision detected - send position correction to client to keep them in sync
-      // Only send if the client position is significantly different (> 5px)
+      // Only send if the client position is significantly different (> 20px)
+      // We relaxed this from 5px to 20px to reduce "snapping" when rubbing against walls
       const clientDistance = Math.sqrt(
         Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
       );
-      if (clientDistance > 5) {
+      if (clientDistance > 20) {
         socket.emit('positionCorrection', { x: player.x, y: player.y });
       }
     }
