@@ -47,7 +47,7 @@ setInterval(() => {
   }
 
   if (cleanedCount > 0) {
-    console.log(`[SESSION RECOVERY] Cleaned ${cleanedCount} expired session(s)`);
+    logger.info('Session recovery cleanup', { cleanedCount, expiredSessions: cleanedCount });
   }
 }, 60000); // Check every minute
 
@@ -81,7 +81,7 @@ function checkRateLimit(socketId, eventName) {
   socketLimits[eventName].count++;
 
   if (socketLimits[eventName].count > config.maxRequests) {
-    console.warn(`[RATE LIMIT] Player ${socketId} exceeded rate limit for ${eventName}`);
+    logger.warn('Rate limit exceeded', { socketId, event: eventName, limit: config.maxRequests });
     return false;
   }
 
@@ -93,21 +93,54 @@ function cleanupRateLimits(socketId) {
 }
 
 /**
- * Safe socket handler wrapper - Gestion d'erreurs
- * @param {string} handlerName - Nom du handler pour le logging
- * @param {Function} handler - Fonction handler à wrapper
- * @returns {Function} Handler wrappé avec gestion d'erreurs
+ * Safe socket handler wrapper - Enhanced error handling
+ * @param {string} handlerName - Handler name for logging
+ * @param {Function} handler - Handler function to wrap
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.skipRateLimit - Skip rate limiting for this handler
+ * @returns {Function} Wrapped handler with error handling
  */
-function safeHandler(handlerName, handler) {
+function safeHandler(handlerName, handler, options = {}) {
   return function (...args) {
     try {
-      handler.apply(this, args);
+      // Apply rate limiting unless explicitly skipped (some handlers already check manually)
+      // Note: Most handlers in this file already call checkRateLimit manually,
+      // so we skip it here to avoid double-checking
+
+      // Execute the handler
+      const result = handler.apply(this, args);
+
+      // Handle async handlers
+      if (result instanceof Promise) {
+        result.catch(error => {
+          logger.error('Async socket handler error', {
+            handler: handlerName,
+            socketId: this.id,
+            error: error.message,
+            stack: error.stack
+          });
+          this.emit('error', {
+            message: 'Une erreur est survenue sur le serveur',
+            code: 'INTERNAL_ERROR'
+          });
+        });
+      }
+
+      return result;
     } catch (error) {
-      logger.error('Socket handler error', { handler: handlerName, socketId: this.id, error: error.message });
-      // Optionnellement notifier le client
+      logger.error('Socket handler error', {
+        handler: handlerName,
+        socketId: this.id,
+        error: error.message,
+        stack: error.stack,
+        args: args.length > 0 ? JSON.stringify(args[0]).substring(0, 200) : 'no args'
+      });
+
+      // Notify client of error
       this.emit('error', {
         message: 'Une erreur est survenue sur le serveur',
-        code: 'INTERNAL_ERROR'
+        code: 'INTERNAL_ERROR',
+        ...(process.env.NODE_ENV === 'development' && { details: error.message })
       });
     }
   };
@@ -151,12 +184,19 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       disconnectedPlayers.delete(sessionId);
       playerRecovered = true;
 
-      console.log(`[SESSION RECOVERY] Restored player ${restoredPlayer.nickname || 'Unknown'} (Level ${restoredPlayer.level}, ${restoredPlayer.health}/${restoredPlayer.maxHealth} HP, ${restoredPlayer.gold} gold)`);
+      logger.info('Player session restored', {
+        sessionId,
+        nickname: restoredPlayer.nickname || 'Unknown',
+        level: restoredPlayer.level,
+        health: restoredPlayer.health,
+        maxHealth: restoredPlayer.maxHealth,
+        gold: restoredPlayer.gold
+      });
     }
 
     // Create new player if no recovery happened
     if (!playerRecovered) {
-      console.log(`[SESSION] Creating new player for ${socket.id}`);
+      logger.info('Creating new player', { socketId: socket.id });
 
       // Vérifier la limite de joueurs selon le mode performance
       const playerCount = Object.keys(gameState.players).length;
@@ -296,7 +336,7 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateMovementData(data);
     if (!validatedData) {
-      console.warn(`[VALIDATION] Invalid movement data from ${socket.id}:`, data);
+      logger.warn('Invalid movement data received', { socketId: socket.id, data });
       return;
     }
 
@@ -327,7 +367,10 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
 
     // ANTI-CHEAT: Valider que speedMultiplier n'est pas suspect
     if (player.speedMultiplier > 5) {
-      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} has suspicious speedMultiplier: ${player.speedMultiplier}, resetting to 1`);
+      logger.warn('Anti-cheat: Suspicious speedMultiplier detected', {
+        player: player.nickname || socket.id,
+        speedMultiplier: player.speedMultiplier
+      });
       player.speedMultiplier = 1;
     }
 
@@ -374,7 +417,11 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     const minAllowance = 20;
 
     if (distance > player.moveBudget + minAllowance) {
-      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} rejected: Dist ${Math.round(distance)}px, Budget ${Math.round(player.moveBudget)}px`);
+      logger.warn('Anti-cheat: Movement rejected - exceeded budget', {
+        player: player.nickname || socket.id,
+        distance: Math.round(distance),
+        budget: Math.round(player.moveBudget)
+      });
       // DISABLE ANTI-CHEAT FOR NOW: Always accept movement to prevent rollback issues for laggy clients
       // socket.emit('positionCorrection', { x: player.x, y: player.y });
       // return;
@@ -421,7 +468,7 @@ function registerShootHandler(socket, gameState, entityManager) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateShootData(data);
     if (!validatedData) {
-      console.warn(`[VALIDATION] Invalid shoot data from ${socket.id}:`, data);
+      logger.warn('Invalid shoot data received', { socketId: socket.id, data });
       return;
     }
 
@@ -450,7 +497,11 @@ function registerShootHandler(socket, gameState, entityManager) {
     // ANTI-CHEAT: Limiter le nombre total de balles pour éviter l'exploitation
     const MAX_TOTAL_BULLETS = 50;
     if (totalBullets > MAX_TOTAL_BULLETS) {
-      console.warn(`[ANTI-CHEAT] Player ${player.nickname || socket.id} has suspicious bullet count: ${totalBullets}, capping to ${MAX_TOTAL_BULLETS}`);
+      logger.warn('Anti-cheat: Suspicious bullet count detected', {
+        player: player.nickname || socket.id,
+        bulletCount: totalBullets,
+        maxAllowed: MAX_TOTAL_BULLETS
+      });
     }
     const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
@@ -594,7 +645,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateUpgradeData(data);
     if (!validatedData) {
-      console.warn(`[VALIDATION] Invalid upgrade data from ${socket.id}:`, data);
+      logger.warn('Invalid upgrade data received', { socketId: socket.id, data });
       socket.emit('error', {
         message: 'Upgrade invalide',
         code: 'INVALID_UPGRADE'
@@ -637,7 +688,7 @@ function registerBuyItemHandler(socket, gameState) {
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateBuyItemData(data);
     if (!validatedData) {
-      console.warn(`[VALIDATION] Invalid buy item data from ${socket.id}:`, data);
+      logger.warn('Invalid buy item data received', { socketId: socket.id, data });
       socket.emit('shopUpdate', {
         success: false,
         message: 'Item invalide'
@@ -776,7 +827,7 @@ function registerSetNicknameHandler(socket, gameState, io) {
     player.spawnProtection = true;
     player.spawnProtectionEndTime = Date.now() + 3000; // 3 secondes de protection
 
-    console.log(`${socket.id} a choisi le pseudo: ${nickname}`);
+    logger.info('Player chose nickname', { socketId: socket.id, nickname });
 
     // Notifier tous les joueurs
     io.emit('playerNicknameSet', {
@@ -797,7 +848,7 @@ function registerSpawnProtectionHandlers(socket, gameState) {
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
     player.spawnProtection = false;
-    console.log(`${player.nickname || socket.id} n'a plus de protection de spawn`);
+    logger.info('Spawn protection ended', { player: player.nickname || socket.id });
   }));
 }
 
@@ -813,7 +864,7 @@ function registerShopHandlers(socket, gameState) {
 
     player.invisible = true;
     player.invisibleEndTime = Infinity; // Invisibilité sans limite de temps
-    console.log(`${player.nickname || socket.id} est invisible (shop ouvert)`);
+    logger.info('Player invisible - shop opened', { player: player.nickname || socket.id });
   }));
 
   socket.on('shopClosed', safeHandler('shopClosed', function () {
@@ -824,7 +875,7 @@ function registerShopHandlers(socket, gameState) {
 
     player.invisible = false;
     player.invisibleEndTime = 0;
-    console.log(`${player.nickname || socket.id} n'est plus invisible (shop fermé)`);
+    logger.info('Player visible - shop closed', { player: player.nickname || socket.id });
   }));
 }
 

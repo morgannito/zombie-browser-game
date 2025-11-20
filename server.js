@@ -48,7 +48,8 @@ const {
 } = require('./middleware/security');
 const {
   notFoundHandler,
-  serverErrorHandler
+  serverErrorHandler,
+  apiErrorHandler
 } = require('./middleware/errorHandlers');
 
 // ============================================
@@ -178,7 +179,7 @@ loadRoom(0, roomManager);
 
 // Start zombie spawner
 zombieManager.startZombieSpawner();
-console.log('[ZOMBIE MANAGER] Zombie spawner started');
+logger.info('Zombie spawner started');
 
 
 // ============================================
@@ -234,7 +235,8 @@ io.on('connection', socketHandler);
 // ============================================
 
 app.use(notFoundHandler);
-app.use(serverErrorHandler);
+app.use(apiErrorHandler); // Handle API errors with JSON responses
+app.use(serverErrorHandler); // Handle HTML errors
 
 // ============================================
 // SERVER STARTUP

@@ -35,7 +35,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
 
   // Protection contre race conditions
   if (gameLoopRunning) {
-    console.warn('[RACE] Game loop already running, skipping frame');
+    logger.warn('Race condition detected - game loop already running, skipping frame');
     return;
   }
 

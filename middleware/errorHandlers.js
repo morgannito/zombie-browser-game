@@ -3,10 +3,12 @@
  * @description Provides error handling middleware for:
  * - 404 Not Found errors
  * - 500 Internal Server errors
+ * - API error responses
  * - Other server errors
  */
 
 const logger = require('../lib/infrastructure/Logger');
+const { AppError } = require('../lib/domain/errors/DomainErrors');
 
 /**
  * 404 Not Found handler
@@ -86,7 +88,77 @@ function serverErrorHandler(err, req, res, next) {
   `);
 }
 
+/**
+ * API error handler - Provides standardized JSON error responses
+ * @param {Error} err - Error object
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Next middleware
+ */
+function apiErrorHandler(err, req, res, next) {
+  // Check if this is an API route (starts with /api/ or expects JSON)
+  const isApiRoute = req.path.startsWith('/api/') || req.accepts('json');
+
+  if (!isApiRoute) {
+    return next(err); // Pass to HTML error handler
+  }
+
+  // Default to 500 for unexpected errors
+  let statusCode = 500;
+  let message = 'Internal server error';
+  let errorDetails = {};
+
+  // Handle our custom errors
+  if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    message = err.message;
+
+    // Include additional error details if available
+    if (err.field) errorDetails.field = err.field;
+    if (err.resource) errorDetails.resource = err.resource;
+    if (err.identifier) errorDetails.identifier = err.identifier;
+  } else {
+    // For non-operational errors, log the full error
+    logger.error('Unexpected API error', {
+      path: req.path,
+      method: req.method,
+      error: err.message,
+      stack: err.stack
+    });
+  }
+
+  // Build error response
+  const errorResponse = {
+    success: false,
+    error: {
+      message,
+      statusCode,
+      ...errorDetails
+    }
+  };
+
+  // Include stack trace in development mode
+  if (process.env.NODE_ENV === 'development') {
+    errorResponse.error.stack = err.stack;
+  }
+
+  res.status(statusCode).json(errorResponse);
+}
+
+/**
+ * Async error wrapper - Wraps async route handlers to catch errors
+ * @param {Function} fn - Async function to wrap
+ * @returns {Function} Express middleware
+ */
+function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
 module.exports = {
   notFoundHandler,
-  serverErrorHandler
+  serverErrorHandler,
+  apiErrorHandler,
+  asyncHandler
 };
