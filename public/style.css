@@ -644,6 +644,40 @@ body {
   box-shadow: 0 0 30px rgba(0, 255, 0, 1);
 }
 
+/* Camera Recenter Button */
+#camera-recenter-btn {
+  position: absolute;
+  bottom: calc(var(--space-lg) + var(--safe-area-bottom) + 50px); /* Above minimap toggle */
+  right: calc(var(--space-lg) + var(--safe-area-right));
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 165, 0, 0.7);
+  border: 2px solid #ffa500;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  color: white;
+  z-index: 100;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
+}
+
+#camera-recenter-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 25px rgba(255, 165, 0, 0.8);
+  background: rgba(255, 165, 0, 0.9);
+}
+
+#camera-recenter-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 30px rgba(255, 165, 0, 1);
+}
+
 /* ============================================
    SHOP
    ============================================ */
@@ -1361,6 +1395,15 @@ body {
   #minimap-toggle {
     display: flex !important;
     bottom: 10px;
+    right: 10px;
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+
+  #camera-recenter-btn {
+    display: flex !important;
+    bottom: 55px; /* Above minimap toggle */
     right: 10px;
     width: 35px;
     height: 35px;

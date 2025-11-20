@@ -69,6 +69,61 @@ function initMinimapToggle() {
   }
 }
 
+/* ============================================
+   CAMERA RECENTER BUTTON
+   ============================================ */
+
+function initCameraRecenter() {
+  const cameraRecenterBtn = document.getElementById('camera-recenter-btn');
+
+  if (!cameraRecenterBtn) {
+    console.warn('Camera recenter button not found');
+    return;
+  }
+
+  // Show the button (it starts hidden)
+  cameraRecenterBtn.style.display = 'flex';
+
+  // Recenter camera on click
+  cameraRecenterBtn.addEventListener('click', () => {
+    if (window.gameEngine && window.gameEngine.camera && window.gameState) {
+      const player = window.gameState.getPlayer();
+      if (player) {
+        window.gameEngine.camera.recenter(player, window.innerWidth, window.innerHeight);
+
+        // Visual feedback
+        cameraRecenterBtn.style.transform = 'scale(0.85)';
+        setTimeout(() => {
+          cameraRecenterBtn.style.transform = 'scale(1)';
+        }, 100);
+
+        // Audio feedback
+        if (window.audioManager) {
+          window.audioManager.play('click');
+        }
+
+        // Toast notification
+        if (window.toastManager) {
+          window.toastManager.show('Caméra recentrée', 'success', 1000);
+        }
+      }
+    }
+  });
+
+  // Also allow keyboard shortcut (C key)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'c' || e.key === 'C') {
+      // Don't trigger if typing in input field
+      if (!document.querySelector('input:focus') && !document.querySelector('textarea:focus')) {
+        cameraRecenterBtn.click();
+      }
+    }
+  });
+
+  console.log('✅ Camera recenter button initialized');
+}
+
 // Export to window
 window.initInstructionsToggle = initInstructionsToggle;
 window.initMinimapToggle = initMinimapToggle;
+window.initCameraRecenter = initCameraRecenter;

@@ -23,10 +23,12 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     initInstructionsToggle();
     initMinimapToggle();
+    initCameraRecenter();
     new GameEngine();
   });
 } else {
   initInstructionsToggle();
   initMinimapToggle();
+  initCameraRecenter();
   new GameEngine();
 }

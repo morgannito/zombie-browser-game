@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
-const logger = require('../lib/infrastructure/Logger');
+const { asyncHandler } = require('../middleware/errorHandlers');
 
 /**
  * Initialize leaderboard routes
@@ -18,45 +18,35 @@ function initLeaderboardRoutes(container) {
   /**
    * GET /api/leaderboard - Get leaderboard
    */
-  router.get('/', async (req, res) => {
-    try {
-      const { limit = 10, playerId } = req.query;
-      const getLeaderboard = container.get('getLeaderboard');
+  router.get('/', asyncHandler(async (req, res) => {
+    const { limit = 10, playerId } = req.query;
+    const getLeaderboard = container.get('getLeaderboard');
 
-      const result = await getLeaderboard.execute({
-        limit: parseInt(limit),
-        playerId
-      });
+    const result = await getLeaderboard.execute({
+      limit: parseInt(limit),
+      playerId
+    });
 
-      res.json(result);
-    } catch (error) {
-      logger.error('Leaderboard API error', { error: error.message });
-      res.status(500).json({ error: error.message });
-    }
-  });
+    res.json(result);
+  }));
 
   /**
    * POST /api/leaderboard - Submit score to leaderboard
    */
-  router.post('/', async (req, res) => {
-    try {
-      const { playerId, wave, level, kills, survivalTime } = req.body;
-      const submitScore = container.get('submitScore');
+  router.post('/', asyncHandler(async (req, res) => {
+    const { playerId, wave, level, kills, survivalTime } = req.body;
+    const submitScore = container.get('submitScore');
 
-      const entry = await submitScore.execute({
-        playerId,
-        wave,
-        level,
-        kills,
-        survivalTime
-      });
+    const entry = await submitScore.execute({
+      playerId,
+      wave,
+      level,
+      kills,
+      survivalTime
+    });
 
-      res.status(201).json(entry.toObject());
-    } catch (error) {
-      logger.error('Submit score API error', { error: error.message });
-      res.status(400).json({ error: error.message });
-    }
-  });
+    res.status(201).json(entry.toObject());
+  }));
 
   return router;
 }
