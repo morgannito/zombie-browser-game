@@ -588,16 +588,30 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
   if (zombie.phase >= 2 && (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown)) {
     zombie.lastTeleport = now;
 
-    // Téléportation aléatoire dans la salle
-    const newX = 200 + Math.random() * (CONFIG.ROOM_WIDTH - 400);
-    const newY = 200 + Math.random() * (CONFIG.ROOM_HEIGHT - 400);
+    // Trouver le joueur le plus proche
+    const closestPlayer = gameState.collisionManager.findClosestPlayer(
+      zombie.x, zombie.y, Infinity,
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
+    );
 
-    const roomManager = gameState.roomManager;
-    if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-      createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
-      zombie.x = newX;
-      zombie.y = newY;
-      createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
+    if (closestPlayer) {
+      // Angle vers le joueur
+      const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+
+      // Se téléporter à une distance moyenne du joueur (200-400 pixels)
+      const teleportDistance = 200 + Math.random() * 200;
+
+      // Nouvelle position près du joueur
+      const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
+      const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
+
+      const roomManager = gameState.roomManager;
+      if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
+        createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
+        zombie.x = newX;
+        zombie.y = newY;
+        createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
+      }
     }
   }
 
@@ -701,14 +715,31 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
   // Téléportation (toutes phases)
   if (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown) {
     zombie.lastTeleport = now;
-    const newX = 200 + Math.random() * (CONFIG.ROOM_WIDTH - 400);
-    const newY = 200 + Math.random() * (CONFIG.ROOM_HEIGHT - 400);
-    const roomManager = gameState.roomManager;
-    if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-      createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
-      zombie.x = newX;
-      zombie.y = newY;
-      createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+
+    // Trouver le joueur le plus proche
+    const closestPlayer = collisionManager.findClosestPlayer(
+      zombie.x, zombie.y, Infinity,
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
+    );
+
+    if (closestPlayer) {
+      // Angle vers le joueur
+      const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+
+      // Se téléporter à une distance moyenne du joueur (150-350 pixels)
+      const teleportDistance = 150 + Math.random() * 200;
+
+      // Nouvelle position près du joueur
+      const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
+      const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
+
+      const roomManager = gameState.roomManager;
+      if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
+        createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+        zombie.x = newX;
+        zombie.y = newY;
+        createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+      }
     }
   }
 
