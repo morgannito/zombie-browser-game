@@ -28,10 +28,26 @@ class UIManager {
 
     // Make buyItem global for onclick handlers
     window.buyItem = (itemId, category) => {
-      if (window.networkManager) {
-        window.networkManager.buyItem(itemId, category);
+      console.log('[Shop] buyItem called:', itemId, category);
+
+      if (!window.networkManager) {
+        console.error('[Shop] NetworkManager not available');
+        if (window.toastManager) {
+          window.toastManager.show('❌ Connexion non disponible', 'error', 2000);
+        }
+        return;
+      }
+
+      console.log('[Shop] Sending purchase request to server...');
+      window.networkManager.buyItem(itemId, category);
+
+      // Show feedback that request was sent
+      if (window.toastManager) {
+        window.toastManager.show('⏳ Traitement de l\'achat...', 'info', 1000);
       }
     };
+
+    console.log('✅ Shop buyItem function registered on window');
   }
 
   cleanup() {
@@ -239,15 +255,31 @@ class UIManager {
 
   populateShop() {
     const player = this.gameState.getPlayer();
-    if (!player) return;
+    if (!player) {
+      console.error('[Shop] No player found when populating shop');
+      return;
+    }
+
+    console.log('[Shop] Populating shop. Player gold:', player.gold);
+    console.log('[Shop] Shop items available:', this.gameState.shopItems);
 
     // Update gold display
     document.getElementById('shop-gold').textContent = player.gold || 0;
 
     // Populate permanent upgrades
     const permanentContainer = document.getElementById('permanent-upgrades');
+    if (!permanentContainer) {
+      console.error('[Shop] permanent-upgrades container not found');
+      return;
+    }
     permanentContainer.innerHTML = '';
 
+    if (!this.gameState.shopItems || !this.gameState.shopItems.permanent) {
+      console.error('[Shop] No permanent shop items available');
+      return;
+    }
+
+    console.log('[Shop] Creating permanent upgrade buttons...');
     for (let key in this.gameState.shopItems.permanent) {
       const item = this.gameState.shopItems.permanent[key];
       const currentLevel = player.upgrades[key] || 0;
@@ -266,20 +298,59 @@ class UIManager {
         </div>
         <div class="shop-item-buy">
           <div class="shop-item-price">${isMaxed ? 'MAX' : cost + ' 💰'}</div>
-          <button class="shop-buy-btn" ${isMaxed || !canAfford ? 'disabled' : ''}
-                  onclick="buyItem('${key}', 'permanent')">
+          <button class="shop-buy-btn" data-item-id="${key}" data-category="permanent" ${isMaxed || !canAfford ? 'disabled' : ''}>
             ${isMaxed ? 'MAX' : 'Acheter'}
           </button>
         </div>
       `;
 
       permanentContainer.appendChild(itemDiv);
+
+      // Add event listener to the button
+      const btn = itemDiv.querySelector('.shop-buy-btn');
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const itemId = btn.dataset.itemId;
+        const category = btn.dataset.category;
+
+        console.log('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
+
+        if (btn.disabled) {
+          console.log('[Shop] Button is disabled, ignoring click');
+          if (isMaxed) {
+            if (window.toastManager) {
+              window.toastManager.show('⚠️ Niveau maximum atteint', 'warning', 2000);
+            }
+          } else {
+            if (window.toastManager) {
+              window.toastManager.show('⚠️ Or insuffisant', 'warning', 2000);
+            }
+          }
+          return;
+        }
+
+        window.buyItem(itemId, category);
+      });
+
+      console.log('[Shop] Created button for:', key, 'disabled:', (isMaxed || !canAfford));
     }
 
     // Populate temporary items
     const temporaryContainer = document.getElementById('temporary-items');
+    if (!temporaryContainer) {
+      console.error('[Shop] temporary-items container not found');
+      return;
+    }
     temporaryContainer.innerHTML = '';
 
+    if (!this.gameState.shopItems || !this.gameState.shopItems.temporary) {
+      console.error('[Shop] No temporary shop items available');
+      return;
+    }
+
+    console.log('[Shop] Creating temporary item buttons...');
     for (let key in this.gameState.shopItems.temporary) {
       const item = this.gameState.shopItems.temporary[key];
       const canAfford = player.gold >= item.cost;
@@ -294,15 +365,40 @@ class UIManager {
         </div>
         <div class="shop-item-buy">
           <div class="shop-item-price">${item.cost} 💰</div>
-          <button class="shop-buy-btn" ${!canAfford ? 'disabled' : ''}
-                  onclick="buyItem('${key}', 'temporary')">
+          <button class="shop-buy-btn" data-item-id="${key}" data-category="temporary" ${!canAfford ? 'disabled' : ''}>
             Acheter
           </button>
         </div>
       `;
 
       temporaryContainer.appendChild(itemDiv);
+
+      // Add event listener to the button
+      const btn = itemDiv.querySelector('.shop-buy-btn');
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const itemId = btn.dataset.itemId;
+        const category = btn.dataset.category;
+
+        console.log('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
+
+        if (btn.disabled) {
+          console.log('[Shop] Button is disabled, ignoring click');
+          if (window.toastManager) {
+            window.toastManager.show('⚠️ Or insuffisant', 'warning', 2000);
+          }
+          return;
+        }
+
+        window.buyItem(itemId, category);
+      });
+
+      console.log('[Shop] Created button for:', key, 'disabled:', !canAfford);
     }
+
+    console.log('[Shop] Shop populated successfully');
   }
 
   toggleStatsPanel() {
