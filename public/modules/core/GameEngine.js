@@ -12,12 +12,18 @@ class GameEngine {
     this.handlers = {
       resize: () => this.resizeCanvas(),
       mousemove: null,
-      click: null
+      mousedown: null,
+      mouseup: null
     };
 
     this.animationFrameId = null; // Store requestAnimationFrame ID for cleanup
     this.lastFrameTime = 0; // For FPS limiting
     this.frameTimeAccumulator = 0; // For consistent frame timing
+
+    // Desktop auto-fire state
+    this.isMouseDown = false;
+    this.lastAutoFireTime = 0;
+    this.AUTO_FIRE_INTERVAL = 150; // Fire every 150ms when mouse is held (adjustable)
 
     this.setupCanvas();
     this.initializeManagers();
@@ -108,12 +114,15 @@ class GameEngine {
     // Performance settings (must be initialized early)
     if (typeof PerformanceSettingsManager !== 'undefined') {
       window.performanceSettings = new PerformanceSettingsManager();
-      window.gameEngine = this; // Make engine accessible for performance settings
     }
+
+    // Make engine accessible globally
+    window.gameEngine = this;
 
     // Managers
     window.inputManager = new InputManager();
-    const camera = new CameraManager();
+    this.camera = new CameraManager(); // Store camera reference for external access
+    const camera = this.camera; // Keep local reference for compatibility
 
     // Socket.IO client configuration optimized for low latency and stability
     // Try WebSocket first but allow polling fallback for reliability
@@ -160,13 +169,28 @@ class GameEngine {
       this.handlers.mousemove = (e) => {
         window.inputManager.updateMouse(e.clientX, e.clientY);
       };
-      this.handlers.click = () => {
-        // Use CSS pixels for consistent shooting angle calculation
-        this.playerController.shoot(window.innerWidth, window.innerHeight);
+      this.handlers.mousedown = (e) => {
+        // Only track left mouse button (button 0)
+        if (e.button === 0) {
+          this.isMouseDown = true;
+          // Fire immediately on first click
+          this.playerController.shoot(window.innerWidth, window.innerHeight);
+          this.lastAutoFireTime = performance.now();
+        }
+      };
+      this.handlers.mouseup = (e) => {
+        if (e.button === 0) {
+          this.isMouseDown = false;
+        }
       };
 
       this.canvas.addEventListener('mousemove', this.handlers.mousemove);
-      this.canvas.addEventListener('click', this.handlers.click);
+      this.canvas.addEventListener('mousedown', this.handlers.mousedown);
+      this.canvas.addEventListener('mouseup', this.handlers.mouseup);
+      // Also stop shooting when mouse leaves the canvas
+      this.canvas.addEventListener('mouseleave', () => {
+        this.isMouseDown = false;
+      });
     }
   }
 
@@ -186,6 +210,15 @@ class GameEngine {
     // Update mobile auto-shoot (MOBILE)
     if (this.mobileControls && this.mobileControls.updateAutoShoot) {
       this.mobileControls.updateAutoShoot(performance.now());
+    }
+
+    // Update desktop auto-fire (DESKTOP)
+    if (!this.mobileControls.isMobile && this.isMouseDown) {
+      const currentTime = performance.now();
+      if (currentTime - this.lastAutoFireTime >= this.AUTO_FIRE_INTERVAL) {
+        this.playerController.shoot(window.innerWidth, window.innerHeight);
+        this.lastAutoFireTime = currentTime;
+      }
     }
 
     // Use CSS pixels (window dimensions) instead of physical canvas dimensions

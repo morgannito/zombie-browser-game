@@ -28,6 +28,17 @@ class CameraManager {
     this.height = canvasHeight;
   }
 
+  /**
+   * Instantly recenter camera on player (no easing)
+   * Use this to fix camera bugs or when player gets repositioned
+   */
+  recenter(player, canvasWidth, canvasHeight) {
+    this.x = player.x - canvasWidth / 2;
+    this.y = player.y - canvasHeight / 2;
+    this.width = canvasWidth;
+    this.height = canvasHeight;
+  }
+
   getPosition() {
     return { x: this.x, y: this.y };
   }
