@@ -49,9 +49,15 @@ class ScreenFlash {
     this.overlay.style.opacity = '1';
 
     // Fade out rapide
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-      this.overlay.style.opacity = '0';
-    }, 50);
+    if (window.timerManager) {
+      window.timerManager.setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 50);
+    } else {
+      setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 50);
+    }
   }
 
   /**
@@ -66,9 +72,15 @@ class ScreenFlash {
     this.overlay.style.background = `rgba(255, 255, 255, ${intensity})`;
     this.overlay.style.opacity = '1';
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-      this.overlay.style.opacity = '0';
-    }, 80);
+    if (window.timerManager) {
+      window.timerManager.setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 80);
+    } else {
+      setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 80);
+    }
   }
 
   /**
@@ -83,9 +95,15 @@ class ScreenFlash {
     this.overlay.style.background = `radial-gradient(circle, rgba(0,255,0,${intensity * 0.2}) 0%, rgba(0,255,0,${intensity * 0.4}) 100%)`;
     this.overlay.style.opacity = '1';
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-      this.overlay.style.opacity = '0';
-    }, 100);
+    if (window.timerManager) {
+      window.timerManager.setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 100);
+    } else {
+      setTimeout(() => {
+        this.overlay.style.opacity = '0';
+      }, 100);
+    }
   }
 }
 
@@ -197,9 +215,15 @@ class SlowMotionEffect {
     this.notifyCallbacks();
 
     // Désactiver après la durée
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-      this.deactivate();
-    }, duration);
+    if (window.timerManager) {
+      window.timerManager.setTimeout(() => {
+        this.deactivate();
+      }, duration);
+    } else {
+      setTimeout(() => {
+        this.deactivate();
+      }, duration);
+    }
   }
 
   /**
