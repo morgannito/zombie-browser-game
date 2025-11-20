@@ -560,12 +560,31 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
     if (player) {
       player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
-      // Sauvegarder les upgrades permanents
+      // Sauvegarder les upgrades permanents et la progression
       const savedUpgrades = { ...player.upgrades };
       const savedMultipliers = {
         damage: player.damageMultiplier,
         speed: player.speedMultiplier,
         fireRate: player.fireRateMultiplier
+      };
+      const savedProgression = {
+        level: player.level,
+        xp: player.xp
+      };
+      // Sauvegarder les stats de level-up pour les restaurer après respawn
+      const savedLevelUpStats = {
+        regeneration: player.regeneration,
+        bulletPiercing: player.bulletPiercing,
+        lifeSteal: player.lifeSteal,
+        criticalChance: player.criticalChance,
+        goldMagnetRadius: player.goldMagnetRadius,
+        dodgeChance: player.dodgeChance,
+        explosiveRounds: player.explosiveRounds,
+        explosionRadius: player.explosionRadius,
+        explosionDamagePercent: player.explosionDamagePercent,
+        extraBullets: player.extraBullets,
+        thorns: player.thorns,
+        autoTurrets: player.autoTurrets
       };
 
       // Calculer la vie maximale avec les upgrades
@@ -592,8 +611,9 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.health = totalMaxHealth;
       player.maxHealth = totalMaxHealth;
       player.alive = true;
-      player.level = 1;
-      player.xp = 0;
+      // NOUVEAU: Conserver le niveau et l'XP après la mort
+      player.level = savedProgression.level;
+      player.xp = savedProgression.xp;
       player.gold = 0; // L'or est perdu au respawn
       player.score = 0;
       player.weapon = 'pistol';
@@ -609,19 +629,19 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.highestCombo = 0;
       player.totalScore = 0;
 
-      // CORRECTION: Réinitialiser toutes les stats de level-up (ne pas conserver entre les runs)
-      player.regeneration = 0;
-      player.bulletPiercing = 0;
-      player.lifeSteal = 0;
-      player.criticalChance = 0;
-      player.goldMagnetRadius = 0;
-      player.dodgeChance = 0;
-      player.explosiveRounds = 0;
-      player.explosionRadius = 0;
-      player.explosionDamagePercent = 0;
-      player.extraBullets = 0;
-      player.thorns = 0;
-      player.autoTurrets = 0;
+      // NOUVEAU: Restaurer les stats de level-up (conservées avec le niveau)
+      player.regeneration = savedLevelUpStats.regeneration;
+      player.bulletPiercing = savedLevelUpStats.bulletPiercing;
+      player.lifeSteal = savedLevelUpStats.lifeSteal;
+      player.criticalChance = savedLevelUpStats.criticalChance;
+      player.goldMagnetRadius = savedLevelUpStats.goldMagnetRadius;
+      player.dodgeChance = savedLevelUpStats.dodgeChance;
+      player.explosiveRounds = savedLevelUpStats.explosiveRounds;
+      player.explosionRadius = savedLevelUpStats.explosionRadius;
+      player.explosionDamagePercent = savedLevelUpStats.explosionDamagePercent;
+      player.extraBullets = savedLevelUpStats.extraBullets;
+      player.thorns = savedLevelUpStats.thorns;
+      player.autoTurrets = savedLevelUpStats.autoTurrets;
       player.lastRegenTick = Date.now();
       player.lastAutoShot = Date.now();
 
