@@ -77,36 +77,69 @@ function initCameraRecenter() {
   const cameraRecenterBtn = document.getElementById('camera-recenter-btn');
 
   if (!cameraRecenterBtn) {
-    console.warn('Camera recenter button not found');
+    console.error('[Camera Recenter] Button element not found in DOM!');
     return;
   }
 
   // Show the button (it starts hidden)
   cameraRecenterBtn.style.display = 'flex';
+  console.log('[Camera Recenter] Button found and displayed');
 
   // Recenter camera on click
   cameraRecenterBtn.addEventListener('click', () => {
-    if (window.gameEngine && window.gameEngine.camera && window.gameState) {
-      const player = window.gameState.getPlayer();
-      if (player) {
-        window.gameEngine.camera.recenter(player, window.innerWidth, window.innerHeight);
+    console.log('[Camera Recenter] Button clicked');
 
-        // Visual feedback
-        cameraRecenterBtn.style.transform = 'scale(0.85)';
-        setTimeout(() => {
-          cameraRecenterBtn.style.transform = 'scale(1)';
-        }, 100);
-
-        // Audio feedback
-        if (window.audioManager) {
-          window.audioManager.play('click');
-        }
-
-        // Toast notification
-        if (window.toastManager) {
-          window.toastManager.show('Caméra recentrée', 'success', 1000);
-        }
+    if (!window.gameEngine) {
+      console.error('[Camera Recenter] gameEngine not found');
+      if (window.toastManager) {
+        window.toastManager.show('❌ Jeu non initialisé', 'error', 2000);
       }
+      return;
+    }
+
+    if (!window.gameEngine.camera) {
+      console.error('[Camera Recenter] camera not found');
+      if (window.toastManager) {
+        window.toastManager.show('❌ Caméra non disponible', 'error', 2000);
+      }
+      return;
+    }
+
+    if (!window.gameState) {
+      console.error('[Camera Recenter] gameState not found');
+      if (window.toastManager) {
+        window.toastManager.show('❌ État de jeu non disponible', 'error', 2000);
+      }
+      return;
+    }
+
+    const player = window.gameState.getPlayer();
+    if (!player) {
+      console.warn('[Camera Recenter] Player not found');
+      if (window.toastManager) {
+        window.toastManager.show('⚠️ Joueur non trouvé', 'warning', 2000);
+      }
+      return;
+    }
+
+    // Recenter camera
+    window.gameEngine.camera.recenter(player, window.innerWidth, window.innerHeight);
+    console.log('[Camera Recenter] Camera recentered successfully');
+
+    // Visual feedback
+    cameraRecenterBtn.style.transform = 'scale(0.85)';
+    setTimeout(() => {
+      cameraRecenterBtn.style.transform = 'scale(1)';
+    }, 100);
+
+    // Audio feedback
+    if (window.audioManager && typeof window.audioManager.playSound === 'function') {
+      window.audioManager.playSound('click');
+    }
+
+    // Toast notification
+    if (window.toastManager) {
+      window.toastManager.show('🎯 Caméra recentrée', 'success', 1500);
     }
   });
 

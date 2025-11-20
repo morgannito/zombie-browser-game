@@ -436,8 +436,23 @@ class NetworkManager {
   }
 
   handleShopUpdate(data) {
-    if (data.success && window.gameUI && window.gameUI.shopOpen) {
-      window.gameUI.populateShop();
+    if (data.success) {
+      // Show success message
+      if (window.toastManager) {
+        window.toastManager.show('✅ Achat réussi !', 'success', 2000);
+      }
+
+      // Refresh shop if open
+      if (window.gameUI && window.gameUI.shopOpen) {
+        window.gameUI.populateShop();
+      }
+    } else {
+      // Show error message
+      if (window.toastManager) {
+        const message = data.message || 'Achat impossible';
+        window.toastManager.show(`❌ ${message}`, 'error', 2500);
+      }
+      console.warn('[Shop] Purchase failed:', data.message);
     }
   }
 

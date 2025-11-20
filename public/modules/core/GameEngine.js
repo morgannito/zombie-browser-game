@@ -11,19 +11,16 @@ class GameEngine {
     // Store handler references for cleanup
     this.handlers = {
       resize: () => this.resizeCanvas(),
-      mousemove: null,
-      mousedown: null,
-      mouseup: null
+      mousemove: null
     };
 
     this.animationFrameId = null; // Store requestAnimationFrame ID for cleanup
     this.lastFrameTime = 0; // For FPS limiting
     this.frameTimeAccumulator = 0; // For consistent frame timing
 
-    // Desktop auto-fire state
-    this.isMouseDown = false;
+    // Desktop continuous auto-fire state
     this.lastAutoFireTime = 0;
-    this.AUTO_FIRE_INTERVAL = 150; // Fire every 150ms when mouse is held (adjustable)
+    this.AUTO_FIRE_INTERVAL = 150; // Fire every 150ms continuously (adjustable)
 
     this.setupCanvas();
     this.initializeManagers();
@@ -169,28 +166,8 @@ class GameEngine {
       this.handlers.mousemove = (e) => {
         window.inputManager.updateMouse(e.clientX, e.clientY);
       };
-      this.handlers.mousedown = (e) => {
-        // Only track left mouse button (button 0)
-        if (e.button === 0) {
-          this.isMouseDown = true;
-          // Fire immediately on first click
-          this.playerController.shoot(window.innerWidth, window.innerHeight);
-          this.lastAutoFireTime = performance.now();
-        }
-      };
-      this.handlers.mouseup = (e) => {
-        if (e.button === 0) {
-          this.isMouseDown = false;
-        }
-      };
 
       this.canvas.addEventListener('mousemove', this.handlers.mousemove);
-      this.canvas.addEventListener('mousedown', this.handlers.mousedown);
-      this.canvas.addEventListener('mouseup', this.handlers.mouseup);
-      // Also stop shooting when mouse leaves the canvas
-      this.canvas.addEventListener('mouseleave', () => {
-        this.isMouseDown = false;
-      });
     }
   }
 
@@ -212,8 +189,8 @@ class GameEngine {
       this.mobileControls.updateAutoShoot(performance.now());
     }
 
-    // Update desktop auto-fire (DESKTOP)
-    if (!this.mobileControls.isMobile && this.isMouseDown) {
+    // Update desktop continuous auto-fire (DESKTOP)
+    if (!this.mobileControls.isMobile) {
       const currentTime = performance.now();
       if (currentTime - this.lastAutoFireTime >= this.AUTO_FIRE_INTERVAL) {
         this.playerController.shoot(window.innerWidth, window.innerHeight);
