@@ -145,6 +145,15 @@ class GameEngine {
     window.networkManager = new NetworkManager(socket);
     window.gameUI = new UIManager(window.gameState);
 
+    // Initialize account progression manager (meta progression, skills, XP)
+    if (typeof AccountProgressionManager !== 'undefined') {
+      window.accountProgressionManager = new AccountProgressionManager();
+      window.accountProgressionManager.init(socket);
+      console.log('✓ Account progression manager initialized');
+    } else {
+      console.warn('⚠ AccountProgressionManager not found');
+    }
+
     // Initialize advanced audio system (with music, enhanced sound effects)
     if (typeof AdvancedAudioManager !== 'undefined') {
       window.audioManager = new AdvancedAudioManager();

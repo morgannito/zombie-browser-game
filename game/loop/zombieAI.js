@@ -45,40 +45,9 @@ function updateZombieAI(gameState, now, io, collisionManager, entityManager, zom
       updatePoisonZombie(zombie, zombieId, now, gameState, entityManager);
     }
 
-    // Teleporter zombie
-    else if (zombie.type === 'teleporter') {
-      const { updateTeleporterZombie } = require('../gameLoop'); // Temporary import
-      updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-
-    // Summoner zombie
-    else if (zombie.type === 'summoner') {
-      const { updateSummonerZombie } = require('../gameLoop'); // Temporary import
-      updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
-    }
-
-    // Berserker zombie
-    else if (zombie.type === 'berserker') {
-      const { updateBerserkerZombie } = require('../gameLoop'); // Temporary import
-      updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-
-    // Elite zombies
-    else if (zombie.isElite) {
-      const { updateNecromancerZombie, updateBruteZombie, updateMimicZombie } = require('../gameLoop');
-      if (zombie.type === 'necromancer') {
-        updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
-      } else if (zombie.type === 'brute') {
-        updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-      } else if (zombie.type === 'mimic') {
-        updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-      }
-    }
-
-    // Boss zombies
-    if (zombie.isBoss) {
-      updateBossZombies(zombie, zombieId, now, io, gameState, zombieManager, entityManager, collisionManager);
-    }
+    // Note: Complex zombie types (teleporter, summoner, berserker, elite, boss)
+    // are handled directly in gameLoop.js to avoid circular dependencies
+    // This module only handles simple AI: healer, slower, shooter, poison
   }
 }
 
@@ -176,34 +145,6 @@ function updatePoisonZombie(zombie, zombieId, now, gameState, entityManager) {
     };
 
     createParticles(zombie.x, zombie.y, poisonType.color, 8, entityManager);
-  }
-}
-
-/**
- * Update boss zombies
- */
-function updateBossZombies(zombie, zombieId, now, io, gameState, zombieManager, entityManager, collisionManager) {
-  // Import boss update functions temporarily
-  const {
-    updateBossCharnier,
-    updateBossInfect,
-    updateBossColosse,
-    updateBossRoi,
-    updateBossOmega
-  } = require('../gameLoop');
-
-  const perfIntegration = { shouldSpawn: () => true }; // Stub
-
-  if (zombie.name === 'Le Charnier') {
-    updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
-  } else if (zombie.name === "L'Infect") {
-    updateBossInfect(zombie, now, entityManager, gameState);
-  } else if (zombie.name === 'Le Colosse') {
-    updateBossColosse(zombie, zombieId, now, io, entityManager);
-  } else if (zombie.name === 'Le Roi Zombie') {
-    updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
-  } else if (zombie.name === 'Omega') {
-    updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
   }
 }
 
