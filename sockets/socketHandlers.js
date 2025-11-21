@@ -386,6 +386,19 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     const timeDelta = now - lastMoveTime;
     player.lastMoveTime = now;
 
+    // CHECK STUN: Si le joueur est stunné, bloquer le mouvement
+    if (player.stunned && player.stunnedUntil > now) {
+      // Le joueur ne peut pas bouger pendant le stun
+      socket.emit('positionCorrection', { x: player.x, y: player.y });
+      socket.emit('stunned', { duration: player.stunnedUntil - now }); // Notifier le client
+      return;
+    } else if (player.stunned && player.stunnedUntil <= now) {
+      // Fin du stun
+      player.stunned = false;
+      delete player.stunnedUntil;
+      delete player.stunnedBy;
+    }
+
     // Initialize budget if not present (start full)
     // Base speed: 5px/frame @ 60fps = 0.3px/ms
     const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
@@ -483,6 +496,12 @@ function registerShootHandler(socket, gameState, entityManager) {
 
     const weapon = WEAPONS[player.weapon] || WEAPONS.pistol;
 
+    // Le Tesla Coil est une arme passive gérée automatiquement dans la game loop
+    // Ne pas créer de bullets pour cette arme
+    if (weapon.isTeslaCoil) {
+      return;
+    }
+
     // Appliquer le multiplicateur de cadence de tir
     const fireRate = weapon.fireRate * (player.fireRateMultiplier || 1);
 
@@ -543,6 +562,13 @@ function registerShootHandler(socket, gameState, entityManager) {
         isLaser: weapon.isLaser || false,
         isGrenade: weapon.isGrenade || false,
         isCrossbow: weapon.isCrossbow || false,
+        // Nouvelles armes
+        isChainLightning: weapon.isChainLightning || false,
+        isPoisonDart: weapon.isPoisonDart || false,
+        isTeslaCoil: weapon.isTeslaCoil || false,
+        isIceCannon: weapon.isIceCannon || false,
+        isPlasmaRifle: weapon.isPlasmaRifle || false,
+        ignoresWalls: weapon.ignoresWalls || false,
         gravity: weapon.gravity || 0,
         lifetime: weapon.lifetime ? now + weapon.lifetime : null,
         createdAt: now
