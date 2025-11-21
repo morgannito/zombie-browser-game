@@ -277,6 +277,28 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       };
     }
 
+    // Apply skill bonuses from account progression (if player has UUID/sessionId)
+    const player = gameState.players[socket.id];
+    if (sessionId && player && gameState.progressionIntegration) {
+      // Apply skill bonuses asynchronously (don't block spawn)
+      gameState.progressionIntegration.applySkillBonusesOnSpawn(player, sessionId, CONFIG)
+        .then(() => {
+          logger.info('Skill bonuses applied', {
+            socketId: socket.id,
+            sessionId,
+            health: player.health,
+            maxHealth: player.maxHealth
+          });
+        })
+        .catch(error => {
+          logger.error('Failed to apply skill bonuses', {
+            socketId: socket.id,
+            sessionId,
+            error: error.message
+          });
+        });
+    }
+
     // Tracker la nouvelle connexion
     if (!playerRecovered) {
       metricsCollector.incrementTotalPlayers();
