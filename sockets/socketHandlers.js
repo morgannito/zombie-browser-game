@@ -543,6 +543,13 @@ function registerShootHandler(socket, gameState, entityManager) {
         isLaser: weapon.isLaser || false,
         isGrenade: weapon.isGrenade || false,
         isCrossbow: weapon.isCrossbow || false,
+        // Nouvelles armes
+        isChainLightning: weapon.isChainLightning || false,
+        isPoisonDart: weapon.isPoisonDart || false,
+        isTeslaCoil: weapon.isTeslaCoil || false,
+        isIceCannon: weapon.isIceCannon || false,
+        isPlasmaRifle: weapon.isPlasmaRifle || false,
+        ignoresWalls: weapon.ignoresWalls || false,
         gravity: weapon.gravity || 0,
         lifetime: weapon.lifetime ? now + weapon.lifetime : null,
         createdAt: now
