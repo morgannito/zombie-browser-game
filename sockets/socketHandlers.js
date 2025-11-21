@@ -496,6 +496,12 @@ function registerShootHandler(socket, gameState, entityManager) {
 
     const weapon = WEAPONS[player.weapon] || WEAPONS.pistol;
 
+    // Le Tesla Coil est une arme passive gérée automatiquement dans la game loop
+    // Ne pas créer de bullets pour cette arme
+    if (weapon.isTeslaCoil) {
+      return;
+    }
+
     // Appliquer le multiplicateur de cadence de tir
     const fireRate = weapon.fireRate * (player.fireRateMultiplier || 1);
 
