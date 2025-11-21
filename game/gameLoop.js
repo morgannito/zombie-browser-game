@@ -418,6 +418,13 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
 
     // ========== FIN BOSS SPÉCIAUX ==========
 
+    // ========== ZOMBIES ÉLITES ==========
+    updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
+    updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    // Le Splitter est géré dans handleZombieDeath
+    // ========== FIN ZOMBIES ÉLITES ==========
+
     // Mouvement du zombie
     moveZombie(zombie, zombieId, collisionManager, gameState);
   }
@@ -944,6 +951,13 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
       angle = zombie.dashAngle; // Use stored dash angle
     }
 
+    // Apply charge speed if brute is charging
+    if (zombie.type === 'brute' && zombie.isCharging) {
+      const bruteType = ZOMBIE_TYPES.brute;
+      effectiveSpeed = bruteType.chargeSpeed;
+      angle = zombie.chargeAngle; // Use stored charge angle
+    }
+
     const newX = zombie.x + MathUtils.fastCos(angle) * effectiveSpeed;
     const newY = zombie.y + MathUtils.fastSin(angle) * effectiveSpeed;
 
@@ -1328,6 +1342,25 @@ function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManage
   if (zombie.type === 'explosive') {
     handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager);
   }
+
+  // Effet spécial : Zombie Splitter - se divise en plusieurs petits zombies
+  if (zombie.type === 'splitter') {
+    handleSplitterDeath(zombie, zombieId, gameState, entityManager);
+    // Le splitter ne drop pas de loot directement, les splits le dropperont
+    delete gameState.zombies[zombieId];
+    gameState.zombiesKilledThisWave++;
+    return; // Ne pas continuer la fonction
+  }
+
+  // Sauvegarder le zombie mort pour le Necromancer
+  if (!gameState.deadZombies) gameState.deadZombies = [];
+  gameState.deadZombies.push({
+    x: zombie.x,
+    y: zombie.y,
+    type: zombie.type,
+    deathTime: Date.now(),
+    isResurrected: false
+  });
 
   // Créer du loot avec bonus de combo
   let goldBonus = zombie.goldDrop;
@@ -2001,6 +2034,274 @@ function updateFrozenSlowedZombies(gameState, now) {
     if (zombie.slowed && now > zombie.slowed.endTime) {
       zombie.speed = zombie.slowed.originalSpeed;
       delete zombie.slowed;
+    }
+  }
+}
+
+/**
+ * Update Necromancer zombie - resurrects dead zombies
+ */
+function updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState) {
+  if (zombie.type !== 'necromancer') return;
+
+  const necroType = ZOMBIE_TYPES.necromancer;
+
+  // Vérifier le cooldown de résurrection
+  if (!zombie.lastResurrect || now - zombie.lastResurrect >= necroType.resurrectCooldown) {
+    // Initialiser le cimetière de zombies morts si nécessaire
+    if (!gameState.deadZombies) gameState.deadZombies = [];
+
+    // Nettoyer les zombies morts trop vieux (plus de 10 secondes)
+    gameState.deadZombies = gameState.deadZombies.filter(dead => now - dead.deathTime < 10000);
+
+    // Trouver les zombies morts dans le rayon
+    const zombiesToResurrect = [];
+    for (let dead of gameState.deadZombies) {
+      const dist = distance(zombie.x, zombie.y, dead.x, dead.y);
+      if (dist < necroType.resurrectRange && !dead.isResurrected) {
+        zombiesToResurrect.push(dead);
+      }
+    }
+
+    // Ressusciter jusqu'à 2 zombies
+    if (zombiesToResurrect.length > 0) {
+      zombie.lastResurrect = now;
+      const toResurrect = zombiesToResurrect.slice(0, necroType.resurrectMaxTargets);
+
+      for (let dead of toResurrect) {
+        // Marquer comme ressuscité pour éviter les duplicatas
+        dead.isResurrected = true;
+
+        // Créer un nouveau zombie à la position du mort
+        const newZombieId = gameState.nextZombieId++;
+        const resurrectedType = ZOMBIE_TYPES[dead.type] || ZOMBIE_TYPES.normal;
+
+        gameState.zombies[newZombieId] = {
+          id: newZombieId,
+          x: dead.x,
+          y: dead.y,
+          size: resurrectedType.size,
+          color: necroType.auraColor, // Couleur spéciale pour les ressuscités
+          type: dead.type,
+          health: resurrectedType.health * necroType.resurrectHealthPercent,
+          maxHealth: resurrectedType.health,
+          speed: resurrectedType.speed * 0.8, // Plus lents (zombies pourris)
+          damage: resurrectedType.damage * 0.7, // Plus faibles
+          goldDrop: Math.floor(resurrectedType.gold * 0.5),
+          xpDrop: Math.floor(resurrectedType.xp * 0.5),
+          isResurrected: true // Marqueur pour identifier les ressuscités
+        };
+
+        // Effet visuel de résurrection
+        createParticles(dead.x, dead.y, necroType.auraColor, 30, entityManager);
+      }
+
+      // Aura du nécromancien
+      createParticles(zombie.x, zombie.y, necroType.auraColor, 20, entityManager);
+    }
+  }
+}
+
+/**
+ * Update Brute zombie - charges at players and stuns them
+ */
+function updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+  if (zombie.type !== 'brute') return;
+
+  const bruteType = ZOMBIE_TYPES.brute;
+
+  // Vérifier si en train de charger
+  if (zombie.isCharging) {
+    // Continuer la charge jusqu'à la fin
+    if (now < zombie.chargeEndTime) {
+      // La vitesse de charge est gérée dans moveZombie
+
+      // Vérifier collision avec les joueurs pour le stun
+      const nearbyPlayers = collisionManager.findPlayersInRadius(
+        zombie.x, zombie.y, bruteType.stunRadius
+      );
+
+      for (let player of nearbyPlayers) {
+        // Ignorer les joueurs avec protection de spawn ou invisibles
+        if (player.spawnProtection || player.invisible) continue;
+
+        // Appliquer le stun si pas déjà stunné
+        if (!player.stunned || player.stunnedUntil < now) {
+          player.stunned = true;
+          player.stunnedUntil = now + bruteType.stunDuration;
+          player.stunnedBy = zombieId;
+
+          // Gros dégâts de charge
+          player.health -= bruteType.damage * 1.5;
+
+          // Particules d'impact
+          createParticles(player.x, player.y, '#ffff00', 20, entityManager);
+
+          if (player.health <= 0) {
+            player.health = 0;
+            player.alive = false;
+          }
+        }
+      }
+
+      return; // Continuer la charge, ne pas faire le check ci-dessous
+    } else {
+      // Fin de la charge
+      zombie.isCharging = false;
+      zombie.speed = bruteType.speed; // Restaurer la vitesse normale
+    }
+  }
+
+  // Si pas en charge, vérifier si on peut commencer une charge
+  if (!zombie.isCharging && (!zombie.lastCharge || now - zombie.lastCharge >= bruteType.chargeCooldown)) {
+    // Trouver le joueur le plus proche dans la portée
+    const closestPlayer = collisionManager.findClosestPlayer(
+      zombie.x, zombie.y, bruteType.chargeRange,
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
+    );
+
+    if (closestPlayer) {
+      // Commencer la charge !
+      zombie.lastCharge = now;
+      zombie.isCharging = true;
+      zombie.chargeEndTime = now + bruteType.chargeDuration;
+      zombie.speed = bruteType.chargeSpeed;
+
+      // Calculer la direction de charge (ligne droite vers le joueur)
+      const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+      zombie.chargeAngle = angleToPlayer;
+
+      // Particules de départ de charge
+      createParticles(zombie.x, zombie.y, bruteType.chargeColor, 25, entityManager);
+    }
+  }
+}
+
+/**
+ * Update Mimic zombie - disguises as loot and ambushes players
+ */
+function updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+  if (zombie.type !== 'mimic') return;
+
+  const mimicType = ZOMBIE_TYPES.mimic;
+
+  // Initialiser l'état du mimic
+  if (zombie.isRevealed === undefined) {
+    zombie.isRevealed = false;
+    zombie.disguised = true;
+    zombie.size = mimicType.disguisedSize;
+    zombie.color = mimicType.disguiseColor;
+    zombie.speed = 0; // Immobile quand déguisé
+  }
+
+  // Si déguisé, vérifier si un joueur s'approche
+  if (zombie.disguised) {
+    const closestPlayer = collisionManager.findClosestPlayer(
+      zombie.x, zombie.y, mimicType.revealRange,
+      { ignoreSpawnProtection: true, ignoreInvisible: false }
+    );
+
+    if (closestPlayer) {
+      // SE RÉVÉLER !
+      zombie.disguised = false;
+      zombie.isRevealed = true;
+      zombie.size = mimicType.revealedSize;
+      zombie.color = mimicType.revealedColor;
+      zombie.speed = mimicType.speed;
+      zombie.firstAttack = true; // Marquer pour l'attaque d'embuscade
+
+      // Explosion de particules pour la révélation
+      createParticles(zombie.x, zombie.y, mimicType.revealedColor, 40, entityManager);
+      createParticles(zombie.x, zombie.y, '#ffff00', 30, entityManager);
+    }
+  }
+
+  // Si révélé et première attaque, appliquer des dégâts doublés au contact
+  if (zombie.isRevealed && zombie.firstAttack) {
+    const nearbyPlayers = collisionManager.findPlayersInRadius(
+      zombie.x, zombie.y, zombie.size + CONFIG.PLAYER_SIZE
+    );
+
+    for (let player of nearbyPlayers) {
+      if (player.spawnProtection || player.invisible) continue;
+
+      const dist = distance(zombie.x, zombie.y, player.x, player.y);
+      if (dist < zombie.size + CONFIG.PLAYER_SIZE) {
+        // Attaque d'embuscade avec dégâts doublés !
+        const ambushDamage = zombie.damage * mimicType.ambushDamageMultiplier;
+        player.health -= ambushDamage;
+
+        // Particules spéciales pour l'embuscade
+        createParticles(player.x, player.y, '#ff0000', 25, entityManager);
+
+        // Désactiver le bonus d'embuscade après la première attaque
+        zombie.firstAttack = false;
+
+        if (player.health <= 0) {
+          player.health = 0;
+          player.alive = false;
+        }
+
+        break; // Une seule embuscade
+      }
+    }
+  }
+}
+
+/**
+ * Handle Splitter zombie death - splits into multiple smaller zombies
+ */
+function handleSplitterDeath(zombie, zombieId, gameState, entityManager) {
+  const splitterType = ZOMBIE_TYPES.splitter;
+
+  // Explosion visuelle
+  createParticles(zombie.x, zombie.y, splitterType.color, 40, entityManager);
+  createParticles(zombie.x, zombie.y, splitterType.splitColor, 30, entityManager);
+
+  // Créer les splits autour du splitter mort
+  for (let i = 0; i < splitterType.splitCount; i++) {
+    const angle = (Math.PI * 2 * i) / splitterType.splitCount;
+    const spawnDistance = 60; // Distance de spawn autour du splitter
+    const splitX = zombie.x + Math.cos(angle) * spawnDistance;
+    const splitY = zombie.y + Math.sin(angle) * spawnDistance;
+
+    const splitId = gameState.nextZombieId++;
+    gameState.zombies[splitId] = {
+      id: splitId,
+      x: splitX,
+      y: splitY,
+      size: splitterType.splitSize,
+      color: splitterType.splitColor,
+      type: 'splitterMinion', // Type spécial pour éviter les splits récursifs
+      health: zombie.maxHealth * splitterType.splitHealthPercent,
+      maxHealth: zombie.maxHealth * splitterType.splitHealthPercent,
+      speed: splitterType.speed * splitterType.splitSpeedMultiplier,
+      damage: zombie.damage * splitterType.splitDamageMultiplier,
+      goldDrop: Math.floor(splitterType.gold / splitterType.splitCount),
+      xpDrop: Math.floor(splitterType.xp / splitterType.splitCount),
+      isSplit: true // Marqueur
+    };
+
+    // Particules de spawn
+    createParticles(splitX, splitY, splitterType.splitColor, 15, entityManager);
+  }
+
+  // Dégâts de zone aux joueurs proches lors du split
+  for (let playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (!player.alive || player.spawnProtection || player.invisible) continue;
+
+    const dist = distance(zombie.x, zombie.y, player.x, player.y);
+    if (dist < splitterType.splitExplosionRadius) {
+      const explosionDamage = 20; // Dégâts fixes de l'explosion
+      player.health -= explosionDamage;
+
+      createParticles(player.x, player.y, '#ff8800', 10, entityManager);
+
+      if (player.health <= 0) {
+        player.health = 0;
+        player.alive = false;
+      }
     }
   }
 }

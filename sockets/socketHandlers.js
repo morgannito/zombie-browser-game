@@ -386,6 +386,19 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     const timeDelta = now - lastMoveTime;
     player.lastMoveTime = now;
 
+    // CHECK STUN: Si le joueur est stunné, bloquer le mouvement
+    if (player.stunned && player.stunnedUntil > now) {
+      // Le joueur ne peut pas bouger pendant le stun
+      socket.emit('positionCorrection', { x: player.x, y: player.y });
+      socket.emit('stunned', { duration: player.stunnedUntil - now }); // Notifier le client
+      return;
+    } else if (player.stunned && player.stunnedUntil <= now) {
+      // Fin du stun
+      player.stunned = false;
+      delete player.stunnedUntil;
+      delete player.stunnedBy;
+    }
+
     // Initialize budget if not present (start full)
     // Base speed: 5px/frame @ 60fps = 0.3px/ms
     const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
