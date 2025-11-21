@@ -705,6 +705,31 @@ class AdvancedAudioManager {
   }
 
   /**
+   * Méthode de compatibilité avec l'ancienne interface AudioManager
+   */
+  play(soundType) {
+    // Map old sound types to new system
+    const soundMap = {
+      'click': 'ui',
+      'doubleClick': 'ui',
+      'longPress': 'ui',
+      'swipe': 'ui',
+      'shoot': 'shoot'
+    };
+
+    const mappedSound = soundMap[soundType] || soundType;
+    this.playSound(mappedSound, soundType);
+  }
+
+  /**
+   * Méthode de compatibilité - toggle (toggle both sound and music)
+   */
+  toggle() {
+    this.soundsEnabled = !this.soundsEnabled;
+    return this.soundsEnabled;
+  }
+
+  /**
    * Active/désactive le son
    */
   toggleSound() {

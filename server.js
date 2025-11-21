@@ -144,6 +144,7 @@ app.use('/api/auth', initAuthRoutes(container, jwtService));
 app.use('/api/metrics', initMetricsRoutes(metricsCollector));
 app.use('/api/leaderboard', initLeaderboardRoutes(container));
 app.use('/api/players', initPlayersRoutes(container));
+app.use('/api/progression', require('./routes/progression')(container)); // Account progression & skill tree
 app.use('/', initHealthRoutes(dbManager));
 
 // ============================================
