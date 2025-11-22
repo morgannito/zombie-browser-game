@@ -19,6 +19,53 @@ const { CONFIG, ZOMBIE_TYPES, POWERUP_TYPES } = ConfigManager;
 let gameLoopRunning = false;
 
 /**
+ * Handle player death with progression integration (XP, achievements, second chance)
+ * @param {Object} player - Player object
+ * @param {String} playerId - Player socket ID
+ * @param {Object} gameState - Game state
+ * @param {Number} now - Current timestamp
+ * @param {Boolean} isBoss - Whether killed by boss
+ * @returns {Boolean} - True if player was revived by Second Chance
+ */
+function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss = false) {
+  if (player.health > 0) return false;
+
+  player.health = 0;
+
+  // Check for Second Chance skill (revive)
+  const revived = gameState.progressionIntegration?.checkSecondChance(player);
+
+  if (!revived) {
+    player.alive = false;
+
+    // Handle player death (XP + achievements)
+    if (gameState.progressionIntegration && player.sessionId) {
+      // Ensure player has all necessary stats for XP calculation
+      player.wave = gameState.wave;
+      player.maxCombo = player.highestCombo || player.combo || 0;
+      player.survivalTime = Math.floor((now - player.survivalTime) / 1000);
+      player.bossKills = isBoss ? 1 : 0;
+
+      const sessionStats = {
+        wave: gameState.wave,
+        level: player.level,
+        kills: player.zombiesKilled || player.kills || 0,
+        survivalTimeSeconds: player.survivalTime,
+        comboMax: player.maxCombo,
+        bossKills: player.bossKills
+      };
+
+      gameState.progressionIntegration.handlePlayerDeath(player, player.sessionId, sessionStats)
+        .catch(err => {
+          console.error('Failed to handle player death:', err);
+        });
+    }
+  }
+
+  return revived;
+}
+
+/**
  * Main game loop function
  * @param {Object} gameState - Game state object
  * @param {Object} io - Socket.IO instance
@@ -238,8 +285,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
 
           // Vérifier la mort
           if (player.health <= 0) {
-            player.alive = false;
-            player.health = 0;
+            handlePlayerDeathProgression(player, playerId, gameState, now, false);
             createParticles(player.x, player.y, '#ff0000', 30, entityManager);
           }
         }
@@ -587,8 +633,7 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
         createParticles(player.x, player.y, '#00ff00', 5, entityManager);
 
         if (player.health <= 0) {
-          player.health = 0;
-          player.alive = false;
+          handlePlayerDeathProgression(player, playerId, gameState, now, true);
         }
       }
     }
@@ -891,8 +936,7 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
           createParticles(player.x, player.y, '#ff0000', 15, entityManager);
 
           if (player.health <= 0) {
-            player.health = 0;
-            player.alive = false;
+            handlePlayerDeathProgression(player, playerId, gameState, now, true);
           }
         }
       }
@@ -1030,8 +1074,7 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
           }
 
           if (player.health <= 0) {
-            player.health = 0;
-            player.alive = false;
+            handlePlayerDeathProgression(player, playerId, gameState, now, false);
           }
         }
       }
@@ -1105,8 +1148,7 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
 
           // Vérifier si le joueur est mort
           if (player.health <= 0) {
-            player.health = 0;
-            player.alive = false;
+            handlePlayerDeathProgression(player, playerId, gameState, now, false);
           }
         }
       }
@@ -1192,8 +1234,7 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
       player.health -= bullet.damage;
 
       if (player.health <= 0) {
-        player.health = 0;
-        player.alive = false;
+        handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
       }
 
       // Créer des particules de sang
@@ -1414,8 +1455,7 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
       if (dist < explosionType.explosionRadius) {
         player.health -= explosionType.explosionDamage;
         if (player.health <= 0) {
-          player.health = 0;
-          player.alive = false;
+          handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
         }
       }
     }
@@ -2138,8 +2178,7 @@ function updateBruteZombie(zombie, zombieId, now, collisionManager, entityManage
           createParticles(player.x, player.y, '#ffff00', 20, entityManager);
 
           if (player.health <= 0) {
-            player.health = 0;
-            player.alive = false;
+            handlePlayerDeathProgression(player, playerId, gameState, now, false);
           }
         }
       }
@@ -2238,8 +2277,7 @@ function updateMimicZombie(zombie, zombieId, now, collisionManager, entityManage
         zombie.firstAttack = false;
 
         if (player.health <= 0) {
-          player.health = 0;
-          player.alive = false;
+          handlePlayerDeathProgression(player, playerId, gameState, now, false);
         }
 
         break; // Une seule embuscade
@@ -2299,8 +2337,7 @@ function handleSplitterDeath(zombie, zombieId, gameState, entityManager) {
       createParticles(player.x, player.y, '#ff8800', 10, entityManager);
 
       if (player.health <= 0) {
-        player.health = 0;
-        player.alive = false;
+        handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
       }
     }
   }

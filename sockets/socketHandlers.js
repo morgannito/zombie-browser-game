@@ -177,6 +177,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       const restoredPlayer = {
         ...savedData.playerState,
         id: socket.id, // Update to new socket ID
+        sessionId: sessionId, // Ensure sessionId is set
         lastActivityTime: Date.now() // Reset activity timer
       };
 
@@ -220,6 +221,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
       gameState.players[socket.id] = {
         id: socket.id,
+        sessionId: sessionId || null, // Store sessionId for progression tracking
         nickname: null, // Pseudo non défini au départ
         hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
         spawnProtection: false, // Protection de spawn inactive
@@ -275,6 +277,28 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
         autoTurrets: 0,
         lastAutoShot: Date.now()
       };
+    }
+
+    // Apply skill bonuses from account progression (if player has UUID/sessionId)
+    const player = gameState.players[socket.id];
+    if (sessionId && player && gameState.progressionIntegration) {
+      // Apply skill bonuses asynchronously (don't block spawn)
+      gameState.progressionIntegration.applySkillBonusesOnSpawn(player, sessionId, CONFIG)
+        .then(() => {
+          logger.info('Skill bonuses applied', {
+            socketId: socket.id,
+            sessionId,
+            health: player.health,
+            maxHealth: player.maxHealth
+          });
+        })
+        .catch(error => {
+          logger.error('Failed to apply skill bonuses', {
+            socketId: socket.id,
+            sessionId,
+            error: error.message
+          });
+        });
     }
 
     // Tracker la nouvelle connexion

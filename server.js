@@ -144,6 +144,8 @@ app.use('/api/auth', initAuthRoutes(container, jwtService));
 app.use('/api/metrics', initMetricsRoutes(metricsCollector));
 app.use('/api/leaderboard', initLeaderboardRoutes(container));
 app.use('/api/players', initPlayersRoutes(container));
+app.use('/api/progression', require('./routes/progression')(container)); // Account progression & skill tree
+app.use('/api/achievements', require('./routes/achievements')(container)); // Achievements system
 app.use('/', initHealthRoutes(dbManager));
 
 // ============================================
@@ -172,6 +174,12 @@ const zombieManager = new ZombieManager(
 
 // CRITICAL FIX: Add roomManager to gameState for zombie movement
 gameState.roomManager = roomManager;
+
+// Initialize progression integration (XP, skills, achievements)
+const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
+const progressionIntegration = new ProgressionIntegration(container, io);
+gameState.progressionIntegration = progressionIntegration;
+logger.info('Progression integration initialized');
 
 // Load first room after roomManager is initialized
 const { loadRoom } = require('./game/roomFunctions');

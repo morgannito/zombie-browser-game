@@ -144,7 +144,26 @@ class GameEngine {
 
     window.networkManager = new NetworkManager(socket);
     window.gameUI = new UIManager(window.gameState);
-    window.audioManager = new AudioManager(); // Audio feedback
+
+    // Initialize account progression manager (meta progression, skills, XP)
+    if (typeof AccountProgressionManager !== 'undefined') {
+      window.accountProgressionManager = new AccountProgressionManager();
+      window.accountProgressionManager.init(socket);
+      console.log('✓ Account progression manager initialized');
+    } else {
+      console.warn('⚠ AccountProgressionManager not found');
+    }
+
+    // Initialize advanced audio system (with music, enhanced sound effects)
+    if (typeof AdvancedAudioManager !== 'undefined') {
+      window.audioManager = new AdvancedAudioManager();
+      window.advancedAudio = window.audioManager; // Alias for compatibility
+      console.log('✓ Advanced audio system initialized');
+    } else {
+      window.audioManager = new AudioManager(); // Fallback
+      console.warn('⚠ Using fallback audio - AdvancedAudioManager not found');
+    }
+
     window.comboSystem = new ComboSystem(); // Système de combos
     window.leaderboardSystem = new LeaderboardSystem(); // Système de classement
     window.toastManager = new ToastManager(); // Système de notifications
