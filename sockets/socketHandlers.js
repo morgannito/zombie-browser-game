@@ -177,6 +177,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       const restoredPlayer = {
         ...savedData.playerState,
         id: socket.id, // Update to new socket ID
+        sessionId: sessionId, // Ensure sessionId is set
         lastActivityTime: Date.now() // Reset activity timer
       };
 
@@ -220,6 +221,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
       gameState.players[socket.id] = {
         id: socket.id,
+        sessionId: sessionId || null, // Store sessionId for progression tracking
         nickname: null, // Pseudo non défini au départ
         hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
         spawnProtection: false, // Protection de spawn inactive

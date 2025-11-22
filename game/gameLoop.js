@@ -39,17 +39,26 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
     player.alive = false;
 
     // Handle player death (XP + achievements)
-    if (gameState.progressionIntegration) {
-      gameState.progressionIntegration.handlePlayerDeath(playerId, {
+    if (gameState.progressionIntegration && player.sessionId) {
+      // Ensure player has all necessary stats for XP calculation
+      player.wave = gameState.wave;
+      player.maxCombo = player.highestCombo || player.combo || 0;
+      player.survivalTime = Math.floor((now - player.survivalTime) / 1000);
+      player.bossKills = isBoss ? 1 : 0;
+
+      const sessionStats = {
         wave: gameState.wave,
         level: player.level,
         kills: player.zombiesKilled || player.kills || 0,
-        survivalTimeSeconds: Math.floor((now - player.survivalTime) / 1000),
-        comboMax: player.highestCombo || player.combo || 0,
-        bossKills: isBoss ? 1 : 0
-      }).catch(err => {
-        console.error('Failed to handle player death:', err);
-      });
+        survivalTimeSeconds: player.survivalTime,
+        comboMax: player.maxCombo,
+        bossKills: player.bossKills
+      };
+
+      gameState.progressionIntegration.handlePlayerDeath(player, player.sessionId, sessionStats)
+        .catch(err => {
+          console.error('Failed to handle player death:', err);
+        });
     }
   }
 
