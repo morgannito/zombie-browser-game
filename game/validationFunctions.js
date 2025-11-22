@@ -1,5 +1,5 @@
 /**
- * @fileoverview Input validation utilities
+ * @fileoverview Input validation utilities with Joi
  * @description Provides validation functions for socket events
  * - Number validation with range checking
  * - String validation with length limits
@@ -9,8 +9,30 @@
  * - Buy item data validation
  */
 
+const Joi = require('joi');
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG, LEVEL_UP_UPGRADES, SHOP_ITEMS } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
+
+// Joi validation schemas
+const movementSchema = Joi.object({
+  x: Joi.number().min(0).max(CONFIG.ROOM_WIDTH).required(),
+  y: Joi.number().min(0).max(CONFIG.ROOM_HEIGHT).required(),
+  angle: Joi.number().min(-Math.PI * 2).max(Math.PI * 2).required()
+}).unknown(false);
+
+const shootSchema = Joi.object({
+  angle: Joi.number().min(-Math.PI * 2).max(Math.PI * 2).required()
+}).unknown(false);
+
+const upgradeSchema = Joi.object({
+  upgradeId: Joi.string().max(100).required()
+}).unknown(false);
+
+const buyItemSchema = Joi.object({
+  itemId: Joi.string().max(100).required(),
+  category: Joi.string().valid('permanent', 'temporary').required()
+}).unknown(false);
 
 /**
  * Valide que la valeur est un nombre fini et valide
@@ -39,20 +61,14 @@ function isValidString(value, maxLength = 1000) {
  * @returns {Object|null} Données validées ou null si invalides
  */
 function validateMovementData(data) {
-  if (!data || typeof data !== 'object') return null;
+  const { error, value } = movementSchema.validate(data);
 
-  // Valider x, y, angle comme nombres valides
-  if (!isValidNumber(data.x, 0, CONFIG.ROOM_WIDTH) ||
-      !isValidNumber(data.y, 0, CONFIG.ROOM_HEIGHT) ||
-      !isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {
+  if (error) {
+    logger.debug('Movement validation failed', { error: error.message, data });
     return null;
   }
 
-  return {
-    x: data.x,
-    y: data.y,
-    angle: data.angle
-  };
+  return value;
 }
 
 /**
@@ -61,13 +77,14 @@ function validateMovementData(data) {
  * @returns {Object|null}
  */
 function validateShootData(data) {
-  if (!data || typeof data !== 'object') return null;
+  const { error, value } = shootSchema.validate(data);
 
-  if (!isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {
+  if (error) {
+    logger.debug('Shoot validation failed', { error: error.message, data });
     return null;
   }
 
-  return { angle: data.angle };
+  return value;
 }
 
 /**
@@ -76,18 +93,20 @@ function validateShootData(data) {
  * @returns {Object|null}
  */
 function validateUpgradeData(data) {
-  if (!data || typeof data !== 'object') return null;
+  const { error, value } = upgradeSchema.validate(data);
 
-  if (!isValidString(data.upgradeId, 100)) {
+  if (error) {
+    logger.debug('Upgrade validation failed', { error: error.message, data });
     return null;
   }
 
   // Vérifier que l'upgrade existe dans la configuration
-  if (!LEVEL_UP_UPGRADES[data.upgradeId]) {
+  if (!LEVEL_UP_UPGRADES[value.upgradeId]) {
+    logger.debug('Unknown upgrade ID', { upgradeId: value.upgradeId });
     return null;
   }
 
-  return { upgradeId: data.upgradeId };
+  return value;
 }
 
 /**
@@ -96,26 +115,20 @@ function validateUpgradeData(data) {
  * @returns {Object|null}
  */
 function validateBuyItemData(data) {
-  if (!data || typeof data !== 'object') return null;
+  const { error, value } = buyItemSchema.validate(data);
 
-  if (!isValidString(data.itemId, 100) || !isValidString(data.category, 50)) {
-    return null;
-  }
-
-  // Vérifier que la catégorie est valide
-  if (data.category !== 'permanent' && data.category !== 'temporary') {
+  if (error) {
+    logger.debug('Buy item validation failed', { error: error.message, data });
     return null;
   }
 
   // Vérifier que l'item existe dans la configuration
-  if (!SHOP_ITEMS[data.category] || !SHOP_ITEMS[data.category][data.itemId]) {
+  if (!SHOP_ITEMS[value.category] || !SHOP_ITEMS[value.category][value.itemId]) {
+    logger.debug('Unknown shop item', { itemId: value.itemId, category: value.category });
     return null;
   }
 
-  return {
-    itemId: data.itemId,
-    category: data.category
-  };
+  return value;
 }
 
 module.exports = {

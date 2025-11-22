@@ -8,6 +8,7 @@
  */
 
 require('dotenv').config();
+const logger = require('../lib/infrastructure/Logger');
 
 // Server port
 const PORT = process.env.PORT || 3000;
@@ -19,7 +20,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 
 // CORS strict validation in production
 if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
-  console.error('[SECURITY] ALLOWED_ORIGINS must be set in production');
+  logger.error('SECURITY: ALLOWED_ORIGINS must be set in production');
   process.exit(1);
 }
 

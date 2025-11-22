@@ -9,6 +9,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { LEVEL_UP_UPGRADES } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
 
 /**
  * Fonction utilitaire pour calculer la distance
@@ -117,7 +118,7 @@ function generateUpgradeChoices() {
 
   // CORRECTION: Log warning si on n'a pas pu générer 3 choix
   if (choices.length < 3) {
-    console.warn('[UPGRADE] Could only generate', choices.length, 'upgrade choices out of 3 (total available:', upgradeKeys.length, ')');
+    logger.warn('Could only generate limited upgrade choices', { generated: choices.length, requested: 3, totalAvailable: upgradeKeys.length });
   }
 
   return choices;

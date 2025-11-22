@@ -8,6 +8,7 @@
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../lib/infrastructure/Logger');
 
 class DatabaseManager {
   /**
@@ -50,11 +51,11 @@ class DatabaseManager {
     // Set up hooks for debugging/logging
     if (this.options.verbose) {
       this.db.on('profile', (sql, time) => {
-        console.log(`[DB] Query took ${time}ms: ${sql}`);
+        logger.debug('Query execution time', { time: `${time}ms`, sql });
       });
     }
 
-    console.log(`[DatabaseManager] Connected to database: ${this.dbPath}`);
+    logger.info('Database connected', { path: this.dbPath });
     return this.db;
   }
 
@@ -126,10 +127,10 @@ class DatabaseManager {
       transaction();
 
       this.isInitialized = true;
-      console.log('[DatabaseManager] Schema initialized successfully');
+      logger.info('Database schema initialized successfully');
       return true;
     } catch (error) {
-      console.error('[DatabaseManager] Failed to initialize schema:', error);
+      logger.error('Failed to initialize schema', { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -142,7 +143,7 @@ class DatabaseManager {
   seedDatabase(forceReseed = false) {
     const seedPath = path.join(__dirname, 'seed.sql');
     if (!fs.existsSync(seedPath)) {
-      console.warn('[DatabaseManager] Seed file not found, skipping seeding');
+      logger.warn('Seed file not found, skipping seeding');
       return false;
     }
 
@@ -150,7 +151,7 @@ class DatabaseManager {
       // Check if already seeded
       const achievementCount = this.db.prepare('SELECT COUNT(*) as count FROM achievements').get();
       if (achievementCount.count > 0 && !forceReseed) {
-        console.log('[DatabaseManager] Database already seeded, skipping');
+        logger.info('Database already seeded, skipping');
         return true;
       }
 
@@ -162,10 +163,10 @@ class DatabaseManager {
 
       transaction();
 
-      console.log('[DatabaseManager] Database seeded successfully');
+      logger.info('Database seeded successfully');
       return true;
     } catch (error) {
-      console.error('[DatabaseManager] Failed to seed database:', error);
+      logger.error('Failed to seed database', { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -177,7 +178,7 @@ class DatabaseManager {
   runMigrations() {
     const migrationsDir = path.join(__dirname, 'migrations');
     if (!fs.existsSync(migrationsDir)) {
-      console.log('[DatabaseManager] No migrations directory found');
+      logger.info('No migrations directory found');
       return 0;
     }
 
@@ -223,9 +224,9 @@ class DatabaseManager {
 
         transaction();
         appliedCount++;
-        console.log(`[DatabaseManager] Applied migration: ${file}`);
+        logger.info('Migration applied', { file });
       } catch (error) {
-        console.error(`[DatabaseManager] Failed to apply migration ${file}:`, error);
+        logger.error('Failed to apply migration', { file, error: error.message, stack: error.stack });
         throw error;
       }
     }
@@ -249,10 +250,10 @@ class DatabaseManager {
       // Use better-sqlite3's backup method for safe backup
       this.db.backup(backupPath);
 
-      console.log(`[DatabaseManager] Database backed up to: ${backupPath}`);
+      logger.info('Database backed up', { path: backupPath });
       return true;
     } catch (error) {
-      console.error('[DatabaseManager] Backup failed:', error);
+      logger.error('Backup failed', { error: error.message, stack: error.stack });
       return false;
     }
   }
@@ -264,10 +265,10 @@ class DatabaseManager {
   vacuum() {
     try {
       this.db.exec('VACUUM');
-      console.log('[DatabaseManager] Database vacuumed successfully');
+      logger.info('Database vacuumed successfully');
       return true;
     } catch (error) {
-      console.error('[DatabaseManager] Vacuum failed:', error);
+      logger.error('Vacuum failed', { error: error.message, stack: error.stack });
       return false;
     }
   }
@@ -279,10 +280,10 @@ class DatabaseManager {
   analyze() {
     try {
       this.db.exec('ANALYZE');
-      console.log('[DatabaseManager] Database analyzed successfully');
+      logger.info('Database analyzed successfully');
       return true;
     } catch (error) {
-      console.error('[DatabaseManager] Analyze failed:', error);
+      logger.error('Analyze failed', { error: error.message, stack: error.stack });
       return false;
     }
   }
@@ -311,7 +312,7 @@ class DatabaseManager {
         walMode: this.db.pragma('journal_mode', { simple: true })
       };
     } catch (error) {
-      console.error('[DatabaseManager] Failed to get stats:', error);
+      logger.error('Failed to get database stats', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -324,7 +325,7 @@ class DatabaseManager {
       this.db.close();
       this.db = null;
       this.isInitialized = false;
-      console.log('[DatabaseManager] Database connection closed');
+      logger.info('Database connection closed');
     }
   }
 

@@ -731,7 +731,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
  */
 function registerBuyItemHandler(socket, gameState) {
   socket.on('buyItem', safeHandler('buyItem', function (data) {
-    console.log('[Shop Server] Buy item request received:', data, 'from socket:', socket.id);
+    logger.debug('Buy item request received', { data, socketId: socket.id });
 
     // VALIDATION: Vérifier et sanitize les données d'entrée
     const validatedData = validateBuyItemData(data);
@@ -746,17 +746,17 @@ function registerBuyItemHandler(socket, gameState) {
 
     // Rate limiting
     if (!checkRateLimit(socket.id, 'buyItem')) {
-      console.log('[Shop Server] Rate limit exceeded for socket:', socket.id);
+      logger.warn('Buy item rate limit exceeded', { socketId: socket.id });
       return;
     }
 
     const player = gameState.players[socket.id];
     if (!player || !player.alive || !player.hasNickname) {
-      console.log('[Shop Server] Player not valid:', { exists: !!player, alive: player?.alive, hasNickname: player?.hasNickname });
+      logger.debug('Buy item rejected - player not valid', { exists: !!player, alive: player?.alive, hasNickname: player?.hasNickname });
       return;
     }
 
-    console.log('[Shop Server] Player gold before purchase:', player.gold);
+    logger.debug('Player gold before purchase', { gold: player.gold, socketId: socket.id });
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -796,7 +796,7 @@ function registerBuyItemHandler(socket, gameState) {
       // Appliquer l'effet
       item.effect(player);
 
-      console.log('[Shop Server] Permanent item purchased successfully:', itemId, 'New level:', player.upgrades[itemId], 'Gold remaining:', player.gold);
+      logger.info('Permanent item purchased', { itemId, newLevel: player.upgrades[itemId], goldRemaining: player.gold, player: player.nickname || socket.id });
       socket.emit('shopUpdate', { success: true, itemId, category });
 
     } else if (category === 'temporary') {
@@ -819,7 +819,7 @@ function registerBuyItemHandler(socket, gameState) {
       // Appliquer l'effet
       item.effect(player);
 
-      console.log('[Shop Server] Temporary item purchased successfully:', itemId, 'Gold remaining:', player.gold);
+      logger.info('Temporary item purchased', { itemId, goldRemaining: player.gold, player: player.nickname || socket.id });
       socket.emit('shopUpdate', { success: true, itemId, category });
     }
   }));
