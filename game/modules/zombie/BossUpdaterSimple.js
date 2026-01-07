@@ -176,8 +176,8 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
     }
   }
 
-  // Invocation (Phase 3)
-  if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
+  // Invocation (Phase 3) - SEULEMENT le vrai boss, pas les clones
+  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
     zombie.lastSummon = now;
 
     // Invoquer 5 zombies normaux (avec limite performance)
@@ -190,8 +190,8 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
     createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
   }
 
-  // Clones (Phase 3) - 2 clones de 500 HP pour 30 secondes
-  if (zombie.phase >= 3 && (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)) {
+  // Clones (Phase 3) - SEULEMENT le vrai boss, pas les clones (FIX LAG)
+  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)) {
     zombie.lastClone = now;
 
     // Créer 2 clones autour du boss
