@@ -16,6 +16,11 @@ class Renderer {
     this.performanceSettings = null; // Will be set by GameEngine
     this.gridCanvas = null; // Offscreen canvas for grid optimization
     this.gridConfig = null; // Store config to detect changes
+
+    // Performance optimizations
+    this.frustumCuller = window.FrustumCuller ? new window.FrustumCuller() : null;
+    this.maxParticles = 100; // Limite particules actives
+    this.cullStats = { visible: 0, total: 0, culled: 0 };
   }
 
   setCamera(camera) {
