@@ -307,17 +307,6 @@ function handleTeslaKill(zombie, player, gameState, entityManager, now) {
 }
 
 /**
- * @deprecated Use HazardManager.update() instead - Kept for backward compatibility
- */
-function updateToxicPools(gameState, now, entityManager) {
-  // This function is now handled by HazardManager
-  // Kept for backward compatibility if called elsewhere
-  if (gameState.hazardManager) {
-    gameState.hazardManager.updateToxicPools(now);
-  }
-}
-
-/**
  * Update particles
  */
 function updateParticles(gameState) {
