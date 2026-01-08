@@ -116,6 +116,7 @@ class Renderer {
     // Render layers (bottom to top)
     this.renderFloor(gameState.config);
     this.renderGrid(gameState.config);
+    this.renderStaticProps(gameState.state.staticProps, 'ground'); // Ground layer props
     this.renderWalls(gameState.state.walls);
     this.renderDoors(gameState.state.doors);
     this.renderPowerups(gameState.state.powerups, gameState.powerupTypes, gameState.config, dateNow);
@@ -132,6 +133,7 @@ class Renderer {
     this.renderBullets(gameState.state.bullets, gameState.config);
     this.renderZombies(gameState.state.zombies, timestamp);
     this.renderPlayers(gameState.state.players, playerId, gameState.config, dateNow, timestamp);
+    this.renderStaticProps(gameState.state.staticProps, 'overlay'); // Overlay layer props (trees, posts)
     this.renderTargetIndicator(player); // Show auto-shoot target indicator
 
     // Check zombie damage for damage numbers
@@ -408,6 +410,226 @@ class Renderer {
       (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
       (B < 255 ? B < 1 ? 0 : B : 255))
       .toString(16).slice(1);
+  }
+
+  renderStaticProps(props, layer = 'all') {
+    if (!props || props.length === 0) return;
+
+    props.forEach(prop => {
+      // Layer filtering
+      if (layer === 'ground' && prop.renderLayers) return;
+      if (layer === 'overlay' && !prop.renderLayers) return;
+
+      // Viewport culling
+      if (!this.camera.isInViewport(prop.x, prop.y, Math.max(prop.width, prop.height) * 2)) {
+        return;
+      }
+
+      this.ctx.save();
+      this.ctx.translate(prop.x, prop.y);
+      this.ctx.rotate(prop.rotation || 0);
+
+      // Render shadow
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      this.ctx.beginPath();
+      this.ctx.ellipse(3, prop.height / 4, prop.width / 2 * (prop.shadowSize || 1), prop.height / 8, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Render based on type
+      switch (prop.type) {
+        case 'tree':
+          this.renderTree(prop);
+          break;
+        case 'rock':
+          this.renderRock(prop);
+          break;
+        case 'car':
+          this.renderCar(prop);
+          break;
+        case 'bush':
+          this.renderBush(prop);
+          break;
+        case 'lampPost':
+          this.renderLampPost(prop);
+          break;
+        case 'fence':
+          this.renderFence(prop);
+          break;
+        case 'sign':
+          this.renderSign(prop);
+          break;
+        case 'bench':
+          this.renderBench(prop);
+          break;
+        default:
+          // Generic prop
+          this.ctx.fillStyle = prop.color || '#888';
+          this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height);
+      }
+
+      this.ctx.restore();
+    });
+  }
+
+  renderTree(prop) {
+    // Trunk
+    this.ctx.fillStyle = prop.trunkColor || '#4a3520';
+    this.ctx.fillRect(-8, -10, 16, 40);
+
+    // Foliage (3 layers for depth)
+    const colors = ['#2d5016', '#3a6b35', '#4a7d45'];
+    const sizes = [40, 35, 30];
+
+    for (let i = 0; i < 3; i++) {
+      this.ctx.fillStyle = colors[i];
+      this.ctx.beginPath();
+      this.ctx.ellipse(0, -40 - i * 10, sizes[i], sizes[i] * 0.8, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+
+    // Highlight
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    this.ctx.beginPath();
+    this.ctx.ellipse(-10, -50, 12, 10, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  renderRock(prop) {
+    this.ctx.fillStyle = prop.color || '#5a5a5a';
+    this.ctx.strokeStyle = this.darkenColor(prop.color || '#5a5a5a', 30);
+    this.ctx.lineWidth = 2;
+
+    // Irregular rock shape
+    this.ctx.beginPath();
+    const points = 8;
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const variance = 0.7 + Math.sin(i + prop.variant) * 0.3;
+      const x = Math.cos(angle) * prop.width / 2 * variance;
+      const y = Math.sin(angle) * prop.height / 2 * variance;
+      if (i === 0) this.ctx.moveTo(x, y);
+      else this.ctx.lineTo(x, y);
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Cracks
+    this.ctx.strokeStyle = this.darkenColor(prop.color, 50);
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-5, -5);
+    this.ctx.lineTo(8, 5);
+    this.ctx.moveTo(0, -8);
+    this.ctx.lineTo(-6, 8);
+    this.ctx.stroke();
+  }
+
+  renderCar(prop) {
+    // Car body
+    this.ctx.fillStyle = prop.color || '#c0c0c0';
+    this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height);
+
+    // Windows
+    this.ctx.fillStyle = '#4a7d9d';
+    this.ctx.fillRect(-prop.width / 2 + 10, -prop.height / 2 + 5, prop.width / 3, prop.height - 10);
+
+    // Wheels
+    this.ctx.fillStyle = '#1a1a1a';
+    this.ctx.beginPath();
+    this.ctx.arc(-prop.width / 3, prop.height / 2, 8, 0, Math.PI * 2);
+    this.ctx.arc(prop.width / 3, prop.height / 2, 8, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Headlights
+    this.ctx.fillStyle = '#ffff99';
+    this.ctx.fillRect(prop.width / 2 - 5, -prop.height / 2 + 8, 5, 8);
+    this.ctx.fillRect(prop.width / 2 - 5, prop.height / 2 - 16, 5, 8);
+  }
+
+  renderBush(prop) {
+    this.ctx.fillStyle = prop.color || '#3a6b35';
+
+    // Multiple circles for bushy appearance
+    for (let i = 0; i < 5; i++) {
+      const x = (i - 2) * 8;
+      const y = Math.sin(i) * 5;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, 12, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+
+  renderLampPost(prop) {
+    // Post
+    this.ctx.fillStyle = prop.color || '#4a4a4a';
+    this.ctx.fillRect(-5, -prop.height / 2, 10, prop.height);
+
+    // Lamp
+    this.ctx.fillStyle = '#6a6a6a';
+    this.ctx.beginPath();
+    this.ctx.arc(0, -prop.height / 2, 12, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Light glow
+    const gradient = this.ctx.createRadialGradient(0, -prop.height / 2, 0, 0, -prop.height / 2, 30);
+    gradient.addColorStop(0, 'rgba(255, 255, 153, 0.4)');
+    gradient.addColorStop(1, 'rgba(255, 255, 153, 0)');
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+    this.ctx.arc(0, -prop.height / 2, 30, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  renderFence(prop) {
+    this.ctx.fillStyle = prop.color || '#6b4423';
+    this.ctx.strokeStyle = this.darkenColor(prop.color || '#6b4423', 30);
+    this.ctx.lineWidth = 2;
+
+    // Horizontal beams
+    this.ctx.fillRect(-prop.width / 2, -5, prop.width, 3);
+    this.ctx.fillRect(-prop.width / 2, 5, prop.width, 3);
+
+    // Vertical posts
+    for (let i = -prop.width / 2; i <= prop.width / 2; i += 15) {
+      this.ctx.fillRect(i - 2, -prop.height / 2, 4, prop.height);
+    }
+  }
+
+  renderSign(prop) {
+    // Post
+    this.ctx.fillStyle = '#6b4423';
+    this.ctx.fillRect(-3, 0, 6, prop.height / 2);
+
+    // Sign board
+    this.ctx.fillStyle = prop.color || '#d4a574';
+    this.ctx.strokeStyle = '#4a3520';
+    this.ctx.lineWidth = 2;
+    this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height / 2);
+    this.ctx.strokeRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height / 2);
+
+    // Text lines
+    this.ctx.fillStyle = '#4a3520';
+    this.ctx.fillRect(-10, -prop.height / 2 + 8, 20, 2);
+    this.ctx.fillRect(-10, -prop.height / 2 + 14, 20, 2);
+  }
+
+  renderBench(prop) {
+    this.ctx.fillStyle = prop.color || '#6b4423';
+    this.ctx.strokeStyle = this.darkenColor(prop.color || '#6b4423', 30);
+    this.ctx.lineWidth = 2;
+
+    // Seat
+    this.ctx.fillRect(-prop.width / 2, -8, prop.width, 8);
+
+    // Backrest
+    this.ctx.fillRect(-prop.width / 2, -prop.height / 2, 5, 20);
+    this.ctx.fillRect(prop.width / 2 - 5, -prop.height / 2, 5, 20);
+    this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, 5);
+
+    // Legs
+    this.ctx.fillRect(-prop.width / 2 + 5, 0, 4, 10);
+    this.ctx.fillRect(prop.width / 2 - 9, 0, 4, 10);
   }
 
   renderParticles(particles) {
