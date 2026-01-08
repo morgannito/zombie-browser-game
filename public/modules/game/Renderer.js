@@ -110,6 +110,9 @@ class Renderer {
 
     const cameraPos = this.camera.getPosition();
 
+    // Apply weather fog overlay BEFORE world rendering
+    this.applyWeatherFog(gameState.state.weather, 'before');
+
     this.ctx.save();
     this.ctx.translate(-cameraPos.x, -cameraPos.y);
 
@@ -136,6 +139,7 @@ class Renderer {
     this.renderZombies(gameState.state.zombies, timestamp);
     this.renderPlayers(gameState.state.players, playerId, gameState.config, dateNow, timestamp);
     this.renderStaticProps(gameState.state.staticProps, 'overlay'); // Overlay layer props (trees, posts)
+    this.renderWeather(gameState.state.weather); // Render rain/snow particles
     this.renderTargetIndicator(player); // Show auto-shoot target indicator
 
     // Check zombie damage for damage numbers
@@ -147,6 +151,9 @@ class Renderer {
     this.renderDamageNumbers();
 
     this.ctx.restore();
+
+    // Apply weather effects AFTER world rendering
+    this.applyWeatherFog(gameState.state.weather, 'after');
 
     // Render minimap
     this.renderMinimap(gameState, playerId);
@@ -2717,6 +2724,90 @@ class Renderer {
   /**
    * Render damage numbers
    */
+  applyWeatherFog(weather, stage = 'before') {
+    if (!weather || weather.intensity === 0) return;
+
+    if (stage === 'before') {
+      // Apply ambient light darkening
+      if (weather.ambientLight < 1) {
+        this.ctx.save();
+        this.ctx.fillStyle = `rgba(0, 0, 0, ${(1 - weather.ambientLight) * weather.intensity * 0.5})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+      }
+    } else if (stage === 'after') {
+      // Apply fog overlay
+      if (weather.fogDensity > 0) {
+        this.ctx.save();
+        this.ctx.fillStyle = `rgba(200, 200, 220, ${weather.fogDensity * weather.intensity})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+      }
+
+      // Lightning flash
+      if (weather.lightning) {
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+      }
+    }
+  }
+
+  renderWeather(weather) {
+    if (!weather || weather.intensity === 0) return;
+
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
+      return;
+    }
+
+    // Render raindrops
+    if (weather.raindrops && weather.raindrops.length > 0) {
+      this.ctx.save();
+      this.ctx.strokeStyle = 'rgba(150, 180, 200, 0.4)';
+      this.ctx.lineWidth = 1;
+
+      weather.raindrops.forEach(drop => {
+        this.ctx.globalAlpha = drop.alpha;
+        this.ctx.beginPath();
+        this.ctx.moveTo(drop.x, drop.y);
+        this.ctx.lineTo(drop.x + drop.vx, drop.y + drop.length);
+        this.ctx.stroke();
+      });
+
+      this.ctx.restore();
+    }
+
+    // Render snowflakes
+    if (weather.snowflakes && weather.snowflakes.length > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+
+      weather.snowflakes.forEach(flake => {
+        this.ctx.save();
+        this.ctx.globalAlpha = flake.alpha;
+        this.ctx.translate(flake.x, flake.y);
+        this.ctx.rotate(flake.rotation);
+
+        // Simple snowflake shape
+        this.ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const x = Math.cos(angle) * flake.size;
+          const y = Math.sin(angle) * flake.size;
+          this.ctx.moveTo(0, 0);
+          this.ctx.lineTo(x, y);
+        }
+        this.ctx.stroke();
+
+        this.ctx.restore();
+      });
+
+      this.ctx.restore();
+    }
+  }
+
   renderDamageNumbers() {
     if (!this.camera) return;
 
