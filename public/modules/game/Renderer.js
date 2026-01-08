@@ -117,12 +117,14 @@ class Renderer {
     this.renderFloor(gameState.config);
     this.renderGrid(gameState.config);
     this.renderStaticProps(gameState.state.staticProps, 'ground'); // Ground layer props
+    this.renderDynamicProps(gameState.state.dynamicProps); // Dynamic props base (torches, fires)
     this.renderWalls(gameState.state.walls);
     this.renderDoors(gameState.state.doors);
     this.renderPowerups(gameState.state.powerups, gameState.powerupTypes, gameState.config, dateNow);
     this.renderLoot(gameState.state.loot, gameState.config, dateNow);
     this.renderDestructibleObstacles(gameState.state.obstacles);
     this.renderParticles(gameState.state.particles);
+    this.renderDynamicPropParticles(gameState.state.dynamicPropParticles); // Fire/smoke particles
     this.renderPoisonTrails(gameState.state.poisonTrails, dateNow);
     this.renderToxicPools(gameState.state.toxicPools, dateNow);
     this.renderExplosions(gameState.state.explosions, dateNow);
@@ -630,6 +632,129 @@ class Renderer {
     // Legs
     this.ctx.fillRect(-prop.width / 2 + 5, 0, 4, 10);
     this.ctx.fillRect(prop.width / 2 - 9, 0, 4, 10);
+  }
+
+  renderDynamicProps(props) {
+    if (!props || props.length === 0) return;
+
+    props.forEach(prop => {
+      // Viewport culling
+      if (!this.camera.isInViewport(prop.x, prop.y, prop.lightRadius || 100)) {
+        return;
+      }
+
+      this.ctx.save();
+      this.ctx.translate(prop.x, prop.y);
+
+      // Render light glow first (behind everything)
+      if (prop.lightRadius && prop.lightColor) {
+        const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, prop.lightRadius);
+        gradient.addColorStop(0, prop.lightColor);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, prop.lightRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      // Render prop base based on type
+      switch (prop.type) {
+        case 'fire':
+          this.renderFireBase(prop);
+          break;
+        case 'smoke':
+          // Smoke has no base, only particles
+          break;
+        case 'sparks':
+          this.renderSparksBase(prop);
+          break;
+        case 'steam':
+          // Steam has no base
+          break;
+        case 'torch':
+          this.renderTorchBase(prop);
+          break;
+      }
+
+      this.ctx.restore();
+    });
+  }
+
+  renderFireBase(prop) {
+    // Fire logs/wood base
+    this.ctx.fillStyle = '#3a2410';
+    this.ctx.fillRect(-15, 0, 10, 6);
+    this.ctx.fillRect(5, 0, 10, 6);
+    this.ctx.fillRect(-8, -3, 16, 5);
+  }
+
+  renderSparksBase(prop) {
+    // Broken wire or source
+    this.ctx.strokeStyle = '#666';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-10, 0);
+    this.ctx.lineTo(10, 0);
+    this.ctx.stroke();
+
+    // Spark point
+    this.ctx.fillStyle = '#ff8800';
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  renderTorchBase(prop) {
+    // Torch post
+    this.ctx.fillStyle = '#4a3520';
+    this.ctx.fillRect(-4, -prop.height / 2, 8, prop.height);
+
+    // Torch head
+    this.ctx.fillStyle = '#6b4423';
+    this.ctx.beginPath();
+    this.ctx.arc(0, -prop.height / 2, 8, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  renderDynamicPropParticles(particles) {
+    if (!particles || particles.length === 0) return;
+
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
+      return;
+    }
+
+    particles.forEach(particle => {
+      // Viewport culling
+      if (!this.camera.isInViewport(particle.x, particle.y, 50)) {
+        return;
+      }
+
+      this.ctx.save();
+      this.ctx.globalAlpha = particle.alpha || 1;
+
+      // Render particle based on color
+      if (typeof particle.color === 'string' && particle.color.startsWith('rgba')) {
+        // Already has alpha in color
+        this.ctx.fillStyle = particle.color;
+      } else {
+        this.ctx.fillStyle = particle.color || '#fff';
+      }
+
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Add glow for fire/sparks
+      if (particle.color === '#ff6600' || particle.color === '#ffaa00' || particle.color === '#ffff00') {
+        this.ctx.shadowBlur = 5;
+        this.ctx.shadowColor = particle.color;
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+      }
+
+      this.ctx.restore();
+    });
   }
 
   renderParticles(particles) {
