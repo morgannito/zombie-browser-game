@@ -109,9 +109,35 @@ const io = require('socket.io')(server, {
   httpCompression: true
 });
 
-// Initialize database
+// HIGH FIX: Async database initialization with error handling
 const dbManager = DatabaseManager.getInstance();
-dbManager.initialize();
+let dbAvailable = false;
+
+async function initializeDatabase() {
+  try {
+    await Promise.resolve(dbManager.initialize());
+    dbAvailable = true;
+    logger.info('✅ Database connected successfully');
+    return true;
+  } catch (err) {
+    logger.error('❌ CRITICAL: Database initialization failed', {
+      error: err.message,
+      stack: err.stack
+    });
+
+    // Check if database is required
+    const requireDatabase = process.env.REQUIRE_DATABASE === 'true';
+
+    if (requireDatabase) {
+      logger.error('❌ Database required but unavailable, shutting down');
+      process.exit(1);
+    } else {
+      logger.warn('⚠️  Running without database - progression features disabled');
+      dbAvailable = false;
+      return false;
+    }
+  }
+}
 
 // Initialize dependency injection container
 const container = Container.getInstance();
@@ -136,17 +162,28 @@ app.use(additionalSecurityHeaders);
 // Static files
 app.use(express.static('public'));
 
-// ============================================
-// API ROUTES
-// ============================================
+// HIGH FIX: Initialize database before routes
+async function startServer() {
+  await initializeDatabase();
 
-app.use('/api/auth', initAuthRoutes(container, jwtService));
-app.use('/api/metrics', initMetricsRoutes(metricsCollector));
-app.use('/api/leaderboard', initLeaderboardRoutes(container));
-app.use('/api/players', initPlayersRoutes(container));
-app.use('/api/progression', require('./routes/progression')(container)); // Account progression & skill tree
-app.use('/api/achievements', require('./routes/achievements')(container)); // Achievements system
-app.use('/', initHealthRoutes(dbManager));
+  // ============================================
+  // API ROUTES
+  // ============================================
+
+  if (dbAvailable) {
+    app.use('/api/auth', initAuthRoutes(container, jwtService));
+    app.use('/api/leaderboard', initLeaderboardRoutes(container));
+    app.use('/api/players', initPlayersRoutes(container));
+    app.use('/api/progression', require('./routes/progression')(container));
+    app.use('/api/achievements', require('./routes/achievements')(container));
+    logger.info('✅ Database-dependent routes initialized');
+  } else {
+    logger.warn('⚠️  Database-dependent routes disabled');
+  }
+
+  // Always available routes
+  app.use('/api/metrics', initMetricsRoutes(metricsCollector));
+  app.use('/', initHealthRoutes(dbManager));
 
 // ============================================
 // GAME INITIALIZATION
@@ -296,15 +333,30 @@ app.use(notFoundHandler);
 app.use(apiErrorHandler); // Handle API errors with JSON responses
 app.use(serverErrorHandler); // Handle HTML errors
 
-// ============================================
-// SERVER STARTUP
-// ============================================
+  // ============================================
+  // SERVER STARTUP
+  // ============================================
 
-server.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📡 Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-  logger.info(`🎮 Game server initialized`);
-  logger.info(`🗄️  Database connected`);
+  server.listen(PORT, () => {
+    logger.info(`🚀 Server running on port ${PORT}`);
+    logger.info(`📡 Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+    logger.info(`🎮 Game server initialized`);
+
+    if (dbAvailable) {
+      logger.info(`🗄️  Database connected`);
+    } else {
+      logger.warn(`⚠️  Running in degraded mode - no database`);
+    }
+  });
+}
+
+// Start server with database initialization
+startServer().catch(err => {
+  logger.error('❌ FATAL: Server initialization failed', {
+    error: err.message,
+    stack: err.stack
+  });
+  process.exit(1);
 });
 
 // ============================================

@@ -22,8 +22,10 @@ const { updateLoot } = require('./modules/loot/LootUpdater');
 const { handlePlayerLevelUp } = require('./modules/player/PlayerProgression');
 const HazardManager = require('./modules/hazards/HazardManager');
 
-// Race condition protection
+// HIGH FIX: Race condition protection with stuck detection
 let gameLoopRunning = false;
+let gameLoopStuckSince = null;
+const GAME_LOOP_TIMEOUT = 5000; // 5 seconds
 
 /**
  * Handle player death with progression integration
@@ -118,19 +120,68 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
 
 /**
  * Main game loop function
+ * HIGH FIX: Enhanced race condition protection with stuck detection
  */
 function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger) {
   perfIntegration.incrementTick();
+  const now = Date.now();
 
+  // HIGH FIX: Check if game loop is stuck
   if (gameLoopRunning) {
-    logger.warn('Race condition detected - game loop already running, skipping frame');
-    return;
+    if (!gameLoopStuckSince) {
+      gameLoopStuckSince = now;
+    }
+
+    const stuckDuration = now - gameLoopStuckSince;
+
+    if (stuckDuration > GAME_LOOP_TIMEOUT) {
+      logger.error('❌ CRITICAL: Game loop stuck, forcing reset', {
+        stuckDuration,
+        timestamp: now,
+        gameState: {
+          players: Object.keys(gameState.players).length,
+          zombies: Object.keys(gameState.zombies).length,
+          bullets: Object.keys(gameState.bullets).length
+        }
+      });
+
+      // Force reset
+      gameLoopRunning = false;
+      gameLoopStuckSince = null;
+
+      // Track stuck resets
+      if (metricsCollector) {
+        metricsCollector.incrementError('game_loop_stuck_reset');
+      }
+    } else {
+      logger.warn('⚠️  Race condition detected - game loop already running, skipping frame', {
+        stuckDuration
+      });
+      return;
+    }
   }
 
-  // Initialize HazardManager on first run
+  // Reset stuck timer on successful entry
+  gameLoopStuckSince = null;
+
+  // HIGH FIX: Validate entityManager before HazardManager init
   if (!gameState.hazardManager) {
-    gameState.hazardManager = new HazardManager(gameState, entityManager);
-    gameState.hazardManager.initialize();
+    if (!entityManager) {
+      logger.error('❌ CRITICAL: entityManager not initialized, cannot create HazardManager');
+      throw new Error('EntityManager required for HazardManager initialization');
+    }
+
+    try {
+      gameState.hazardManager = new HazardManager(gameState, entityManager);
+      gameState.hazardManager.initialize();
+      logger.info('✅ HazardManager initialized successfully');
+    } catch (err) {
+      logger.error('❌ Failed to initialize HazardManager', {
+        error: err.message,
+        stack: err.stack
+      });
+      throw err;
+    }
   }
 
   gameLoopRunning = true;
@@ -156,11 +207,27 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     updateLoot(gameState, now, io, entityManager);
 
   } catch (error) {
-    logger.error('Game loop error', { error: error.message, stack: error.stack });
+    logger.error('❌ Game loop error', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: frameStart
+    });
+
+    if (metricsCollector) {
+      metricsCollector.incrementError('game_loop_exception');
+    }
   } finally {
     const frameTime = Date.now() - frameStart;
     metricsCollector.recordFrameTime(frameTime);
     gameLoopRunning = false;
+
+    // Warn if frame time excessive
+    if (frameTime > 100) {
+      logger.warn('⚠️  Slow game loop frame detected', {
+        frameTime,
+        targetFrameTime: perfIntegration.getTickInterval()
+      });
+    }
   }
 }
 
