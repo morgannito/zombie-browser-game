@@ -366,6 +366,59 @@
             ⚙️
         </button>
 
+        <!-- Pause Menu -->
+        <div id="pause-menu" style="display: none;">
+            <div class="pause-overlay"></div>
+            <div class="pause-modal">
+                <div class="pause-header">
+                    <h1 class="pause-title">⏸️ PAUSE</h1>
+                </div>
+
+                <div class="pause-stats">
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Vague</div>
+                        <div class="pause-stat-value" id="pause-wave">1</div>
+                    </div>
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Niveau</div>
+                        <div class="pause-stat-value" id="pause-level">1</div>
+                    </div>
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Score</div>
+                        <div class="pause-stat-value" id="pause-score">0</div>
+                    </div>
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Kills</div>
+                        <div class="pause-stat-value" id="pause-kills">0</div>
+                    </div>
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Temps</div>
+                        <div class="pause-stat-value" id="pause-time">0:00</div>
+                    </div>
+                    <div class="pause-stat-item">
+                        <div class="pause-stat-label">Or</div>
+                        <div class="pause-stat-value" id="pause-gold">0</div>
+                    </div>
+                </div>
+
+                <div class="pause-buttons">
+                    <button id="pause-resume-btn" class="pause-btn pause-btn-resume">
+                        ▶️ Reprendre
+                    </button>
+                    <button id="pause-settings-btn" class="pause-btn pause-btn-settings">
+                        ⚙️ Paramètres
+                    </button>
+                    <button id="pause-quit-btn" class="pause-btn pause-btn-quit">
+                        🚪 Quitter
+                    </button>
+                </div>
+
+                <div class="pause-hint">
+                    Appuyez sur <span class="key-hint">ESC</span> pour reprendre
+                </div>
+            </div>
+        </div>
+
         <!-- Mobile Controls -->
         <div id="mobile-controls" style="display: none;">
             <!-- Virtual Joystick -->
@@ -463,6 +516,9 @@
 
     <!-- Settings Menu (must be loaded before game.js) -->
     <script src="settingsMenu.js"></script>
+
+    <!-- Pause Menu -->
+    <script src="pauseMenu.js"></script>
 
     <!-- Main Game Initialization -->
     <script src="game.js"></script>
