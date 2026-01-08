@@ -3277,12 +3277,8 @@ class Renderer {
       healthBar.classList.add('phase-3');
     }
   }
-}
 
-// Export to window
-window.Renderer = Renderer;
-
-  // Kill Feed & Combo Methods (added before updateBossHealthBar)
+  // Kill Feed & Combo Methods
   updateKillFeedAndCombo(gameState) {
     const player = gameState.state.players[gameState.playerId];
     if (!player) return;
@@ -3389,3 +3385,7 @@ window.Renderer = Renderer;
     const progress = Math.min((zombiesKilled / targetZombies) * 100, 100);
     progressBar.style.width = `${progress}%`;
   }
+}
+
+// Export to window
+window.Renderer = Renderer;
