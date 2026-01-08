@@ -120,6 +120,7 @@ class Renderer {
     this.renderDoors(gameState.state.doors);
     this.renderPowerups(gameState.state.powerups, gameState.powerupTypes, gameState.config, dateNow);
     this.renderLoot(gameState.state.loot, gameState.config, dateNow);
+    this.renderDestructibleObstacles(gameState.state.obstacles);
     this.renderParticles(gameState.state.particles);
     this.renderPoisonTrails(gameState.state.poisonTrails, dateNow);
     this.renderToxicPools(gameState.state.toxicPools, dateNow);
@@ -264,6 +265,149 @@ class Renderer {
 
       this.ctx.restore();
     });
+  }
+
+  renderDestructibleObstacles(obstacles) {
+    if (!obstacles || obstacles.length === 0) return;
+
+    obstacles.forEach(obstacle => {
+      if (obstacle.destroyed) return;
+
+      // Viewport culling
+      if (!this.camera.isInViewport(obstacle.x, obstacle.y, obstacle.width * 2)) {
+        return;
+      }
+
+      this.ctx.save();
+      this.ctx.translate(obstacle.x, obstacle.y);
+
+      // Draw obstacle shadow
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.beginPath();
+      this.ctx.ellipse(2, obstacle.height / 3, obstacle.width / 2, obstacle.height / 6, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Draw obstacle body
+      this.ctx.fillStyle = obstacle.color || '#8B4513';
+      this.ctx.strokeStyle = this.darkenColor(obstacle.color || '#8B4513', 30);
+      this.ctx.lineWidth = 2;
+
+      // Different shapes based on type
+      if (obstacle.type === 'barrel') {
+        // Barrel shape
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, -obstacle.height / 2 + 5, obstacle.width / 2, 5, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        this.ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2 + 5, obstacle.width, obstacle.height - 10);
+        this.ctx.strokeRect(-obstacle.width / 2, -obstacle.height / 2 + 5, obstacle.width, obstacle.height - 10);
+
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, obstacle.height / 2 - 5, obstacle.width / 2, 5, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Barrel stripes
+        this.ctx.strokeStyle = this.darkenColor(obstacle.color, 40);
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-obstacle.width / 2, -5);
+        this.ctx.lineTo(obstacle.width / 2, -5);
+        this.ctx.moveTo(-obstacle.width / 2, 5);
+        this.ctx.lineTo(obstacle.width / 2, 5);
+        this.ctx.stroke();
+      } else if (obstacle.type === 'vase') {
+        // Vase shape
+        this.ctx.beginPath();
+        this.ctx.moveTo(-obstacle.width / 3, -obstacle.height / 2);
+        this.ctx.lineTo(-obstacle.width / 2, -obstacle.height / 4);
+        this.ctx.lineTo(-obstacle.width / 2, obstacle.height / 4);
+        this.ctx.lineTo(-obstacle.width / 3, obstacle.height / 2);
+        this.ctx.lineTo(obstacle.width / 3, obstacle.height / 2);
+        this.ctx.lineTo(obstacle.width / 2, obstacle.height / 4);
+        this.ctx.lineTo(obstacle.width / 2, -obstacle.height / 4);
+        this.ctx.lineTo(obstacle.width / 3, -obstacle.height / 2);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+      } else if (obstacle.type === 'tire') {
+        // Tire shape
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, 0, obstacle.width / 2, obstacle.height / 2, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Inner circle
+        this.ctx.fillStyle = '#444';
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, 0, obstacle.width / 4, obstacle.height / 4, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else {
+        // Default crate shape
+        this.ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+        this.ctx.strokeRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+
+        // Crate details (planks)
+        this.ctx.strokeStyle = this.darkenColor(obstacle.color, 40);
+        this.ctx.lineWidth = 2;
+        for (let i = -obstacle.width / 2 + 10; i < obstacle.width / 2; i += 10) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(i, -obstacle.height / 2);
+          this.ctx.lineTo(i, obstacle.height / 2);
+          this.ctx.stroke();
+        }
+      }
+
+      // Draw icon if exists
+      if (obstacle.icon) {
+        this.ctx.font = '20px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = '#fff';
+        this.ctx.fillText(obstacle.icon, 0, -obstacle.height / 2 - 15);
+      }
+
+      // Draw health bar if damaged
+      const healthPercent = obstacle.health / obstacle.maxHealth;
+      if (healthPercent < 1) {
+        const barWidth = obstacle.width;
+        const barHeight = 4;
+        const barY = -obstacle.height / 2 - 8;
+
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(-barWidth / 2, barY, barWidth, barHeight);
+
+        // Health fill
+        let healthColor = '#00ff00';
+        if (healthPercent < 0.3) healthColor = '#ff0000';
+        else if (healthPercent < 0.6) healthColor = '#ffaa00';
+
+        this.ctx.fillStyle = healthColor;
+        this.ctx.fillRect(-barWidth / 2, barY, barWidth * healthPercent, barHeight);
+
+        // Border
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(-barWidth / 2, barY, barWidth, barHeight);
+      }
+
+      this.ctx.restore();
+    });
+  }
+
+  darkenColor(color, percent) {
+    // Simple color darkening
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
+    return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+      (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+      (B < 255 ? B < 1 ? 0 : B : 255))
+      .toString(16).slice(1);
   }
 
   renderParticles(particles) {
