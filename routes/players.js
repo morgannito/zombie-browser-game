@@ -35,7 +35,7 @@ function initPlayerRoutes(container) {
    */
   router.post('/', asyncHandler(async (req, res) => {
     const { id, username } = req.body;
-    const createPlayer = container.get('createPlayer');
+    const createPlayer = container.get('createPlayerUseCase');
 
     const player = await createPlayer.execute({ id, username });
     res.status(201).json(player.toObject());
@@ -46,7 +46,7 @@ function initPlayerRoutes(container) {
    */
   router.get('/:id/upgrades', asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const getUpgrades = container.get('getUpgrades');
+    const getUpgrades = container.get('getUpgradesUseCase');
 
     const result = await getUpgrades.execute({ playerId: id });
     res.json(result);
@@ -58,7 +58,7 @@ function initPlayerRoutes(container) {
   router.post('/:id/upgrades', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { upgradeName, cost, maxLevel } = req.body;
-    const buyUpgrade = container.get('buyUpgrade');
+    const buyUpgrade = container.get('buyUpgradeUseCase');
 
     const upgrades = await buyUpgrade.execute({
       playerId: id,

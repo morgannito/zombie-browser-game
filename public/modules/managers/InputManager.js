@@ -79,7 +79,7 @@ class InputManager {
       if (this.isKeyPressed('s') || this.isKeyPressed('arrowdown')) {
         dy += 1;
       }
-      if (this.isKeyPressed('a') || this.isKeyPressed('arrowleft') || this.isKeyPressed('q')) {
+      if (this.isKeyPressed('q') || this.isKeyPressed('arrowleft')) {
         dx -= 1;
       }
       if (this.isKeyPressed('d') || this.isKeyPressed('arrowright')) {

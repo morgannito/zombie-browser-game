@@ -20,7 +20,7 @@ function initLeaderboardRoutes(container) {
    */
   router.get('/', asyncHandler(async (req, res) => {
     const { limit = 10, playerId } = req.query;
-    const getLeaderboard = container.get('getLeaderboard');
+    const getLeaderboard = container.get('getLeaderboardUseCase');
 
     const result = await getLeaderboard.execute({
       limit: parseInt(limit),
@@ -35,7 +35,7 @@ function initLeaderboardRoutes(container) {
    */
   router.post('/', asyncHandler(async (req, res) => {
     const { playerId, wave, level, kills, survivalTime } = req.body;
-    const submitScore = container.get('submitScore');
+    const submitScore = container.get('submitScoreUseCase');
 
     const entry = await submitScore.execute({
       playerId,

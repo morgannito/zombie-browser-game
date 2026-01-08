@@ -40,9 +40,9 @@ class WeaponWheel {
   setupEventListeners() {
     const overlay = document.querySelector('.weapon-wheel-overlay');
 
-    // Q key to toggle weapon wheel
+    // A key to toggle weapon wheel
     document.addEventListener('keydown', (e) => {
-      if (e.key.toLowerCase() === 'q') {
+      if (e.key.toLowerCase() === 'a') {
         // Don't open if other menus are open
         const pauseOpen = document.getElementById('pause-menu')?.style.display !== 'none';
         const settingsOpen = document.getElementById('settings-menu')?.style.display !== 'none';

@@ -156,9 +156,10 @@ function safeHandler(handlerName, handler, options = {}) {
  * @param {Object} roomManager - Room manager instance
  * @param {Object} metricsCollector - Metrics collector instance
  * @param {Object} perfIntegration - Performance integration instance
+ * @param {Object} container - Dependency injection container (optional)
  * @returns {Function} Connection handler
  */
-function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration) {
+function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration, container = null) {
   return (socket) => {
     const sessionId = socket.handshake.auth?.sessionId;
 
@@ -346,7 +347,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
     registerRespawnHandler(socket, gameState, entityManager, roomManager);
     registerSelectUpgradeHandler(socket, gameState);
     registerBuyItemHandler(socket, gameState);
-    registerSetNicknameHandler(socket, gameState, io);
+    registerSetNicknameHandler(socket, gameState, io, container);
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
@@ -875,8 +876,8 @@ function registerBuyItemHandler(socket, gameState) {
 /**
  * Register setNickname handler
  */
-function registerSetNicknameHandler(socket, gameState, io) {
-  socket.on('setNickname', safeHandler('setNickname', function (data) {
+function registerSetNicknameHandler(socket, gameState, io, container) {
+  socket.on('setNickname', safeHandler('setNickname', async function (data) {
     const player = gameState.players[socket.id];
     if (!player) {
       return;
@@ -935,6 +936,25 @@ function registerSetNicknameHandler(socket, gameState, io) {
     player.spawnProtectionEndTime = Date.now() + 3000; // 3 secondes de protection
 
     logger.info('Player chose nickname', { socketId: socket.id, nickname });
+
+    // HIGH FIX: Create player in database if container available and sessionId exists
+    if (container && player.sessionId) {
+      try {
+        const createPlayerUseCase = container.get('createPlayerUseCase');
+        await createPlayerUseCase.execute({
+          id: player.sessionId,
+          username: nickname
+        });
+        logger.info('Player created in database', { sessionId: player.sessionId, username: nickname });
+      } catch (error) {
+        // Log but don't block gameplay - player creation is optional for progression features
+        logger.warn('Failed to create player in database', {
+          sessionId: player.sessionId,
+          username: nickname,
+          error: error.message
+        });
+      }
+    }
 
     // Notifier tous les joueurs
     io.emit('playerNicknameSet', {

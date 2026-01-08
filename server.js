@@ -139,15 +139,8 @@ async function initializeDatabase() {
   }
 }
 
-// Initialize dependency injection container
-const container = Container.getInstance();
-container.initialize();
-
-// Initialize metrics collector
+// Initialize metrics collector (doesn't need DB)
 const metricsCollector = MetricsCollector.getInstance();
-
-// Initialize JWT service
-const jwtService = new JwtService(logger);
 
 // ============================================
 // MIDDLEWARE CONFIGURATION
@@ -165,6 +158,15 @@ app.use(express.static('public'));
 // HIGH FIX: Initialize database before routes
 async function startServer() {
   await initializeDatabase();
+
+  // Initialize dependency injection container AFTER database
+  const container = Container.getInstance();
+  if (dbAvailable) {
+    container.initialize();
+  }
+
+  // Initialize JWT service
+  const jwtService = new JwtService(logger);
 
   // ============================================
   // API ROUTES
@@ -322,7 +324,7 @@ async function startServer() {
   // SOCKET.IO HANDLERS
   // ============================================
 
-  const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration);
+  const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration, dbAvailable ? container : null);
   io.on('connection', socketHandler);
 
   // ============================================

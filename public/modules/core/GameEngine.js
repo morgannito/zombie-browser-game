@@ -171,6 +171,47 @@ class GameEngine {
     window.toastManager = new ToastManager(); // Système de notifications
     window.screenEffects = new ScreenEffectsManager(this.canvas); // Screen effects (flash, shake, slowmo, trails)
 
+    // Environment systems (decoration, background)
+    if (typeof ParallaxBackground !== 'undefined') {
+      this.parallaxBackground = new ParallaxBackground();
+      console.log('✓ Parallax background system initialized');
+
+      // Initialize with default map size
+      this.parallaxBackground.init(3000, 2400);
+
+      // Populate gameState with parallax data
+      window.gameState.state.parallax = this.parallaxBackground;
+    } else {
+      console.warn('⚠ ParallaxBackground not found');
+    }
+
+    if (typeof StaticPropsSystem !== 'undefined') {
+      this.staticPropsSystem = new StaticPropsSystem();
+      console.log('✓ Static props system initialized');
+
+      // Spawn props on default map
+      this.staticPropsSystem.spawnProps(3000, 2400, 0.8);
+
+      // Populate gameState with props data
+      window.gameState.state.staticProps = this.staticPropsSystem.getProps();
+    } else {
+      console.warn('⚠ StaticPropsSystem not found');
+    }
+
+    if (typeof DynamicPropsSystem !== 'undefined') {
+      this.dynamicPropsSystem = new DynamicPropsSystem();
+      console.log('✓ Dynamic props system initialized');
+
+      // Spawn dynamic props
+      this.dynamicPropsSystem.spawnProps(3000, 2400, 0.3);
+
+      // Populate gameState with dynamic props
+      window.gameState.state.dynamicProps = this.dynamicPropsSystem.getProps();
+      window.gameState.state.dynamicPropParticles = [];
+    } else {
+      console.warn('⚠ DynamicPropsSystem not found');
+    }
+
     // Mobile controls
     this.mobileControls = new MobileControlsManager();
     window.mobileControls = this.mobileControls; // Make globally accessible
@@ -205,6 +246,12 @@ class GameEngine {
     // Update screen effects (trails decay, etc.) (SCREEN EFFECTS)
     if (window.screenEffects) {
       window.screenEffects.update(deltaTime);
+    }
+
+    // Update dynamic props (particles, animations)
+    if (this.dynamicPropsSystem) {
+      this.dynamicPropsSystem.update(deltaTime);
+      window.gameState.state.dynamicPropParticles = this.dynamicPropsSystem.getParticles();
     }
 
     // Update mobile auto-shoot (MOBILE)

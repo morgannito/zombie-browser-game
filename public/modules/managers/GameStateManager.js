@@ -23,7 +23,14 @@ class GameStateManager {
       totalRooms: 5,
       doors: [],
       wave: 1,
-      bossSpawned: false
+      bossSpawned: false,
+      // Environment systems
+      parallax: null,
+      staticProps: [],
+      dynamicProps: [],
+      dynamicPropParticles: [],
+      envParticles: [],
+      obstacles: []
     };
     this.config = {
       ROOM_WIDTH: 3000,

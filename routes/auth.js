@@ -43,7 +43,7 @@ function initAuthRoutes(container, jwtService) {
 
       if (!player) {
         // Créer un nouveau joueur
-        const createPlayerUseCase = container.get('createPlayer');
+        const createPlayerUseCase = container.get('createPlayerUseCase');
         const playerId = require('crypto').randomUUID();
         player = await createPlayerUseCase.execute({ id: playerId, username });
       }
