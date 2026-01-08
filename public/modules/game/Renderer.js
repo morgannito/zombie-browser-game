@@ -113,6 +113,9 @@ class Renderer {
     // Render day/night sky BEFORE world (fullscreen)
     this.renderSky(gameState.state.dayNight);
 
+    // Render parallax background layers BEFORE world
+    this.renderParallaxBackground(gameState.state.parallax, cameraPos, {width: this.canvas.width, height: this.canvas.height});
+
     // Apply weather fog overlay BEFORE world rendering
     this.applyWeatherFog(gameState.state.weather, 'before');
 
@@ -135,6 +138,7 @@ class Renderer {
     this.renderDestructibleObstacles(gameState.state.obstacles);
     this.renderParticles(gameState.state.particles);
     this.renderDynamicPropParticles(gameState.state.dynamicPropParticles); // Fire/smoke particles
+    this.renderEnvironmentalParticles(gameState.state.envParticles); // Ambient leaves/dust
     this.renderPoisonTrails(gameState.state.poisonTrails, dateNow);
     this.renderToxicPools(gameState.state.toxicPools, dateNow);
     this.renderExplosions(gameState.state.explosions, dateNow);
@@ -2847,6 +2851,100 @@ class Renderer {
 
       this.ctx.restore();
     }
+  }
+
+  renderParallaxBackground(parallax, camera, viewport) {
+    if (!parallax) return;
+
+    const layers = parallax.layers || [];
+
+    this.ctx.save();
+
+    layers.forEach(layer => {
+      const offsetX = camera.x * layer.parallaxSpeed;
+      const offsetY = camera.y * layer.parallaxSpeed * 0.5;
+
+      this.ctx.fillStyle = layer.color;
+      this.ctx.globalAlpha = 0.6;
+
+      (layer.visibleElements || []).forEach(elem => {
+        const screenX = elem.x - offsetX;
+        const screenY = elem.y - offsetY;
+
+        // Simple shape rendering based on type
+        if (layer.shapes === 'mountains') {
+          this.ctx.beginPath();
+          this.ctx.moveTo(screenX, screenY);
+          this.ctx.lineTo(screenX + elem.width * 0.5, screenY - elem.height);
+          this.ctx.lineTo(screenX + elem.width, screenY);
+          this.ctx.fill();
+        } else if (layer.shapes === 'trees') {
+          this.ctx.fillRect(
+            screenX + elem.width * 0.4,
+            screenY - elem.height * 0.3,
+            elem.width * 0.2,
+            elem.height * 0.3
+          );
+          this.ctx.beginPath();
+          this.ctx.ellipse(
+            screenX + elem.width * 0.5,
+            screenY - elem.height * 0.6,
+            elem.width * 0.4,
+            elem.height * 0.5,
+            0, 0, Math.PI * 2
+          );
+          this.ctx.fill();
+        } else if (layer.shapes === 'grass') {
+          for (let i = 0; i < 5; i++) {
+            this.ctx.fillRect(
+              screenX + (i / 5) * elem.width,
+              screenY - elem.height,
+              2,
+              elem.height
+            );
+          }
+        }
+      });
+
+      this.ctx.restore();
+      this.ctx.save();
+    });
+
+    this.ctx.restore();
+  }
+
+  renderEnvironmentalParticles(envParticles) {
+    if (!envParticles || !envParticles.particles) return;
+
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
+      return;
+    }
+
+    this.ctx.save();
+
+    envParticles.particles.forEach(p => {
+      this.ctx.globalAlpha = p.alpha;
+      this.ctx.fillStyle = p.color;
+
+      if (p.glow) {
+        const gradient = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
+        gradient.addColorStop(0, p.color);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(p.x - p.size * 3, p.y - p.size * 3, p.size * 6, p.size * 6);
+      } else if (p.rotation !== undefined) {
+        this.ctx.save();
+        this.ctx.translate(p.x, p.y);
+        this.ctx.rotate(p.rotation);
+        this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        this.ctx.restore();
+      } else {
+        this.ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    });
+
+    this.ctx.restore();
   }
 
   applyAmbientDarkness(lighting) {
