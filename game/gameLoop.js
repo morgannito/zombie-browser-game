@@ -20,6 +20,7 @@ const { updateBullets } = require('./modules/bullet/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');
 const { handlePlayerLevelUp } = require('./modules/player/PlayerProgression');
+const HazardManager = require('./modules/hazards/HazardManager');
 
 // Race condition protection
 let gameLoopRunning = false;
@@ -72,6 +73,12 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     return;
   }
 
+  // Initialize HazardManager on first run
+  if (!gameState.hazardManager) {
+    gameState.hazardManager = new HazardManager(gameState, entityManager);
+    gameState.hazardManager.initialize();
+  }
+
   gameLoopRunning = true;
   let frameStart = Date.now();
 
@@ -82,7 +89,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     collisionManager.rebuildQuadtree();
 
     updatePlayers(gameState, now, io, collisionManager, entityManager);
-    updateToxicPools(gameState, now, entityManager);
+    gameState.hazardManager.update(now);
     updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration);
     updatePoisonTrails(gameState, now, collisionManager, entityManager);
     updatePoisonedZombies(gameState, now, entityManager);
@@ -300,43 +307,13 @@ function handleTeslaKill(zombie, player, gameState, entityManager, now) {
 }
 
 /**
- * Update toxic pools
+ * @deprecated Use HazardManager.update() instead - Kept for backward compatibility
  */
 function updateToxicPools(gameState, now, entityManager) {
-  if (!gameState.toxicPools) gameState.toxicPools = [];
-
-  gameState.toxicPools = gameState.toxicPools.filter(pool => {
-    return (now - pool.createdAt) < pool.duration;
-  });
-
-  for (let pool of gameState.toxicPools) {
-    applyToxicPoolDamage(pool, gameState, now, entityManager);
-  }
-}
-
-/**
- * Apply toxic pool damage to players
- */
-function applyToxicPoolDamage(pool, gameState, now, entityManager) {
-  for (let playerId in gameState.players) {
-    const player = gameState.players[playerId];
-    if (!player.alive) continue;
-
-    const dist = distance(player.x, player.y, pool.x, pool.y);
-    if (dist < pool.radius) {
-      if (!pool.lastDamage) pool.lastDamage = {};
-      if (!pool.lastDamage[playerId] || now - pool.lastDamage[playerId] >= 500) {
-        pool.lastDamage[playerId] = now;
-        player.health -= pool.damage;
-
-        createParticles(player.x, player.y, '#00ff00', 5, entityManager);
-
-        if (player.health <= 0) {
-          handlePlayerDeathProgression(player, playerId, gameState, now, false);
-          createParticles(player.x, player.y, '#ff0000', 30, entityManager);
-        }
-      }
-    }
+  // This function is now handled by HazardManager
+  // Kept for backward compatibility if called elsewhere
+  if (gameState.hazardManager) {
+    gameState.hazardManager.updateToxicPools(now);
   }
 }
 

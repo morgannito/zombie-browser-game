@@ -47,17 +47,10 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
     if (players.length > 0) {
       const target = players[Math.floor(Math.random() * players.length)];
 
-      // Create meteor at target location
-      gameState.hazards = gameState.hazards || [];
-      gameState.hazards.push({
-        type: 'meteor',
-        x: target.x,
-        y: target.y,
-        radius: 100,
-        damage: 60,
-        createdAt: now,
-        duration: 2000
-      });
+      // Create meteor using HazardManager
+      if (gameState.hazardManager) {
+        gameState.hazardManager.createHazard('meteor', target.x, target.y, 100, 60, 2000);
+      }
 
       createParticles(target.x, target.y, '#ff0000', 40, entityManager);
 
@@ -89,16 +82,10 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
       const spikeX = zombie.x + Math.cos(angle) * distance;
       const spikeY = zombie.y + Math.sin(angle) * distance;
 
-      gameState.hazards = gameState.hazards || [];
-      gameState.hazards.push({
-        type: 'iceSpike',
-        x: spikeX,
-        y: spikeY,
-        radius: 50,
-        damage: 50,
-        createdAt: now,
-        duration: 3000
-      });
+      // Create ice spike using HazardManager
+      if (gameState.hazardManager) {
+        gameState.hazardManager.createHazard('iceSpike', spikeX, spikeY, 50, 50, 3000);
+      }
 
       createParticles(spikeX, spikeY, '#00bfff', 20, entityManager);
     }
@@ -188,16 +175,10 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
       const strikeX = zombie.x + Math.cos(angle) * dist;
       const strikeY = zombie.y + Math.sin(angle) * dist;
 
-      gameState.hazards = gameState.hazards || [];
-      gameState.hazards.push({
-        type: 'lightning',
-        x: strikeX,
-        y: strikeY,
-        radius: 60,
-        damage: 40,
-        createdAt: now,
-        duration: 1000
-      });
+      // Create lightning using HazardManager
+      if (gameState.hazardManager) {
+        gameState.hazardManager.createHazard('lightning', strikeX, strikeY, 60, 40, 1000);
+      }
 
       createParticles(strikeX, strikeY, '#ffff00', 25, entityManager);
     }
@@ -216,16 +197,10 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
   if (!zombie.lastRift || now - zombie.lastRift >= 9000) {
     zombie.lastRift = now;
 
-    gameState.toxicPools = gameState.toxicPools || [];
-    gameState.toxicPools.push({
-      id: `rift_${now}_${Math.random()}`,
-      x: zombie.x,
-      y: zombie.y,
-      radius: 120,
-      damage: 45,
-      createdAt: now,
-      duration: 12000
-    });
+    // Create void rift using HazardManager (type: voidRift)
+    if (gameState.hazardManager) {
+      gameState.hazardManager.createHazard('voidRift', zombie.x, zombie.y, 120, 45, 12000);
+    }
 
     createParticles(zombie.x, zombie.y, '#9400d3', 50, entityManager);
   }
@@ -288,16 +263,10 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
       const meteorX = zombie.x + Math.cos(angle) * dist;
       const meteorY = zombie.y + Math.sin(angle) * dist;
 
-      gameState.hazards = gameState.hazards || [];
-      gameState.hazards.push({
-        type: 'meteor',
-        x: meteorX,
-        y: meteorY,
-        radius: 100,
-        damage: 80,
-        createdAt: now,
-        duration: 2000
-      });
+      // Create meteor using HazardManager
+      if (gameState.hazardManager) {
+        gameState.hazardManager.createHazard('meteor', meteorX, meteorY, 100, 80, 2000);
+      }
 
       createParticles(meteorX, meteorY, '#ff0000', 30, entityManager);
     }
