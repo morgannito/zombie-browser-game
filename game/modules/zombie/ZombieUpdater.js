@@ -30,14 +30,24 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
     updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
     updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
 
-    const { updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega } =
-      require('./BossUpdater');
+    const {
+      updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega,
+      updateBossInfernal, updateBossCryos, updateBossVortex, updateBossNexus, updateBossApocalypse
+    } = require('./BossUpdater');
 
+    // Original bosses
     updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
     updateBossInfect(zombie, now, entityManager, gameState);
     updateBossColosse(zombie, zombieId, now, io, entityManager);
     updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
     updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+
+    // Extended bosses
+    updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
+    updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
 
     updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
     updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
