@@ -239,6 +239,133 @@
         <!-- Toast Notifications Container -->
         <div id="toast-container"></div>
 
+        <!-- Settings Menu -->
+        <div id="settings-menu" style="display: none;">
+            <div class="settings-overlay"></div>
+            <div class="settings-modal">
+                <div class="settings-header">
+                    <h2>⚙️ PARAMÈTRES</h2>
+                    <button id="settings-close-btn" class="settings-close">✕</button>
+                </div>
+
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
+                    <button class="settings-tab" data-tab="graphics">🎨 Graphismes</button>
+                    <button class="settings-tab" data-tab="controls">🎮 Contrôles</button>
+                </div>
+
+                <div class="settings-content">
+                    <!-- Audio Tab -->
+                    <div class="settings-tab-content active" id="settings-audio">
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <label for="volume-master">Volume Principal</label>
+                                <div class="slider-container">
+                                    <input type="range" id="volume-master" min="0" max="100" value="70" class="slider">
+                                    <span class="slider-value">70%</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label for="volume-music">Musique</label>
+                                <div class="slider-container">
+                                    <input type="range" id="volume-music" min="0" max="100" value="50" class="slider">
+                                    <span class="slider-value">50%</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label for="volume-sfx">Effets Sonores</label>
+                                <div class="slider-container">
+                                    <input type="range" id="volume-sfx" min="0" max="100" value="80" class="slider">
+                                    <span class="slider-value">80%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Graphics Tab -->
+                    <div class="settings-tab-content" id="settings-graphics">
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <label for="graphics-quality">Qualité Graphique</label>
+                                <select id="graphics-quality" class="settings-select">
+                                    <option value="low">Basse</option>
+                                    <option value="medium" selected>Moyenne</option>
+                                    <option value="high">Haute</option>
+                                    <option value="ultra">Ultra</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="particles-toggle">Particules</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="particles-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="screen-shake-toggle">Screen Shake</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="screen-shake-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="blood-toggle">Effets de Sang</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="blood-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls Tab -->
+                    <div class="settings-tab-content" id="settings-controls">
+                        <div class="settings-section">
+                            <div class="controls-info">
+                                <h3>🎮 Contrôles Actuels</h3>
+                                <div class="control-mapping">
+                                    <div class="control-row">
+                                        <span class="control-action">Déplacement</span>
+                                        <span class="control-keys">WASD / Flèches</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Tirer</span>
+                                        <span class="control-keys">Clic Gauche</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Viser</span>
+                                        <span class="control-keys">Souris</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Stats</span>
+                                        <span class="control-keys">TAB</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Recentrer Caméra</span>
+                                        <span class="control-keys">C</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Pause</span>
+                                        <span class="control-keys">ESC</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-footer">
+                    <button id="settings-reset-btn" class="btn-secondary">Réinitialiser</button>
+                    <button id="settings-apply-btn" class="btn-primary">Appliquer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Button (top-right corner) -->
+        <button id="settings-btn" class="settings-toggle-btn" title="Paramètres (ESC)" style="display: none;">
+            ⚙️
+        </button>
+
         <!-- Mobile Controls -->
         <div id="mobile-controls" style="display: none;">
             <!-- Virtual Joystick -->
@@ -330,6 +457,9 @@
 
     <!-- Utilities -->
     <script src="modules/utils/initHelpers.js"></script>
+
+    <!-- Settings Menu (must be loaded before game.js) -->
+    <script src="settingsMenu.js"></script>
 
     <!-- Main Game Initialization -->
     <script src="game.js"></script>
