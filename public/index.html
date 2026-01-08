@@ -419,6 +419,23 @@
             </div>
         </div>
 
+        <!-- Weapon Wheel -->
+        <div id="weapon-wheel" style="display: none;">
+            <div class="weapon-wheel-overlay"></div>
+            <div class="weapon-wheel-container">
+                <div class="weapon-wheel-center">
+                    <div class="weapon-wheel-title">Arme</div>
+                    <div class="weapon-wheel-current" id="weapon-wheel-current">Pistolet</div>
+                </div>
+                <div class="weapon-wheel-slots" id="weapon-wheel-slots">
+                    <!-- Weapon slots will be dynamically generated -->
+                </div>
+            </div>
+            <div class="weapon-wheel-hint">
+                Survolez et cliquez pour sélectionner • Touche <span class="key-hint">Q</span> pour fermer
+            </div>
+        </div>
+
         <!-- Mobile Controls -->
         <div id="mobile-controls" style="display: none;">
             <!-- Virtual Joystick -->
@@ -519,6 +536,9 @@
 
     <!-- Pause Menu -->
     <script src="pauseMenu.js"></script>
+
+    <!-- Weapon Wheel -->
+    <script src="weaponWheel.js"></script>
 
     <!-- Main Game Initialization -->
     <script src="game.js"></script>
