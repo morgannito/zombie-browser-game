@@ -121,7 +121,7 @@ class PlayerRepository extends IPlayerRepository {
         SELECT is_banned, ban_reason, ban_expires_at
         FROM players
         WHERE id = ?
-      `),
+      `)
     };
   }
 

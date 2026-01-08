@@ -19,7 +19,9 @@ class ParticleSystem {
    */
   createExplosion(x, y, color, count = 20, size = 3) {
     // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) return;
+    if (this.particles.length >= this.maxParticles) {
+      return;
+    }
 
     // Limiter le nombre de particules créées
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
@@ -47,7 +49,9 @@ class ParticleSystem {
    */
   createBloodSplatter(x, y, direction, color = '#00ff00') {
     // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) return;
+    if (this.particles.length >= this.maxParticles) {
+      return;
+    }
 
     const count = 8; // Réduit de 15 à 8
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
@@ -96,7 +100,9 @@ class ParticleSystem {
    */
   createSparks(x, y, count = 10) {
     // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) return;
+    if (this.particles.length >= this.maxParticles) {
+      return;
+    }
 
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
 
@@ -142,7 +148,9 @@ class ParticleSystem {
    */
   createHealEffect(x, y, radius = 30) {
     // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) return;
+    if (this.particles.length >= this.maxParticles) {
+      return;
+    }
 
     const count = 12; // Réduit de 20 à 12
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
@@ -382,7 +390,9 @@ class AdvancedEffectsManager {
    * Met à jour tous les effets
    */
   update(deltaTime = 16) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     this.particles.update();
     this.animations.update();
@@ -392,7 +402,9 @@ class AdvancedEffectsManager {
    * Dessine tous les effets
    */
   render(ctx, canvasWidth, canvasHeight) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     // Particules
     this.particles.render(ctx);
@@ -412,7 +424,7 @@ class AdvancedEffectsManager {
     // Trail de balle - seulement 1 fois sur 3 pour mitraillette
     if (weaponType !== 'machinegun' || Math.random() < 0.33) {
       const bulletColor = weaponType === 'shotgun' ? '#ffaa00' :
-                         weaponType === 'machinegun' ? '#ff0000' : '#00ffff';
+        weaponType === 'machinegun' ? '#ff0000' : '#00ffff';
       this.particles.createTrail(x, y, bulletColor, 2);
     }
 

@@ -39,7 +39,9 @@ function isValidString(value, maxLength = 1000) {
  * @returns {Object|null} Données validées ou null si invalides
  */
 function validateMovementData(data) {
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
 
   // Valider x, y, angle comme nombres valides
   if (!isValidNumber(data.x, 0, CONFIG.ROOM_WIDTH) ||
@@ -61,7 +63,9 @@ function validateMovementData(data) {
  * @returns {Object|null}
  */
 function validateShootData(data) {
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
 
   if (!isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {
     return null;
@@ -76,7 +80,9 @@ function validateShootData(data) {
  * @returns {Object|null}
  */
 function validateUpgradeData(data) {
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
 
   if (!isValidString(data.upgradeId, 100)) {
     return null;
@@ -96,7 +102,9 @@ function validateUpgradeData(data) {
  * @returns {Object|null}
  */
 function validateBuyItemData(data) {
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
 
   if (!isValidString(data.itemId, 100) || !isValidString(data.category, 50)) {
     return null;

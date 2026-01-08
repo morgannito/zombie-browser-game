@@ -22,19 +22,19 @@ try {
   // Execute entire SQL at once (better-sqlite3 handles multiple statements)
   try {
     db.exec(sql);
-    console.log(`✓ Migration executed successfully`);
+    console.log('✓ Migration executed successfully');
   } catch (error) {
     // If it fails, check if objects already exist
     if (error.message.includes('already exists')) {
-      console.log(`⚠ Some objects already exist (this is OK)`);
+      console.log('⚠ Some objects already exist (this is OK)');
     } else {
-      console.error(`✗ Migration failed:`, error.message);
+      console.error('✗ Migration failed:', error.message);
       throw error;
     }
   }
 
   db.close();
-  console.log(`✅ Migration completed successfully!`);
+  console.log('✅ Migration completed successfully!');
 } catch (error) {
   console.error('❌ Migration failed:', error.message);
   process.exit(1);

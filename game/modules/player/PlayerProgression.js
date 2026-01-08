@@ -10,7 +10,9 @@ const { getXPForLevel, generateUpgradeChoices } = require('../../utilityFunction
  */
 function updatePlayerCombo(playerId, zombie, gameState, io) {
   const shooter = gameState.players[playerId];
-  if (!shooter || !shooter.alive) return null;
+  if (!shooter || !shooter.alive) {
+    return null;
+  }
 
   const now = Date.now();
   const COMBO_TIMEOUT = 5000;
@@ -48,10 +50,18 @@ function updateComboCounter(shooter, now, COMBO_TIMEOUT) {
  * Calculate combo multiplier
  */
 function calculateComboMultiplier(combo) {
-  if (combo >= 50) return 10;
-  if (combo >= 30) return 5;
-  if (combo >= 15) return 3;
-  if (combo >= 5) return 2;
+  if (combo >= 50) {
+    return 10;
+  }
+  if (combo >= 30) {
+    return 5;
+  }
+  if (combo >= 15) {
+    return 3;
+  }
+  if (combo >= 5) {
+    return 2;
+  }
   return 1;
 }
 

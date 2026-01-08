@@ -13,7 +13,7 @@ const { ZOMBIE_TYPES } = ConfigManager;
  * Update poison trails left by poison zombies
  */
 function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
-  for (let trailId in gameState.poisonTrails) {
+  for (const trailId in gameState.poisonTrails) {
     const trail = gameState.poisonTrails[trailId];
 
     if (now - trail.createdAt > trail.duration) {
@@ -25,12 +25,16 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
       trail.x, trail.y, trail.radius
     );
 
-    for (let player of nearbyPlayers) {
-      if (player.spawnProtection || player.invisible) continue;
+    for (const player of nearbyPlayers) {
+      if (player.spawnProtection || player.invisible) {
+        continue;
+      }
 
       const dist = distance(trail.x, trail.y, player.x, player.y);
       if (dist < trail.radius) {
-        if (!player.lastPoisonDamage) player.lastPoisonDamage = {};
+        if (!player.lastPoisonDamage) {
+          player.lastPoisonDamage = {};
+        }
         const lastDamage = player.lastPoisonDamage[trailId] || 0;
 
         if (now - lastDamage >= 500) {
@@ -56,7 +60,7 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
  * Update poisoned zombies - apply damage over time
  */
 function updatePoisonedZombies(gameState, now, entityManager) {
-  for (let zombieId in gameState.zombies) {
+  for (const zombieId in gameState.zombies) {
     const zombie = gameState.zombies[zombieId];
 
     if (zombie.poisoned) {
@@ -95,7 +99,7 @@ function killPoisonedZombie(zombie, zombieId, gameState, entityManager) {
  * Update frozen/slowed zombies - restore speed when effect expires
  */
 function updateFrozenSlowedZombies(gameState, now) {
-  for (let zombieId in gameState.zombies) {
+  for (const zombieId in gameState.zombies) {
     const zombie = gameState.zombies[zombieId];
 
     if (zombie.frozen) {
@@ -116,7 +120,9 @@ function updateFrozenSlowedZombies(gameState, now) {
  * Handle splitter zombie death - split into smaller zombies
  */
 function handleSplitterDeath(zombie, zombieId, gameState, entityManager) {
-  if (zombie.type !== 'splitter' || zombie.isSplit) return;
+  if (zombie.type !== 'splitter' || zombie.isSplit) {
+    return;
+  }
 
   const splitterType = ZOMBIE_TYPES.splitter;
 
@@ -160,9 +166,11 @@ function spawnSplitterMinion(zombie, index, splitterType, gameState, entityManag
  * Apply explosion damage when splitter splits
  */
 function applySplitExplosionDamage(zombie, splitterType, gameState, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (!player.alive || player.spawnProtection || player.invisible) {
+      continue;
+    }
 
     const dist = distance(zombie.x, zombie.y, player.x, player.y);
     if (dist < splitterType.splitExplosionRadius) {

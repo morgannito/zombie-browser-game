@@ -107,14 +107,23 @@ class StaticPropsSystem {
       // Weighted random selection (trees more common)
       let typeKey;
       const rand = Math.random();
-      if (rand < 0.4) typeKey = 'tree';
-      else if (rand < 0.6) typeKey = 'rock';
-      else if (rand < 0.7) typeKey = 'bush';
-      else if (rand < 0.8) typeKey = 'car';
-      else if (rand < 0.85) typeKey = 'lampPost';
-      else if (rand < 0.9) typeKey = 'fence';
-      else if (rand < 0.95) typeKey = 'sign';
-      else typeKey = 'bench';
+      if (rand < 0.4) {
+        typeKey = 'tree';
+      } else if (rand < 0.6) {
+        typeKey = 'rock';
+      } else if (rand < 0.7) {
+        typeKey = 'bush';
+      } else if (rand < 0.8) {
+        typeKey = 'car';
+      } else if (rand < 0.85) {
+        typeKey = 'lampPost';
+      } else if (rand < 0.9) {
+        typeKey = 'fence';
+      } else if (rand < 0.95) {
+        typeKey = 'sign';
+      } else {
+        typeKey = 'bench';
+      }
 
       const type = this.propTypes[typeKey];
 
@@ -127,7 +136,9 @@ class StaticPropsSystem {
         attempts++;
       } while (this.isNearCenter(x, y, mapWidth, mapHeight, 250) && attempts < 10);
 
-      if (attempts >= 10) continue; // Skip if can't find valid position
+      if (attempts >= 10) {
+        continue;
+      } // Skip if can't find valid position
 
       this.createProp(typeKey, x, y);
     }
@@ -143,7 +154,9 @@ class StaticPropsSystem {
 
   createProp(typeKey, x, y, rotation = null) {
     const type = this.propTypes[typeKey];
-    if (!type) return null;
+    if (!type) {
+      return null;
+    }
 
     const prop = {
       id: this.nextId++,
@@ -169,12 +182,12 @@ class StaticPropsSystem {
     const baseZ = Math.floor(y / 10);
 
     switch (typeKey) {
-      case 'tree':
-      case 'lampPost':
-      case 'sign':
-        return baseZ + 1000; // Render above most things
-      default:
-        return baseZ;
+    case 'tree':
+    case 'lampPost':
+    case 'sign':
+      return baseZ + 1000; // Render above most things
+    default:
+      return baseZ;
     }
   }
 
@@ -183,7 +196,9 @@ class StaticPropsSystem {
    */
   checkCollision(x, y, radius = 0) {
     for (const prop of this.props.values()) {
-      if (prop.collisionRadius === 0) continue;
+      if (prop.collisionRadius === 0) {
+        continue;
+      }
 
       const dx = x - prop.x;
       const dy = y - prop.y;

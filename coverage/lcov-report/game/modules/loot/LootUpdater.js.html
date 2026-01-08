@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/25</span>
+                <span class='fraction'>5/25</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/25</span>
+                <span class='fraction'>5/25</span>
             </div>
         
             
@@ -143,34 +143,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -184,6 +161,29 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -210,7 +210,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
@@ -218,17 +218,17 @@
  * @description Handles loot collection and expiration
  */
 &nbsp;
-const ConfigManager = <span class="cstat-no" title="statement not covered" >require('../../../lib/server/ConfigManager');</span>
-const { distance } = <span class="cstat-no" title="statement not covered" >require('../../utilityFunctions');</span>
-const { createParticles } = <span class="cstat-no" title="statement not covered" >require('../../lootFunctions');</span>
+const ConfigManager = require('../../../lib/server/ConfigManager');
+const { distance } = require('../../utilityFunctions');
+const { createParticles } = require('../../lootFunctions');
 &nbsp;
-const { CONFIG } = <span class="cstat-no" title="statement not covered" >ConfigManager;</span>
+const { CONFIG } = ConfigManager;
 &nbsp;
 /**
  * Update loot - check expiration and player collection
  */
 function <span class="fstat-no" title="function not covered" >updateLoot(</span>gameState, now, io, entityManager) {
-<span class="cstat-no" title="statement not covered" >  for (let lootId in gameState.loot) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const lootId in gameState.loot) {</span>
     const loot = <span class="cstat-no" title="statement not covered" >gameState.loot[lootId];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (isLootExpired(loot, now)) {</span>
@@ -251,7 +251,7 @@ function <span class="fstat-no" title="function not covered" >isLootExpired(</sp
  * Check loot collection by players
  */
 function <span class="fstat-no" title="function not covered" >checkLootCollection(</span>loot, lootId, gameState, io, entityManager) {
-<span class="cstat-no" title="statement not covered" >  for (let playerId in gameState.players) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const playerId in gameState.players) {</span>
     const player = <span class="cstat-no" title="statement not covered" >gameState.players[playerId];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (canCollectLoot(player, loot)) {</span>
@@ -285,7 +285,7 @@ function <span class="fstat-no" title="function not covered" >collectLoot(</span
 <span class="cstat-no" title="statement not covered" >  handlePlayerLevelUp(player, playerId, io);</span>
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = {</span>
+module.exports = {
   updateLoot
 };
 &nbsp;</pre></td></tr></table></pre>
@@ -295,7 +295,7 @@ function <span class="fstat-no" title="function not covered" >collectLoot(</span
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

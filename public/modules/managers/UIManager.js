@@ -59,7 +59,9 @@ class UIManager {
 
   update() {
     const player = this.gameState.getPlayer();
-    if (!player) return;
+    if (!player) {
+      return;
+    }
 
     // Health bar
     const healthPercent = (player.health / player.maxHealth) * 100;
@@ -231,7 +233,9 @@ class UIManager {
 
   showShop() {
     const player = this.gameState.getPlayer();
-    if (!player || !player.alive) return;
+    if (!player || !player.alive) {
+      return;
+    }
 
     this.shopOpen = true;
     document.getElementById('shop').style.display = 'block';
@@ -280,7 +284,7 @@ class UIManager {
     }
 
     console.log('[Shop] Creating permanent upgrade buttons...');
-    for (let key in this.gameState.shopItems.permanent) {
+    for (const key in this.gameState.shopItems.permanent) {
       const item = this.gameState.shopItems.permanent[key];
       const currentLevel = player.upgrades[key] || 0;
       const cost = item.baseCost + (currentLevel * item.costIncrease);
@@ -351,7 +355,7 @@ class UIManager {
     }
 
     console.log('[Shop] Creating temporary item buttons...');
-    for (let key in this.gameState.shopItems.temporary) {
+    for (const key in this.gameState.shopItems.temporary) {
       const item = this.gameState.shopItems.temporary[key];
       const canAfford = player.gold >= item.cost;
 
@@ -415,7 +419,9 @@ class UIManager {
 
   updateStatsPanel() {
     const player = this.gameState.getPlayer();
-    if (!player) return;
+    if (!player) {
+      return;
+    }
 
     // Base stats
     const baseStatsContainer = document.getElementById('base-stats');

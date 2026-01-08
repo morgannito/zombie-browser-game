@@ -84,7 +84,9 @@ class GameStateManager {
    * Call this in the render loop, not in network handlers
    */
   applyInterpolation() {
-    if (!this.interpolation.enabled) return;
+    if (!this.interpolation.enabled) {
+      return;
+    }
 
     // CORRECTION: Clamp factor to [0, 1] to prevent visual glitches
     const factor = Math.max(0, Math.min(1, this.interpolation.factor));
@@ -137,7 +139,9 @@ class GameStateManager {
 
     // Mark entities with last seen timestamp
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(type => {
-      if (!this.state[type]) return;
+      if (!this.state[type]) {
+        return;
+      }
 
       for (const [id, entity] of Object.entries(this.state[type])) {
         if (!entity._lastSeen) {

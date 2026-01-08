@@ -93,11 +93,13 @@ class UnlockSystem {
 
   // Vérifier et débloquer les armes
   checkUnlocks() {
-    let newUnlocks = [];
+    const newUnlocks = [];
 
     for (const [weaponId, weapon] of Object.entries(this.weaponRequirements)) {
       // Sauter si déjà débloqué
-      if (this.unlocks[weaponId]) continue;
+      if (this.unlocks[weaponId]) {
+        continue;
+      }
 
       // Pistolet toujours débloqué
       if (weaponId === 'pistol') {
@@ -117,7 +119,9 @@ class UnlockSystem {
 
   // Débloquer une arme
   unlock(weaponId) {
-    if (this.unlocks[weaponId]) return;
+    if (this.unlocks[weaponId]) {
+      return;
+    }
 
     this.unlocks[weaponId] = true;
     this.saveUnlocks();

@@ -342,11 +342,13 @@ class AchievementSystem {
 
   // Vérifier tous les achievements
   checkAchievements() {
-    let newUnlocks = [];
+    const newUnlocks = [];
 
     for (const [id, achievement] of Object.entries(this.achievements)) {
       // Sauter si déjà débloqué
-      if (this.unlockedAchievements[id]) continue;
+      if (this.unlockedAchievements[id]) {
+        continue;
+      }
 
       // Vérifier la condition
       if (achievement.condition()) {
@@ -361,7 +363,9 @@ class AchievementSystem {
   // Débloquer un achievement
   unlockAchievement(achievementId) {
     const achievement = this.achievements[achievementId];
-    if (!achievement || this.unlockedAchievements[achievementId]) return;
+    if (!achievement || this.unlockedAchievements[achievementId]) {
+      return;
+    }
 
     this.unlockedAchievements[achievementId] = {
       unlockedAt: Date.now(),
@@ -382,7 +386,9 @@ class AchievementSystem {
     const achievement = this.achievements[achievementId];
     const unlockData = this.unlockedAchievements[achievementId];
 
-    if (!achievement || !unlockData || unlockData.rewardClaimed) return null;
+    if (!achievement || !unlockData || unlockData.rewardClaimed) {
+      return null;
+    }
 
     unlockData.rewardClaimed = true;
     this.saveProgress();

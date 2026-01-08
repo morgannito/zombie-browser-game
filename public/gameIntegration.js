@@ -346,7 +346,9 @@ function createSkinsMenu() {
  */
 function populatePlayerSkins() {
   const grid = document.getElementById('player-skins-grid');
-  if (!grid || !window.skinManager) return;
+  if (!grid || !window.skinManager) {
+    return;
+  }
 
   grid.innerHTML = '';
 
@@ -401,7 +403,9 @@ function populatePlayerSkins() {
  */
 function populateWeaponSkins() {
   const grid = document.getElementById('weapon-skins-grid');
-  if (!grid || !window.skinManager) return;
+  if (!grid || !window.skinManager) {
+    return;
+  }
 
   grid.innerHTML = '';
 

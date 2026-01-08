@@ -185,153 +185,153 @@ async function startServer() {
   app.use('/api/metrics', initMetricsRoutes(metricsCollector));
   app.use('/', initHealthRoutes(dbManager));
 
-// ============================================
-// GAME INITIALIZATION
-// ============================================
+  // ============================================
+  // GAME INITIALIZATION
+  // ============================================
 
-// Initialize game state
-const gameState = initializeGameState();
+  // Initialize game state
+  const gameState = initializeGameState();
 
-// Initialize rooms (Rogue-like system)
-initializeRooms(gameState, CONFIG);
+  // Initialize rooms (Rogue-like system)
+  initializeRooms(gameState, CONFIG);
 
-// Initialize game managers
-const entityManager = new EntityManager(gameState, CONFIG);
-const collisionManager = new CollisionManager(gameState, CONFIG);
-const networkManager = new NetworkManager(io, gameState);
-const roomManager = new RoomManager(gameState, CONFIG, io);
-const playerManager = new PlayerManager(gameState, CONFIG, LEVEL_UP_UPGRADES);
-const zombieManager = new ZombieManager(
-  gameState,
-  CONFIG,
-  ZOMBIE_TYPES,
-  (x, y, size) => roomManager.checkWallCollision(x, y, size),
-  io
-);
+  // Initialize game managers
+  const entityManager = new EntityManager(gameState, CONFIG);
+  const collisionManager = new CollisionManager(gameState, CONFIG);
+  const networkManager = new NetworkManager(io, gameState);
+  const roomManager = new RoomManager(gameState, CONFIG, io);
+  const playerManager = new PlayerManager(gameState, CONFIG, LEVEL_UP_UPGRADES);
+  const zombieManager = new ZombieManager(
+    gameState,
+    CONFIG,
+    ZOMBIE_TYPES,
+    (x, y, size) => roomManager.checkWallCollision(x, y, size),
+    io
+  );
 
-// CRITICAL FIX: Add roomManager to gameState for zombie movement
-gameState.roomManager = roomManager;
+  // CRITICAL FIX: Add roomManager to gameState for zombie movement
+  gameState.roomManager = roomManager;
 
-// Initialize progression integration (XP, skills, achievements)
-const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
-const progressionIntegration = new ProgressionIntegration(container, io);
-gameState.progressionIntegration = progressionIntegration;
-logger.info('Progression integration initialized');
+  // Initialize progression integration (XP, skills, achievements)
+  const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
+  const progressionIntegration = new ProgressionIntegration(container, io);
+  gameState.progressionIntegration = progressionIntegration;
+  logger.info('Progression integration initialized');
 
-// Load first room after roomManager is initialized
-const { loadRoom } = require('./game/roomFunctions');
-loadRoom(0, roomManager);
+  // Load first room after roomManager is initialized
+  const { loadRoom } = require('./game/roomFunctions');
+  loadRoom(0, roomManager);
 
-// Start zombie spawner
-zombieManager.startZombieSpawner();
-logger.info('Zombie spawner started');
+  // Start zombie spawner
+  zombieManager.startZombieSpawner();
+  logger.info('Zombie spawner started');
 
-// Initialize admin commands (debug mode)
-const AdminCommands = require('./game/modules/admin/AdminCommands');
-const adminCommands = new AdminCommands(io, gameState, zombieManager);
-gameState.adminCommands = adminCommands;
-logger.info('Admin commands initialized (debug mode enabled)');
+  // Initialize admin commands (debug mode)
+  const AdminCommands = require('./game/modules/admin/AdminCommands');
+  const adminCommands = new AdminCommands(io, gameState, zombieManager);
+  gameState.adminCommands = adminCommands;
+  logger.info('Admin commands initialized (debug mode enabled)');
 
 
-// ============================================
-// GAME LOOP
-// ============================================
+  // ============================================
+  // GAME LOOP
+  // ============================================
 
-// Start game loop with adaptive tick rate
-let gameLoopTimer = setInterval(() => {
-  gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger);
+  // Start game loop with adaptive tick rate
+  const gameLoopTimer = setInterval(() => {
+    gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger);
 
-  // Broadcast game state conditionally based on performance mode
-  if (perfIntegration.shouldBroadcast()) {
-    networkManager.emitGameState();
-  }
-}, perfIntegration.getTickInterval());
-
-// CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
-let heartbeatTimer = setInterval(() => {
-  const now = Date.now();
-  const playerIds = Object.keys(gameState.players);
-  let cleanedUp = 0;
-  let orphanedObjects = 0;
-
-  for (let playerId of playerIds) {
-    const player = gameState.players[playerId];
-
-    // CRITICAL FIX: Safety check for orphaned/corrupted player objects
-    if (!player || typeof player !== 'object') {
-      logger.warn('⚠️  Orphaned player object detected', { playerId });
-      delete gameState.players[playerId];
-      orphanedObjects++;
-      cleanedUp++;
-      continue;
+    // Broadcast game state conditionally based on performance mode
+    if (perfIntegration.shouldBroadcast()) {
+      networkManager.emitGameState();
     }
+  }, perfIntegration.getTickInterval());
 
-    // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
-    if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
-      player.lastActivityTime = now;
-      logger.warn('⚠️  Player missing lastActivityTime, initialized', {
-        playerId,
-        nickname: player.nickname
-      });
-      continue;
-    }
+  // CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
+  const heartbeatTimer = setInterval(() => {
+    const now = Date.now();
+    const playerIds = Object.keys(gameState.players);
+    let cleanedUp = 0;
+    let orphanedObjects = 0;
 
-    const inactiveDuration = now - player.lastActivityTime;
+    for (const playerId of playerIds) {
+      const player = gameState.players[playerId];
 
-    // Check if player is inactive for too long
-    if (inactiveDuration > INACTIVITY_TIMEOUT) {
-      logger.info('⏱️  Player timeout', {
-        player: player.nickname || playerId,
-        inactiveDuration,
-        wasConnected: !!player.socketId
-      });
-
-      // Disconnect player socket if still connected
-      if (player.socketId) {
-        const socket = io.sockets.sockets.get(player.socketId);
-        if (socket) {
-          socket.disconnect(true);
-        }
+      // CRITICAL FIX: Safety check for orphaned/corrupted player objects
+      if (!player || typeof player !== 'object') {
+        logger.warn('⚠️  Orphaned player object detected', { playerId });
+        delete gameState.players[playerId];
+        orphanedObjects++;
+        cleanedUp++;
+        continue;
       }
 
-      delete gameState.players[playerId];
-      cleanedUp++;
+      // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
+      if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
+        player.lastActivityTime = now;
+        logger.warn('⚠️  Player missing lastActivityTime, initialized', {
+          playerId,
+          nickname: player.nickname
+        });
+        continue;
+      }
+
+      const inactiveDuration = now - player.lastActivityTime;
+
+      // Check if player is inactive for too long
+      if (inactiveDuration > INACTIVITY_TIMEOUT) {
+        logger.info('⏱️  Player timeout', {
+          player: player.nickname || playerId,
+          inactiveDuration,
+          wasConnected: !!player.socketId
+        });
+
+        // Disconnect player socket if still connected
+        if (player.socketId) {
+          const socket = io.sockets.sockets.get(player.socketId);
+          if (socket) {
+            socket.disconnect(true);
+          }
+        }
+
+        delete gameState.players[playerId];
+        cleanedUp++;
+      }
     }
-  }
 
-  // CRITICAL FIX: Log cleanup stats for monitoring
-  if (cleanedUp > 0) {
-    logger.info('🧹 Heartbeat cleanup completed', {
-      playersRemoved: cleanedUp,
-      orphanedObjects,
-      remainingPlayers: Object.keys(gameState.players).length,
-      timestamp: now
-    });
-
-    // Track cleanup metrics
-    if (metricsCollector) {
-      metricsCollector.recordCleanup({
+    // CRITICAL FIX: Log cleanup stats for monitoring
+    if (cleanedUp > 0) {
+      logger.info('🧹 Heartbeat cleanup completed', {
         playersRemoved: cleanedUp,
-        orphaned: orphanedObjects
+        orphanedObjects,
+        remainingPlayers: Object.keys(gameState.players).length,
+        timestamp: now
       });
+
+      // Track cleanup metrics
+      if (metricsCollector) {
+        metricsCollector.recordCleanup({
+          playersRemoved: cleanedUp,
+          orphaned: orphanedObjects
+        });
+      }
     }
-  }
-}, HEARTBEAT_CHECK_INTERVAL);
+  }, HEARTBEAT_CHECK_INTERVAL);
 
-// ============================================
-// SOCKET.IO HANDLERS
-// ============================================
+  // ============================================
+  // SOCKET.IO HANDLERS
+  // ============================================
 
-const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration);
-io.on('connection', socketHandler);
+  const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration);
+  io.on('connection', socketHandler);
 
-// ============================================
-// ERROR HANDLING
-// ============================================
+  // ============================================
+  // ERROR HANDLING
+  // ============================================
 
-app.use(notFoundHandler);
-app.use(apiErrorHandler); // Handle API errors with JSON responses
-app.use(serverErrorHandler); // Handle HTML errors
+  app.use(notFoundHandler);
+  app.use(apiErrorHandler); // Handle API errors with JSON responses
+  app.use(serverErrorHandler); // Handle HTML errors
 
   // ============================================
   // SERVER STARTUP
@@ -340,12 +340,12 @@ app.use(serverErrorHandler); // Handle HTML errors
   server.listen(PORT, () => {
     logger.info(`🚀 Server running on port ${PORT}`);
     logger.info(`📡 Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-    logger.info(`🎮 Game server initialized`);
+    logger.info('🎮 Game server initialized');
 
     if (dbAvailable) {
-      logger.info(`🗄️  Database connected`);
+      logger.info('🗄️  Database connected');
     } else {
-      logger.warn(`⚠️  Running in degraded mode - no database`);
+      logger.warn('⚠️  Running in degraded mode - no database');
     }
   });
 }
@@ -385,6 +385,19 @@ function cleanupServer() {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
     logger.info('✅ Heartbeat timer stopped');
+  }
+
+  // MEDIUM FIX: Cleanup HazardManager
+  if (gameState.hazardManager) {
+    try {
+      gameState.hazardManager.clearAll();
+      logger.info('✅ HazardManager cleaned up');
+    } catch (err) {
+      logger.error('❌ Error cleaning up HazardManager', {
+        error: err.message,
+        stack: err.stack
+      });
+    }
   }
 
   // CRITICAL FIX: Promise-based cleanup sequence

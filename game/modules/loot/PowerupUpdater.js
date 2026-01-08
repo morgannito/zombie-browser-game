@@ -13,7 +13,7 @@ const { CONFIG, POWERUP_TYPES } = ConfigManager;
  * Update powerups - check expiration and player collection
  */
 function updatePowerups(gameState, now, entityManager) {
-  for (let powerupId in gameState.powerups) {
+  for (const powerupId in gameState.powerups) {
     const powerup = gameState.powerups[powerupId];
 
     if (isPowerupExpired(powerup, now)) {
@@ -36,7 +36,7 @@ function isPowerupExpired(powerup, now) {
  * Check powerup collection by players
  */
 function checkPowerupCollection(powerup, powerupId, gameState, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
 
     if (canCollectPowerup(player, powerup)) {

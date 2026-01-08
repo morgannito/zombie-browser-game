@@ -152,8 +152,8 @@ class EventListenerManager {
 
       // Par type de target
       const targetType = listener.target === window ? 'window' :
-                        listener.target === document ? 'document' :
-                        listener.target?.tagName || 'unknown';
+        listener.target === document ? 'document' :
+          listener.target?.tagName || 'unknown';
       stats.byTarget[targetType] = (stats.byTarget[targetType] || 0) + 1;
 
       // Plus ancien/récent
@@ -202,8 +202,8 @@ class EventListenerManager {
           event: listener.event,
           age: Math.round(age / 1000) + 's',
           target: listener.target === window ? 'window' :
-                 listener.target === document ? 'document' :
-                 listener.target?.tagName || 'unknown'
+            listener.target === document ? 'document' :
+              listener.target?.tagName || 'unknown'
         });
       }
     }

@@ -49,7 +49,7 @@ function notifyPlayers(gameState, io) {
  * Reward surviving players
  */
 function rewardSurvivors(gameState) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
     if (player.alive) {
       player.health = Math.min(player.health + 50, player.maxHealth);

@@ -35,7 +35,9 @@ function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector)
     attempts++;
   } while (roomManager.checkWallCollision(x, y, CONFIG.POWERUP_SIZE) && attempts < 50);
 
-  if (attempts >= 50) return;
+  if (attempts >= 50) {
+    return;
+  }
 
   const powerupId = gameState.nextPowerupId++;
   gameState.powerups[powerupId] = {

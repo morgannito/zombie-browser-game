@@ -9,7 +9,9 @@ const { createParticles } = require('../../lootFunctions');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 function updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossCharnier') return;
+  if (zombie.type !== 'bossCharnier') {
+    return;
+  }
 
   const bossType = ZOMBIE_TYPES.bossCharnier;
   if (!zombie.lastSpawn || now - zombie.lastSpawn >= bossType.spawnCooldown) {
@@ -29,7 +31,9 @@ function updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityM
  * Update Boss Infect
  */
 function updateBossInfect(zombie, now, entityManager, gameState) {
-  if (zombie.type !== 'bossInfect') return;
+  if (zombie.type !== 'bossInfect') {
+    return;
+  }
 
   const bossType = ZOMBIE_TYPES.bossInfect;
 
@@ -57,9 +61,11 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
     zombie.lastAuraDamage = now;
 
     // Trouver tous les joueurs dans le rayon de l'aura
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive || player.spawnProtection || player.invisible) continue;
+      if (!player.alive || player.spawnProtection || player.invisible) {
+        continue;
+      }
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
       if (dist < bossType.deathAuraRadius) {
@@ -83,7 +89,9 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
  * Update Boss Colosse
  */
 function updateBossColosse(zombie, zombieId, now, io, entityManager) {
-  if (zombie.type !== 'bossColosse') return;
+  if (zombie.type !== 'bossColosse') {
+    return;
+  }
 
   const bossType = ZOMBIE_TYPES.bossColosse;
   const healthPercent = zombie.health / zombie.maxHealth;
@@ -116,12 +124,13 @@ function updateBossColosse(zombie, zombieId, now, io, entityManager) {
 }
 
 
-
 /**
  * Update Boss Roi
  */
 function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossRoi') return;
+  if (zombie.type !== 'bossRoi') {
+    return;
+  }
 
   const bossType = ZOMBIE_TYPES.bossRoi;
   const healthPercent = zombie.health / zombie.maxHealth;
@@ -247,7 +256,9 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
  * Update Boss Omega
  */
 function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossOmega') return;
+  if (zombie.type !== 'bossOmega') {
+    return;
+  }
 
   const bossType = ZOMBIE_TYPES.bossOmega;
   const healthPercent = zombie.health / zombie.maxHealth;
@@ -357,9 +368,11 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
       }
 
       // Dégâts aux joueurs touchés par le laser
-      for (let playerId in gameState.players) {
+      for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) continue;
+        if (!player.alive || player.spawnProtection || player.invisible) {
+          continue;
+        }
 
         // Vérifier si le joueur est dans la trajectoire du laser
         const playerAngle = Math.atan2(player.y - zombie.y, player.x - zombie.x);

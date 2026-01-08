@@ -91,7 +91,9 @@ class PauseMenu {
   }
 
   pause() {
-    if (this.isPaused) return;
+    if (this.isPaused) {
+      return;
+    }
 
     this.isPaused = true;
     this.pauseStartTime = Date.now();
@@ -106,7 +108,9 @@ class PauseMenu {
   }
 
   resume() {
-    if (!this.isPaused) return;
+    if (!this.isPaused) {
+      return;
+    }
 
     this.isPaused = false;
 
@@ -226,10 +230,18 @@ class PauseMenu {
     const scoreValue = document.getElementById('score-value')?.textContent;
     const goldValue = document.getElementById('gold-value')?.textContent;
 
-    if (waveValue) state.wave = parseInt(waveValue) || 1;
-    if (levelValue) state.level = parseInt(levelValue) || 1;
-    if (scoreValue) state.score = parseInt(scoreValue.replace(/,/g, '')) || 0;
-    if (goldValue) state.gold = parseInt(goldValue.replace(/,/g, '')) || 0;
+    if (waveValue) {
+      state.wave = parseInt(waveValue) || 1;
+    }
+    if (levelValue) {
+      state.level = parseInt(levelValue) || 1;
+    }
+    if (scoreValue) {
+      state.score = parseInt(scoreValue.replace(/,/g, '')) || 0;
+    }
+    if (goldValue) {
+      state.gold = parseInt(goldValue.replace(/,/g, '')) || 0;
+    }
 
     return state;
   }

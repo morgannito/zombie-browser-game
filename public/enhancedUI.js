@@ -184,7 +184,9 @@ class EnhancedMobileUI {
     const joystickBase = document.getElementById('joystick-base');
     const joystickStick = document.getElementById('joystick-stick');
 
-    if (!joystickContainer || !joystickBase || !joystickStick) return;
+    if (!joystickContainer || !joystickBase || !joystickStick) {
+      return;
+    }
 
     // Ajout d'un effet de glow
     joystickBase.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
@@ -207,7 +209,9 @@ class EnhancedMobileUI {
    */
   enhanceButtons() {
     const autoShootBtn = document.getElementById('auto-shoot-btn');
-    if (!autoShootBtn) return;
+    if (!autoShootBtn) {
+      return;
+    }
 
     // Effet de pression
     autoShootBtn.addEventListener('touchstart', (e) => {
@@ -405,7 +409,9 @@ class FloatingTextManager {
     setTimeout(() => {
       element.remove();
       const index = this.texts.indexOf(element);
-      if (index > -1) this.texts.splice(index, 1);
+      if (index > -1) {
+        this.texts.splice(index, 1);
+      }
     }, 1000);
   }
 

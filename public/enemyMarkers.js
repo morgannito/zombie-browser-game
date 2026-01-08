@@ -39,7 +39,9 @@ class EnemyMarkers {
     const activeIds = new Set();
 
     entities.forEach(entity => {
-      if (!entity || (!entity.isElite && !entity.isBoss)) return;
+      if (!entity || (!entity.isElite && !entity.isBoss)) {
+        return;
+      }
 
       activeIds.add(entity.id);
 
@@ -70,7 +72,9 @@ class EnemyMarkers {
 
   updateOnScreenMarker(entity) {
     const canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     let marker = this.markers.get(entity.id);
 
@@ -136,7 +140,9 @@ class EnemyMarkers {
   }
 
   updateOffScreenIndicator(entity, camera, viewport) {
-    if (!this.indicatorsContainer) return;
+    if (!this.indicatorsContainer) {
+      return;
+    }
 
     let indicator = this.indicators.get(entity.id);
 

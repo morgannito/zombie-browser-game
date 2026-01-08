@@ -22,7 +22,7 @@ const { ZOMBIE_TYPES } = ConfigManager;
  * @param {Object} zombieManager - Zombie manager
  */
 function updateZombieAI(gameState, now, io, collisionManager, entityManager, zombieManager) {
-  for (let zombieId in gameState.zombies) {
+  for (const zombieId in gameState.zombies) {
     const zombie = gameState.zombies[zombieId];
 
     // Healer zombie
@@ -63,7 +63,7 @@ function updateHealerZombie(zombie, zombieId, now, collisionManager, entityManag
       zombie.x, zombie.y, healerType.healRadius, zombieId
     );
 
-    for (let other of nearbyZombies) {
+    for (const other of nearbyZombies) {
       if (other.health < other.maxHealth) {
         other.health = Math.min(other.health + healerType.healAmount, other.maxHealth);
         createParticles(other.x, other.y, '#00ffff', 5, entityManager);
@@ -81,7 +81,7 @@ function updateSlowerZombie(zombie, zombieId, now, collisionManager) {
     zombie.x, zombie.y, slowerType.slowRadius
   );
 
-  for (let player of nearbyPlayers) {
+  for (const player of nearbyPlayers) {
     player.slowedUntil = now + slowerType.slowDuration;
     player.slowAmount = slowerType.slowAmount;
   }
@@ -94,8 +94,9 @@ function updateShooterZombie(zombie, zombieId, now, collisionManager, entityMana
   const shooterType = ZOMBIE_TYPES.shooter;
 
   if (!zombie.lastShot || now - zombie.lastShot >= shooterType.shootCooldown) {
-    const targetPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, shooterType.shootRange,
+    // SSSS OPTIMIZATION: Use cached pathfinding for shooter targeting
+    const targetPlayer = collisionManager.findClosestPlayerCached(
+      zombieId, zombie.x, zombie.y, shooterType.shootRange,
       { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
 

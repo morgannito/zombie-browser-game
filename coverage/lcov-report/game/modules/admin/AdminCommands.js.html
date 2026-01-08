@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/84</span>
+                <span class='fraction'>0/88</span>
             </div>
         
             
@@ -340,7 +340,15 @@
 <a name='L275'></a><a href='#L275'>275</a>
 <a name='L276'></a><a href='#L276'>276</a>
 <a name='L277'></a><a href='#L277'>277</a>
-<a name='L278'></a><a href='#L278'>278</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -429,6 +437,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -548,6 +558,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -555,8 +569,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -659,29 +675,29 @@ class AdminCommands {
     }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    switch (command) {</span>
-      case 'spawn':
-<span class="cstat-no" title="statement not covered" >        this.handleSpawn(socket, args);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      case 'wave':
-<span class="cstat-no" title="statement not covered" >        this.handleWave(socket, args);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      case 'boss':
-<span class="cstat-no" title="statement not covered" >        this.handleBoss(socket, args);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      case 'list':
-<span class="cstat-no" title="statement not covered" >        this.handleList(socket, args);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      case 'clear':
-<span class="cstat-no" title="statement not covered" >        this.handleClear(socket);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      case 'fps':
-<span class="cstat-no" title="statement not covered" >        this.handleFPS(socket);</span>
-<span class="cstat-no" title="statement not covered" >        break;</span>
-      default:
-<span class="cstat-no" title="statement not covered" >        socket.emit('adminResponse', {</span>
-          success: false,
-          message: `Unknown command: ${command}`
-        });
+    case 'spawn':
+<span class="cstat-no" title="statement not covered" >      this.handleSpawn(socket, args);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    case 'wave':
+<span class="cstat-no" title="statement not covered" >      this.handleWave(socket, args);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    case 'boss':
+<span class="cstat-no" title="statement not covered" >      this.handleBoss(socket, args);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    case 'list':
+<span class="cstat-no" title="statement not covered" >      this.handleList(socket, args);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    case 'clear':
+<span class="cstat-no" title="statement not covered" >      this.handleClear(socket);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    case 'fps':
+<span class="cstat-no" title="statement not covered" >      this.handleFPS(socket);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    default:
+<span class="cstat-no" title="statement not covered" >      socket.emit('adminResponse', {</span>
+        success: false,
+        message: `Unknown command: ${command}`
+      });
     }
   }
 &nbsp;
@@ -705,7 +721,9 @@ class AdminCommands {
 <span class="cstat-no" title="statement not covered" >    for (let i = <span class="cstat-no" title="statement not covered" >0;</span> i &lt; Math.min(count, 50); i++) {</span>
       // Spawn at player position
       const player = <span class="cstat-no" title="statement not covered" >this.gameState.players[socket.playerId];</span>
-<span class="cstat-no" title="statement not covered" >      if (!player) <span class="cstat-no" title="statement not covered" >break;</span></span>
+<span class="cstat-no" title="statement not covered" >      if (!player) {</span>
+<span class="cstat-no" title="statement not covered" >        break;</span>
+      }
 &nbsp;
       const angle = <span class="cstat-no" title="statement not covered" >Math.random() * Math.PI * 2;</span>
       const distance = <span class="cstat-no" title="statement not covered" >100 + Math.random() * 100;</span>
@@ -775,7 +793,7 @@ class AdminCommands {
     const [bossType] = <span class="cstat-no" title="statement not covered" >args || ['boss'];</span>
 &nbsp;
     const validBosses = <span class="cstat-no" title="statement not covered" >['boss', 'bossCharnier', 'bossInfect', 'bossColosse', 'bossRoi', 'bossOmega',</span>
-                         'bossInfernal', 'bossCryos', 'bossVortex', 'bossNexus', 'bossApocalypse'];
+      'bossInfernal', 'bossCryos', 'bossVortex', 'bossNexus', 'bossApocalypse'];
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (!validBosses.includes(bossType)) {</span>
 <span class="cstat-no" title="statement not covered" >      socket.emit('adminResponse', {</span>
@@ -831,9 +849,15 @@ class AdminCommands {
     const normals = <span class="cstat-no" title="statement not covered" >types.filter(<span class="fstat-no" title="function not covered" >t </span>=&gt; <span class="cstat-no" title="statement not covered" >!ZOMBIE_TYPES[t].isBoss &amp;&amp; !ZOMBIE_TYPES[t].isElite)</span>;</span>
 &nbsp;
     let message = <span class="cstat-no" title="statement not covered" >`**Zombie Types (${types.length})**\n`;</span>
-<span class="cstat-no" title="statement not covered" >    if (bosses.length &gt; 0) <span class="cstat-no" title="statement not covered" >message += `\nBosses (${bosses.length}): ${bosses.join(', ')}`;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (elites.length &gt; 0) <span class="cstat-no" title="statement not covered" >message += `\nElites (${elites.length}): ${elites.join(', ')}`;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (normals.length &gt; 0) <span class="cstat-no" title="statement not covered" >message += `\nNormal (${normals.length}): ${normals.join(', ')}`;</span></span>
+<span class="cstat-no" title="statement not covered" >    if (bosses.length &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >      message += `\nBosses (${bosses.length}): ${bosses.join(', ')}`;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (elites.length &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >      message += `\nElites (${elites.length}): ${elites.join(', ')}`;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (normals.length &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >      message += `\nNormal (${normals.length}): ${normals.join(', ')}`;</span>
+    }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    socket.emit('adminResponse', {</span>
       success: true,
@@ -901,7 +925,7 @@ class AdminCommands {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

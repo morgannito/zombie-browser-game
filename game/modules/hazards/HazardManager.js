@@ -32,7 +32,9 @@ class HazardManager {
    * Update generic hazards (meteors, ice spikes, lightning, etc.)
    */
   updateHazards(now) {
-    if (!this.gameState.hazards) return;
+    if (!this.gameState.hazards) {
+      return;
+    }
 
     // Apply damage to players in hazard zones
     for (let i = this.gameState.hazards.length - 1; i >= 0; i--) {
@@ -45,9 +47,11 @@ class HazardManager {
       }
 
       // Apply damage to players in radius
-      for (let playerId in this.gameState.players) {
+      for (const playerId in this.gameState.players) {
         const player = this.gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) continue;
+        if (!player.alive || player.spawnProtection || player.invisible) {
+          continue;
+        }
 
         const dist = distance(hazard.x, hazard.y, player.x, player.y);
         if (dist < hazard.radius) {
@@ -84,7 +88,9 @@ class HazardManager {
    * Update toxic pools (boss abilities)
    */
   updateToxicPools(now) {
-    if (!this.gameState.toxicPools) return;
+    if (!this.gameState.toxicPools) {
+      return;
+    }
 
     for (let i = this.gameState.toxicPools.length - 1; i >= 0; i--) {
       const pool = this.gameState.toxicPools[i];
@@ -96,9 +102,11 @@ class HazardManager {
       }
 
       // Apply damage to players
-      for (let playerId in this.gameState.players) {
+      for (const playerId in this.gameState.players) {
         const player = this.gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) continue;
+        if (!player.alive || player.spawnProtection || player.invisible) {
+          continue;
+        }
 
         const dist = distance(pool.x, pool.y, player.x, player.y);
         if (dist < pool.radius) {

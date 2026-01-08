@@ -40,29 +40,29 @@ class AdminCommands {
     }
 
     switch (command) {
-      case 'spawn':
-        this.handleSpawn(socket, args);
-        break;
-      case 'wave':
-        this.handleWave(socket, args);
-        break;
-      case 'boss':
-        this.handleBoss(socket, args);
-        break;
-      case 'list':
-        this.handleList(socket, args);
-        break;
-      case 'clear':
-        this.handleClear(socket);
-        break;
-      case 'fps':
-        this.handleFPS(socket);
-        break;
-      default:
-        socket.emit('adminResponse', {
-          success: false,
-          message: `Unknown command: ${command}`
-        });
+    case 'spawn':
+      this.handleSpawn(socket, args);
+      break;
+    case 'wave':
+      this.handleWave(socket, args);
+      break;
+    case 'boss':
+      this.handleBoss(socket, args);
+      break;
+    case 'list':
+      this.handleList(socket, args);
+      break;
+    case 'clear':
+      this.handleClear(socket);
+      break;
+    case 'fps':
+      this.handleFPS(socket);
+      break;
+    default:
+      socket.emit('adminResponse', {
+        success: false,
+        message: `Unknown command: ${command}`
+      });
     }
   }
 
@@ -86,7 +86,9 @@ class AdminCommands {
     for (let i = 0; i < Math.min(count, 50); i++) {
       // Spawn at player position
       const player = this.gameState.players[socket.playerId];
-      if (!player) break;
+      if (!player) {
+        break;
+      }
 
       const angle = Math.random() * Math.PI * 2;
       const distance = 100 + Math.random() * 100;
@@ -156,7 +158,7 @@ class AdminCommands {
     const [bossType] = args || ['boss'];
 
     const validBosses = ['boss', 'bossCharnier', 'bossInfect', 'bossColosse', 'bossRoi', 'bossOmega',
-                         'bossInfernal', 'bossCryos', 'bossVortex', 'bossNexus', 'bossApocalypse'];
+      'bossInfernal', 'bossCryos', 'bossVortex', 'bossNexus', 'bossApocalypse'];
 
     if (!validBosses.includes(bossType)) {
       socket.emit('adminResponse', {
@@ -212,9 +214,15 @@ class AdminCommands {
     const normals = types.filter(t => !ZOMBIE_TYPES[t].isBoss && !ZOMBIE_TYPES[t].isElite);
 
     let message = `**Zombie Types (${types.length})**\n`;
-    if (bosses.length > 0) message += `\nBosses (${bosses.length}): ${bosses.join(', ')}`;
-    if (elites.length > 0) message += `\nElites (${elites.length}): ${elites.join(', ')}`;
-    if (normals.length > 0) message += `\nNormal (${normals.length}): ${normals.join(', ')}`;
+    if (bosses.length > 0) {
+      message += `\nBosses (${bosses.length}): ${bosses.join(', ')}`;
+    }
+    if (elites.length > 0) {
+      message += `\nElites (${elites.length}): ${elites.join(', ')}`;
+    }
+    if (normals.length > 0) {
+      message += `\nNormal (${normals.length}): ${normals.join(', ')}`;
+    }
 
     socket.emit('adminResponse', {
       success: true,

@@ -11,7 +11,7 @@ const MathUtils = require('../lib/MathUtils');
 const { distance } = require('./utilityFunctions');
 const { createLoot, createParticles } = require('./lootFunctions');
 
-const { CONFIG } = ConfigManager;
+const { CONFIG, GAMEPLAY_CONSTANTS } = ConfigManager;
 
 // Module imports
 const { updateZombies } = require('./modules/zombie/ZombieUpdater');
@@ -25,25 +25,58 @@ const HazardManager = require('./modules/hazards/HazardManager');
 // HIGH FIX: Race condition protection with stuck detection
 let gameLoopRunning = false;
 let gameLoopStuckSince = null;
-const GAME_LOOP_TIMEOUT = 5000; // 5 seconds
 
 /**
- * Handle player death with progression integration
- * CRITICAL FIX: Proper error handling and retry queue
+ * Handle player death with progression integration and retry mechanism
+ *
+ * CRITICAL FIX: Proper error handling with retry queue for database failures
+ *
+ * @param {Object} player - Player object with health, stats, and session data
+ * @param {string} playerId - Unique player identifier (socket ID)
+ * @param {Object} gameState - Global game state with progression integration
+ * @param {number} now - Current timestamp (Date.now())
+ * @param {boolean} [isBoss=false] - Whether death was caused by boss
+ * @param {Object} logger - Winston logger instance for structured logging
+ * @returns {boolean} True if player was revived by second chance, false otherwise
+ *
+ * @description
+ * Processes player death through these steps:
+ * 1. Validates player object and health value
+ * 2. Checks for second chance revival (progression feature)
+ * 3. If not revived:
+ *    - Marks player as dead
+ *    - Calculates final session stats (wave, level, kills, survival time)
+ *    - Calls progression system to save death data
+ *    - On failure: adds to retry queue (max 100 entries)
+ * 4. Logs comprehensive error data for monitoring
+ *
+ * @example
+ *   const revived = handlePlayerDeathProgression(
+ *     player, 'socket-123', gameState, Date.now(), false, logger
+ *   );
+ *   if (!revived) {
+ *     // Player is dead, handle cleanup
+ *   }
  */
 function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss = false, logger) {
   // CRITICAL FIX: Validate inputs
   if (!player || typeof player !== 'object') {
-    if (logger) logger.error('❌ Invalid player object in handlePlayerDeathProgression', { playerId });
+    if (logger) {
+      logger.error('❌ Invalid player object in handlePlayerDeathProgression', { playerId });
+    }
     return false;
   }
 
   if (typeof player.health !== 'number') {
-    if (logger) logger.warn('⚠️  Player has invalid health value', { playerId, health: player.health });
+    if (logger) {
+      logger.warn('⚠️  Player has invalid health value', { playerId, health: player.health });
+    }
     player.health = 0;
   }
 
-  if (player.health > 0) return false;
+  if (player.health > 0) {
+    return false;
+  }
 
   player.health = 0;
   const revived = gameState.progressionIntegration?.checkSecondChance(player);
@@ -54,7 +87,7 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
     if (gameState.progressionIntegration && player.sessionId) {
       player.wave = gameState.wave;
       player.maxCombo = player.highestCombo || player.combo || 0;
-      player.survivalTime = Math.floor((now - player.survivalTime) / 1000);
+      player.survivalTime = Math.floor((now - player.survivalTime) / GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER);
       player.bossKills = isBoss ? 1 : 0;
 
       const sessionStats = {
@@ -86,8 +119,8 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
             gameState.failedDeathQueue = [];
           }
 
-          // Add to retry queue (max 100 entries to prevent memory leak)
-          if (gameState.failedDeathQueue.length < 100) {
+          // Add to retry queue (max size to prevent memory leak)
+          if (gameState.failedDeathQueue.length < GAMEPLAY_CONSTANTS.FAILED_DEATH_QUEUE_MAX_SIZE) {
             gameState.failedDeathQueue.push({
               player: {
                 id: player.id,
@@ -119,8 +152,45 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
 }
 
 /**
- * Main game loop function
- * HIGH FIX: Enhanced race condition protection with stuck detection
+ * Main game loop - executes at 60 FPS with race condition protection
+ *
+ * HIGH FIX: Enhanced race condition protection with automatic stuck detection
+ *
+ * @param {Object} gameState - Global game state (players, zombies, bullets, etc.)
+ * @param {Object} io - Socket.IO server instance for real-time communication
+ * @param {Object} metricsCollector - Prometheus-style metrics collector
+ * @param {Object} perfIntegration - Performance monitoring integration
+ * @param {Object} collisionManager - Quadtree-based collision detection system
+ * @param {Object} entityManager - Entity pooling and lifecycle manager
+ * @param {Object} zombieManager - Zombie spawning and AI coordination
+ * @param {Object} logger - Winston logger for structured logging
+ * @returns {void}
+ *
+ * @description
+ * Core game loop that runs every 16.67ms (60 FPS):
+ * 1. Race condition protection: Skips frame if previous loop still running
+ * 2. Stuck detection: Auto-resets if loop frozen >5 seconds
+ * 3. HazardManager initialization (lazy, first-loop only)
+ * 4. Updates in sequence:
+ *    - Metrics collection
+ *    - Quadtree rebuild
+ *    - Player timers, regeneration, auto-turrets, tesla coils
+ *    - Hazard system (lava, meteors, ice spikes)
+ *    - Zombies (movement, AI, special abilities)
+ *    - Poison trails and status effects
+ *    - Bullets (movement, collision, damage)
+ *    - Particles (visual effects)
+ *    - Entity cleanup (expired/dead entities)
+ *    - Powerups and loot (despawn timers)
+ * 5. Performance tracking: Logs slow frames (>100ms)
+ * 6. Error handling: Catches exceptions, logs, increments error metrics
+ *
+ * @throws {Error} If HazardManager fails to initialize (logged, not thrown)
+ *
+ * @example
+ *   setInterval(() => {
+ *     gameLoop(gameState, io, metrics, perf, collision, entities, zombies, logger);
+ *   }, 16.67);
  */
 function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger) {
   perfIntegration.incrementTick();
@@ -134,7 +204,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
 
     const stuckDuration = now - gameLoopStuckSince;
 
-    if (stuckDuration > GAME_LOOP_TIMEOUT) {
+    if (stuckDuration > GAMEPLAY_CONSTANTS.GAME_LOOP_TIMEOUT) {
       logger.error('❌ CRITICAL: Game loop stuck, forcing reset', {
         stuckDuration,
         timestamp: now,
@@ -185,7 +255,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
   }
 
   gameLoopRunning = true;
-  let frameStart = Date.now();
+  const frameStart = Date.now();
 
   try {
     const now = frameStart;
@@ -222,7 +292,7 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     gameLoopRunning = false;
 
     // Warn if frame time excessive
-    if (frameTime > 100) {
+    if (frameTime > GAMEPLAY_CONSTANTS.SLOW_FRAME_WARNING_THRESHOLD) {
       logger.warn('⚠️  Slow game loop frame detected', {
         frameTime,
         targetFrameTime: perfIntegration.getTickInterval()
@@ -246,9 +316,11 @@ function updateMetrics(gameState, metricsCollector) {
  * Update all players
  */
 function updatePlayers(gameState, now, io, collisionManager, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+      continue;
+    }
 
     updatePlayerTimers(player, now, io, playerId);
     updatePlayerRegeneration(player, now);
@@ -279,13 +351,11 @@ function updatePlayerTimers(player, now, io, playerId) {
   }
 
   // MEDIUM FIX: Combo timer logic with proper validation
-  const COMBO_TIMEOUT = 5000;
-
   if (player.combo > 0) {
     // Initialize comboTimer if missing
     if (!player.comboTimer || typeof player.comboTimer !== 'number') {
       player.comboTimer = now;
-    } else if (now - player.comboTimer > COMBO_TIMEOUT) {
+    } else if (now - player.comboTimer > GAMEPLAY_CONSTANTS.COMBO_TIMEOUT) {
       // Timeout exceeded - reset combo
       const oldCombo = player.combo;
       player.combo = 0;
@@ -309,7 +379,7 @@ function updatePlayerTimers(player, now, io, playerId) {
  */
 function updatePlayerRegeneration(player, now) {
   if (player.regeneration > 0) {
-    if (!player.lastRegenTick || now - player.lastRegenTick >= 1000) {
+    if (!player.lastRegenTick || now - player.lastRegenTick >= GAMEPLAY_CONSTANTS.REGENERATION_TICK_INTERVAL) {
       player.health = Math.min(player.health + player.regeneration, player.maxHealth);
       player.lastRegenTick = now;
     }
@@ -321,10 +391,10 @@ function updatePlayerRegeneration(player, now) {
  */
 function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, gameState) {
   if (player.autoTurrets > 0 && player.hasNickname && !player.spawnProtection) {
-    const autoFireCooldown = 600 / player.autoTurrets;
+    const autoFireCooldown = GAMEPLAY_CONSTANTS.AUTO_TURRET_BASE_COOLDOWN / player.autoTurrets;
 
     if (now - player.lastAutoShot >= autoFireCooldown) {
-      const closestZombie = collisionManager.findClosestZombie(player.x, player.y, 500);
+      const closestZombie = collisionManager.findClosestZombie(player.x, player.y, GAMEPLAY_CONSTANTS.AUTO_TURRET_RANGE);
 
       if (closestZombie) {
         fireAutoTurret(player, playerId, closestZombie, now, entityManager);
@@ -364,9 +434,13 @@ function fireAutoTurret(player, playerId, closestZombie, now, entityManager) {
  * Update Tesla Coil weapon
  */
 function updateTeslaCoil(player, playerId, now, collisionManager, entityManager, gameState) {
-  if (player.weapon !== 'teslaCoil' || !player.hasNickname || player.spawnProtection) return;
+  if (player.weapon !== 'teslaCoil' || !player.hasNickname || player.spawnProtection) {
+    return;
+  }
 
-  if (!player.lastTeslaShot) player.lastTeslaShot = 0;
+  if (!player.lastTeslaShot) {
+    player.lastTeslaShot = 0;
+  }
 
   const teslaWeapon = ConfigManager.WEAPONS.teslaCoil;
   const teslaCooldown = teslaWeapon.fireRate * (player.fireRateMultiplier || 1);
@@ -386,7 +460,7 @@ function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager
   if (targets.length > 0) {
     const damage = teslaWeapon.damage * (player.damageMultiplier || 1);
 
-    for (let zombie of targets) {
+    for (const zombie of targets) {
       applyTeslaDamage(zombie, damage, player, teslaWeapon, entityManager, gameState, now);
     }
 
@@ -475,10 +549,18 @@ function handleTeslaKill(zombie, player, gameState, entityManager, now) {
 
 /**
  * Update particles
+ * BOTTLENECK OPTIMIZATION: Use Object.keys instead of for-in (faster iteration)
  */
 function updateParticles(gameState) {
-  for (let particleId in gameState.particles) {
-    const particle = gameState.particles[particleId];
+  const particles = gameState.particles;
+  const particleIds = Object.keys(particles);
+
+  for (let i = 0; i < particleIds.length; i++) {
+    const particle = particles[particleIds[i]];
+    if (!particle) {
+      continue;
+    } // Fast path: destroyed
+
     particle.x += particle.vx;
     particle.y += particle.vy;
     particle.vy += 0.1;

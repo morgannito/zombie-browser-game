@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>0/23</span>
             </div>
         
             
@@ -163,7 +163,11 @@
 <a name='L98'></a><a href='#L98'>98</a>
 <a name='L99'></a><a href='#L99'>99</a>
 <a name='L100'></a><a href='#L100'>100</a>
-<a name='L101'></a><a href='#L101'>101</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -189,6 +193,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -201,6 +207,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -276,82 +284,86 @@ class PerformanceIntegration {
 <span class="cstat-no" title="statement not covered" >    this.tickCounter = 0;</span>
 <span class="cstat-no" title="statement not covered" >    this.gcTimer = null;</span>
 <span class="cstat-no" title="statement not covered" >    this.perfConfig = PerformanceConfig;</span>
-    
+&nbsp;
     // Log la config au démarrage
 <span class="cstat-no" title="statement not covered" >    this.perfConfig.logConfig();</span>
-    
+&nbsp;
     // Setup GC timer
 <span class="cstat-no" title="statement not covered" >    this.setupGCTimer();</span>
   }
-  
+&nbsp;
   /**
    * Setup du timer de garbage collection
    */
 <span class="fstat-no" title="function not covered" >  se</span>tupGCTimer() {
-<span class="cstat-no" title="statement not covered" >    if (this.gcTimer) <span class="cstat-no" title="statement not covered" >clearInterval(this.gcTimer);</span></span>
-    
+<span class="cstat-no" title="statement not covered" >    if (this.gcTimer) {</span>
+<span class="cstat-no" title="statement not covered" >      clearInterval(this.gcTimer);</span>
+    }
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    this.gcTimer = setInterval(<span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >      this.perfConfig.forceGC();</span>
     }, this.perfConfig.getGCInterval());
   }
-  
+&nbsp;
   /**
    * Incrémente le tick counter
    */
 <span class="fstat-no" title="function not covered" >  in</span>crementTick() {
 <span class="cstat-no" title="statement not covered" >    this.tickCounter++;</span>
-<span class="cstat-no" title="statement not covered" >    if (this.tickCounter &gt; 1000000) <span class="cstat-no" title="statement not covered" >this.tickCounter = 0;</span></span>
+<span class="cstat-no" title="statement not covered" >    if (this.tickCounter &gt; 1000000) {</span>
+<span class="cstat-no" title="statement not covered" >      this.tickCounter = 0;</span>
+    }
   }
-  
+&nbsp;
   /**
    * Récupère l'intervalle du game loop
    */
 <span class="fstat-no" title="function not covered" >  ge</span>tTickInterval() {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.tickInterval;</span>
   }
-  
+&nbsp;
   /**
    * Vérifie si on doit broadcaster ce tick
    */
 <span class="fstat-no" title="function not covered" >  sh</span>ouldBroadcast() {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.shouldBroadcast(this.tickCounter);</span>
   }
-  
+&nbsp;
   /**
    * Vérifie si on doit update le pathfinding
    */
 <span class="fstat-no" title="function not covered" >  sh</span>ouldUpdatePathfinding() {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.shouldUpdatePathfinding(this.tickCounter);</span>
   }
-  
+&nbsp;
   /**
    * Limite le spawn de zombies
    */
 <span class="fstat-no" title="function not covered" >  ca</span>nSpawnZombie(currentCount) {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.canSpawnZombie(currentCount);</span>
   }
-  
+&nbsp;
   /**
    * Limite les connexions joueurs
    */
 <span class="fstat-no" title="function not covered" >  ca</span>nAcceptPlayer(currentCount) {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.canAcceptPlayer(currentCount);</span>
   }
-  
+&nbsp;
   /**
    * Limite les power-ups
    */
 <span class="fstat-no" title="function not covered" >  ca</span>nSpawnPowerup(currentCount) {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.canSpawnPowerup(currentCount);</span>
   }
-  
+&nbsp;
   /**
    * Récupère le multiplicateur de spawn
    */
 <span class="fstat-no" title="function not covered" >  ge</span>tSpawnMultiplier() {
 <span class="cstat-no" title="statement not covered" >    return this.perfConfig.getSpawnMultiplier();</span>
   }
-  
+&nbsp;
   /**
    * Cleanup
    */
@@ -370,7 +382,7 @@ class PerformanceIntegration {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

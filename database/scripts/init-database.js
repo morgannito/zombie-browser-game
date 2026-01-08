@@ -38,8 +38,12 @@ if (dbExists && FORCE_RECREATE) {
   fs.unlinkSync(DB_PATH);
   const walPath = DB_PATH + '-wal';
   const shmPath = DB_PATH + '-shm';
-  if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
-  if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+  if (fs.existsSync(walPath)) {
+    fs.unlinkSync(walPath);
+  }
+  if (fs.existsSync(shmPath)) {
+    fs.unlinkSync(shmPath);
+  }
   console.log('✓ Old database deleted');
   console.log();
 }

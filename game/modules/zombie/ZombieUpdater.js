@@ -10,48 +10,100 @@ const { createParticles } = require('../../lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
+// LATENCY OPTIMIZATION: Cache boss/special updaters to avoid repeated requires
+const {
+  updateTeleporterZombie, updateSummonerZombie, updateBerserkerZombie,
+  updateNecromancerZombie, updateBruteZombie, updateMimicZombie
+} = require('./SpecialZombieUpdater');
+
+const {
+  updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega,
+  updateBossInfernal, updateBossCryos, updateBossVortex, updateBossNexus, updateBossApocalypse
+} = require('./BossUpdater');
+
 /**
  * Main zombie update function
+ * LATENCY OPTIMIZATION: Fast-path guards to skip boss/special updates for regular zombies
  */
 function updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
-  for (let zombieId in gameState.zombies) {
-    const zombie = gameState.zombies[zombieId];
+  const zombies = gameState.zombies;
+  const zombieIds = Object.keys(zombies);
 
-    processHealerAbility(zombie, zombieId, now, collisionManager, entityManager);
-    processSlowerAbility(zombie, now, collisionManager);
-    processShooterAbility(zombie, zombieId, now, collisionManager, entityManager);
-    processPoisonTrail(zombie, now, gameState, entityManager);
+  for (let i = 0; i < zombieIds.length; i++) {
+    const zombieId = zombieIds[i];
+    const zombie = zombies[zombieId];
 
-    const { updateTeleporterZombie, updateSummonerZombie, updateBerserkerZombie,
-            updateNecromancerZombie, updateBruteZombie, updateMimicZombie } =
-      require('./SpecialZombieUpdater');
+    if (!zombie) {
+      continue;
+    } // Fast path: destroyed
 
-    updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
-    updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    const zombieType = zombie.type;
 
-    const {
-      updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega,
-      updateBossInfernal, updateBossCryos, updateBossVortex, updateBossNexus, updateBossApocalypse
-    } = require('./BossUpdater');
+    // LATENCY OPTIMIZATION: Early returns for type-specific abilities
+    if (zombieType === 'healer') {
+      processHealerAbility(zombie, zombieId, now, collisionManager, entityManager);
+    }
+    if (zombieType === 'slower') {
+      processSlowerAbility(zombie, now, collisionManager);
+    }
+    if (zombieType === 'shooter') {
+      processShooterAbility(zombie, zombieId, now, collisionManager, entityManager);
+    }
+    if (zombieType === 'poison') {
+      processPoisonTrail(zombie, now, gameState, entityManager);
+    }
 
-    // Original bosses
-    updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
-    updateBossInfect(zombie, now, entityManager, gameState);
-    updateBossColosse(zombie, zombieId, now, io, entityManager);
-    updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
-    updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    // LATENCY OPTIMIZATION: Type guards prevent calling boss functions for regular zombies
+    if (zombieType === 'teleporter') {
+      updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    }
+    if (zombieType === 'summoner') {
+      updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
+    }
+    if (zombieType === 'berserker') {
+      updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    }
+    if (zombieType === 'necromancer') {
+      updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
+    }
+    if (zombieType === 'brute') {
+      updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    }
+    if (zombieType === 'mimic') {
+      updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    }
 
-    // Extended bosses
-    updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
-    updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
-    updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
-    updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
-    updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
-
-    updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
-    updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
+    // Boss updates (rare, so grouped together)
+    if (zombieType === 'charnier') {
+      updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
+    }
+    if (zombieType === 'infect') {
+      updateBossInfect(zombie, now, entityManager, gameState);
+    }
+    if (zombieType === 'colosse') {
+      updateBossColosse(zombie, zombieId, now, io, entityManager);
+    }
+    if (zombieType === 'roi') {
+      updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    }
+    if (zombieType === 'omega') {
+      updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    }
+    if (zombieType === 'infernal') {
+      updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    }
+    if (zombieType === 'cryos') {
+      updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    }
+    if (zombieType === 'vortex') {
+      updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
+    }
+    if (zombieType === 'nexus') {
+      updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    }
+    if (zombieType === 'apocalypse') {
+      updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+    }
 
     moveZombie(zombie, zombieId, collisionManager, gameState);
   }
@@ -61,7 +113,9 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
  * Process healer zombie ability
  */
 function processHealerAbility(zombie, zombieId, now, collisionManager, entityManager) {
-  if (zombie.type !== 'healer') return;
+  if (zombie.type !== 'healer') {
+    return;
+  }
 
   const healerType = ZOMBIE_TYPES.healer;
   if (!zombie.lastHeal || now - zombie.lastHeal >= healerType.healCooldown) {
@@ -71,7 +125,7 @@ function processHealerAbility(zombie, zombieId, now, collisionManager, entityMan
       zombie.x, zombie.y, healerType.healRadius, zombieId
     );
 
-    for (let other of nearbyZombies) {
+    for (const other of nearbyZombies) {
       if (other.health < other.maxHealth) {
         other.health = Math.min(other.health + healerType.healAmount, other.maxHealth);
         createParticles(other.x, other.y, '#00ffff', 5, entityManager);
@@ -84,14 +138,16 @@ function processHealerAbility(zombie, zombieId, now, collisionManager, entityMan
  * Process slower zombie ability
  */
 function processSlowerAbility(zombie, now, collisionManager) {
-  if (zombie.type !== 'slower') return;
+  if (zombie.type !== 'slower') {
+    return;
+  }
 
   const slowerType = ZOMBIE_TYPES.slower;
   const nearbyPlayers = collisionManager.findPlayersInRadius(
     zombie.x, zombie.y, slowerType.slowRadius
   );
 
-  for (let player of nearbyPlayers) {
+  for (const player of nearbyPlayers) {
     player.slowedUntil = now + slowerType.slowDuration;
     player.slowAmount = slowerType.slowAmount;
   }
@@ -101,13 +157,16 @@ function processSlowerAbility(zombie, now, collisionManager) {
  * Process shooter zombie ability
  */
 function processShooterAbility(zombie, zombieId, now, collisionManager, entityManager) {
-  if (zombie.type !== 'shooter') return;
+  if (zombie.type !== 'shooter') {
+    return;
+  }
 
   const shooterType = ZOMBIE_TYPES.shooter;
 
   if (!zombie.lastShot || now - zombie.lastShot >= shooterType.shootCooldown) {
-    const targetPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, shooterType.shootRange,
+    // SSSS OPTIMIZATION: Use cached pathfinding for shooter targeting
+    const targetPlayer = collisionManager.findClosestPlayerCached(
+      zombieId, zombie.x, zombie.y, shooterType.shootRange,
       { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
 
@@ -147,7 +206,9 @@ function shootAtPlayer(zombie, zombieId, targetPlayer, shooterType, now, entityM
  * Process poison trail for poison zombie
  */
 function processPoisonTrail(zombie, now, gameState, entityManager) {
-  if (zombie.type !== 'poison') return;
+  if (zombie.type !== 'poison') {
+    return;
+  }
 
   const poisonType = ZOMBIE_TYPES.poison;
 
@@ -171,10 +232,12 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
 
 /**
  * Move zombie towards player or randomly
+ * SSSS OPTIMIZATION: Uses cached pathfinding for performance
  */
 function moveZombie(zombie, zombieId, collisionManager, gameState) {
-  const closestPlayer = collisionManager.findClosestPlayer(
-    zombie.x, zombie.y, Infinity,
+  // SSSS OPTIMIZATION: Use cached pathfinding for movement (called every frame for all zombies)
+  const closestPlayer = collisionManager.findClosestPlayerCached(
+    zombieId, zombie.x, zombie.y, Infinity,
     { ignoreSpawnProtection: true, ignoreInvisible: false }
   );
 
@@ -192,7 +255,7 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
  * Move zombie towards closest player
  */
 function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now) {
-  let angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
+  const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
 
   if (zombie.type === 'shielded') {
     zombie.facingAngle = angle;
@@ -280,11 +343,15 @@ function checkPlayerCollisions(zombie, zombieId, collisionManager, gameState, no
     zombie.size + CONFIG.PLAYER_SIZE
   );
 
-  for (let player of nearbyPlayers) {
-    if (player.spawnProtection || player.invisible) continue;
+  for (const player of nearbyPlayers) {
+    if (player.spawnProtection || player.invisible) {
+      continue;
+    }
 
     if (distance(zombie.x, zombie.y, player.x, player.y) < zombie.size) {
-      if (Math.random() < (player.dodgeChance || 0)) continue;
+      if (Math.random() < (player.dodgeChance || 0)) {
+        continue;
+      }
 
       applyPlayerDamage(zombie, zombieId, player, gameState, now);
     }
@@ -295,7 +362,9 @@ function checkPlayerCollisions(zombie, zombieId, collisionManager, gameState, no
  * Apply damage to player from zombie collision
  */
 function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
-  if (!player.lastDamageTime) player.lastDamageTime = {};
+  if (!player.lastDamageTime) {
+    player.lastDamageTime = {};
+  }
   const lastDamage = player.lastDamageTime[zombieId] || 0;
   const DAMAGE_INTERVAL = 100;
 

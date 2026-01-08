@@ -292,14 +292,24 @@ class EventSystem {
     const parts = [];
 
     if (rewards.participation) {
-      if (rewards.participation.gold) parts.push(`💰 ${rewards.participation.gold}`);
-      if (rewards.participation.gems) parts.push(`💎 ${rewards.participation.gems}`);
+      if (rewards.participation.gold) {
+        parts.push(`💰 ${rewards.participation.gold}`);
+      }
+      if (rewards.participation.gems) {
+        parts.push(`💎 ${rewards.participation.gems}`);
+      }
     }
 
     if (rewards.completion) {
-      if (rewards.completion.gold) parts.push(`💰 ${rewards.completion.gold} (Complétion)`);
-      if (rewards.completion.gems) parts.push(`💎 ${rewards.completion.gems} (Complétion)`);
-      if (rewards.completion.skin) parts.push(`🎨 Skin: ${rewards.completion.skin}`);
+      if (rewards.completion.gold) {
+        parts.push(`💰 ${rewards.completion.gold} (Complétion)`);
+      }
+      if (rewards.completion.gems) {
+        parts.push(`💎 ${rewards.completion.gems} (Complétion)`);
+      }
+      if (rewards.completion.skin) {
+        parts.push(`🎨 Skin: ${rewards.completion.skin}`);
+      }
     }
 
     if (rewards.top10) {
@@ -325,7 +335,7 @@ class EventSystem {
 
   // Appliquer les effets d'événement
   applyEventEffects(baseValues) {
-    let modified = { ...baseValues };
+    const modified = { ...baseValues };
 
     for (const event of this.activeEvents) {
       const effects = event.effects;

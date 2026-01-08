@@ -123,9 +123,13 @@ class ComboSystem {
 
       // Couleur selon le multiplicateur
       let color = '#ff6400';
-      if (this.multiplier >= 10) color = '#ff0000';
-      else if (this.multiplier >= 5) color = '#ff3300';
-      else if (this.multiplier >= 3) color = '#ff5500';
+      if (this.multiplier >= 10) {
+        color = '#ff0000';
+      } else if (this.multiplier >= 5) {
+        color = '#ff3300';
+      } else if (this.multiplier >= 3) {
+        color = '#ff5500';
+      }
 
       // Adapter l'opacité selon mobile ou desktop
       const opacity = this.isMobile ? 0.6 : 0.9;

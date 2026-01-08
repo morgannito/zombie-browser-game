@@ -195,7 +195,9 @@ class GameServerIntegration {
   async saveGameState(socket, gameState) {
     try {
       const mapping = this.socketToPlayer.get(socket.id);
-      if (!mapping) return;
+      if (!mapping) {
+        return;
+      }
 
       await this.db.sessionRepo.saveActiveSession(
         mapping.sessionId,
@@ -215,7 +217,9 @@ class GameServerIntegration {
   async handleGameOver(socket, finalStats) {
     try {
       const mapping = this.socketToPlayer.get(socket.id);
-      if (!mapping) return;
+      if (!mapping) {
+        return;
+      }
 
       // End session
       await this.db.sessionRepo.endSession(mapping.sessionId, {
@@ -256,7 +260,9 @@ class GameServerIntegration {
   async handleDisconnect(socket) {
     try {
       const mapping = this.socketToPlayer.get(socket.id);
-      if (!mapping) return;
+      if (!mapping) {
+        return;
+      }
 
       // Check if player is still alive - if so, save state for recovery
       const player = this.gameState.players[socket.id];

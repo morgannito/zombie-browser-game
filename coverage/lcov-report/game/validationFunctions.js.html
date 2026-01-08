@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/27</span>
+                <span class='fraction'>0/31</span>
             </div>
         
             
@@ -191,7 +191,15 @@
 <a name='L126'></a><a href='#L126'>126</a>
 <a name='L127'></a><a href='#L127'>127</a>
 <a name='L128'></a><a href='#L128'>128</a>
-<a name='L129'></a><a href='#L129'>129</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -233,6 +241,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -255,25 +265,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -290,6 +282,30 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -360,7 +376,9 @@ function <span class="fstat-no" title="function not covered" >isValidString(</sp
  * @returns {Object|null} Données validées ou null si invalides
  */
 function <span class="fstat-no" title="function not covered" >validateMovementData(</span>data) {
-<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') <span class="cstat-no" title="statement not covered" >return null;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+  }
 &nbsp;
   // Valider x, y, angle comme nombres valides
 <span class="cstat-no" title="statement not covered" >  if (!isValidNumber(data.x, 0, CONFIG.ROOM_WIDTH) ||</span>
@@ -382,7 +400,9 @@ function <span class="fstat-no" title="function not covered" >validateMovementDa
  * @returns {Object|null}
  */
 function <span class="fstat-no" title="function not covered" >validateShootData(</span>data) {
-<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') <span class="cstat-no" title="statement not covered" >return null;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+  }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (!isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {</span>
 <span class="cstat-no" title="statement not covered" >    return null;</span>
@@ -397,7 +417,9 @@ function <span class="fstat-no" title="function not covered" >validateShootData(
  * @returns {Object|null}
  */
 function <span class="fstat-no" title="function not covered" >validateUpgradeData(</span>data) {
-<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') <span class="cstat-no" title="statement not covered" >return null;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+  }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (!isValidString(data.upgradeId, 100)) {</span>
 <span class="cstat-no" title="statement not covered" >    return null;</span>
@@ -417,7 +439,9 @@ function <span class="fstat-no" title="function not covered" >validateUpgradeDat
  * @returns {Object|null}
  */
 function <span class="fstat-no" title="function not covered" >validateBuyItemData(</span>data) {
-<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') <span class="cstat-no" title="statement not covered" >return null;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!data || typeof data !== 'object') {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+  }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (!isValidString(data.itemId, 100) || !isValidString(data.category, 50)) {</span>
 <span class="cstat-no" title="statement not covered" >    return null;</span>
@@ -454,7 +478,7 @@ function <span class="fstat-no" title="function not covered" >validateBuyItemDat
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../prettify.js"></script>
         <script>

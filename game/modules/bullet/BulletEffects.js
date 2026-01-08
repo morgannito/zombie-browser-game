@@ -11,7 +11,9 @@ const { createParticles, createExplosion, createLoot } = require('../../lootFunc
  * Handle explosive bullet effect
  */
 function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager) {
-  if (!bullet.explosiveRounds || bullet.explosionRadius <= 0) return;
+  if (!bullet.explosiveRounds || bullet.explosionRadius <= 0) {
+    return;
+  }
 
   const explosionColor = bullet.isRocket ? '#ff0000' : '#ff8800';
   const particleCount = bullet.isRocket ? 40 : 20;
@@ -31,7 +33,7 @@ function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManage
  * Apply explosion damage to nearby zombies
  */
 function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager) {
-  for (let otherId in gameState.zombies) {
+  for (const otherId in gameState.zombies) {
     if (otherId !== zombieId) {
       const other = gameState.zombies[otherId];
       const dist = distance(zombie.x, zombie.y, other.x, other.y);
@@ -50,7 +52,9 @@ function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager
  * Handle chain lightning effect
  */
 function handleChainLightning(bullet, zombie, zombieId, gameState, entityManager, collisionManager, io) {
-  if (!bullet.isChainLightning) return;
+  if (!bullet.isChainLightning) {
+    return;
+  }
 
   if (!bullet.chainJumps) {
     bullet.chainJumps = 0;
@@ -76,8 +80,10 @@ function findNextChainTarget(bullet, zombie, weapon, gameState) {
   let closestZombie = null;
   let closestZombieId = null;
 
-  for (let otherId in gameState.zombies) {
-    if (bullet.chainedZombies.includes(otherId)) continue;
+  for (const otherId in gameState.zombies) {
+    if (bullet.chainedZombies.includes(otherId)) {
+      continue;
+    }
 
     const other = gameState.zombies[otherId];
     const dist = distance(zombie.x, zombie.y, other.x, other.y);
@@ -167,7 +173,9 @@ function handleChainKill(zombie, zombieId, bullet, gameState, entityManager) {
  * Handle poison dart effect
  */
 function handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager) {
-  if (!bullet.isPoisonDart) return;
+  if (!bullet.isPoisonDart) {
+    return;
+  }
 
   const weapon = ConfigManager.WEAPONS.poisonDart;
   const now = Date.now();
@@ -199,8 +207,10 @@ function applyPoison(zombie, weapon, now, entityManager) {
  */
 function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
   if (Math.random() < weapon.poisonSpreadChance) {
-    for (let otherId in gameState.zombies) {
-      if (otherId === zombieId) continue;
+    for (const otherId in gameState.zombies) {
+      if (otherId === zombieId) {
+        continue;
+      }
 
       const other = gameState.zombies[otherId];
       const dist = distance(zombie.x, zombie.y, other.x, other.y);
@@ -225,7 +235,9 @@ function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
  * Handle ice cannon effect
  */
 function handleIceCannon(bullet, zombie, zombieId, gameState, entityManager) {
-  if (!bullet.isIceCannon) return;
+  if (!bullet.isIceCannon) {
+    return;
+  }
 
   const weapon = ConfigManager.WEAPONS.iceCannon;
   const now = Date.now();
@@ -276,8 +288,10 @@ function slowZombie(zombie, weapon, now, entityManager) {
  * Apply ice area effect to nearby zombies
  */
 function applyIceAreaEffect(zombie, zombieId, weapon, gameState, now, entityManager) {
-  for (let otherId in gameState.zombies) {
-    if (otherId === zombieId) continue;
+  for (const otherId in gameState.zombies) {
+    if (otherId === zombieId) {
+      continue;
+    }
 
     const other = gameState.zombies[otherId];
     const dist = distance(zombie.x, zombie.y, other.x, other.y);

@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/34</span>
             </div>
         
             
@@ -133,7 +133,27 @@
 <a name='L68'></a><a href='#L68'>68</a>
 <a name='L69'></a><a href='#L69'>69</a>
 <a name='L70'></a><a href='#L70'>70</a>
-<a name='L71'></a><a href='#L71'>71</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -174,14 +194,34 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -242,16 +282,36 @@ class Achievement {
 <span class="fstat-no" title="function not covered" >  ch</span>eckRequirements(stats) {
     const req = <span class="cstat-no" title="statement not covered" >this.requirements;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (req.totalKills &amp;&amp; stats.totalKills &lt; req.totalKills) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.zombiesKilled &amp;&amp; stats.zombiesKilled &lt; req.zombiesKilled) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.bossKills &amp;&amp; stats.bossKills &lt; req.bossKills) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.highestWave &amp;&amp; stats.highestWave &lt; req.highestWave) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.highestLevel &amp;&amp; stats.highestLevel &lt; req.highestLevel) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.totalPlaytimeSeconds &amp;&amp; stats.totalPlaytimeSeconds &lt; req.totalPlaytimeSeconds) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.longestSurvivalSeconds &amp;&amp; stats.longestSurvivalSeconds &lt; req.longestSurvivalSeconds) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.highestCombo &amp;&amp; stats.highestCombo &lt; req.highestCombo) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.gamesPlayed &amp;&amp; stats.gamesPlayed &lt; req.gamesPlayed) <span class="cstat-no" title="statement not covered" >return false;</span></span>
-<span class="cstat-no" title="statement not covered" >    if (req.gamesWon &amp;&amp; stats.gamesWon &lt; req.gamesWon) <span class="cstat-no" title="statement not covered" >return false;</span></span>
+<span class="cstat-no" title="statement not covered" >    if (req.totalKills &amp;&amp; stats.totalKills &lt; req.totalKills) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.zombiesKilled &amp;&amp; stats.zombiesKilled &lt; req.zombiesKilled) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.bossKills &amp;&amp; stats.bossKills &lt; req.bossKills) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.highestWave &amp;&amp; stats.highestWave &lt; req.highestWave) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.highestLevel &amp;&amp; stats.highestLevel &lt; req.highestLevel) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.totalPlaytimeSeconds &amp;&amp; stats.totalPlaytimeSeconds &lt; req.totalPlaytimeSeconds) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.longestSurvivalSeconds &amp;&amp; stats.longestSurvivalSeconds &lt; req.longestSurvivalSeconds) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.highestCombo &amp;&amp; stats.highestCombo &lt; req.highestCombo) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.gamesPlayed &amp;&amp; stats.gamesPlayed &lt; req.gamesPlayed) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    if (req.gamesWon &amp;&amp; stats.gamesWon &lt; req.gamesWon) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return true;</span>
   }
@@ -280,7 +340,7 @@ class Achievement {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

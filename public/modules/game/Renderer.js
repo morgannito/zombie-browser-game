@@ -349,7 +349,9 @@ class Renderer {
   }
 
   renderDoors(doors) {
-    if (!doors || !Array.isArray(doors)) return;
+    if (!doors || !Array.isArray(doors)) {
+      return;
+    }
 
     doors.forEach(door => {
       this.ctx.fillStyle = door.active ? '#00ff00' : '#ff0000';
@@ -365,7 +367,9 @@ class Renderer {
   renderPowerups(powerups, powerupTypes, config, now = Date.now()) {
     Object.values(powerups).forEach(powerup => {
       const type = powerupTypes[powerup.type];
-      if (!type) return;
+      if (!type) {
+        return;
+      }
 
       const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;
 
@@ -418,10 +422,14 @@ class Renderer {
   }
 
   renderDestructibleObstacles(obstacles) {
-    if (!obstacles || obstacles.length === 0) return;
+    if (!obstacles || obstacles.length === 0) {
+      return;
+    }
 
     obstacles.forEach(obstacle => {
-      if (obstacle.destroyed) return;
+      if (obstacle.destroyed) {
+        return;
+      }
 
       // Viewport culling
       if (!this.camera.isInViewport(obstacle.x, obstacle.y, obstacle.width * 2)) {
@@ -531,8 +539,11 @@ class Renderer {
 
         // Health fill
         let healthColor = '#00ff00';
-        if (healthPercent < 0.3) healthColor = '#ff0000';
-        else if (healthPercent < 0.6) healthColor = '#ffaa00';
+        if (healthPercent < 0.3) {
+          healthColor = '#ff0000';
+        } else if (healthPercent < 0.6) {
+          healthColor = '#ffaa00';
+        }
 
         this.ctx.fillStyle = healthColor;
         this.ctx.fillRect(-barWidth / 2, barY, barWidth * healthPercent, barHeight);
@@ -561,12 +572,18 @@ class Renderer {
   }
 
   renderStaticProps(props, layer = 'all') {
-    if (!props || props.length === 0) return;
+    if (!props || props.length === 0) {
+      return;
+    }
 
     props.forEach(prop => {
       // Layer filtering
-      if (layer === 'ground' && prop.renderLayers) return;
-      if (layer === 'overlay' && !prop.renderLayers) return;
+      if (layer === 'ground' && prop.renderLayers) {
+        return;
+      }
+      if (layer === 'overlay' && !prop.renderLayers) {
+        return;
+      }
 
       // Viewport culling
       if (!this.camera.isInViewport(prop.x, prop.y, Math.max(prop.width, prop.height) * 2)) {
@@ -585,34 +602,34 @@ class Renderer {
 
       // Render based on type
       switch (prop.type) {
-        case 'tree':
-          this.renderTree(prop);
-          break;
-        case 'rock':
-          this.renderRock(prop);
-          break;
-        case 'car':
-          this.renderCar(prop);
-          break;
-        case 'bush':
-          this.renderBush(prop);
-          break;
-        case 'lampPost':
-          this.renderLampPost(prop);
-          break;
-        case 'fence':
-          this.renderFence(prop);
-          break;
-        case 'sign':
-          this.renderSign(prop);
-          break;
-        case 'bench':
-          this.renderBench(prop);
-          break;
-        default:
-          // Generic prop
-          this.ctx.fillStyle = prop.color || '#888';
-          this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height);
+      case 'tree':
+        this.renderTree(prop);
+        break;
+      case 'rock':
+        this.renderRock(prop);
+        break;
+      case 'car':
+        this.renderCar(prop);
+        break;
+      case 'bush':
+        this.renderBush(prop);
+        break;
+      case 'lampPost':
+        this.renderLampPost(prop);
+        break;
+      case 'fence':
+        this.renderFence(prop);
+        break;
+      case 'sign':
+        this.renderSign(prop);
+        break;
+      case 'bench':
+        this.renderBench(prop);
+        break;
+      default:
+        // Generic prop
+        this.ctx.fillStyle = prop.color || '#888';
+        this.ctx.fillRect(-prop.width / 2, -prop.height / 2, prop.width, prop.height);
       }
 
       this.ctx.restore();
@@ -655,8 +672,11 @@ class Renderer {
       const variance = 0.7 + Math.sin(i + prop.variant) * 0.3;
       const x = Math.cos(angle) * prop.width / 2 * variance;
       const y = Math.sin(angle) * prop.height / 2 * variance;
-      if (i === 0) this.ctx.moveTo(x, y);
-      else this.ctx.lineTo(x, y);
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
     }
     this.ctx.closePath();
     this.ctx.fill();
@@ -781,7 +801,9 @@ class Renderer {
   }
 
   renderDynamicProps(props) {
-    if (!props || props.length === 0) return;
+    if (!props || props.length === 0) {
+      return;
+    }
 
     props.forEach(prop => {
       // Viewport culling
@@ -805,21 +827,21 @@ class Renderer {
 
       // Render prop base based on type
       switch (prop.type) {
-        case 'fire':
-          this.renderFireBase(prop);
-          break;
-        case 'smoke':
-          // Smoke has no base, only particles
-          break;
-        case 'sparks':
-          this.renderSparksBase(prop);
-          break;
-        case 'steam':
-          // Steam has no base
-          break;
-        case 'torch':
-          this.renderTorchBase(prop);
-          break;
+      case 'fire':
+        this.renderFireBase(prop);
+        break;
+      case 'smoke':
+        // Smoke has no base, only particles
+        break;
+      case 'sparks':
+        this.renderSparksBase(prop);
+        break;
+      case 'steam':
+        // Steam has no base
+        break;
+      case 'torch':
+        this.renderTorchBase(prop);
+        break;
       }
 
       this.ctx.restore();
@@ -863,7 +885,9 @@ class Renderer {
   }
 
   renderDynamicPropParticles(particles) {
-    if (!particles || particles.length === 0) return;
+    if (!particles || particles.length === 0) {
+      return;
+    }
 
     // Check performance settings
     if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
@@ -963,7 +987,9 @@ class Renderer {
   }
 
   renderToxicPools(toxicPools, now = Date.now()) {
-    if (!toxicPools || !Array.isArray(toxicPools)) return;
+    if (!toxicPools || !Array.isArray(toxicPools)) {
+      return;
+    }
 
     toxicPools.forEach(pool => {
       // Viewport culling
@@ -1025,7 +1051,9 @@ class Renderer {
       const progress = age / explosion.duration;
 
       // Ne pas afficher si l'explosion est terminée
-      if (progress >= 1) return;
+      if (progress >= 1) {
+        return;
+      }
 
       // Viewport culling
       if (!this.camera.isInViewport(explosion.x, explosion.y, explosion.radius * 2)) {
@@ -1405,8 +1433,11 @@ class Renderer {
         const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
         const x = Math.cos(angle) * runeSize;
         const y = Math.sin(angle) * runeSize + 3 * baseSize * scale;
-        if (i === 0) this.ctx.moveTo(x, y);
-        else this.ctx.lineTo(x, y);
+        if (i === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
       }
       this.ctx.closePath();
       this.ctx.stroke();
@@ -1633,8 +1664,11 @@ class Renderer {
       ];
 
       crownPoints.forEach((point, i) => {
-        if (i === 0) this.ctx.moveTo(point.x, point.y);
-        else this.ctx.lineTo(point.x, point.y);
+        if (i === 0) {
+          this.ctx.moveTo(point.x, point.y);
+        } else {
+          this.ctx.lineTo(point.x, point.y);
+        }
       });
 
       this.ctx.fill();
@@ -2048,9 +2082,7 @@ class Renderer {
       this.ctx.lineWidth = 3;
       this.ctx.strokeText('RAIIVY', zombie.x, zombie.y - zombie.size - 40);
       this.ctx.fillText('RAIIVY', zombie.x, zombie.y - zombie.size - 40);
-    }
-
-    else if (zombie.type === 'bossInfect') {
+    } else if (zombie.type === 'bossInfect') {
       // L'Infect - Aura toxique verte
       this.ctx.save();
       this.ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 200) * 0.2;
@@ -2076,9 +2108,7 @@ class Renderer {
       this.ctx.lineWidth = 3;
       this.ctx.strokeText('SORENZA', zombie.x, zombie.y - zombie.size - 40);
       this.ctx.fillText('SORENZA', zombie.x, zombie.y - zombie.size - 40);
-    }
-
-    else if (zombie.type === 'bossColosse') {
+    } else if (zombie.type === 'bossColosse') {
       // Le Colosse - Aura orange/rouge selon enrage
       const isEnraged = zombie.isEnraged;
       const auraColor = isEnraged ? '#ff0000' : '#ff4500';
@@ -2108,9 +2138,7 @@ class Renderer {
       const name = isEnraged ? 'HAIER ENRAGÉ' : 'HAIER';
       this.ctx.strokeText(name, zombie.x, zombie.y - zombie.size - 40);
       this.ctx.fillText(name, zombie.x, zombie.y - zombie.size - 40);
-    }
-
-    else if (zombie.type === 'bossRoi') {
+    } else if (zombie.type === 'bossRoi') {
       // Roi Zombie - Aura dorée avec phase
       this.ctx.save();
       this.ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 120) * 0.3;
@@ -2145,9 +2173,7 @@ class Renderer {
       const phaseName = `KUROI TO SUTA (Phase ${zombie.phase || 1})`;
       this.ctx.strokeText(phaseName, zombie.x, zombie.y - zombie.size - 40);
       this.ctx.fillText(phaseName, zombie.x, zombie.y - zombie.size - 40);
-    }
-
-    else if (zombie.type === 'bossOmega') {
+    } else if (zombie.type === 'bossOmega') {
       // Omega - Aura multicolore selon phase
       const phaseColors = ['#ff00ff', '#ff0088', '#8800ff', '#ff0000'];
       const currentColor = phaseColors[(zombie.phase || 1) - 1];
@@ -2250,190 +2276,190 @@ class Renderer {
     const primaryColor = isCurrentPlayer ? '#333333' : '#444444';
     const accentColor = isCurrentPlayer ? '#00ffff' : '#ffaa00';
 
-    switch(weaponType) {
-      case 'pistol':
-        // Pistolet compact
-        // Corps de l'arme
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(5, -3, 18, 6);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(5, -3, 18, 6);
+    switch (weaponType) {
+    case 'pistol':
+      // Pistolet compact
+      // Corps de l'arme
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(5, -3, 18, 6);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(5, -3, 18, 6);
 
-        // Canon
-        this.ctx.fillStyle = '#222';
-        this.ctx.fillRect(23, -2, 8, 4);
-        this.ctx.strokeRect(23, -2, 8, 4);
+      // Canon
+      this.ctx.fillStyle = '#222';
+      this.ctx.fillRect(23, -2, 8, 4);
+      this.ctx.strokeRect(23, -2, 8, 4);
 
-        // Poignée
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(5, 3, 6, 8);
-        this.ctx.strokeRect(5, 3, 6, 8);
+      // Poignée
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(5, 3, 6, 8);
+      this.ctx.strokeRect(5, 3, 6, 8);
 
-        // Détail accent
-        this.ctx.fillStyle = accentColor;
-        this.ctx.fillRect(15, -1, 3, 2);
-        break;
+      // Détail accent
+      this.ctx.fillStyle = accentColor;
+      this.ctx.fillRect(15, -1, 3, 2);
+      break;
 
-      case 'shotgun':
-        // Shotgun à double canon
-        // Corps principal
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(5, -4, 25, 8);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(5, -4, 25, 8);
+    case 'shotgun':
+      // Shotgun à double canon
+      // Corps principal
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(5, -4, 25, 8);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(5, -4, 25, 8);
 
-        // Double canon
-        this.ctx.fillStyle = '#222';
-        this.ctx.fillRect(30, -4, 12, 3);
-        this.ctx.fillRect(30, 1, 12, 3);
-        this.ctx.strokeRect(30, -4, 12, 3);
-        this.ctx.strokeRect(30, 1, 12, 3);
+      // Double canon
+      this.ctx.fillStyle = '#222';
+      this.ctx.fillRect(30, -4, 12, 3);
+      this.ctx.fillRect(30, 1, 12, 3);
+      this.ctx.strokeRect(30, -4, 12, 3);
+      this.ctx.strokeRect(30, 1, 12, 3);
 
-        // Crosse
-        this.ctx.fillStyle = '#8B4513';
-        this.ctx.fillRect(-5, -3, 10, 6);
-        this.ctx.strokeRect(-5, -3, 10, 6);
+      // Crosse
+      this.ctx.fillStyle = '#8B4513';
+      this.ctx.fillRect(-5, -3, 10, 6);
+      this.ctx.strokeRect(-5, -3, 10, 6);
 
-        // Pompe
-        this.ctx.fillStyle = accentColor;
-        this.ctx.fillRect(12, -2, 8, 4);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.strokeRect(12, -2, 8, 4);
+      // Pompe
+      this.ctx.fillStyle = accentColor;
+      this.ctx.fillRect(12, -2, 8, 4);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.strokeRect(12, -2, 8, 4);
 
-        // Détails sur les canons
-        this.ctx.fillStyle = '#ff6600';
-        this.ctx.fillRect(40, -3, 2, 1);
-        this.ctx.fillRect(40, 2, 2, 1);
-        break;
+      // Détails sur les canons
+      this.ctx.fillStyle = '#ff6600';
+      this.ctx.fillRect(40, -3, 2, 1);
+      this.ctx.fillRect(40, 2, 2, 1);
+      break;
 
-      case 'machinegun':
-        // Mitraillette
-        // Corps principal
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(0, -5, 30, 10);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(0, -5, 30, 10);
+    case 'machinegun':
+      // Mitraillette
+      // Corps principal
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(0, -5, 30, 10);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(0, -5, 30, 10);
 
-        // Canon avec refroidissement
-        this.ctx.fillStyle = '#222';
-        this.ctx.fillRect(30, -3, 15, 6);
-        this.ctx.strokeRect(30, -3, 15, 6);
+      // Canon avec refroidissement
+      this.ctx.fillStyle = '#222';
+      this.ctx.fillRect(30, -3, 15, 6);
+      this.ctx.strokeRect(30, -3, 15, 6);
 
-        // Grilles de refroidissement
-        for(let i = 0; i < 4; i++) {
-          this.ctx.fillStyle = '#00ffff';
-          this.ctx.fillRect(32 + i * 3, -2, 1, 4);
-        }
+      // Grilles de refroidissement
+      for (let i = 0; i < 4; i++) {
+        this.ctx.fillStyle = '#00ffff';
+        this.ctx.fillRect(32 + i * 3, -2, 1, 4);
+      }
 
-        // Chargeur
-        this.ctx.fillStyle = '#444';
-        this.ctx.fillRect(10, 5, 8, 12);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.strokeRect(10, 5, 8, 12);
+      // Chargeur
+      this.ctx.fillStyle = '#444';
+      this.ctx.fillRect(10, 5, 8, 12);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.strokeRect(10, 5, 8, 12);
 
-        // Crosse pliable
-        this.ctx.fillStyle = '#333';
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(-5, -3);
-        this.ctx.lineTo(-12, -5);
-        this.ctx.lineTo(-12, 5);
-        this.ctx.lineTo(-5, 3);
-        this.ctx.stroke();
+      // Crosse pliable
+      this.ctx.fillStyle = '#333';
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(-5, -3);
+      this.ctx.lineTo(-12, -5);
+      this.ctx.lineTo(-12, 5);
+      this.ctx.lineTo(-5, 3);
+      this.ctx.stroke();
 
-        // Viseur laser
-        this.ctx.fillStyle = '#ff0000';
-        this.ctx.beginPath();
-        this.ctx.arc(45, 0, 2, 0, Math.PI * 2);
-        this.ctx.fill();
+      // Viseur laser
+      this.ctx.fillStyle = '#ff0000';
+      this.ctx.beginPath();
+      this.ctx.arc(45, 0, 2, 0, Math.PI * 2);
+      this.ctx.fill();
 
-        // Détails accent
-        this.ctx.fillStyle = accentColor;
-        this.ctx.fillRect(5, -3, 2, 6);
-        this.ctx.fillRect(20, -3, 2, 6);
-        break;
+      // Détails accent
+      this.ctx.fillStyle = accentColor;
+      this.ctx.fillRect(5, -3, 2, 6);
+      this.ctx.fillRect(20, -3, 2, 6);
+      break;
 
-      case 'rocketlauncher':
-        // Lance-roquettes imposant
-        // Tube principal (large)
-        this.ctx.fillStyle = '#444';
-        this.ctx.fillRect(0, -7, 40, 14);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1.5;
-        this.ctx.strokeRect(0, -7, 40, 14);
+    case 'rocketlauncher':
+      // Lance-roquettes imposant
+      // Tube principal (large)
+      this.ctx.fillStyle = '#444';
+      this.ctx.fillRect(0, -7, 40, 14);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1.5;
+      this.ctx.strokeRect(0, -7, 40, 14);
 
-        // Bandes de sécurité jaunes/noires
-        for(let i = 0; i < 3; i++) {
-          this.ctx.fillStyle = i % 2 === 0 ? '#ffff00' : '#000';
-          this.ctx.fillRect(8 + i * 8, -6, 6, 12);
-        }
+      // Bandes de sécurité jaunes/noires
+      for (let i = 0; i < 3; i++) {
+        this.ctx.fillStyle = i % 2 === 0 ? '#ffff00' : '#000';
+        this.ctx.fillRect(8 + i * 8, -6, 6, 12);
+      }
 
-        // Tube de visée supérieur
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillRect(5, -10, 30, 3);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(5, -10, 30, 3);
+      // Tube de visée supérieur
+      this.ctx.fillStyle = '#333';
+      this.ctx.fillRect(5, -10, 30, 3);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(5, -10, 30, 3);
 
-        // Ouverture avant (tube de lancement)
-        this.ctx.fillStyle = '#222';
-        this.ctx.fillRect(40, -6, 8, 12);
-        this.ctx.strokeRect(40, -6, 8, 12);
+      // Ouverture avant (tube de lancement)
+      this.ctx.fillStyle = '#222';
+      this.ctx.fillRect(40, -6, 8, 12);
+      this.ctx.strokeRect(40, -6, 8, 12);
 
-        // Bordure du tube de lancement
-        this.ctx.fillStyle = '#ff4400';
-        this.ctx.fillRect(40, -7, 2, 14);
-        this.ctx.fillRect(46, -7, 2, 14);
+      // Bordure du tube de lancement
+      this.ctx.fillStyle = '#ff4400';
+      this.ctx.fillRect(40, -7, 2, 14);
+      this.ctx.fillRect(46, -7, 2, 14);
 
-        // Poignée avant
-        this.ctx.fillStyle = '#333';
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(15, 7);
-        this.ctx.lineTo(15, 12);
-        this.ctx.lineTo(20, 12);
-        this.ctx.lineTo(20, 7);
-        this.ctx.stroke();
+      // Poignée avant
+      this.ctx.fillStyle = '#333';
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(15, 7);
+      this.ctx.lineTo(15, 12);
+      this.ctx.lineTo(20, 12);
+      this.ctx.lineTo(20, 7);
+      this.ctx.stroke();
 
-        // Gâchette arrière
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(-3, 2, 5, 10);
-        this.ctx.strokeRect(-3, 2, 5, 10);
+      // Gâchette arrière
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(-3, 2, 5, 10);
+      this.ctx.strokeRect(-3, 2, 5, 10);
 
-        // Détails rouges (danger)
-        this.ctx.fillStyle = '#ff0000';
-        this.ctx.fillRect(38, -8, 3, 2);
-        this.ctx.fillRect(38, 6, 3, 2);
+      // Détails rouges (danger)
+      this.ctx.fillStyle = '#ff0000';
+      this.ctx.fillRect(38, -8, 3, 2);
+      this.ctx.fillRect(38, 6, 3, 2);
 
-        // Indicateur LED (prêt à tirer)
-        this.ctx.fillStyle = '#00ff00';
-        this.ctx.beginPath();
-        this.ctx.arc(10, 0, 2, 0, Math.PI * 2);
-        this.ctx.fill();
+      // Indicateur LED (prêt à tirer)
+      this.ctx.fillStyle = '#00ff00';
+      this.ctx.beginPath();
+      this.ctx.arc(10, 0, 2, 0, Math.PI * 2);
+      this.ctx.fill();
 
-        // Évents de recul
-        this.ctx.fillStyle = '#666';
-        for(let i = 0; i < 3; i++) {
-          this.ctx.fillRect(-8 - i * 3, -4 + i * 2, 5, 2);
-        }
+      // Évents de recul
+      this.ctx.fillStyle = '#666';
+      for (let i = 0; i < 3; i++) {
+        this.ctx.fillRect(-8 - i * 3, -4 + i * 2, 5, 2);
+      }
 
-        // Détails accent
-        this.ctx.fillStyle = accentColor;
-        this.ctx.fillRect(2, -5, 3, 10);
-        break;
+      // Détails accent
+      this.ctx.fillStyle = accentColor;
+      this.ctx.fillRect(2, -5, 3, 10);
+      break;
 
-      default:
-        // Arme par défaut (pistolet)
-        this.ctx.fillStyle = primaryColor;
-        this.ctx.fillRect(5, -3, 18, 6);
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(5, -3, 18, 6);
+    default:
+      // Arme par défaut (pistolet)
+      this.ctx.fillStyle = primaryColor;
+      this.ctx.fillRect(5, -3, 18, 6);
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(5, -3, 18, 6);
     }
 
     this.ctx.restore();
@@ -2586,11 +2612,15 @@ class Renderer {
   renderPlayers(players, currentPlayerId, config, dateNow = Date.now(), timestamp = performance.now()) {
     Object.entries(players).forEach(([pid, p]) => {
       const isCurrentPlayer = pid === currentPlayerId;
-      if (!p.alive) return;
+      if (!p.alive) {
+        return;
+      }
 
       // Don't render players without nicknames (except current player in waiting state)
       // This prevents "ghost" players from being visible before they start playing
-      if (!p.hasNickname && !isCurrentPlayer) return;
+      if (!p.hasNickname && !isCurrentPlayer) {
+        return;
+      }
 
       // Speed effect
       if (p.speedBoost && dateNow < p.speedBoost) {
@@ -2629,10 +2659,14 @@ class Renderer {
 
   renderTargetIndicator(player) {
     // Only render if mobile controls are active and auto-shoot is on
-    if (!window.mobileControls || !window.mobileControls.autoShootActive) return;
+    if (!window.mobileControls || !window.mobileControls.autoShootActive) {
+      return;
+    }
 
     const target = window.mobileControls.getCurrentTarget();
-    if (!target || !player) return;
+    if (!target || !player) {
+      return;
+    }
 
     // Draw line from player to target
     this.ctx.save();
@@ -2677,7 +2711,9 @@ class Renderer {
   }
 
   renderMinimap(gameState, playerId) {
-    if (!gameState.config.ROOM_WIDTH) return;
+    if (!gameState.config.ROOM_WIDTH) {
+      return;
+    }
 
     // Scale context for Retina displays
     const pixelRatio = window.devicePixelRatio || 1;
@@ -2731,7 +2767,9 @@ class Renderer {
     // Other players
     this.minimapCtx.fillStyle = '#ff8800';
     Object.entries(gameState.state.players).forEach(([pid, p]) => {
-      if (pid === playerId || !p.alive || !p.hasNickname) return;
+      if (pid === playerId || !p.alive || !p.hasNickname) {
+        return;
+      }
       this.minimapCtx.beginPath();
       this.minimapCtx.arc(p.x * scaleX, p.y * scaleY, 4, 0, Math.PI * 2);
       this.minimapCtx.fill();
@@ -2804,7 +2842,7 @@ class Renderer {
    * @param {object} zombies - Current zombies state
    */
   checkZombieDamage(zombies) {
-    for (let zombieId in zombies) {
+    for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
 
       // Check if we tracked this zombie before
@@ -2825,7 +2863,7 @@ class Renderer {
     }
 
     // Clean up dead zombies from tracking
-    for (let zombieId in this.lastZombieHealthCheck) {
+    for (const zombieId in this.lastZombieHealthCheck) {
       if (!zombies[zombieId]) {
         delete this.lastZombieHealthCheck[zombieId];
       }
@@ -2864,7 +2902,9 @@ class Renderer {
    * Render damage numbers
    */
   applyWeatherFog(weather, stage = 'before') {
-    if (!weather || weather.intensity === 0) return;
+    if (!weather || weather.intensity === 0) {
+      return;
+    }
 
     if (stage === 'before') {
       // Apply ambient light darkening
@@ -2894,7 +2934,9 @@ class Renderer {
   }
 
   renderSky(dayNight) {
-    if (!dayNight || !dayNight.config) return;
+    if (!dayNight || !dayNight.config) {
+      return;
+    }
 
     const { config, stars, moon } = dayNight;
 
@@ -2969,7 +3011,9 @@ class Renderer {
   }
 
   renderParallaxBackground(parallax, camera, viewport) {
-    if (!parallax) return;
+    if (!parallax) {
+      return;
+    }
 
     const layers = parallax.layers || [];
 
@@ -3029,7 +3073,9 @@ class Renderer {
   }
 
   renderEnvironmentalParticles(envParticles) {
-    if (!envParticles || !envParticles.particles) return;
+    if (!envParticles || !envParticles.particles) {
+      return;
+    }
 
     // Check performance settings
     if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
@@ -3063,7 +3109,9 @@ class Renderer {
   }
 
   applyAmbientDarkness(lighting) {
-    if (!lighting || lighting.ambientLight >= 0.95) return;
+    if (!lighting || lighting.ambientLight >= 0.95) {
+      return;
+    }
 
     const darkness = 1 - lighting.ambientLight;
     this.ctx.save();
@@ -3078,7 +3126,9 @@ class Renderer {
   }
 
   renderDynamicLights(lighting) {
-    if (!lighting || !lighting.lights || lighting.lights.length === 0) return;
+    if (!lighting || !lighting.lights || lighting.lights.length === 0) {
+      return;
+    }
 
     // Check performance settings
     if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
@@ -3089,7 +3139,9 @@ class Renderer {
     this.ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
 
     lighting.lights.forEach(light => {
-      if (!light.enabled) return;
+      if (!light.enabled) {
+        return;
+      }
 
       // Viewport culling
       if (!this.camera.isInViewport(light.x, light.y, light.radius * 2)) {
@@ -3119,7 +3171,9 @@ class Renderer {
   }
 
   renderWeather(weather) {
-    if (!weather || weather.intensity === 0) return;
+    if (!weather || weather.intensity === 0) {
+      return;
+    }
 
     // Check performance settings
     if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
@@ -3173,7 +3227,9 @@ class Renderer {
   }
 
   renderDamageNumbers() {
-    if (!this.camera) return;
+    if (!this.camera) {
+      return;
+    }
 
     this.ctx.save();
 
@@ -3281,7 +3337,9 @@ class Renderer {
   // Kill Feed & Combo Methods
   updateKillFeedAndCombo(gameState) {
     const player = gameState.state.players[gameState.playerId];
-    if (!player) return;
+    if (!player) {
+      return;
+    }
 
     // Update combo display
     const combo = player.combo || 0;
@@ -3298,7 +3356,9 @@ class Renderer {
       // Trigger animation on combo increase
       if (combo > this.lastComboValue) {
         comboCount.style.animation = 'none';
-        setTimeout(() => { comboCount.style.animation = ''; }, 10);
+        setTimeout(() => {
+          comboCount.style.animation = '';
+        }, 10);
       }
     } else {
       comboDisplay.style.display = 'none';
@@ -3318,12 +3378,18 @@ class Renderer {
 
   addKillFeedItem(killer, victim, type = 'normal') {
     const feedEl = document.getElementById('kill-feed');
-    if (!feedEl) return;
+    if (!feedEl) {
+      return;
+    }
 
     const item = document.createElement('div');
     item.classList.add('kill-feed-item');
-    if (type === 'elite') item.classList.add('elite');
-    if (type === 'boss') item.classList.add('boss');
+    if (type === 'elite') {
+      item.classList.add('elite');
+    }
+    if (type === 'boss') {
+      item.classList.add('boss');
+    }
 
     item.innerHTML = `
       <div class="kill-feed-text">

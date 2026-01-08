@@ -77,7 +77,9 @@ class GameEngine {
   }
 
   resizeMinimapCanvas() {
-    if (!this.renderer || !this.renderer.minimapCanvas) return;
+    if (!this.renderer || !this.renderer.minimapCanvas) {
+      return;
+    }
 
     const basePixelRatio = window.devicePixelRatio || 1;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -192,7 +194,9 @@ class GameEngine {
 
   update(deltaTime = 16) {
     // Clean up orphaned entities (every 60 frames ≈ 1 second at 60 FPS)
-    if (!this._cleanupFrameCounter) this._cleanupFrameCounter = 0;
+    if (!this._cleanupFrameCounter) {
+      this._cleanupFrameCounter = 0;
+    }
     if (++this._cleanupFrameCounter >= 60) {
       window.gameState.cleanupOrphanedEntities();
       this._cleanupFrameCounter = 0;

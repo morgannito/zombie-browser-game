@@ -45,7 +45,7 @@ function distanceSquared(x1, y1, x2, y2) {
  * @param {Object} entityManager - Entity manager instance
  */
 function cleanupPlayerBullets(playerId, gameState, entityManager) {
-  for (let bulletId in gameState.bullets) {
+  for (const bulletId in gameState.bullets) {
     const bullet = gameState.bullets[bulletId];
     if (bullet.playerId === playerId) {
       entityManager.destroyBullet(bulletId);

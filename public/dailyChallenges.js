@@ -288,7 +288,9 @@ class DailyChallengeSystem {
 
     // Mettre à jour défis quotidiens
     this.dailyChallenges.forEach(challenge => {
-      if (challenge.completed) return;
+      if (challenge.completed) {
+        return;
+      }
 
       if (challenge.type === type) {
         // Vérifier les conditions spécifiques
@@ -310,7 +312,9 @@ class DailyChallengeSystem {
 
     // Mettre à jour défis hebdomadaires
     this.weeklyChallenges.forEach(challenge => {
-      if (challenge.completed) return;
+      if (challenge.completed) {
+        return;
+      }
 
       if (challenge.type === type) {
         challenge.progress += value;
@@ -547,8 +551,12 @@ class DailyChallengeSystem {
       // Refresh l'affichage
       const dailyList = panel.querySelector('.challenges-section:nth-child(1) .challenges-list');
       const weeklyList = panel.querySelector('.challenges-section:nth-child(2) .challenges-list');
-      if (dailyList) dailyList.innerHTML = this.renderChallengeList(this.dailyChallenges);
-      if (weeklyList) weeklyList.innerHTML = this.renderChallengeList(this.weeklyChallenges);
+      if (dailyList) {
+        dailyList.innerHTML = this.renderChallengeList(this.dailyChallenges);
+      }
+      if (weeklyList) {
+        weeklyList.innerHTML = this.renderChallengeList(this.weeklyChallenges);
+      }
     }
   }
 }

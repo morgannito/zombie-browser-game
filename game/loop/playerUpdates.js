@@ -21,10 +21,12 @@ const { CONFIG } = ConfigManager;
  * @param {Object} entityManager - Entity manager
  */
 function updatePlayers(gameState, now, io, collisionManager, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
 
-    if (!player.alive) continue;
+    if (!player.alive) {
+      continue;
+    }
 
     // Spawn protection expiration
     if (player.spawnProtection && now > player.spawnProtectionEndTime) {
@@ -126,7 +128,9 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
  */
 function updateTeslaCoil(player, playerId, now, gameState, collisionManager, entityManager) {
   if (player.weapon === 'teslaCoil' && player.hasNickname && !player.spawnProtection) {
-    if (!player.lastTeslaShot) player.lastTeslaShot = 0;
+    if (!player.lastTeslaShot) {
+      player.lastTeslaShot = 0;
+    }
 
     const teslaWeapon = ConfigManager.WEAPONS.teslaCoil;
     const teslaCooldown = teslaWeapon.fireRate * (player.fireRateMultiplier || 1);
@@ -138,7 +142,7 @@ function updateTeslaCoil(player, playerId, now, gameState, collisionManager, ent
       if (targets.length > 0) {
         const damage = teslaWeapon.damage * (player.damageMultiplier || 1);
 
-        for (let zombie of targets) {
+        for (const zombie of targets) {
           zombie.health -= damage;
 
           // Life steal

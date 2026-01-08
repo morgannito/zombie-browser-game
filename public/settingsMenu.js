@@ -287,22 +287,22 @@ class SettingsMenu {
 
     // Apply quality presets
     switch (quality) {
-      case 'low':
-        window.gameSettings.maxParticles = 50;
-        window.gameSettings.shadowQuality = 'off';
-        break;
-      case 'medium':
-        window.gameSettings.maxParticles = 100;
-        window.gameSettings.shadowQuality = 'low';
-        break;
-      case 'high':
-        window.gameSettings.maxParticles = 200;
-        window.gameSettings.shadowQuality = 'medium';
-        break;
-      case 'ultra':
-        window.gameSettings.maxParticles = 500;
-        window.gameSettings.shadowQuality = 'high';
-        break;
+    case 'low':
+      window.gameSettings.maxParticles = 50;
+      window.gameSettings.shadowQuality = 'off';
+      break;
+    case 'medium':
+      window.gameSettings.maxParticles = 100;
+      window.gameSettings.shadowQuality = 'low';
+      break;
+    case 'high':
+      window.gameSettings.maxParticles = 200;
+      window.gameSettings.shadowQuality = 'medium';
+      break;
+    case 'ultra':
+      window.gameSettings.maxParticles = 500;
+      window.gameSettings.shadowQuality = 'high';
+      break;
     }
   }
 

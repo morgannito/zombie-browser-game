@@ -330,63 +330,83 @@ class SynergySystem {
       const effect = synergy.effect;
 
       switch (effect.type) {
-        case 'explosion_radius':
-          if (player.explosionRadius) {
-            player.explosionRadius *= effect.multiplier;
-          }
-          break;
+      case 'explosion_radius':
+        if (player.explosionRadius) {
+          player.explosionRadius *= effect.multiplier;
+        }
+        break;
 
-        case 'crit_pierce':
-          if (player.critPierceBonus !== undefined) {
-            player.critPierceBonus = (player.critPierceBonus || 0) + effect.bonus;
-          }
-          break;
+      case 'crit_pierce':
+        if (player.critPierceBonus !== undefined) {
+          player.critPierceBonus = (player.critPierceBonus || 0) + effect.bonus;
+        }
+        break;
 
-        case 'lifesteal_thorns_boost':
-          if (player.lifeSteal) player.lifeSteal *= effect.multiplier;
-          if (player.thorns) player.thorns *= effect.multiplier;
-          break;
+      case 'lifesteal_thorns_boost':
+        if (player.lifeSteal) {
+          player.lifeSteal *= effect.multiplier;
+        }
+        if (player.thorns) {
+          player.thorns *= effect.multiplier;
+        }
+        break;
 
-        case 'extra_turret':
-          if (player.turretCount !== undefined) {
-            player.turretCount = (player.turretCount || 1) + effect.count;
-          }
-          break;
+      case 'extra_turret':
+        if (player.turretCount !== undefined) {
+          player.turretCount = (player.turretCount || 1) + effect.count;
+        }
+        break;
 
-        case 'regen_speed':
-          if (player.regeneration) {
-            player.regeneration *= effect.multiplier;
-          }
-          break;
+      case 'regen_speed':
+        if (player.regeneration) {
+          player.regeneration *= effect.multiplier;
+        }
+        break;
 
-        case 'fire_rate':
-          if (player.fireRateBonus !== undefined) {
-            player.fireRateBonus = (player.fireRateBonus || 0) + effect.bonus;
-          }
-          break;
+      case 'fire_rate':
+        if (player.fireRateBonus !== undefined) {
+          player.fireRateBonus = (player.fireRateBonus || 0) + effect.bonus;
+        }
+        break;
 
-        case 'speed_dodge_boost':
-          if (player.speed) player.speed *= (1 + effect.speedBonus);
-          if (player.dodgeChance !== undefined) {
-            player.dodgeChance = (player.dodgeChance || 0) + effect.dodgeBonus;
-          }
-          break;
+      case 'speed_dodge_boost':
+        if (player.speed) {
+          player.speed *= (1 + effect.speedBonus);
+        }
+        if (player.dodgeChance !== undefined) {
+          player.dodgeChance = (player.dodgeChance || 0) + effect.dodgeBonus;
+        }
+        break;
 
-        case 'glass_cannon':
-          if (player.damage) player.damage *= (1 + effect.damageBonus);
-          if (player.maxHealth) player.maxHealth *= (1 - effect.healthPenalty);
-          break;
+      case 'glass_cannon':
+        if (player.damage) {
+          player.damage *= (1 + effect.damageBonus);
+        }
+        if (player.maxHealth) {
+          player.maxHealth *= (1 - effect.healthPenalty);
+        }
+        break;
 
-        case 'fortress':
-          if (player.maxHealth) player.maxHealth *= (1 + effect.healthBonus);
-          if (player.thorns) player.thorns *= (1 + effect.thornsBonus);
-          break;
+      case 'fortress':
+        if (player.maxHealth) {
+          player.maxHealth *= (1 + effect.healthBonus);
+        }
+        if (player.thorns) {
+          player.thorns *= (1 + effect.thornsBonus);
+        }
+        break;
 
-        case 'all_stats_boost':
-          if (player.speed) player.speed *= (1 + effect.bonus);
-          if (player.damage) player.damage *= (1 + effect.bonus);
-          if (player.maxHealth) player.maxHealth *= (1 + effect.bonus);
-          break;
+      case 'all_stats_boost':
+        if (player.speed) {
+          player.speed *= (1 + effect.bonus);
+        }
+        if (player.damage) {
+          player.damage *= (1 + effect.bonus);
+        }
+        if (player.maxHealth) {
+          player.maxHealth *= (1 + effect.bonus);
+        }
+        break;
 
         // Les autres effets seront gérés dans le code principal du jeu
       }

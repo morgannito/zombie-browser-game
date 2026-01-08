@@ -73,10 +73,18 @@ class InputManager {
       dy = joystickVector.dy;
     } else {
       // WASD or Arrow keys
-      if (this.isKeyPressed('w') || this.isKeyPressed('arrowup') || this.isKeyPressed('z')) dy -= 1;
-      if (this.isKeyPressed('s') || this.isKeyPressed('arrowdown')) dy += 1;
-      if (this.isKeyPressed('a') || this.isKeyPressed('arrowleft') || this.isKeyPressed('q')) dx -= 1;
-      if (this.isKeyPressed('d') || this.isKeyPressed('arrowright')) dx += 1;
+      if (this.isKeyPressed('w') || this.isKeyPressed('arrowup') || this.isKeyPressed('z')) {
+        dy -= 1;
+      }
+      if (this.isKeyPressed('s') || this.isKeyPressed('arrowdown')) {
+        dy += 1;
+      }
+      if (this.isKeyPressed('a') || this.isKeyPressed('arrowleft') || this.isKeyPressed('q')) {
+        dx -= 1;
+      }
+      if (this.isKeyPressed('d') || this.isKeyPressed('arrowright')) {
+        dx += 1;
+      }
 
       // Normalize diagonal movement
       if (dx !== 0 && dy !== 0) {

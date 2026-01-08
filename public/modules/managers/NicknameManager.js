@@ -114,7 +114,9 @@ class NicknameManager {
     const protectionDiv = document.getElementById('spawn-protection');
     const timerSpan = document.getElementById('protection-timer');
 
-    if (!protectionDiv || !timerSpan) return; // Guard against missing elements
+    if (!protectionDiv || !timerSpan) {
+      return;
+    } // Guard against missing elements
 
     protectionDiv.style.display = 'block';
 
@@ -127,14 +129,18 @@ class NicknameManager {
       const remaining = Math.ceil((this.playerController.spawnProtectionEndTime - Date.now()) / 1000);
 
       if (remaining <= 0) {
-        if (protectionDiv) protectionDiv.style.display = 'none';
+        if (protectionDiv) {
+          protectionDiv.style.display = 'none';
+        }
         clearInterval(this.spawnProtectionInterval);
         this.spawnProtectionInterval = null;
         if (window.networkManager) {
           window.networkManager.endSpawnProtection();
         }
       } else {
-        if (timerSpan) timerSpan.textContent = remaining;
+        if (timerSpan) {
+          timerSpan.textContent = remaining;
+        }
       }
     }, CONSTANTS.SPAWN_PROTECTION.UPDATE_INTERVAL);
   }

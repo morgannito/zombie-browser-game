@@ -119,7 +119,9 @@ class LightingSystem {
 
     // Update lights and remove expired ones
     for (const [id, light] of this.lights.entries()) {
-      if (!light.enabled) continue;
+      if (!light.enabled) {
+        continue;
+      }
 
       // Check duration
       if (light.duration !== Infinity) {
@@ -161,7 +163,9 @@ class LightingSystem {
     const maxY = camera.y + viewport.height + buffer;
 
     return Array.from(this.lights.values()).filter(light => {
-      if (!light.enabled) return false;
+      if (!light.enabled) {
+        return false;
+      }
 
       const effectiveRadius = light.radius * light.currentIntensity;
       return (
@@ -177,7 +181,9 @@ class LightingSystem {
    * Calculate shadow positions for entities
    */
   calculateShadows(entities, lights, camera) {
-    if (this.ambientLight >= 0.95) return []; // No shadows in full daylight
+    if (this.ambientLight >= 0.95) {
+      return [];
+    } // No shadows in full daylight
 
     const shadows = [];
 
@@ -187,7 +193,9 @@ class LightingSystem {
         const dy = entity.y - light.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance > light.radius) return;
+        if (distance > light.radius) {
+          return;
+        }
 
         // Calculate shadow direction (away from light)
         const angle = Math.atan2(dy, dx);

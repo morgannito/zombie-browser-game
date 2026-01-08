@@ -109,7 +109,9 @@ class AmbientAudioSystem {
    * Play ambient sound
    */
   playAmbient(soundKey) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     const config = this.ambientSounds[soundKey];
     if (!config) {
@@ -133,7 +135,9 @@ class AmbientAudioSystem {
    * Play music track with crossfade
    */
   playMusic(trackKey, fadeDuration = 2000) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     const track = this.musicTracks[trackKey];
     if (!track) {
@@ -142,7 +146,9 @@ class AmbientAudioSystem {
     }
 
     // If same track, do nothing
-    if (this.currentTrack === trackKey) return;
+    if (this.currentTrack === trackKey) {
+      return;
+    }
 
     console.log(`[Music] Switching to: ${trackKey} (fade: ${fadeDuration}ms)`);
 
@@ -154,7 +160,9 @@ class AmbientAudioSystem {
    * Stop music
    */
   stopMusic(fadeDuration = 2000) {
-    if (!this.currentTrack) return;
+    if (!this.currentTrack) {
+      return;
+    }
 
     console.log(`[Music] Stopping (fade: ${fadeDuration}ms)`);
     this.currentTrack = null;
@@ -164,7 +172,9 @@ class AmbientAudioSystem {
    * Update ambient sounds based on game state
    */
   update(gameState) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     // Auto-play ambient based on weather
     if (gameState.weather) {

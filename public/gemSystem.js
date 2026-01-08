@@ -238,37 +238,37 @@ class GemSystem {
   // Appliquer l'effet d'un item
   applyItemEffect(item) {
     switch (item.id) {
-      case 'revive':
-        this.grantRevive();
-        break;
+    case 'revive':
+      this.grantRevive();
+      break;
 
-      case 'xp_boost':
-        this.activateBoost('xp', 2, item.duration);
-        break;
+    case 'xp_boost':
+      this.activateBoost('xp', 2, item.duration);
+      break;
 
-      case 'gold_boost':
-        this.activateBoost('gold', 2, item.duration);
-        break;
+    case 'gold_boost':
+      this.activateBoost('gold', 2, item.duration);
+      break;
 
-      case 'extra_life':
-        this.grantExtraLife(50);
-        break;
+    case 'extra_life':
+      this.grantExtraLife(50);
+      break;
 
-      case 'instant_shop':
-        this.openInstantShop();
-        break;
+    case 'instant_shop':
+      this.openInstantShop();
+      break;
 
-      case 'permanent_gold_boost':
-        this.applyPermanentBoost('gold', 0.1);
-        break;
+    case 'permanent_gold_boost':
+      this.applyPermanentBoost('gold', 0.1);
+      break;
 
-      case 'permanent_xp_boost':
-        this.applyPermanentBoost('xp', 0.1);
-        break;
+    case 'permanent_xp_boost':
+      this.applyPermanentBoost('xp', 0.1);
+      break;
 
-      case 'starter_boost':
-        this.applyStarterBoost();
-        break;
+    case 'starter_boost':
+      this.applyStarterBoost();
+      break;
 
       // Les autres items seront gérés par le jeu principal
     }
@@ -297,7 +297,7 @@ class GemSystem {
       endTime: Date.now() + duration
     };
 
-    let activeBoosts = JSON.parse(this._safeGetItem('active_boosts') || '[]');
+    const activeBoosts = JSON.parse(this._safeGetItem('active_boosts') || '[]');
     activeBoosts.push(boost);
     this._safeSetItem('active_boosts', JSON.stringify(activeBoosts));
 

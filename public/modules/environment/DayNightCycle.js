@@ -93,7 +93,9 @@ class DayNightCycle {
    * Update time progression
    */
   update(deltaTime = 16) {
-    if (this.isPaused) return;
+    if (this.isPaused) {
+      return;
+    }
 
     // Progress time
     this.timeOfDay += this.timeSpeed;
@@ -125,12 +127,24 @@ class DayNightCycle {
   getTimePeriod() {
     const hour = this.timeOfDay;
 
-    if (hour >= 5 && hour < 7) return 'dawn';
-    if (hour >= 7 && hour < 11) return 'morning';
-    if (hour >= 11 && hour < 14) return 'noon';
-    if (hour >= 14 && hour < 17) return 'afternoon';
-    if (hour >= 17 && hour < 19) return 'dusk';
-    if (hour >= 19 && hour < 23) return 'night';
+    if (hour >= 5 && hour < 7) {
+      return 'dawn';
+    }
+    if (hour >= 7 && hour < 11) {
+      return 'morning';
+    }
+    if (hour >= 11 && hour < 14) {
+      return 'noon';
+    }
+    if (hour >= 14 && hour < 17) {
+      return 'afternoon';
+    }
+    if (hour >= 17 && hour < 19) {
+      return 'dusk';
+    }
+    if (hour >= 19 && hour < 23) {
+      return 'night';
+    }
     return 'midnight'; // 23-5h
   }
 

@@ -76,11 +76,17 @@ class DynamicPropsSystem {
       // Weighted selection (fires more common)
       let typeKey;
       const rand = Math.random();
-      if (rand < 0.4) typeKey = 'fire';
-      else if (rand < 0.6) typeKey = 'smoke';
-      else if (rand < 0.75) typeKey = 'sparks';
-      else if (rand < 0.85) typeKey = 'steam';
-      else typeKey = 'torch';
+      if (rand < 0.4) {
+        typeKey = 'fire';
+      } else if (rand < 0.6) {
+        typeKey = 'smoke';
+      } else if (rand < 0.75) {
+        typeKey = 'sparks';
+      } else if (rand < 0.85) {
+        typeKey = 'steam';
+      } else {
+        typeKey = 'torch';
+      }
 
       let x, y;
       let attempts = 0;
@@ -90,7 +96,9 @@ class DynamicPropsSystem {
         attempts++;
       } while (this.isNearCenter(x, y, mapWidth, mapHeight, 300) && attempts < 10);
 
-      if (attempts >= 10) continue;
+      if (attempts >= 10) {
+        continue;
+      }
 
       this.createProp(typeKey, x, y);
     }
@@ -106,7 +114,9 @@ class DynamicPropsSystem {
 
   createProp(typeKey, x, y) {
     const type = this.propTypes[typeKey];
-    if (!type) return null;
+    if (!type) {
+      return null;
+    }
 
     const prop = {
       id: this.nextId++,
@@ -156,26 +166,28 @@ class DynamicPropsSystem {
     const count = prop.particlesPerFrame * prop.intensity;
 
     for (let i = 0; i < count; i++) {
-      if (Math.random() > prop.intensity) continue;
+      if (Math.random() > prop.intensity) {
+        continue;
+      }
 
       let particle;
 
       switch (prop.type) {
-        case 'fire':
-          particle = this.createFireParticle(prop);
-          break;
-        case 'smoke':
-          particle = this.createSmokeParticle(prop);
-          break;
-        case 'sparks':
-          particle = this.createSparkParticle(prop);
-          break;
-        case 'steam':
-          particle = this.createSteamParticle(prop);
-          break;
-        case 'torch':
-          particle = this.createTorchParticle(prop);
-          break;
+      case 'fire':
+        particle = this.createFireParticle(prop);
+        break;
+      case 'smoke':
+        particle = this.createSmokeParticle(prop);
+        break;
+      case 'sparks':
+        particle = this.createSparkParticle(prop);
+        break;
+      case 'steam':
+        particle = this.createSteamParticle(prop);
+        break;
+      case 'torch':
+        particle = this.createTorchParticle(prop);
+        break;
       }
 
       if (particle) {
@@ -267,7 +279,9 @@ class DynamicPropsSystem {
    */
   checkDamage(x, y) {
     for (const prop of this.props.values()) {
-      if (prop.damageRadius === 0) continue;
+      if (prop.damageRadius === 0) {
+        continue;
+      }
 
       const dx = x - prop.x;
       const dy = y - prop.y;

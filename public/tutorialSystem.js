@@ -320,7 +320,9 @@ class TutorialSystem {
   }
 
   start() {
-    if (this.hasCompleted || this.isActive) return;
+    if (this.hasCompleted || this.isActive) {
+      return;
+    }
 
     this.isActive = true;
     this.currentStep = 0;
@@ -341,19 +343,29 @@ class TutorialSystem {
     const stepCount = document.getElementById('tutorial-step-count');
     const nextBtn = document.getElementById('tutorial-next');
 
-    if (!overlay) return;
+    if (!overlay) {
+      return;
+    }
 
     // Show overlay
     overlay.style.display = 'block';
 
     // Update content
-    if (title) title.textContent = step.title;
-    if (text) text.textContent = step.text;
+    if (title) {
+      title.textContent = step.title;
+    }
+    if (text) {
+      text.textContent = step.text;
+    }
 
     // Update progress
     const progress = ((stepIndex + 1) / this.steps.length) * 100;
-    if (progressFill) progressFill.style.width = `${progress}%`;
-    if (stepCount) stepCount.textContent = `Étape ${stepIndex + 1}/${this.steps.length}`;
+    if (progressFill) {
+      progressFill.style.width = `${progress}%`;
+    }
+    if (stepCount) {
+      stepCount.textContent = `Étape ${stepIndex + 1}/${this.steps.length}`;
+    }
 
     // Highlight element if specified
     if (step.highlight) {
@@ -389,7 +401,9 @@ class TutorialSystem {
         if (this.isActive && this.currentStep === stepIndex) {
           clearInterval(interval);
           const nextBtn = document.getElementById('tutorial-next');
-          if (nextBtn) nextBtn.style.display = 'block';
+          if (nextBtn) {
+            nextBtn.style.display = 'block';
+          }
         }
       }, step.skipDelay);
     }
@@ -399,7 +413,9 @@ class TutorialSystem {
     const element = document.querySelector(selector);
     const highlight = document.getElementById('tutorial-highlight');
 
-    if (!element || !highlight) return;
+    if (!element || !highlight) {
+      return;
+    }
 
     const rect = element.getBoundingClientRect();
     highlight.style.display = 'block';

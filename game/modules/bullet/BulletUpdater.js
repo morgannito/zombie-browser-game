@@ -9,14 +9,27 @@ const { createParticles } = require('../../lootFunctions');
 
 const { CONFIG } = ConfigManager;
 
+// LATENCY OPTIMIZATION: Cache require to avoid repeated lookups
+const { handleZombieBulletCollisions, handlePlayerBulletCollisions } = require('./BulletCollisionHandler');
+
 /**
  * Update all bullets
+ * LATENCY OPTIMIZATION: Optimized loop with early returns + cached requires
  */
 function updateBullets(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
   const roomManager = gameState.roomManager;
+  const bullets = gameState.bullets;
 
-  for (let bulletId in gameState.bullets) {
-    const bullet = gameState.bullets[bulletId];
+  // LATENCY OPTIMIZATION: for-of faster than for-in for dense arrays/objects
+  const bulletIds = Object.keys(bullets);
+  for (let i = 0; i < bulletIds.length; i++) {
+    const bulletId = bulletIds[i];
+    const bullet = bullets[bulletId];
+
+    // Fast path: destroyed check first
+    if (!bullet) {
+      continue;
+    }
 
     updateBulletPosition(bullet, now);
 
@@ -28,12 +41,10 @@ function updateBullets(gameState, now, io, collisionManager, entityManager, zomb
     updatePlasmaTrail(bullet, entityManager);
 
     if (bullet.isZombieBullet) {
-      const { handleZombieBulletCollisions } = require('./BulletCollisionHandler');
       handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager);
       continue;
     }
 
-    const { handlePlayerBulletCollisions } = require('./BulletCollisionHandler');
     handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, perfIntegration);
   }
 }

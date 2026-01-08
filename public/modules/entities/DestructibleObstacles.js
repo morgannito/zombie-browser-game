@@ -118,7 +118,9 @@ class DestructibleObstaclesSystem {
    */
   createObstacle(typeKey, x, y) {
     const type = this.obstacleTypes[typeKey];
-    if (!type) return null;
+    if (!type) {
+      return null;
+    }
 
     const obstacle = {
       id: this.nextId++,
@@ -144,7 +146,9 @@ class DestructibleObstaclesSystem {
    */
   checkBulletCollision(bullet) {
     for (const [id, obstacle] of this.obstacles) {
-      if (obstacle.destroyed) continue;
+      if (obstacle.destroyed) {
+        continue;
+      }
 
       // Simple AABB collision
       if (
@@ -167,7 +171,9 @@ class DestructibleObstaclesSystem {
    */
   damageObstacle(obstacleId, damage) {
     const obstacle = this.obstacles.get(obstacleId);
-    if (!obstacle || obstacle.destroyed) return null;
+    if (!obstacle || obstacle.destroyed) {
+      return null;
+    }
 
     obstacle.health -= damage;
 
@@ -185,7 +191,9 @@ class DestructibleObstaclesSystem {
    */
   destroyObstacle(obstacleId) {
     const obstacle = this.obstacles.get(obstacleId);
-    if (!obstacle || obstacle.destroyed) return null;
+    if (!obstacle || obstacle.destroyed) {
+      return null;
+    }
 
     obstacle.destroyed = true;
 
@@ -230,10 +238,14 @@ class DestructibleObstaclesSystem {
   }
 
   generateLoot(obstacle) {
-    if (Math.random() > obstacle.lootChance) return null;
+    if (Math.random() > obstacle.lootChance) {
+      return null;
+    }
 
     const lootTable = obstacle.lootTable || [];
-    if (lootTable.length === 0) return null;
+    if (lootTable.length === 0) {
+      return null;
+    }
 
     const lootType = lootTable[Math.floor(Math.random() * lootTable.length)];
 
@@ -270,7 +282,9 @@ class DestructibleObstaclesSystem {
    */
   checkCollision(x, y, radius = 0) {
     for (const obstacle of this.obstacles.values()) {
-      if (obstacle.destroyed) continue;
+      if (obstacle.destroyed) {
+        continue;
+      }
 
       const dx = x - obstacle.x;
       const dy = y - obstacle.y;

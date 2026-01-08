@@ -14,10 +14,10 @@ const { ALLOWED_ORIGINS } = require('../config/constants');
  */
 function getSocketIOCorsConfig() {
   return {
-    origin: "*", // Allow all origins
-    methods: ["GET", "POST"],
+    origin: '*', // Allow all origins
+    methods: ['GET', 'POST'],
     credentials: false, // Must be false when origin is "*"
-    allowedHeaders: ["*"]
+    allowedHeaders: ['*']
   };
 }
 

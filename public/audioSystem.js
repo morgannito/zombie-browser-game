@@ -27,7 +27,9 @@ class MusicGenerator {
    * Initialise le système de musique
    */
   init() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     this.masterGain = this.context.createGain();
     this.masterGain.gain.value = this.volume;
@@ -38,7 +40,9 @@ class MusicGenerator {
    * Joue une note
    */
   playNote(frequency, duration, type = 'sine', volume = 0.3) {
-    if (!this.context || !this.masterGain) return;
+    if (!this.context || !this.masterGain) {
+      return;
+    }
 
     const oscillator = this.context.createOscillator();
     const gainNode = this.context.createGain();
@@ -64,7 +68,9 @@ class MusicGenerator {
     // Nettoyage
     (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       const index = this.oscillators.indexOf(oscillator);
-      if (index > -1) this.oscillators.splice(index, 1);
+      if (index > -1) {
+        this.oscillators.splice(index, 1);
+      }
     }, duration * 1000);
   }
 
@@ -81,7 +87,9 @@ class MusicGenerator {
    * Thème musical - Menu
    */
   playMenuTheme() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     this.currentTheme = 'menu';
     const beatDuration = 60 / this.tempo;
@@ -97,7 +105,9 @@ class MusicGenerator {
     let currentChord = 0;
 
     const playLoop = () => {
-      if (!this.isPlaying || this.currentTheme !== 'menu') return;
+      if (!this.isPlaying || this.currentTheme !== 'menu') {
+        return;
+      }
 
       this.playChord(progression[currentChord], beatDuration * 4, 0.15);
       currentChord = (currentChord + 1) % progression.length;
@@ -112,7 +122,9 @@ class MusicGenerator {
    * Thème musical - Combat normal
    */
   playCombatTheme() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     this.currentTheme = 'combat';
     this.tempo = 140;
@@ -123,7 +135,9 @@ class MusicGenerator {
     let noteIndex = 0;
 
     const playLoop = () => {
-      if (!this.isPlaying || this.currentTheme !== 'combat') return;
+      if (!this.isPlaying || this.currentTheme !== 'combat') {
+        return;
+      }
 
       this.playNote(bassLine[noteIndex], beatDuration * 0.8, 'square', 0.2);
       noteIndex = (noteIndex + 1) % bassLine.length;
@@ -145,7 +159,9 @@ class MusicGenerator {
    * Thème musical - Boss fight
    */
   playBossTheme() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     this.currentTheme = 'boss';
     this.tempo = 160;
@@ -156,7 +172,9 @@ class MusicGenerator {
     let noteIndex = 0;
 
     const playLoop = () => {
-      if (!this.isPlaying || this.currentTheme !== 'boss') return;
+      if (!this.isPlaying || this.currentTheme !== 'boss') {
+        return;
+      }
 
       // Basse puissante
       this.playNote(bassLine[noteIndex], beatDuration * 0.9, 'sawtooth', 0.25);
@@ -179,20 +197,22 @@ class MusicGenerator {
    * Démarre la musique selon le contexte
    */
   start(theme = 'menu') {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     this.isPlaying = true;
 
     switch (theme) {
-      case 'menu':
-        this.playMenuTheme();
-        break;
-      case 'combat':
-        this.playCombatTheme();
-        break;
-      case 'boss':
-        this.playBossTheme();
-        break;
+    case 'menu':
+      this.playMenuTheme();
+      break;
+    case 'combat':
+      this.playCombatTheme();
+      break;
+    case 'boss':
+      this.playBossTheme();
+      break;
     }
   }
 
@@ -215,7 +235,9 @@ class MusicGenerator {
    * Change le thème musical
    */
   changeTheme(newTheme) {
-    if (newTheme === this.currentTheme) return;
+    if (newTheme === this.currentTheme) {
+      return;
+    }
 
     this.stop();
     (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
@@ -257,28 +279,30 @@ class EnhancedSoundEffects {
     // Utiliser le nouveau système si disponible
     if (this.weaponAudio) {
       switch (weaponType) {
-        case 'pistol':
-          this.weaponAudio.playPistol(distance, true);
-          break;
-        case 'shotgun':
-          this.weaponAudio.playShotgun(distance, true);
-          break;
-        case 'machinegun':
-        case 'minigun':
-          this.weaponAudio.playMachinegun(distance, true);
-          break;
-        case 'rifle':
-        case 'sniper':
-          this.weaponAudio.playRifle(distance, true);
-          break;
-        default:
-          this.weaponAudio.playPistol(distance, true);
+      case 'pistol':
+        this.weaponAudio.playPistol(distance, true);
+        break;
+      case 'shotgun':
+        this.weaponAudio.playShotgun(distance, true);
+        break;
+      case 'machinegun':
+      case 'minigun':
+        this.weaponAudio.playMachinegun(distance, true);
+        break;
+      case 'rifle':
+      case 'sniper':
+        this.weaponAudio.playRifle(distance, true);
+        break;
+      default:
+        this.weaponAudio.playPistol(distance, true);
       }
       return;
     }
 
     // Fallback sur l'ancien système
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -286,26 +310,26 @@ class EnhancedSoundEffects {
     const filter = this.context.createBiquadFilter();
 
     switch (weaponType) {
-      case 'pistol':
-        oscillator.frequency.value = 300;
-        filter.frequency.value = 800;
-        gainNode.gain.setValueAtTime(0.3, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        break;
+    case 'pistol':
+      oscillator.frequency.value = 300;
+      filter.frequency.value = 800;
+      gainNode.gain.setValueAtTime(0.3, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      break;
 
-      case 'shotgun':
-        oscillator.frequency.value = 150;
-        filter.frequency.value = 400;
-        gainNode.gain.setValueAtTime(0.5, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        break;
+    case 'shotgun':
+      oscillator.frequency.value = 150;
+      filter.frequency.value = 400;
+      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      break;
 
-      case 'machinegun':
-        oscillator.frequency.value = 400;
-        filter.frequency.value = 1000;
-        gainNode.gain.setValueAtTime(0.2, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-        break;
+    case 'machinegun':
+      oscillator.frequency.value = 400;
+      filter.frequency.value = 1000;
+      gainNode.gain.setValueAtTime(0.2, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+      break;
     }
 
     oscillator.type = 'square';
@@ -341,7 +365,9 @@ class EnhancedSoundEffects {
    * Son d'impact sur zombie
    */
   playHit(isCritical = false) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -365,7 +391,9 @@ class EnhancedSoundEffects {
    * Son de mort de zombie
    */
   playZombieDeath() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -395,7 +423,9 @@ class EnhancedSoundEffects {
    * Son d'explosion
    */
   playExplosion() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
 
@@ -432,7 +462,9 @@ class EnhancedSoundEffects {
    * Son de collecte (or, power-up)
    */
   playCollect(type = 'gold') {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -462,7 +494,9 @@ class EnhancedSoundEffects {
    * Son de level up
    */
   playLevelUp() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C (octave)
@@ -490,7 +524,9 @@ class EnhancedSoundEffects {
    * Son de damage sur le joueur
    */
   playPlayerDamage() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -514,7 +550,9 @@ class EnhancedSoundEffects {
    * Son de heal
    */
   playHeal() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -538,7 +576,9 @@ class EnhancedSoundEffects {
    * Son d'apparition de boss
    */
   playBossSpawn() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
 
@@ -566,7 +606,9 @@ class EnhancedSoundEffects {
    * Son d'UI (clic, hover)
    */
   playUISound(type = 'click') {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
@@ -641,7 +683,9 @@ class AdvancedAudioManager {
    * Démarre la musique
    */
   startMusic(theme = 'menu') {
-    if (!this.enabled || !this.musicEnabled) return;
+    if (!this.enabled || !this.musicEnabled) {
+      return;
+    }
     this.resume();
     this.music.start(theme);
   }
@@ -650,7 +694,9 @@ class AdvancedAudioManager {
    * Change le thème musical
    */
   changeMusic(theme) {
-    if (!this.enabled || !this.musicEnabled) return;
+    if (!this.enabled || !this.musicEnabled) {
+      return;
+    }
     this.music.changeTheme(theme);
   }
 
@@ -658,7 +704,9 @@ class AdvancedAudioManager {
    * Arrête la musique
    */
   stopMusic() {
-    if (!this.music) return;
+    if (!this.music) {
+      return;
+    }
     this.music.stop();
   }
 
@@ -666,41 +714,43 @@ class AdvancedAudioManager {
    * Joue un effet sonore
    */
   playSound(soundType, ...args) {
-    if (!this.enabled || !this.soundsEnabled || !this.sounds) return;
+    if (!this.enabled || !this.soundsEnabled || !this.sounds) {
+      return;
+    }
 
     this.resume();
 
     switch (soundType) {
-      case 'shoot':
-        this.sounds.playShoot(...args);
-        break;
-      case 'hit':
-        this.sounds.playHit(...args);
-        break;
-      case 'zombieDeath':
-        this.sounds.playZombieDeath();
-        break;
-      case 'explosion':
-        this.sounds.playExplosion();
-        break;
-      case 'collect':
-        this.sounds.playCollect(...args);
-        break;
-      case 'levelup':
-        this.sounds.playLevelUp();
-        break;
-      case 'playerDamage':
-        this.sounds.playPlayerDamage();
-        break;
-      case 'heal':
-        this.sounds.playHeal();
-        break;
-      case 'bossSpawn':
-        this.sounds.playBossSpawn();
-        break;
-      case 'ui':
-        this.sounds.playUISound(...args);
-        break;
+    case 'shoot':
+      this.sounds.playShoot(...args);
+      break;
+    case 'hit':
+      this.sounds.playHit(...args);
+      break;
+    case 'zombieDeath':
+      this.sounds.playZombieDeath();
+      break;
+    case 'explosion':
+      this.sounds.playExplosion();
+      break;
+    case 'collect':
+      this.sounds.playCollect(...args);
+      break;
+    case 'levelup':
+      this.sounds.playLevelUp();
+      break;
+    case 'playerDamage':
+      this.sounds.playPlayerDamage();
+      break;
+    case 'heal':
+      this.sounds.playHeal();
+      break;
+    case 'bossSpawn':
+      this.sounds.playBossSpawn();
+      break;
+    case 'ui':
+      this.sounds.playUISound(...args);
+      break;
     }
   }
 

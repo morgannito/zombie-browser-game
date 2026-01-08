@@ -13,7 +13,7 @@ const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
  * Handle zombie bullet collisions with players
  */
 function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
 
     if (!player.alive || !player.hasNickname || player.spawnProtection || player.invisible) {
@@ -46,7 +46,7 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
 function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, perfIntegration) {
   const hitZombies = collisionManager.checkBulletZombieCollisions(bullet);
 
-  for (let {id: zombieId, zombie} of hitZombies) {
+  for (const {id: zombieId, zombie} of hitZombies) {
     if (bullet.piercedZombies && bullet.piercedZombies.includes(zombieId)) {
       continue;
     }
@@ -85,8 +85,12 @@ function calculateFinalDamage(bullet, zombie, entityManager) {
     const bulletAngle = Math.atan2(bullet.vy, bullet.vx);
 
     let angleDiff = bulletAngle - zombie.facingAngle;
-    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    while (angleDiff > Math.PI) {
+      angleDiff -= Math.PI * 2;
+    }
+    while (angleDiff < -Math.PI) {
+      angleDiff += Math.PI * 2;
+    }
 
     if (Math.abs(angleDiff) < shieldedType.shieldAngle) {
       finalDamage *= shieldedType.frontDamageReduction;
@@ -172,7 +176,7 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
   const { createExplosion } = require('../../lootFunctions');
   createExplosion(zombie.x, zombie.y, explosiveType.explosionRadius, false, entityManager);
 
-  for (let otherId in gameState.zombies) {
+  for (const otherId in gameState.zombies) {
     if (otherId !== zombieId) {
       const other = gameState.zombies[otherId];
       const dist = distance(zombie.x, zombie.y, other.x, other.y);
@@ -183,9 +187,11 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
     }
   }
 
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (!player.alive || player.spawnProtection || player.invisible) {
+      continue;
+    }
 
     const dist = distance(zombie.x, zombie.y, player.x, player.y);
     if (dist < explosiveType.explosionRadius) {
@@ -204,7 +210,9 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
  * Save dead zombie for necromancer
  */
 function saveDeadZombie(zombie, gameState) {
-  if (!gameState.deadZombies) gameState.deadZombies = {};
+  if (!gameState.deadZombies) {
+    gameState.deadZombies = {};
+  }
   const deadZombieId = `dead_${Date.now()}_${Math.random()}`;
   gameState.deadZombies[deadZombieId] = {
     x: zombie.x,
@@ -244,7 +252,7 @@ function calculateLootBonus(bullet, zombie, gameState, io) {
  * Cleanup zombie damage tracking
  */
 function cleanupZombieDamageTracking(zombieId, gameState) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const p = gameState.players[playerId];
     if (p.lastDamageTime && p.lastDamageTime[zombieId]) {
       delete p.lastDamageTime[zombieId];

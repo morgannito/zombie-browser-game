@@ -149,7 +149,9 @@ class LeaderboardSystem {
     const recordsDiv = document.getElementById('leaderboard-records');
     const contentDiv = document.getElementById('leaderboard-content');
 
-    if (!recordsDiv || !contentDiv) return;
+    if (!recordsDiv || !contentDiv) {
+      return;
+    }
 
     // Afficher les records
     recordsDiv.innerHTML = `

@@ -40,9 +40,11 @@ class PlayerController {
    */
   checkWallCollision(x, y, size) {
     const walls = this.gameState.state.walls;
-    if (!walls || !Array.isArray(walls)) return false;
+    if (!walls || !Array.isArray(walls)) {
+      return false;
+    }
 
-    for (let wall of walls) {
+    for (const wall of walls) {
       if (x + size > wall.x &&
         x - size < wall.x + wall.width &&
         y + size > wall.y &&
@@ -63,7 +65,9 @@ class PlayerController {
     this.camera.follow(player, canvasWidth, canvasHeight);
 
     // Only allow movement after game has started
-    if (!this.gameStarted) return;
+    if (!this.gameStarted) {
+      return;
+    }
 
     // Cache current time for performance (avoid multiple Date.now() calls)
     const now = Date.now();
@@ -170,7 +174,9 @@ class PlayerController {
 
   shoot(canvasWidth, canvasHeight) {
     const player = this.gameState.getPlayer();
-    if (!player || !player.alive || !this.gameStarted) return;
+    if (!player || !player.alive || !this.gameStarted) {
+      return;
+    }
 
     // Convertir les coordonnées écran de la souris en coordonnées monde
     const cameraPos = this.camera.getPosition();

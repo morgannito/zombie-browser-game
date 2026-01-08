@@ -13,7 +13,9 @@ const { ZOMBIE_TYPES } = ConfigManager;
  * Update teleporter zombie
  */
 function updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
-  if (zombie.type !== 'teleporter') return;
+  if (zombie.type !== 'teleporter') {
+    return;
+  }
 
   const teleporterType = ZOMBIE_TYPES.teleporter;
   if (!zombie.lastTeleport || now - zombie.lastTeleport >= teleporterType.teleportCooldown) {
@@ -58,7 +60,9 @@ function executeTeleport(zombie, closestPlayer, teleporterType, now, gameState, 
  * Update summoner zombie
  */
 function updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState) {
-  if (zombie.type !== 'summoner') return;
+  if (zombie.type !== 'summoner') {
+    return;
+  }
 
   const summonerType = ZOMBIE_TYPES.summoner;
   const currentMinions = countMinions(zombie, zombieId, gameState);
@@ -74,7 +78,7 @@ function updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManage
  */
 function countMinions(zombie, zombieId, gameState) {
   let count = 0;
-  for (let zId in gameState.zombies) {
+  for (const zId in gameState.zombies) {
     if (gameState.zombies[zId].summonerId === zombieId) {
       count++;
     }
@@ -117,7 +121,9 @@ function spawnMinions(zombie, zombieId, currentMinions, summonerType, zombieMana
  * Update berserker zombie
  */
 function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
-  if (zombie.type !== 'berserker') return;
+  if (zombie.type !== 'berserker') {
+    return;
+  }
 
   const berserkerType = ZOMBIE_TYPES.berserker;
   updateRageState(zombie, berserkerType, entityManager);
@@ -208,7 +214,9 @@ function startDash(zombie, closestPlayer, now, berserkerType, entityManager) {
  * Update necromancer zombie
  */
 function updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState) {
-  if (zombie.type !== 'necromancer') return;
+  if (zombie.type !== 'necromancer') {
+    return;
+  }
 
   const necroType = ZOMBIE_TYPES.necromancer;
 
@@ -229,7 +237,7 @@ function reviveNearbyZombies(zombie, necroType, gameState, entityManager) {
   let revivedCount = 0;
   const deadZombiesNearby = [];
 
-  for (let corpseId in gameState.deadZombies) {
+  for (const corpseId in gameState.deadZombies) {
     const corpse = gameState.deadZombies[corpseId];
     const dist = distance(zombie.x, zombie.y, corpse.x, corpse.y);
 
@@ -270,7 +278,9 @@ function reviveNearbyZombies(zombie, necroType, gameState, entityManager) {
  * Update brute zombie
  */
 function updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
-  if (zombie.type !== 'brute') return;
+  if (zombie.type !== 'brute') {
+    return;
+  }
 
   const bruteType = ZOMBIE_TYPES.brute;
 
@@ -293,9 +303,11 @@ function executeGroundSlam(zombie, zombieId, now, bruteType, gameState, entityMa
   zombie.lastGroundSlam = now;
   createParticles(zombie.x, zombie.y, bruteType.color, 30, entityManager);
 
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (!player.alive || player.spawnProtection || player.invisible) {
+      continue;
+    }
 
     const dist = distance(zombie.x, zombie.y, player.x, player.y);
     if (dist <= bruteType.slamRange) {
@@ -310,7 +322,9 @@ function executeGroundSlam(zombie, zombieId, now, bruteType, gameState, entityMa
  * Update mimic zombie
  */
 function updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
-  if (zombie.type !== 'mimic') return;
+  if (zombie.type !== 'mimic') {
+    return;
+  }
 
   const mimicType = ZOMBIE_TYPES.mimic;
 

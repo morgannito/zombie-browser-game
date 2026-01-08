@@ -87,7 +87,7 @@ class ZombieSpawnManager {
   selectZombieType(currentWave) {
     // Trouver la config de wave
     let wavePhase = null;
-    for (let phase in this.waveConfig) {
+    for (const phase in this.waveConfig) {
       const config = this.waveConfig[phase];
       if (currentWave >= config.range[0] && currentWave <= config.range[1]) {
         wavePhase = config;

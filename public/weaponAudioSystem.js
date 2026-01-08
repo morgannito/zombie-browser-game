@@ -20,7 +20,9 @@ class WeaponAudioSystem {
    * Initialise le système audio avec reverb
    */
   init() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     // Master gain
     this.masterGain = this.context.createGain();
@@ -35,7 +37,9 @@ class WeaponAudioSystem {
    * Crée un effet de réverbération réaliste
    */
   createReverb() {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const sampleRate = this.context.sampleRate;
     const length = sampleRate * 2; // 2 secondes de reverb
@@ -67,7 +71,9 @@ class WeaponAudioSystem {
    * Calcule le volume selon la distance (0-1)
    */
   calculateDistanceAttenuation(distance, maxDistance = 1000) {
-    if (distance >= maxDistance) return 0;
+    if (distance >= maxDistance) {
+      return 0;
+    }
     return Math.max(0, 1 - (distance / maxDistance));
   }
 
@@ -75,7 +81,9 @@ class WeaponAudioSystem {
    * PISTOL - Son de pistolet réaliste
    */
   playPistol(distance = 0, variation = true) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const baseFreq = variation ? 280 + Math.random() * 40 : 300;
@@ -129,7 +137,9 @@ class WeaponAudioSystem {
    * SHOTGUN - Son de fusil à pompe réaliste
    */
   playShotgun(distance = 0, variation = true) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const attenuation = this.calculateDistanceAttenuation(distance);
@@ -187,7 +197,9 @@ class WeaponAudioSystem {
    * MACHINEGUN/MINIGUN - Tir rapide avec variations
    */
   playMachinegun(distance = 0, variation = true) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const baseFreq = variation ? 380 + Math.random() * 60 : 400;
@@ -237,7 +249,9 @@ class WeaponAudioSystem {
    * RIFLE/SNIPER - Coup puissant avec crack sonique
    */
   playRifle(distance = 0, variation = true) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const attenuation = this.calculateDistanceAttenuation(distance);
@@ -307,7 +321,9 @@ class WeaponAudioSystem {
    * Son de douille qui tombe
    */
   playShellCasing(volume = 0.3, type = 'pistol') {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const bounces = type === 'shotgun' ? 2 : 3;
@@ -340,7 +356,9 @@ class WeaponAudioSystem {
    * Click mécanique (marteau, bolt)
    */
   playMechanicalClick(volume = 0.3) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const osc = this.context.createOscillator();
@@ -370,7 +388,9 @@ class WeaponAudioSystem {
    * Son de pompe (shotgun)
    */
   playPumpAction(volume = 0.4) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
 
@@ -428,7 +448,9 @@ class WeaponAudioSystem {
    * Son de rechargement (clip insertion)
    */
   playReload(weaponType = 'pistol', volume = 0.4) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
 
@@ -470,7 +492,9 @@ class WeaponAudioSystem {
    * Son d'arme vide (dry fire)
    */
   playDryFire(volume = 0.3) {
-    if (!this.context) return;
+    if (!this.context) {
+      return;
+    }
 
     const now = this.context.currentTime;
     const click = this.context.createOscillator();

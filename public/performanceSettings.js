@@ -373,7 +373,9 @@ class PerformanceSettingsManager {
    */
   createImmersiveModeButton() {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (!isMobile) return;
+    if (!isMobile) {
+      return;
+    }
 
     const btn = document.createElement('button');
     btn.id = 'immersive-mode-btn';
@@ -464,7 +466,9 @@ class PerformanceSettingsManager {
    */
   updateFullscreenButton() {
     const btn = document.getElementById('fullscreen-btn');
-    if (!btn) return;
+    if (!btn) {
+      return;
+    }
 
     const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
 
@@ -486,7 +490,9 @@ class PerformanceSettingsManager {
    */
   createMinimapToggleButton() {
     const isMobile = this.isMobile();
-    if (!isMobile) return;
+    if (!isMobile) {
+      return;
+    }
 
     const btn = document.createElement('button');
     btn.id = 'minimap-toggle-btn';
@@ -539,7 +545,9 @@ class PerformanceSettingsManager {
    */
   updateMinimapToggleButton() {
     const btn = document.getElementById('minimap-toggle-btn');
-    if (!btn) return;
+    if (!btn) {
+      return;
+    }
 
     const isHidden = this.settings.minimapPosition === 'hidden';
 
@@ -672,10 +680,14 @@ class PerformanceSettingsManager {
    * Apply resolution scale
    */
   applyResolutionScale() {
-    if (!window.gameEngine) return;
+    if (!window.gameEngine) {
+      return;
+    }
 
     const canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     const basePixelRatio = window.devicePixelRatio || 1;
     const adjustedPixelRatio = basePixelRatio * this.settings.resolutionScale;
@@ -704,13 +716,21 @@ class PerformanceSettingsManager {
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
       if (isLandscape && isMobile) {
-        if (stats) stats.style.opacity = '0.3';
-        if (instructions) instructions.style.display = 'none';
+        if (stats) {
+          stats.style.opacity = '0.3';
+        }
+        if (instructions) {
+          instructions.style.display = 'none';
+        }
       }
     } else {
       // Show all UI
-      if (stats) stats.style.opacity = '1';
-      if (instructions && !this.isMobile()) instructions.style.display = 'block';
+      if (stats) {
+        stats.style.opacity = '1';
+      }
+      if (instructions && !this.isMobile()) {
+        instructions.style.display = 'block';
+      }
     }
   }
 
@@ -719,7 +739,9 @@ class PerformanceSettingsManager {
    */
   applyMinimapSettings() {
     const minimap = document.getElementById('minimap');
-    if (!minimap) return;
+    if (!minimap) {
+      return;
+    }
 
     minimap.style.transition = 'all 0.3s ease';
 

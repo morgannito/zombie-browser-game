@@ -10,10 +10,14 @@ const { distance } = require('../../utilityFunctions');
  * Update Boss Infernal (wave 115)
  */
 function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossInfernal') return;
+  if (zombie.type !== 'bossInfernal') {
+    return;
+  }
 
   const bossType = gameState.ZOMBIE_TYPES?.bossInfernal;
-  if (!bossType) return;
+  if (!bossType) {
+    return;
+  }
 
   const healthPercent = zombie.health / zombie.maxHealth;
 
@@ -21,9 +25,11 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
   if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
     zombie.lastAuraDamage = now;
 
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive || player.spawnProtection || player.invisible) continue;
+      if (!player.alive || player.spawnProtection || player.invisible) {
+        continue;
+      }
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
       if (dist < 120) { // Fire aura radius
@@ -90,7 +96,9 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
  * Update Boss Cryos (wave 140)
  */
 function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossCryos') return;
+  if (zombie.type !== 'bossCryos') {
+    return;
+  }
 
   const healthPercent = zombie.health / zombie.maxHealth;
 
@@ -142,9 +150,11 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
     if (!zombie.lastFreezeAura || now - zombie.lastFreezeAura >= 2000) {
       zombie.lastFreezeAura = now;
 
-      for (let playerId in gameState.players) {
+      for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) continue;
+        if (!player.alive || player.spawnProtection || player.invisible) {
+          continue;
+        }
 
         const dist = distance(zombie.x, zombie.y, player.x, player.y);
         if (dist < 150) { // Freeze aura radius
@@ -173,9 +183,11 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
     if (!zombie.lastBlizzardTick || now - zombie.lastBlizzardTick >= 500) {
       zombie.lastBlizzardTick = now;
 
-      for (let playerId in gameState.players) {
+      for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
-        if (!player.alive) continue;
+        if (!player.alive) {
+          continue;
+        }
 
         player.health -= 15 / 2; // 15 damage per second
         createParticles(player.x, player.y, '#aaddff', 3, entityManager);
@@ -195,7 +207,9 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
  * Update Boss Vortex (wave 160)
  */
 function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
-  if (zombie.type !== 'bossVortex') return;
+  if (zombie.type !== 'bossVortex') {
+    return;
+  }
 
   const healthPercent = zombie.health / zombie.maxHealth;
 
@@ -203,9 +217,11 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
   if (!zombie.lastTornado || now - zombie.lastTornado >= 7000) {
     zombie.lastTornado = now;
 
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive) continue;
+      if (!player.alive) {
+        continue;
+      }
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
       if (dist < 180) {
@@ -252,9 +268,11 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
     if (!zombie.lastHurricane || now - zombie.lastHurricane >= 1500) {
       zombie.lastHurricane = now;
 
-      for (let playerId in gameState.players) {
+      for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) continue;
+        if (!player.alive || player.spawnProtection || player.invisible) {
+          continue;
+        }
 
         // Global hurricane slow (30%)
         player.slowedUntil = now + 1500;
@@ -275,7 +293,9 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
  * Update Boss Nexus (wave 180)
  */
 function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossNexus') return;
+  if (zombie.type !== 'bossNexus') {
+    return;
+  }
 
   const healthPercent = zombie.health / zombie.maxHealth;
 
@@ -343,9 +363,11 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
   if (healthPercent <= 0.33 && (!zombie.lastRealityWarp || now - zombie.lastRealityWarp >= 25000)) {
     zombie.lastRealityWarp = now;
 
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive) continue;
+      if (!player.alive) {
+        continue;
+      }
 
       player.controlsInverted = true;
       player.controlsInvertedUntil = now + 5000; // 5 seconds inversion
@@ -364,7 +386,9 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
  * Update Boss Apocalypse (wave 200 - Final Boss)
  */
 function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossApocalypse') return;
+  if (zombie.type !== 'bossApocalypse') {
+    return;
+  }
 
   const healthPercent = zombie.health / zombie.maxHealth;
 
@@ -392,9 +416,11 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
     zombie.lastIcePrison = now;
 
     // Freeze all players
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive) continue;
+      if (!player.alive) {
+        continue;
+      }
 
       player.frozen = true;
       player.frozenUntil = now + 3000;
@@ -432,9 +458,11 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
         let nextTarget = null;
         let minDist = Infinity;
 
-        for (let playerId in gameState.players) {
+        for (const playerId in gameState.players) {
           const player = gameState.players[playerId];
-          if (!player.alive || hitTargets.has(player)) continue;
+          if (!player.alive || hitTargets.has(player)) {
+            continue;
+          }
 
           const dist = distance(currentTarget.x, currentTarget.y, player.x, player.y);
           if (dist < 200 && dist < minDist) {
@@ -443,7 +471,9 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
           }
         }
 
-        if (!nextTarget) break;
+        if (!nextTarget) {
+          break;
+        }
 
         hitTargets.add(nextTarget);
         currentTarget = nextTarget;
@@ -457,9 +487,11 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
     zombie.lastApocalypse = now;
 
     // Massive AOE damage
-    for (let playerId in gameState.players) {
+    for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive) continue;
+      if (!player.alive) {
+        continue;
+      }
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
       if (dist < 400) {

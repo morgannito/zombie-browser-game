@@ -182,48 +182,50 @@ class MissionSystem {
   // Mettre à jour le progrès d'une mission
   updateProgress(type, data) {
     this.currentMissions.forEach(mission => {
-      if (mission.completed) return;
+      if (mission.completed) {
+        return;
+      }
 
       switch (mission.type) {
-        case 'speed_kills':
-          this.trackSpeedKills(mission, data);
-          break;
+      case 'speed_kills':
+        this.trackSpeedKills(mission, data);
+        break;
 
-        case 'no_damage_time':
-          this.trackNoDamageTime(mission, data);
-          break;
+      case 'no_damage_time':
+        this.trackNoDamageTime(mission, data);
+        break;
 
-        case 'boss_speed':
-          this.trackBossSpeed(mission, data);
-          break;
+      case 'boss_speed':
+        this.trackBossSpeed(mission, data);
+        break;
 
-        case 'perfect_room':
-          this.trackPerfectRoom(mission, data);
-          break;
+      case 'perfect_room':
+        this.trackPerfectRoom(mission, data);
+        break;
 
-        case 'crit_streak':
-          this.trackCritStreak(mission, data);
-          break;
+      case 'crit_streak':
+        this.trackCritStreak(mission, data);
+        break;
 
-        case 'gold_collect':
-          this.trackGoldCollect(mission, data);
-          break;
+      case 'gold_collect':
+        this.trackGoldCollect(mission, data);
+        break;
 
-        case 'efficient_kills':
-          this.trackEfficientKills(mission, data);
-          break;
+      case 'efficient_kills':
+        this.trackEfficientKills(mission, data);
+        break;
 
-        case 'close_kills':
-          this.trackCloseKills(mission, data);
-          break;
+      case 'close_kills':
+        this.trackCloseKills(mission, data);
+        break;
 
-        case 'single_weapon':
-          this.trackSingleWeapon(mission, data);
-          break;
+      case 'single_weapon':
+        this.trackSingleWeapon(mission, data);
+        break;
 
-        case 'no_shop':
-          this.trackNoShop(mission, data);
-          break;
+      case 'no_shop':
+        this.trackNoShop(mission, data);
+        break;
       }
     });
   }
@@ -364,7 +366,9 @@ class MissionSystem {
 
   // Compléter une mission
   completeMission(mission) {
-    if (mission.completed) return;
+    if (mission.completed) {
+      return;
+    }
 
     mission.completed = true;
     mission.completedAt = Date.now();

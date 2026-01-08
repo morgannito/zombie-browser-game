@@ -85,7 +85,9 @@ class ParallaxBackground {
    * Get layer render data with parallax offset
    */
   getLayerData(camera, viewport) {
-    if (!this.enabled) return [];
+    if (!this.enabled) {
+      return [];
+    }
 
     return this.layers.map(layer => {
       // Calculate parallax offset

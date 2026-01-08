@@ -13,7 +13,7 @@ const { CONFIG } = ConfigManager;
  * Update loot - check expiration and player collection
  */
 function updateLoot(gameState, now, io, entityManager) {
-  for (let lootId in gameState.loot) {
+  for (const lootId in gameState.loot) {
     const loot = gameState.loot[lootId];
 
     if (isLootExpired(loot, now)) {
@@ -36,7 +36,7 @@ function isLootExpired(loot, now) {
  * Check loot collection by players
  */
 function checkLootCollection(loot, lootId, gameState, io, entityManager) {
-  for (let playerId in gameState.players) {
+  for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
 
     if (canCollectLoot(player, loot)) {

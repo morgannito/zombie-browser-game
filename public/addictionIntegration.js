@@ -11,7 +11,9 @@ class AddictionIntegration {
 
   // Initialiser tous les systèmes
   initialize() {
-    if (this.initialized) return;
+    if (this.initialized) {
+      return;
+    }
 
     console.log('🎮 Initializing Addiction Systems...');
 
@@ -95,7 +97,9 @@ class AddictionIntegration {
   // Setup écran d'accueil
   setupHomeScreen() {
     const homeWidgets = document.getElementById('home-widgets');
-    if (!homeWidgets) return;
+    if (!homeWidgets) {
+      return;
+    }
 
     homeWidgets.innerHTML = '';
 
@@ -437,7 +441,9 @@ class AddictionIntegration {
 
   // Vérifier les déblocages et achievements périodiquement
   periodicCheck() {
-    if (!this.gameStarted) return;
+    if (!this.gameStarted) {
+      return;
+    }
 
     // Vérifier déblocages
     if (window.unlockSystem) {

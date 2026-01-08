@@ -73,7 +73,9 @@ class WeaponWheel {
 
   renderWeapons() {
     const slotsContainer = document.getElementById('weapon-wheel-slots');
-    if (!slotsContainer) return;
+    if (!slotsContainer) {
+      return;
+    }
 
     slotsContainer.innerHTML = '';
 
@@ -165,7 +167,9 @@ class WeaponWheel {
   }
 
   open() {
-    if (this.isOpen) return;
+    if (this.isOpen) {
+      return;
+    }
 
     this.isOpen = true;
 
@@ -181,7 +185,9 @@ class WeaponWheel {
   }
 
   close() {
-    if (!this.isOpen) return;
+    if (!this.isOpen) {
+      return;
+    }
 
     this.isOpen = false;
 
@@ -196,7 +202,9 @@ class WeaponWheel {
   selectWeapon(index) {
     const weapon = this.weapons[index];
 
-    if (!weapon || !weapon.unlocked) return;
+    if (!weapon || !weapon.unlocked) {
+      return;
+    }
 
     this.currentWeaponIndex = index;
 
@@ -230,7 +238,9 @@ class WeaponWheel {
 
   updateCurrentDisplay(index) {
     const weapon = this.weapons[index];
-    if (!weapon) return;
+    if (!weapon) {
+      return;
+    }
 
     const currentDisplay = document.getElementById('weapon-wheel-current');
     if (currentDisplay) {

@@ -90,7 +90,9 @@ class NetworkManager {
   }
 
   getAverageLatency() {
-    if (this.latencyHistory.length === 0) return 0;
+    if (this.latencyHistory.length === 0) {
+      return 0;
+    }
     const sum = this.latencyHistory.reduce((a, b) => a + b, 0);
     return Math.round(sum / this.latencyHistory.length);
   }
@@ -98,10 +100,18 @@ class NetworkManager {
   getConnectionQuality() {
     const avgLatency = this.getAverageLatency();
 
-    if (avgLatency < 50) return { text: 'Excellent', color: '#00ff00', class: 'excellent' };
-    if (avgLatency < 100) return { text: 'Good', color: '#90ee90', class: 'good' };
-    if (avgLatency < 150) return { text: 'Fair', color: '#ffff00', class: 'fair' };
-    if (avgLatency < 250) return { text: 'Poor', color: '#ffa500', class: 'poor' };
+    if (avgLatency < 50) {
+      return { text: 'Excellent', color: '#00ff00', class: 'excellent' };
+    }
+    if (avgLatency < 100) {
+      return { text: 'Good', color: '#90ee90', class: 'good' };
+    }
+    if (avgLatency < 150) {
+      return { text: 'Fair', color: '#ffff00', class: 'fair' };
+    }
+    if (avgLatency < 250) {
+      return { text: 'Poor', color: '#ffa500', class: 'poor' };
+    }
     return { text: 'Bad', color: '#ff0000', class: 'bad' };
   }
 
@@ -290,10 +300,18 @@ class NetworkManager {
 
     // Update metadata
     if (delta.meta) {
-      if (delta.meta.wave !== undefined) window.gameState.state.wave = delta.meta.wave;
-      if (delta.meta.walls !== undefined) window.gameState.state.walls = delta.meta.walls;
-      if (delta.meta.currentRoom !== undefined) window.gameState.state.currentRoom = delta.meta.currentRoom;
-      if (delta.meta.bossSpawned !== undefined) window.gameState.state.bossSpawned = delta.meta.bossSpawned;
+      if (delta.meta.wave !== undefined) {
+        window.gameState.state.wave = delta.meta.wave;
+      }
+      if (delta.meta.walls !== undefined) {
+        window.gameState.state.walls = delta.meta.walls;
+      }
+      if (delta.meta.currentRoom !== undefined) {
+        window.gameState.state.currentRoom = delta.meta.currentRoom;
+      }
+      if (delta.meta.bossSpawned !== undefined) {
+        window.gameState.state.bossSpawned = delta.meta.bossSpawned;
+      }
     }
 
     // Server reconciliation: check if server position differs significantly

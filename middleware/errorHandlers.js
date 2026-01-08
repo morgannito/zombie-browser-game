@@ -106,7 +106,7 @@ function apiErrorHandler(err, req, res, next) {
   // Default to 500 for unexpected errors
   let statusCode = 500;
   let message = 'Internal server error';
-  let errorDetails = {};
+  const errorDetails = {};
 
   // Handle our custom errors
   if (err instanceof AppError) {
@@ -114,9 +114,15 @@ function apiErrorHandler(err, req, res, next) {
     message = err.message;
 
     // Include additional error details if available
-    if (err.field) errorDetails.field = err.field;
-    if (err.resource) errorDetails.resource = err.resource;
-    if (err.identifier) errorDetails.identifier = err.identifier;
+    if (err.field) {
+      errorDetails.field = err.field;
+    }
+    if (err.resource) {
+      errorDetails.resource = err.resource;
+    }
+    if (err.identifier) {
+      errorDetails.identifier = err.identifier;
+    }
   } else {
     // For non-operational errors, log the full error
     logger.error('Unexpected API error', {

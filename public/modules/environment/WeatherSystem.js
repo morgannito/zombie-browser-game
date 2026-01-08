@@ -92,21 +92,23 @@ class WeatherSystem {
     }
 
     const config = this.weatherTypes[this.currentWeather];
-    if (!config) return;
+    if (!config) {
+      return;
+    }
 
     // Update fog density
     this.fogDensity = config.fogDensity * this.intensity;
 
     // Update weather particles
     switch (this.currentWeather) {
-      case 'rain':
-      case 'heavyRain':
-      case 'storm':
-        this.updateRain(config, viewport, camera);
-        break;
-      case 'snow':
-        this.updateSnow(config, viewport, camera);
-        break;
+    case 'rain':
+    case 'heavyRain':
+    case 'storm':
+      this.updateRain(config, viewport, camera);
+      break;
+    case 'snow':
+      this.updateSnow(config, viewport, camera);
+      break;
     }
 
     // Update lightning for storms

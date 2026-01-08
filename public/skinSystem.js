@@ -249,7 +249,9 @@ class SkinRenderer {
    * Dessine une traînée (trail)
    */
   drawTrail(ctx, x, y, skin) {
-    if (!skin.trail) return;
+    if (!skin.trail) {
+      return;
+    }
 
     this.trailParticles.push({
       x,

@@ -87,7 +87,7 @@ class RetentionHooksSystem {
     // Hook 6: Bonus de revenge
     hooks.push({
       type: 'revenge',
-      message: `💪 REVENGE RUN disponible!\nBonus: +10% dégâts pour la prochaine run`,
+      message: '💪 REVENGE RUN disponible!\nBonus: +10% dégâts pour la prochaine run',
       icon: '⚡',
       actionText: 'Accepter le Revenge Bonus',
       priority: 5
@@ -132,7 +132,9 @@ class RetentionHooksSystem {
 
   // Vérifier si proche d'un achievement
   checkNearAchievement(stats) {
-    if (!window.achievementSystem) return null;
+    if (!window.achievementSystem) {
+      return null;
+    }
 
     const achievements = window.achievementSystem.achievements;
     const playerStats = window.achievementSystem.stats;
@@ -141,7 +143,9 @@ class RetentionHooksSystem {
     let minDistance = Infinity;
 
     for (const achievement of Object.values(achievements)) {
-      if (window.achievementSystem.unlockedAchievements[achievement.id]) continue;
+      if (window.achievementSystem.unlockedAchievements[achievement.id]) {
+        continue;
+      }
 
       // Vérifier pour les achievements de zombies
       if (achievement.id === 'zombie_hunter' && playerStats.totalZombiesKilled >= 80) {
@@ -176,12 +180,16 @@ class RetentionHooksSystem {
 
   // Vérifier si proche de terminer un défi
   checkNearChallenge(stats) {
-    if (!window.dailyChallengeSystem) return null;
+    if (!window.dailyChallengeSystem) {
+      return null;
+    }
 
     const challenges = window.dailyChallengeSystem.dailyChallenges;
 
     for (const challenge of challenges) {
-      if (challenge.completed) continue;
+      if (challenge.completed) {
+        continue;
+      }
 
       const percentage = (challenge.progress / challenge.target) * 100;
       if (percentage >= 70) {
@@ -197,7 +205,9 @@ class RetentionHooksSystem {
 
   // Vérifier position leaderboard
   checkLeaderboardPosition(stats) {
-    if (!window.leaderboardSystem) return null;
+    if (!window.leaderboardSystem) {
+      return null;
+    }
 
     const score = window.leaderboardSystem.calculateScore(stats);
     const playerName = stats.playerName;
@@ -208,8 +218,12 @@ class RetentionHooksSystem {
       const topScores = window.leaderboardSystem.getTopScores(100);
 
       let targetRank = 10;
-      if (position <= 10) targetRank = 3;
-      if (position <= 3) targetRank = 1;
+      if (position <= 10) {
+        targetRank = 3;
+      }
+      if (position <= 3) {
+        targetRank = 1;
+      }
 
       if (position > targetRank) {
         const targetScore = topScores[targetRank - 1]?.score || 0;
@@ -230,7 +244,9 @@ class RetentionHooksSystem {
 
   // Vérifier si proche d'un record personnel
   checkNearPersonalRecord(stats) {
-    if (!window.lifetimeStatsSystem) return null;
+    if (!window.lifetimeStatsSystem) {
+      return null;
+    }
 
     const lifetime = window.lifetimeStatsSystem.stats;
 
@@ -288,7 +304,9 @@ class RetentionHooksSystem {
 
   // Obtenir la prochaine arme à débloquer
   getNextWeaponUnlock() {
-    if (!window.unlockSystem) return null;
+    if (!window.unlockSystem) {
+      return null;
+    }
 
     const weapons = window.unlockSystem.weaponRequirements;
 
@@ -307,7 +325,7 @@ class RetentionHooksSystem {
 
     if (window.toastManager) {
       window.toastManager.show(
-        `💪 REVENGE BONUS ACTIVÉ!\n+10% dégâts pour cette run`,
+        '💪 REVENGE BONUS ACTIVÉ!\n+10% dégâts pour cette run',
         'bonus',
         5000
       );
@@ -329,7 +347,9 @@ class RetentionHooksSystem {
     const hooks = this.generateGameOverHooks(stats);
 
     const gameOverDiv = document.getElementById('game-over');
-    if (!gameOverDiv) return;
+    if (!gameOverDiv) {
+      return;
+    }
 
     // Créer une section pour les hooks
     let hooksContainer = gameOverDiv.querySelector('.retention-hooks');

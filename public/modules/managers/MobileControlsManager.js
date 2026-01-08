@@ -87,7 +87,9 @@ class MobileControlsManager {
 
     const handleTouchMove = (e) => {
       e.preventDefault();
-      if (!this.joystickActive) return;
+      if (!this.joystickActive) {
+        return;
+      }
 
       const touch = Array.from(e.touches).find(t => t.identifier === touchId);
       if (touch) {
@@ -197,7 +199,9 @@ class MobileControlsManager {
    * @param {number} currentTime - Current timestamp in ms
    */
   updateAutoShoot(currentTime) {
-    if (!this.autoShootActive) return;
+    if (!this.autoShootActive) {
+      return;
+    }
 
     // Check if enough time has passed since last shot
     if (currentTime - this.lastAutoShootTime < CONSTANTS.MOBILE.AUTO_SHOOT_INTERVAL) {
@@ -205,10 +209,14 @@ class MobileControlsManager {
     }
 
     // Verify all required objects exist
-    if (!window.gameState || !window.networkManager || !window.playerController) return;
+    if (!window.gameState || !window.networkManager || !window.playerController) {
+      return;
+    }
 
     const player = window.gameState.getPlayer();
-    if (!player || !player.alive || !window.playerController.gameStarted) return;
+    if (!player || !player.alive || !window.playerController.gameStarted) {
+      return;
+    }
 
     // Find nearest zombie and shoot at it
     const nearestZombie = this.findNearestZombie(player);
@@ -238,7 +246,9 @@ class MobileControlsManager {
     }
 
     const zombies = Object.values(window.gameState.state.zombies);
-    if (zombies.length === 0) return null;
+    if (zombies.length === 0) {
+      return null;
+    }
 
     let nearestZombie = null;
     let minScore = Infinity;
@@ -254,8 +264,12 @@ class MobileControlsManager {
 
       // Calculate angle difference (normalized to -π to π)
       let angleDiff = angleToZombie - playerAngle;
-      while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-      while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+      while (angleDiff > Math.PI) {
+        angleDiff -= 2 * Math.PI;
+      }
+      while (angleDiff < -Math.PI) {
+        angleDiff += 2 * Math.PI;
+      }
 
       // Aim assist: prefer zombies in front of player
       // Score = distance * angle_penalty
@@ -287,7 +301,9 @@ class MobileControlsManager {
 
   setupAdvancedGestures() {
     const canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     this.elements.canvas = canvas;
 
@@ -323,7 +339,9 @@ class MobileControlsManager {
         this.longPressTimer = null;
       }
 
-      if (e.changedTouches.length === 0) return;
+      if (e.changedTouches.length === 0) {
+        return;
+      }
       const touch = e.changedTouches[0];
       const dx = touch.clientX - this.swipeStartX;
       const dy = touch.clientY - this.swipeStartY;

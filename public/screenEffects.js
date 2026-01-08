@@ -39,7 +39,9 @@ class ScreenFlash {
    * @param {number} intensity - Intensité du flash (0-1)
    */
   flashDamage(intensity = 0.3) {
-    if (!this.overlay) return;
+    if (!this.overlay) {
+      return;
+    }
 
     // Clamp intensity entre 0 et 1
     intensity = Math.max(0, Math.min(1, intensity));
@@ -65,7 +67,9 @@ class ScreenFlash {
    * @param {number} intensity - Intensité du flash (0-1)
    */
   flashWhite(intensity = 0.5) {
-    if (!this.overlay) return;
+    if (!this.overlay) {
+      return;
+    }
 
     intensity = Math.max(0, Math.min(1, intensity));
 
@@ -88,7 +92,9 @@ class ScreenFlash {
    * @param {number} intensity - Intensité du flash (0-1)
    */
   flashHeal(intensity = 0.2) {
-    if (!this.overlay) return;
+    if (!this.overlay) {
+      return;
+    }
 
     intensity = Math.max(0, Math.min(1, intensity));
 
@@ -128,7 +134,9 @@ class ScreenShake {
    * @param {number} duration - Durée en ms
    */
   shake(intensity = 10, duration = 300) {
-    if (!this.canvas) return;
+    if (!this.canvas) {
+      return;
+    }
 
     this.shakeIntensity = intensity;
     this.shakeDuration = duration;
@@ -145,7 +153,9 @@ class ScreenShake {
    * @param {number} deltaTime - Temps écoulé depuis la dernière frame en ms
    */
   update(deltaTime = 16) {
-    if (!this.isShaking) return;
+    if (!this.isShaking) {
+      return;
+    }
 
     this.shakeElapsed += deltaTime;
     const progress = this.shakeElapsed / this.shakeDuration;

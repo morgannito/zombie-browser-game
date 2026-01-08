@@ -29,7 +29,7 @@ const RATE_LIMIT_CONFIG = {
   'playerMove': { maxRequests: 100, windowMs: 1000 }, // Balanced for 60 FPS server with 30 FPS client updates
   'setNickname': { maxRequests: 3, windowMs: 10000 },
   'selectUpgrade': { maxRequests: 10, windowMs: 5000 },
-  'buyItem': { maxRequests: 20, windowMs: 5000 },
+  'buyItem': { maxRequests: 20, windowMs: 5000 }
 };
 
 // API Rate limiter configuration

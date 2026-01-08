@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">6.25% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/80</span>
+                <span class='fraction'>5/80</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">6.32% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/75</span>
+                <span class='fraction'>5/79</span>
             </div>
         
             
@@ -250,16 +250,24 @@
 <a name='L185'></a><a href='#L185'>185</a>
 <a name='L186'></a><a href='#L186'>186</a>
 <a name='L187'></a><a href='#L187'>187</a>
-<a name='L188'></a><a href='#L188'>188</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -279,6 +287,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -286,9 +296,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -368,8 +380,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -412,10 +426,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -431,7 +447,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -442,17 +458,17 @@
  * @description Handles poison, frozen, slowed effects on zombies
  */
 &nbsp;
-const { createParticles, createLoot } = <span class="cstat-no" title="statement not covered" >require('../../lootFunctions');</span>
-const ConfigManager = <span class="cstat-no" title="statement not covered" >require('../../../lib/server/ConfigManager');</span>
-const { distance } = <span class="cstat-no" title="statement not covered" >require('../../utilityFunctions');</span>
+const { createParticles, createLoot } = require('../../lootFunctions');
+const ConfigManager = require('../../../lib/server/ConfigManager');
+const { distance } = require('../../utilityFunctions');
 &nbsp;
-const { ZOMBIE_TYPES } = <span class="cstat-no" title="statement not covered" >ConfigManager;</span>
+const { ZOMBIE_TYPES } = ConfigManager;
 &nbsp;
 /**
  * Update poison trails left by poison zombies
  */
 function <span class="fstat-no" title="function not covered" >updatePoisonTrails(</span>gameState, now, collisionManager, entityManager) {
-<span class="cstat-no" title="statement not covered" >  for (let trailId in gameState.poisonTrails) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const trailId in gameState.poisonTrails) {</span>
     const trail = <span class="cstat-no" title="statement not covered" >gameState.poisonTrails[trailId];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (now - trail.createdAt &gt; trail.duration) {</span>
@@ -464,12 +480,16 @@ function <span class="fstat-no" title="function not covered" >updatePoisonTrails
       trail.x, trail.y, trail.radius
     );
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    for (let player of nearbyPlayers) {</span>
-<span class="cstat-no" title="statement not covered" >      if (player.spawnProtection || player.invisible) <span class="cstat-no" title="statement not covered" >continue;</span></span>
+<span class="cstat-no" title="statement not covered" >    for (const player of nearbyPlayers) {</span>
+<span class="cstat-no" title="statement not covered" >      if (player.spawnProtection || player.invisible) {</span>
+<span class="cstat-no" title="statement not covered" >        continue;</span>
+      }
 &nbsp;
       const dist = <span class="cstat-no" title="statement not covered" >distance(trail.x, trail.y, player.x, player.y);</span>
 <span class="cstat-no" title="statement not covered" >      if (dist &lt; trail.radius) {</span>
-<span class="cstat-no" title="statement not covered" >        if (!player.lastPoisonDamage) <span class="cstat-no" title="statement not covered" >player.lastPoisonDamage = {};</span></span>
+<span class="cstat-no" title="statement not covered" >        if (!player.lastPoisonDamage) {</span>
+<span class="cstat-no" title="statement not covered" >          player.lastPoisonDamage = {};</span>
+        }
         const lastDamage = <span class="cstat-no" title="statement not covered" >player.lastPoisonDamage[trailId] || 0;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >        if (now - lastDamage &gt;= 500) {</span>
@@ -495,7 +515,7 @@ function <span class="fstat-no" title="function not covered" >updatePoisonTrails
  * Update poisoned zombies - apply damage over time
  */
 function <span class="fstat-no" title="function not covered" >updatePoisonedZombies(</span>gameState, now, entityManager) {
-<span class="cstat-no" title="statement not covered" >  for (let zombieId in gameState.zombies) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const zombieId in gameState.zombies) {</span>
     const zombie = <span class="cstat-no" title="statement not covered" >gameState.zombies[zombieId];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (zombie.poisoned) {</span>
@@ -534,7 +554,7 @@ function <span class="fstat-no" title="function not covered" >killPoisonedZombie
  * Update frozen/slowed zombies - restore speed when effect expires
  */
 function <span class="fstat-no" title="function not covered" >updateFrozenSlowedZombies(</span>gameState, now) {
-<span class="cstat-no" title="statement not covered" >  for (let zombieId in gameState.zombies) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const zombieId in gameState.zombies) {</span>
     const zombie = <span class="cstat-no" title="statement not covered" >gameState.zombies[zombieId];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (zombie.frozen) {</span>
@@ -555,7 +575,9 @@ function <span class="fstat-no" title="function not covered" >updateFrozenSlowed
  * Handle splitter zombie death - split into smaller zombies
  */
 function <span class="fstat-no" title="function not covered" >handleSplitterDeath(</span>zombie, zombieId, gameState, entityManager) {
-<span class="cstat-no" title="statement not covered" >  if (zombie.type !== 'splitter' || zombie.isSplit) <span class="cstat-no" title="statement not covered" >return;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (zombie.type !== 'splitter' || zombie.isSplit) {</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
 &nbsp;
   const splitterType = <span class="cstat-no" title="statement not covered" >ZOMBIE_TYPES.splitter;</span>
 &nbsp;
@@ -599,9 +621,11 @@ function <span class="fstat-no" title="function not covered" >spawnSplitterMinio
  * Apply explosion damage when splitter splits
  */
 function <span class="fstat-no" title="function not covered" >applySplitExplosionDamage(</span>zombie, splitterType, gameState, entityManager) {
-<span class="cstat-no" title="statement not covered" >  for (let playerId in gameState.players) {</span>
+<span class="cstat-no" title="statement not covered" >  for (const playerId in gameState.players) {</span>
     const player = <span class="cstat-no" title="statement not covered" >gameState.players[playerId];</span>
-<span class="cstat-no" title="statement not covered" >    if (!player.alive || player.spawnProtection || player.invisible) <span class="cstat-no" title="statement not covered" >continue;</span></span>
+<span class="cstat-no" title="statement not covered" >    if (!player.alive || player.spawnProtection || player.invisible) {</span>
+<span class="cstat-no" title="statement not covered" >      continue;</span>
+    }
 &nbsp;
     const dist = <span class="cstat-no" title="statement not covered" >distance(zombie.x, zombie.y, player.x, player.y);</span>
 <span class="cstat-no" title="statement not covered" >    if (dist &lt; splitterType.splitExplosionRadius) {</span>
@@ -618,7 +642,7 @@ function <span class="fstat-no" title="function not covered" >applySplitExplosio
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = {</span>
+module.exports = {
   updatePoisonTrails,
   updatePoisonedZombies,
   updateFrozenSlowedZombies,
@@ -631,7 +655,7 @@ function <span class="fstat-no" title="function not covered" >applySplitExplosio
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T14:17:08.833Z
+                at 2026-01-08T20:27:29.801Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

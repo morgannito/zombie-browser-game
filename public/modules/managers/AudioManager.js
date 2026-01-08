@@ -23,7 +23,9 @@ class AudioManager {
   }
 
   play(soundType) {
-    if (!this.enabled || !this.audioContext) return;
+    if (!this.enabled || !this.audioContext) {
+      return;
+    }
 
     // Resume audio context if needed (for mobile auto-play restrictions)
     // CORRECTION: Ne pas bloquer après resume() car c'est async
@@ -38,23 +40,23 @@ class AudioManager {
     const now = this.audioContext.currentTime;
 
     switch (soundType) {
-      case 'shoot':
-        this.playShoot(now);
-        break;
-      case 'doubleClick':
-        this.playDoubleClick(now);
-        break;
-      case 'longPress':
-        this.playLongPress(now);
-        break;
-      case 'swipe':
-        this.playSwipe(now);
-        break;
-      case 'click':
-        this.playClick(now);
-        break;
-      default:
-        break;
+    case 'shoot':
+      this.playShoot(now);
+      break;
+    case 'doubleClick':
+      this.playDoubleClick(now);
+      break;
+    case 'longPress':
+      this.playLongPress(now);
+      break;
+    case 'swipe':
+      this.playSwipe(now);
+      break;
+    case 'click':
+      this.playClick(now);
+      break;
+    default:
+      break;
     }
   }
 

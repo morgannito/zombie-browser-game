@@ -60,7 +60,9 @@ const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 function checkRateLimit(socketId, eventName) {
   const config = RATE_LIMIT_CONFIG[eventName];
-  if (!config) return true;
+  if (!config) {
+    return true;
+  }
 
   const now = Date.now();
 
@@ -370,10 +372,14 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     }
 
     // Rate limiting
-    if (!checkRateLimit(socket.id, 'playerMove')) return;
+    if (!checkRateLimit(socket.id, 'playerMove')) {
+      return;
+    }
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive || !player.hasNickname) return; // Pas de mouvement sans pseudo
+    if (!player || !player.alive || !player.hasNickname) {
+      return;
+    } // Pas de mouvement sans pseudo
 
     // Clamp position to map boundaries (must match client-side clamping exactly!)
     // Client uses: wallThickness + playerSize for min, ROOM_WIDTH/HEIGHT - wallThickness - playerSize for max
@@ -472,7 +478,9 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     // Deduct cost from budget
     player.moveBudget -= distance;
     // Prevent budget from going too negative (optional, but good for recovery)
-    if (player.moveBudget < -100) player.moveBudget = -100;
+    if (player.moveBudget < -100) {
+      player.moveBudget = -100;
+    }
 
     // Vérifier collision avec les murs
     // Use a smaller hitbox (0.5x) for server validation to prevent "sticky" walls
@@ -515,10 +523,14 @@ function registerShootHandler(socket, gameState, entityManager) {
     }
 
     // Rate limiting
-    if (!checkRateLimit(socket.id, 'shoot')) return;
+    if (!checkRateLimit(socket.id, 'shoot')) {
+      return;
+    }
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive || !player.hasNickname) return; // Pas de tir sans pseudo
+    if (!player || !player.alive || !player.hasNickname) {
+      return;
+    } // Pas de tir sans pseudo
 
     const now = Date.now();
     player.lastActivityTime = now; // Mettre à jour l'activité
@@ -535,7 +547,9 @@ function registerShootHandler(socket, gameState, entityManager) {
     const fireRate = weapon.fireRate * (player.fireRateMultiplier || 1);
 
     // Vérifier le cooldown de l'arme
-    if (now - player.lastShot < fireRate) return;
+    if (now - player.lastShot < fireRate) {
+      return;
+    }
 
     player.lastShot = now;
 
@@ -729,10 +743,14 @@ function registerSelectUpgradeHandler(socket, gameState) {
     }
 
     // Rate limiting
-    if (!checkRateLimit(socket.id, 'selectUpgrade')) return;
+    if (!checkRateLimit(socket.id, 'selectUpgrade')) {
+      return;
+    }
 
     const player = gameState.players[socket.id];
-    if (!player || !player.alive || !player.hasNickname) return;
+    if (!player || !player.alive || !player.hasNickname) {
+      return;
+    }
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -860,7 +878,9 @@ function registerBuyItemHandler(socket, gameState) {
 function registerSetNicknameHandler(socket, gameState, io) {
   socket.on('setNickname', safeHandler('setNickname', function (data) {
     const player = gameState.players[socket.id];
-    if (!player) return;
+    if (!player) {
+      return;
+    }
 
     // CORRECTION CRITIQUE: Vérifier si le joueur a déjà un pseudo AVANT rate limiting
     if (player.hasNickname) {
@@ -930,7 +950,9 @@ function registerSetNicknameHandler(socket, gameState, io) {
 function registerSpawnProtectionHandlers(socket, gameState) {
   socket.on('endSpawnProtection', safeHandler('endSpawnProtection', function () {
     const player = gameState.players[socket.id];
-    if (!player || !player.hasNickname) return;
+    if (!player || !player.hasNickname) {
+      return;
+    }
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -945,7 +967,9 @@ function registerSpawnProtectionHandlers(socket, gameState) {
 function registerShopHandlers(socket, gameState) {
   socket.on('shopOpened', safeHandler('shopOpened', function () {
     const player = gameState.players[socket.id];
-    if (!player || !player.alive || !player.hasNickname) return;
+    if (!player || !player.alive || !player.hasNickname) {
+      return;
+    }
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -956,7 +980,9 @@ function registerShopHandlers(socket, gameState) {
 
   socket.on('shopClosed', safeHandler('shopClosed', function () {
     const player = gameState.players[socket.id];
-    if (!player || !player.alive || !player.hasNickname) return;
+    if (!player || !player.alive || !player.hasNickname) {
+      return;
+    }
 
     player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
