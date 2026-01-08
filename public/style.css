@@ -947,6 +947,82 @@ body {
 }
 
 /* ============================================
+   WAVE PROGRESS BAR
+   ============================================ */
+#wave-progress-container {
+  position: fixed;
+  bottom: calc(var(--space-lg) + var(--safe-area-bottom));
+  left: calc(var(--space-lg) + var(--safe-area-left));
+  z-index: var(--z-ui);
+  pointer-events: none;
+  width: min(350px, 40%);
+}
+
+.wave-progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+  font-size: var(--font-sm);
+  font-weight: bold;
+}
+
+.wave-progress-label {
+  color: var(--color-accent-orange);
+  text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+}
+
+.wave-progress-count {
+  color: #fff;
+}
+
+.wave-progress-bar-outer {
+  height: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--color-accent-orange);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
+}
+
+.wave-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ff8800, #ffaa00, #ff8800);
+  background-size: 200% 100%;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.6);
+  animation: wave-progress-pulse 2s ease-in-out infinite;
+}
+
+@keyframes wave-progress-pulse {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Mobile Wave Progress */
+@media (max-width: 768px) {
+  #wave-progress-container {
+    width: min(250px, 60%);
+    bottom: calc(var(--space-md) + var(--safe-area-bottom));
+    left: calc(var(--space-sm) + var(--safe-area-left));
+  }
+
+  .wave-progress-header {
+    font-size: var(--font-xs);
+  }
+
+  .wave-progress-bar-outer {
+    height: 16px;
+  }
+}
+
+/* ============================================
    MINIMAP
    ============================================ */
 #minimap {

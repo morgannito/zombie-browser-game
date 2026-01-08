@@ -152,6 +152,9 @@ class Renderer {
     // Update boss health bar
     this.updateBossHealthBar(gameState);
 
+    // Update wave progress bar
+    this.updateWaveProgress(gameState);
+
     this.ctx.restore(); // Restore pixelRatio scaling
   }
 
@@ -2413,4 +2416,30 @@ window.Renderer = Renderer;
         this.killFeedItems.splice(i, 1);
       }
     }
+  }
+
+  updateWaveProgress(gameState) {
+    const waveNumberEl = document.getElementById('wave-progress-number');
+    const waveKillsEl = document.getElementById('wave-kills');
+    const waveTargetEl = document.getElementById('wave-target');
+    const progressBar = document.getElementById('wave-progress-bar');
+
+    if (!waveNumberEl || !waveKillsEl || !waveTargetEl || !progressBar) {
+      return;
+    }
+
+    const wave = gameState.state.wave || 1;
+    const zombiesKilled = gameState.state.zombiesKilledThisWave || 0;
+
+    // Calculate target zombies for this wave (base 10 + wave scaling)
+    const targetZombies = Math.floor(10 + (wave * 2));
+
+    // Update display
+    waveNumberEl.textContent = wave;
+    waveKillsEl.textContent = zombiesKilled;
+    waveTargetEl.textContent = targetZombies;
+
+    // Update progress bar width
+    const progress = Math.min((zombiesKilled / targetZombies) * 100, 100);
+    progressBar.style.width = `${progress}%`;
   }
