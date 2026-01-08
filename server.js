@@ -189,6 +189,12 @@ loadRoom(0, roomManager);
 zombieManager.startZombieSpawner();
 logger.info('Zombie spawner started');
 
+// Initialize admin commands (debug mode)
+const AdminCommands = require('./game/modules/admin/AdminCommands');
+const adminCommands = new AdminCommands(io, gameState, zombieManager);
+gameState.adminCommands = adminCommands;
+logger.info('Admin commands initialized (debug mode enabled)');
+
 
 // ============================================
 // GAME LOOP

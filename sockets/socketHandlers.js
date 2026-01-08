@@ -349,6 +349,11 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
     registerDisconnectHandler(socket, gameState, entityManager, sessionId);
+
+    // Register admin commands handlers
+    if (gameState.adminCommands) {
+      gameState.adminCommands.registerCommands(socket);
+    }
   };
 }
 

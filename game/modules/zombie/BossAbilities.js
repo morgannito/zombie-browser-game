@@ -15,6 +15,8 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
   const bossType = gameState.ZOMBIE_TYPES?.bossInfernal;
   if (!bossType) return;
 
+  const healthPercent = zombie.health / zombie.maxHealth;
+
   // Fire aura passive damage
   if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
     zombie.lastAuraDamage = now;
@@ -61,6 +63,27 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
       });
     }
   }
+
+  // Fire minions summon (Phase 2+)
+  if (healthPercent <= 0.66 && (!zombie.lastFireMinions || now - zombie.lastFireMinions >= 15000)) {
+    zombie.lastFireMinions = now;
+
+    // Spawn 5 fire minions (inferno zombies) around boss
+    for (let i = 0; i < 5; i++) {
+      const zombieCount = Object.keys(gameState.zombies).length;
+      if (perfIntegration.canSpawnZombie(zombieCount)) {
+        const angle = (Math.PI * 2 * i) / 5;
+        const dist = 150;
+        const x = zombie.x + Math.cos(angle) * dist;
+        const y = zombie.y + Math.sin(angle) * dist;
+
+        zombieManager.spawnSpecificZombie('inferno', x, y);
+      }
+    }
+
+    createParticles(zombie.x, zombie.y, '#ff4500', 50, entityManager);
+    io.emit('bossFireMinions', { bossId: zombieId });
+  }
 }
 
 /**
@@ -91,6 +114,46 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
     }
 
     io.emit('bossIceSpikes', { bossId: zombieId });
+  }
+
+  // Ice clones (Phase 2+)
+  if (healthPercent <= 0.66 && (!zombie.lastIceClones || now - zombie.lastIceClones >= 20000)) {
+    zombie.lastIceClones = now;
+
+    // Spawn 3 ice clones (glacier zombies) around boss
+    for (let i = 0; i < 3; i++) {
+      const zombieCount = Object.keys(gameState.zombies).length;
+      if (perfIntegration.canSpawnZombie(zombieCount)) {
+        const angle = (Math.PI * 2 * i) / 3;
+        const dist = 120;
+        const x = zombie.x + Math.cos(angle) * dist;
+        const y = zombie.y + Math.sin(angle) * dist;
+
+        zombieManager.spawnSpecificZombie('glacier', x, y);
+      }
+    }
+
+    createParticles(zombie.x, zombie.y, '#00bfff', 60, entityManager);
+    io.emit('bossIceClones', { bossId: zombieId });
+  }
+
+  // Freeze aura (passive Phase 3+)
+  if (healthPercent <= 0.33) {
+    if (!zombie.lastFreezeAura || now - zombie.lastFreezeAura >= 2000) {
+      zombie.lastFreezeAura = now;
+
+      for (let playerId in gameState.players) {
+        const player = gameState.players[playerId];
+        if (!player.alive || player.spawnProtection || player.invisible) continue;
+
+        const dist = distance(zombie.x, zombie.y, player.x, player.y);
+        if (dist < 150) { // Freeze aura radius
+          player.slowedUntil = now + 2000;
+          player.slowAmount = 0.5; // 50% slow
+          createParticles(player.x, player.y, '#aaddff', 4, entityManager);
+        }
+      }
+    }
   }
 
   // Blizzard (Phase 3)
@@ -183,6 +246,29 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
       createParticles(strikeX, strikeY, '#ffff00', 25, entityManager);
     }
   }
+
+  // Hurricane (Phase 3+) - Global slow effect
+  if (healthPercent <= 0.33) {
+    if (!zombie.lastHurricane || now - zombie.lastHurricane >= 1500) {
+      zombie.lastHurricane = now;
+
+      for (let playerId in gameState.players) {
+        const player = gameState.players[playerId];
+        if (!player.alive || player.spawnProtection || player.invisible) continue;
+
+        // Global hurricane slow (30%)
+        player.slowedUntil = now + 1500;
+        player.slowAmount = 0.3;
+        createParticles(player.x, player.y, '#00ced1', 3, entityManager);
+      }
+    }
+
+    // Visual hurricane effect
+    if (!zombie.lastHurricaneVisual || now - zombie.lastHurricaneVisual >= 3000) {
+      zombie.lastHurricaneVisual = now;
+      createParticles(zombie.x, zombie.y, '#00ced1', 40, entityManager);
+    }
+  }
 }
 
 /**
@@ -234,14 +320,43 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
   if (healthPercent <= 0.66 && (!zombie.lastSummon || now - zombie.lastSummon >= 18000)) {
     zombie.lastSummon = now;
 
+    // Spawn 4 voidwalkers + 4 shadowfiends
+    const voidTypes = ['voidwalker', 'shadowfiend'];
     for (let i = 0; i < 8; i++) {
       const zombieCount = Object.keys(gameState.zombies).length;
       if (perfIntegration.canSpawnZombie(zombieCount)) {
-        zombieManager.spawnSingleZombie();
+        const angle = (Math.PI * 2 * i) / 8;
+        const dist = 180;
+        const x = zombie.x + Math.cos(angle) * dist;
+        const y = zombie.y + Math.sin(angle) * dist;
+
+        const voidType = voidTypes[i % 2]; // Alternance voidwalker/shadowfiend
+        zombieManager.spawnSpecificZombie(voidType, x, y);
       }
     }
 
     createParticles(zombie.x, zombie.y, '#9400d3', 40, entityManager);
+    io.emit('bossVoidMinions', { bossId: zombieId });
+  }
+
+  // Reality warp (Phase 3+) - Inversion contrôles temporaire
+  if (healthPercent <= 0.33 && (!zombie.lastRealityWarp || now - zombie.lastRealityWarp >= 25000)) {
+    zombie.lastRealityWarp = now;
+
+    for (let playerId in gameState.players) {
+      const player = gameState.players[playerId];
+      if (!player.alive) continue;
+
+      player.controlsInverted = true;
+      player.controlsInvertedUntil = now + 5000; // 5 seconds inversion
+
+      createParticles(player.x, player.y, '#9400d3', 15, entityManager);
+    }
+
+    io.emit('bossRealityWarp', {
+      bossId: zombieId,
+      duration: 5000
+    });
   }
 }
 
