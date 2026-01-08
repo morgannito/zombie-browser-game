@@ -39,7 +39,7 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
     updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
     updateBossInfect(zombie, now, entityManager, gameState);
     updateBossColosse(zombie, zombieId, now, io, entityManager);
-    updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+    updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
     updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
 
     // Extended bosses

@@ -120,7 +120,7 @@ function updateBossColosse(zombie, zombieId, now, io, entityManager) {
 /**
  * Update Boss Roi
  */
-function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
+function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
   if (zombie.type !== 'bossRoi') return;
 
   const bossType = ZOMBIE_TYPES.bossRoi;
@@ -150,7 +150,7 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
     zombie.lastTeleport = now;
 
     // Trouver le joueur le plus proche
-    const closestPlayer = gameState.collisionManager.findClosestPlayer(
+    const closestPlayer = collisionManager.findClosestPlayer(
       zombie.x, zombie.y, Infinity,
       { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
