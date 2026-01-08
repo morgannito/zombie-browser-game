@@ -110,6 +110,9 @@ class Renderer {
 
     const cameraPos = this.camera.getPosition();
 
+    // Render day/night sky BEFORE world (fullscreen)
+    this.renderSky(gameState.state.dayNight);
+
     // Apply weather fog overlay BEFORE world rendering
     this.applyWeatherFog(gameState.state.weather, 'before');
 
@@ -117,7 +120,7 @@ class Renderer {
     this.ctx.translate(-cameraPos.x, -cameraPos.y);
 
     // Render layers (bottom to top)
-    this.renderFloor(gameState.config);
+    this.renderFloor(gameState.config, gameState.state.dayNight);
     this.renderGrid(gameState.config);
     this.renderStaticProps(gameState.state.staticProps, 'ground'); // Ground layer props
     this.renderDynamicProps(gameState.state.dynamicProps); // Dynamic props base (torches, fires)
@@ -178,8 +181,17 @@ class Renderer {
     this.ctx.fillText('Connexion au serveur...', window.innerWidth / 2, window.innerHeight / 2);
   }
 
-  renderFloor(config) {
-    this.ctx.fillStyle = '#1a1a2e';
+  renderFloor(config, dayNight) {
+    // Base floor color adjusted by time of day
+    let floorColor = '#1a1a2e';
+
+    if (dayNight && dayNight.config) {
+      const ambient = dayNight.config.ambient;
+      const darken = Math.floor((1 - ambient) * 100);
+      floorColor = `hsl(240, 25%, ${Math.max(5, 12 - darken)}%)`;
+    }
+
+    this.ctx.fillStyle = floorColor;
     this.ctx.fillRect(0, 0, config.ROOM_WIDTH, config.ROOM_HEIGHT);
   }
 
@@ -2751,6 +2763,81 @@ class Renderer {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.restore();
       }
+    }
+  }
+
+  renderSky(dayNight) {
+    if (!dayNight || !dayNight.config) return;
+
+    const { config, stars, moon } = dayNight;
+
+    // Render gradient sky
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+
+    // Apply zenith colors (top)
+    config.zenith.forEach((color, i) => {
+      gradient.addColorStop(i * 0.2, color);
+    });
+
+    // Apply horizon colors (bottom)
+    config.horizon.forEach((color, i) => {
+      gradient.addColorStop(0.6 + i * 0.13, color);
+    });
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Render stars for night
+    if (stars && stars.length > 0) {
+      this.ctx.save();
+      const time = Date.now() / 1000;
+
+      stars.forEach(star => {
+        const twinkle = Math.sin(time * star.twinkleSpeed + star.twinkleOffset) * 0.3 + 0.7;
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * twinkle * config.ambient})`;
+        this.ctx.fillRect(
+          star.x * this.canvas.width,
+          star.y * this.canvas.height,
+          star.size,
+          star.size
+        );
+      });
+
+      this.ctx.restore();
+    }
+
+    // Render moon
+    if (moon) {
+      this.ctx.save();
+
+      const moonX = moon.x * this.canvas.width;
+      const moonY = moon.y * this.canvas.height;
+      const moonRadius = 40;
+
+      // Moon glow
+      const moonGlow = this.ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 2);
+      moonGlow.addColorStop(0, 'rgba(220, 220, 255, 0.3)');
+      moonGlow.addColorStop(1, 'rgba(220, 220, 255, 0)');
+      this.ctx.fillStyle = moonGlow;
+      this.ctx.fillRect(moonX - moonRadius * 2, moonY - moonRadius * 2, moonRadius * 4, moonRadius * 4);
+
+      // Moon disc
+      this.ctx.fillStyle = '#f0f0ff';
+      this.ctx.beginPath();
+      this.ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Moon phase shadow
+      if (moon.phase < 0.4 || moon.phase > 0.6) {
+        this.ctx.fillStyle = 'rgba(10, 20, 40, 0.4)';
+        this.ctx.beginPath();
+        const crescent = (moon.phase < 0.5) ? (0.5 - moon.phase) * 2 : (moon.phase - 0.5) * 2;
+        this.ctx.arc(moonX, moonY, moonRadius, Math.PI * 0.5, Math.PI * 1.5);
+        this.ctx.arc(moonX + moonRadius * crescent, moonY, moonRadius * (1 - crescent), Math.PI * 1.5, Math.PI * 0.5, true);
+        this.ctx.fill();
+      }
+
+      this.ctx.restore();
     }
   }
 
