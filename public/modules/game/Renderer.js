@@ -21,6 +21,10 @@ class Renderer {
     this.frustumCuller = window.FrustumCuller ? new window.FrustumCuller() : null;
     this.maxParticles = 100; // Limite particules actives
     this.cullStats = { visible: 0, total: 0, culled: 0 };
+
+    // Damage numbers system
+    this.damageNumbers = [];
+    this.lastZombieHealthCheck = {}; // Track zombie health to detect damage
   }
 
   setCamera(camera) {
@@ -121,6 +125,14 @@ class Renderer {
     this.renderZombies(gameState.state.zombies, timestamp);
     this.renderPlayers(gameState.state.players, playerId, gameState.config, dateNow, timestamp);
     this.renderTargetIndicator(player); // Show auto-shoot target indicator
+
+    // Check zombie damage for damage numbers
+    this.checkZombieDamage(gameState.state.zombies);
+
+    // Update and render damage numbers
+    const deltaTime = 16; // Approximate 60fps
+    this.updateDamageNumbers(deltaTime);
+    this.renderDamageNumbers();
 
     this.ctx.restore();
 
@@ -2101,6 +2113,139 @@ class Renderer {
     this.minimapCtx.strokeRect(0, 0, mapWidth, mapHeight);
 
     this.minimapCtx.restore(); // Restore pixelRatio scaling
+  }
+
+  /**
+   * Add a damage number at position
+   * @param {number} x - World X coordinate
+   * @param {number} y - World Y coordinate
+   * @param {number} damage - Damage amount
+   * @param {string} type - Damage type (normal, critical, poison, fire, ice)
+   */
+  addDamageNumber(x, y, damage, type = 'normal') {
+    const colors = {
+      normal: '#ffffff',
+      critical: '#ffff00',
+      poison: '#00ff00',
+      fire: '#ff6600',
+      ice: '#00ffff',
+      boss: '#ff0000'
+    };
+
+    this.damageNumbers.push({
+      x: x,
+      y: y,
+      damage: Math.ceil(damage),
+      color: colors[type] || colors.normal,
+      opacity: 1,
+      velocity: -2, // Move up
+      createdAt: Date.now(),
+      lifetime: 2000 // 2 seconds
+    });
+
+    // Limit damage numbers for performance
+    if (this.damageNumbers.length > 50) {
+      this.damageNumbers.shift();
+    }
+  }
+
+  /**
+   * Check zombie health changes and create damage numbers
+   * @param {object} zombies - Current zombies state
+   */
+  checkZombieDamage(zombies) {
+    for (let zombieId in zombies) {
+      const zombie = zombies[zombieId];
+
+      // Check if we tracked this zombie before
+      if (this.lastZombieHealthCheck[zombieId] !== undefined) {
+        const lastHealth = this.lastZombieHealthCheck[zombieId];
+        const currentHealth = zombie.health;
+
+        // Damage detected
+        if (currentHealth < lastHealth) {
+          const damage = lastHealth - currentHealth;
+          const damageType = zombie.isBoss ? 'boss' : 'normal';
+          this.addDamageNumber(zombie.x, zombie.y - zombie.size, damage, damageType);
+        }
+      }
+
+      // Update tracked health
+      this.lastZombieHealthCheck[zombieId] = zombie.health;
+    }
+
+    // Clean up dead zombies from tracking
+    for (let zombieId in this.lastZombieHealthCheck) {
+      if (!zombies[zombieId]) {
+        delete this.lastZombieHealthCheck[zombieId];
+      }
+    }
+  }
+
+  /**
+   * Update and render damage numbers
+   * @param {number} deltaTime - Time since last frame (ms)
+   */
+  updateDamageNumbers(deltaTime) {
+    const now = Date.now();
+
+    // Update damage numbers
+    for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
+      const dmg = this.damageNumbers[i];
+
+      // Calculate age
+      const age = now - dmg.createdAt;
+
+      // Remove if expired
+      if (age > dmg.lifetime) {
+        this.damageNumbers.splice(i, 1);
+        continue;
+      }
+
+      // Update position (float up)
+      dmg.y += dmg.velocity;
+
+      // Update opacity (fade out)
+      dmg.opacity = 1 - (age / dmg.lifetime);
+    }
+  }
+
+  /**
+   * Render damage numbers
+   */
+  renderDamageNumbers() {
+    if (!this.camera) return;
+
+    this.ctx.save();
+
+    for (const dmg of this.damageNumbers) {
+      // Convert world to screen coordinates
+      const screenX = dmg.x - this.camera.x;
+      const screenY = dmg.y - this.camera.y;
+
+      // Only render if on screen
+      if (screenX < -50 || screenX > this.canvas.width + 50 ||
+          screenY < -50 || screenY > this.canvas.height + 50) {
+        continue;
+      }
+
+      // Render damage number
+      this.ctx.globalAlpha = dmg.opacity;
+      this.ctx.font = 'bold 20px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+
+      // Outline
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 4;
+      this.ctx.strokeText(`-${dmg.damage}`, screenX, screenY);
+
+      // Fill
+      this.ctx.fillStyle = dmg.color;
+      this.ctx.fillText(`-${dmg.damage}`, screenX, screenY);
+    }
+
+    this.ctx.restore();
   }
 
   /**
