@@ -587,6 +587,166 @@ body {
 }
 
 /* ============================================
+   BOSS HEALTH BAR
+   ============================================ */
+#boss-health-container {
+  position: fixed;
+  top: calc(var(--space-lg) + var(--safe-area-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  width: min(600px, 90%);
+}
+
+.boss-health-wrapper {
+  background: linear-gradient(135deg, rgba(20, 0, 0, 0.95) 0%, rgba(40, 0, 0, 0.9) 100%);
+  border: 3px solid var(--color-danger);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation: boss-appear 0.5s ease-out;
+}
+
+.boss-name-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+#boss-name {
+  font-size: var(--font-2xl);
+  font-weight: bold;
+  color: var(--color-danger);
+  text-shadow: 0 0 15px var(--color-danger), 0 0 30px rgba(255, 0, 0, 0.5);
+  letter-spacing: 2px;
+  animation: boss-glow 2s ease-in-out infinite;
+}
+
+.boss-phase {
+  font-size: var(--font-md);
+  color: var(--color-accent);
+  font-weight: bold;
+  padding: var(--space-xs) var(--space-md);
+  background: rgba(255, 215, 0, 0.2);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  text-shadow: 0 0 10px var(--color-accent);
+}
+
+.boss-health-bar-outer {
+  position: relative;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.boss-health-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff0000, #ff4444, #ff0000);
+  background-size: 200% 100%;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+  animation: boss-health-pulse 2s ease-in-out infinite;
+  transform: translateZ(0);
+}
+
+.boss-health-bar-fill.phase-2 {
+  background: linear-gradient(90deg, #ff4400, #ff8800, #ff4400);
+  background-size: 200% 100%;
+  box-shadow: 0 0 20px rgba(255, 136, 0, 0.8);
+}
+
+.boss-health-bar-fill.phase-3 {
+  background: linear-gradient(90deg, #ff00ff, #ff44ff, #ff00ff);
+  background-size: 200% 100%;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+}
+
+.boss-health-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--font-lg);
+  font-weight: bold;
+  color: #fff;
+  text-shadow:
+    0 0 5px #000,
+    0 0 10px #000,
+    0 0 15px rgba(0, 0, 0, 0.9);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Boss Health Bar Animations */
+@keyframes boss-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes boss-glow {
+  0%, 100% {
+    text-shadow: 0 0 15px var(--color-danger), 0 0 30px rgba(255, 0, 0, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 25px var(--color-danger), 0 0 50px rgba(255, 0, 0, 0.8), 0 0 75px rgba(255, 0, 0, 0.4);
+  }
+}
+
+@keyframes boss-health-pulse {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Mobile Boss Health Bar */
+@media (max-width: 768px) {
+  #boss-health-container {
+    width: min(400px, 95%);
+    top: calc(var(--space-md) + var(--safe-area-top));
+  }
+
+  .boss-health-wrapper {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  #boss-name {
+    font-size: var(--font-lg);
+    letter-spacing: 1px;
+  }
+
+  .boss-phase {
+    font-size: var(--font-sm);
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .boss-health-bar-outer {
+    height: 24px;
+  }
+
+  .boss-health-text {
+    font-size: var(--font-md);
+  }
+}
+
+/* ============================================
    MINIMAP
    ============================================ */
 #minimap {

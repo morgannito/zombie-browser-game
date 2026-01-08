@@ -127,6 +127,9 @@ class Renderer {
     // Render minimap
     this.renderMinimap(gameState, playerId);
 
+    // Update boss health bar
+    this.updateBossHealthBar(gameState);
+
     this.ctx.restore(); // Restore pixelRatio scaling
   }
 
@@ -2098,6 +2101,77 @@ class Renderer {
     this.minimapCtx.strokeRect(0, 0, mapWidth, mapHeight);
 
     this.minimapCtx.restore(); // Restore pixelRatio scaling
+  }
+
+  /**
+   * Update Boss Health Bar UI
+   * @param {object} gameState - Game state object
+   */
+  updateBossHealthBar(gameState) {
+    const container = document.getElementById('boss-health-container');
+    const nameEl = document.getElementById('boss-name');
+    const phaseEl = document.getElementById('boss-phase');
+    const healthBar = document.getElementById('boss-health-bar');
+    const healthText = document.getElementById('boss-health-text');
+
+    if (!container || !nameEl || !phaseEl || !healthBar || !healthText) {
+      return;
+    }
+
+    // Find active boss
+    const bosses = Object.values(gameState.state.zombies).filter(z => z.isBoss);
+
+    if (bosses.length === 0) {
+      // No boss - hide health bar
+      container.style.display = 'none';
+      return;
+    }
+
+    // Show boss health bar
+    container.style.display = 'block';
+
+    // Get first boss (primary boss)
+    const boss = bosses[0];
+    const healthPercent = (boss.health / boss.maxHealth) * 100;
+
+    // Update boss name (use type as name if available, otherwise "BOSS")
+    const bossNames = {
+      'boss': 'BOSS',
+      'bossCharnier': 'RAIIVY',
+      'bossInfect': 'SORENZA',
+      'bossColosse': 'HAIER',
+      'bossRoi': 'KUROI TO SUTA',
+      'bossOmega': 'MORGANNITO',
+      'bossInfernal': 'LORD INFERNUS',
+      'bossCryos': 'CRYOS L\'ÉTERNEL',
+      'bossVortex': 'VORTEX LE DESTRUCTEUR',
+      'bossNexus': 'NEXUS DU VIDE',
+      'bossApocalypse': 'APOCALYPSE PRIME'
+    };
+    const bossName = bossNames[boss.type] || 'BOSS';
+    nameEl.textContent = bossName;
+
+    // Determine phase based on health percentage
+    let phase = 1;
+    if (healthPercent <= 33) {
+      phase = 3;
+    } else if (healthPercent <= 66) {
+      phase = 2;
+    }
+
+    phaseEl.textContent = `Phase ${phase}`;
+
+    // Update health bar width
+    healthBar.style.width = `${healthPercent}%`;
+    healthText.textContent = `${Math.ceil(healthPercent)}%`;
+
+    // Update health bar class for phase coloring
+    healthBar.classList.remove('phase-2', 'phase-3');
+    if (phase === 2) {
+      healthBar.classList.add('phase-2');
+    } else if (phase === 3) {
+      healthBar.classList.add('phase-3');
+    }
   }
 }
 
