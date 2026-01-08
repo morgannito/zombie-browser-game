@@ -359,63 +359,10 @@ class AnimationSystem {
 }
 
 /* ============================================
-   LIGHTING SYSTEM (Simple)
-   ============================================ */
-
-class LightingSystem {
-  constructor() {
-    this.lights = [];
-    this.ambientLight = 0.3; // Luminosité ambiante (0-1)
-  }
-
-  /**
-   * Ajoute une source de lumière
+   LIGHTING SYSTEM (Simple) - REMOVED
+   ============================================
+   Now using advanced LightingSystem from modules/environment/LightingSystem.js
    */
-  addLight(x, y, radius, color = 'rgba(255, 255, 200, 0.3)') {
-    this.lights.push({ x, y, radius, color });
-  }
-
-  /**
-   * Applique l'éclairage (overlay sombre avec zones éclairées)
-   */
-  render(ctx, canvasWidth, canvasHeight) {
-    // Overlay sombre
-    ctx.fillStyle = `rgba(0, 0, 0, ${1 - this.ambientLight})`;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    // Zones éclairées
-    ctx.globalCompositeOperation = 'destination-out';
-    this.lights.forEach(light => {
-      const gradient = ctx.createRadialGradient(
-        light.x, light.y, 0,
-        light.x, light.y, light.radius
-      );
-      gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.5)');
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  /**
-   * Nettoie les lumières
-   */
-  clear() {
-    this.lights = [];
-  }
-
-  /**
-   * Active/désactive le mode nuit
-   */
-  setNightMode(enabled) {
-    this.ambientLight = enabled ? 0.1 : 0.3;
-  }
-}
 
 /* ============================================
    ADVANCED EFFECTS MANAGER
@@ -426,7 +373,8 @@ class AdvancedEffectsManager {
     this.particles = new ParticleSystem();
     // Note: Screen shake is now handled by ScreenEffectsManager (from screenEffects.js)
     this.animations = new AnimationSystem();
-    this.lighting = new LightingSystem();
+    // Note: Lighting is now handled by LightingSystem (from modules/environment/LightingSystem.js)
+    this.lighting = null; // Deprecated - use window.LightingSystem instead
     this.enabled = true;
   }
 
@@ -568,7 +516,7 @@ class AdvancedEffectsManager {
   clear() {
     this.particles.clear();
     this.animations.clear();
-    this.lighting.clear();
+    // Note: Lighting is handled separately by modules/environment/LightingSystem.js
   }
 }
 
@@ -578,5 +526,5 @@ if (typeof window !== 'undefined') {
   window.ParticleSystem = ParticleSystem;
   // Note: ScreenShake is exported from screenEffects.js
   window.AnimationSystem = AnimationSystem;
-  window.LightingSystem = LightingSystem;
+  // Note: LightingSystem is exported from modules/environment/LightingSystem.js
 }

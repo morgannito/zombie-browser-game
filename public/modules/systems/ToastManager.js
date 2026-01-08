@@ -87,5 +87,9 @@ class ToastManager {
   }
 }
 
-// Export to window
-window.ToastManager = ToastManager;
+// Create singleton instance
+const toastManager = new ToastManager();
+
+// Export to window (both class and singleton instance)
+window.ToastManager = toastManager; // Singleton instance for direct usage
+window.ToastManagerClass = ToastManager; // Class for instantiation if needed
