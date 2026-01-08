@@ -122,6 +122,10 @@ class Renderer {
     // Render layers (bottom to top)
     this.renderFloor(gameState.config, gameState.state.dayNight);
     this.renderGrid(gameState.config);
+
+    // Apply global shadow overlay if lighting system active
+    this.applyAmbientDarkness(gameState.state.lighting);
+
     this.renderStaticProps(gameState.state.staticProps, 'ground'); // Ground layer props
     this.renderDynamicProps(gameState.state.dynamicProps); // Dynamic props base (torches, fires)
     this.renderWalls(gameState.state.walls);
@@ -141,6 +145,10 @@ class Renderer {
     this.renderBullets(gameState.state.bullets, gameState.config);
     this.renderZombies(gameState.state.zombies, timestamp);
     this.renderPlayers(gameState.state.players, playerId, gameState.config, dateNow, timestamp);
+
+    // Render dynamic lights AFTER entities (additive blending)
+    this.renderDynamicLights(gameState.state.lighting);
+
     this.renderStaticProps(gameState.state.staticProps, 'overlay'); // Overlay layer props (trees, posts)
     this.renderWeather(gameState.state.weather); // Render rain/snow particles
     this.renderTargetIndicator(player); // Show auto-shoot target indicator
@@ -2839,6 +2847,62 @@ class Renderer {
 
       this.ctx.restore();
     }
+  }
+
+  applyAmbientDarkness(lighting) {
+    if (!lighting || lighting.ambientLight >= 0.95) return;
+
+    const darkness = 1 - lighting.ambientLight;
+    this.ctx.save();
+    this.ctx.fillStyle = `rgba(0, 0, 0, ${darkness * 0.7})`;
+    this.ctx.fillRect(
+      this.camera.x,
+      this.camera.y,
+      this.canvas.width / (window.devicePixelRatio || 1),
+      this.canvas.height / (window.devicePixelRatio || 1)
+    );
+    this.ctx.restore();
+  }
+
+  renderDynamicLights(lighting) {
+    if (!lighting || !lighting.lights || lighting.lights.length === 0) return;
+
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderParticles()) {
+      return;
+    }
+
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
+
+    lighting.lights.forEach(light => {
+      if (!light.enabled) return;
+
+      // Viewport culling
+      if (!this.camera.isInViewport(light.x, light.y, light.radius * 2)) {
+        return;
+      }
+
+      // Radial gradient light
+      const gradient = this.ctx.createRadialGradient(
+        light.x, light.y, 0,
+        light.x, light.y, light.radius * light.currentIntensity
+      );
+
+      gradient.addColorStop(0, light.color);
+      gradient.addColorStop(0.5, light.color.replace(/[\d.]+\)$/g, `${light.currentIntensity * 0.3})`));
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      this.ctx.fillStyle = gradient;
+      this.ctx.fillRect(
+        light.x - light.radius,
+        light.y - light.radius,
+        light.radius * 2,
+        light.radius * 2
+      );
+    });
+
+    this.ctx.restore();
   }
 
   renderWeather(weather) {
