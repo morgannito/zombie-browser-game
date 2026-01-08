@@ -174,10 +174,8 @@ class WeaponWheel {
       weaponWheel.style.display = 'block';
     }
 
-    // Pause game if available
-    if (window.gameEngine && !window.gameEngine.isPaused) {
-      window.gameEngine.pause();
-    }
+    // Note: Weapon wheel is instant selection, no need to pause game
+    // Pause functionality removed as GameEngine doesn't implement pause() method
 
     this.updateCurrentDisplay(this.currentWeaponIndex);
   }
@@ -192,10 +190,7 @@ class WeaponWheel {
       weaponWheel.style.display = 'none';
     }
 
-    // Resume game if available
-    if (window.gameEngine && window.gameEngine.isPaused) {
-      window.gameEngine.resume();
-    }
+    // Note: No resume needed as game wasn't paused
   }
 
   selectWeapon(index) {
