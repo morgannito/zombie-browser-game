@@ -27,8 +27,20 @@ let gameLoopRunning = false;
 
 /**
  * Handle player death with progression integration
+ * CRITICAL FIX: Proper error handling and retry queue
  */
-function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss = false) {
+function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss = false, logger) {
+  // CRITICAL FIX: Validate inputs
+  if (!player || typeof player !== 'object') {
+    if (logger) logger.error('❌ Invalid player object in handlePlayerDeathProgression', { playerId });
+    return false;
+  }
+
+  if (typeof player.health !== 'number') {
+    if (logger) logger.warn('⚠️  Player has invalid health value', { playerId, health: player.health });
+    player.health = 0;
+  }
+
   if (player.health > 0) return false;
 
   player.health = 0;
@@ -44,17 +56,59 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
       player.bossKills = isBoss ? 1 : 0;
 
       const sessionStats = {
-        wave: gameState.wave,
-        level: player.level,
+        wave: gameState.wave || 1,
+        level: player.level || 1,
         kills: player.zombiesKilled || player.kills || 0,
-        survivalTimeSeconds: player.survivalTime,
+        survivalTimeSeconds: typeof player.survivalTime === 'number' ? player.survivalTime : 0,
         comboMax: player.maxCombo,
         bossKills: player.bossKills
       };
 
+      // CRITICAL FIX: Comprehensive error handling + retry queue
       gameState.progressionIntegration.handlePlayerDeath(player, player.sessionId, sessionStats)
         .catch(err => {
-          console.error('Failed to handle player death:', err);
+          if (logger) {
+            logger.error('❌ CRITICAL: Failed to handle player death', {
+              error: err.message,
+              stack: err.stack,
+              playerId: player.id || playerId,
+              sessionId: player.sessionId,
+              stats: sessionStats
+            });
+          } else {
+            console.error('❌ CRITICAL: Failed to handle player death:', err);
+          }
+
+          // Initialize failed death queue if not exists
+          if (!gameState.failedDeathQueue) {
+            gameState.failedDeathQueue = [];
+          }
+
+          // Add to retry queue (max 100 entries to prevent memory leak)
+          if (gameState.failedDeathQueue.length < 100) {
+            gameState.failedDeathQueue.push({
+              player: {
+                id: player.id,
+                sessionId: player.sessionId,
+                nickname: player.nickname
+              },
+              sessionId: player.sessionId,
+              stats: sessionStats,
+              timestamp: now,
+              retryCount: 0
+            });
+
+            if (logger) {
+              logger.warn('⚠️  Player death queued for retry', {
+                queueLength: gameState.failedDeathQueue.length,
+                playerId: player.id || playerId
+              });
+            }
+          } else if (logger) {
+            logger.error('❌ Failed death queue full, discarding entry', {
+              playerId: player.id || playerId
+            });
+          }
         });
     }
   }

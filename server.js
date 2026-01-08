@@ -210,21 +210,46 @@ let gameLoopTimer = setInterval(() => {
   }
 }, perfIntegration.getTickInterval());
 
-// Heartbeat check for inactive players
+// CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
 let heartbeatTimer = setInterval(() => {
   const now = Date.now();
+  const playerIds = Object.keys(gameState.players);
+  let cleanedUp = 0;
+  let orphanedObjects = 0;
 
-  for (let playerId in gameState.players) {
+  for (let playerId of playerIds) {
     const player = gameState.players[playerId];
 
+    // CRITICAL FIX: Safety check for orphaned/corrupted player objects
+    if (!player || typeof player !== 'object') {
+      logger.warn('⚠️  Orphaned player object detected', { playerId });
+      delete gameState.players[playerId];
+      orphanedObjects++;
+      cleanedUp++;
+      continue;
+    }
+
+    // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
+    if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
+      player.lastActivityTime = now;
+      logger.warn('⚠️  Player missing lastActivityTime, initialized', {
+        playerId,
+        nickname: player.nickname
+      });
+      continue;
+    }
+
+    const inactiveDuration = now - player.lastActivityTime;
+
     // Check if player is inactive for too long
-    if (player.lastActivityTime && (now - player.lastActivityTime) > INACTIVITY_TIMEOUT) {
-      logger.info('Player timeout', {
+    if (inactiveDuration > INACTIVITY_TIMEOUT) {
+      logger.info('⏱️  Player timeout', {
         player: player.nickname || playerId,
-        inactiveDuration: now - player.lastActivityTime
+        inactiveDuration,
+        wasConnected: !!player.socketId
       });
 
-      // Disconnect player
+      // Disconnect player socket if still connected
       if (player.socketId) {
         const socket = io.sockets.sockets.get(player.socketId);
         if (socket) {
@@ -233,6 +258,25 @@ let heartbeatTimer = setInterval(() => {
       }
 
       delete gameState.players[playerId];
+      cleanedUp++;
+    }
+  }
+
+  // CRITICAL FIX: Log cleanup stats for monitoring
+  if (cleanedUp > 0) {
+    logger.info('🧹 Heartbeat cleanup completed', {
+      playersRemoved: cleanedUp,
+      orphanedObjects,
+      remainingPlayers: Object.keys(gameState.players).length,
+      timestamp: now
+    });
+
+    // Track cleanup metrics
+    if (metricsCollector) {
+      metricsCollector.recordCleanup({
+        playersRemoved: cleanedUp,
+        orphaned: orphanedObjects
+      });
     }
   }
 }, HEARTBEAT_CHECK_INTERVAL);
@@ -267,36 +311,56 @@ server.listen(PORT, () => {
 // GRACEFUL SHUTDOWN
 // ============================================
 
+let isShuttingDown = false;
+
 function cleanupServer() {
+  // CRITICAL FIX: Prevent multiple simultaneous shutdowns
+  if (isShuttingDown) {
+    logger.warn('⚠️  Shutdown already in progress, ignoring signal');
+    return;
+  }
+  isShuttingDown = true;
+
   logger.info('🛑 Server shutting down gracefully...');
 
   // Stop game loop timers
   if (gameLoopTimer) {
     clearInterval(gameLoopTimer);
+    gameLoopTimer = null;
     logger.info('✅ Game loop stopped');
   }
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
     logger.info('✅ Heartbeat timer stopped');
   }
 
-  // Close all socket connections
+  // CRITICAL FIX: Promise-based cleanup sequence
+  // Close socket connections first
   io.close(() => {
     logger.info('✅ All socket connections closed');
+
+    // Then close HTTP server
+    server.close(() => {
+      logger.info('✅ HTTP server closed');
+
+      // Finally close database with proper promise handling
+      Promise.resolve(dbManager.close())
+        .then(() => {
+          logger.info('✅ Database connection closed');
+          process.exit(0);
+        })
+        .catch(err => {
+          logger.error('❌ Database closure error:', {
+            error: err.message,
+            stack: err.stack
+          });
+          process.exit(1);
+        });
+    });
   });
 
-  // Close HTTP server
-  server.close(() => {
-    logger.info('✅ HTTP server closed');
-
-    // Close database connection
-    dbManager.close();
-    logger.info('✅ Database connection closed');
-
-    process.exit(0);
-  });
-
-  // Force exit after 10 seconds
+  // Force exit after 10 seconds if cleanup hangs
   setTimeout(() => {
     logger.error('❌ Forced shutdown after timeout');
     process.exit(1);
