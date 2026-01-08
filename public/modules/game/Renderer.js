@@ -205,6 +205,52 @@ class Renderer {
 
     this.ctx.fillStyle = floorColor;
     this.ctx.fillRect(0, 0, config.ROOM_WIDTH, config.ROOM_HEIGHT);
+
+    // Add ground textures (subtle pattern)
+    this.renderGroundTextures(config);
+  }
+
+  renderGroundTextures(config) {
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderGrid()) {
+      return; // Skip textures in low perf mode
+    }
+
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.15;
+
+    // Procedural dirt patches
+    const patchSize = 80;
+    const patchCount = 50;
+
+    for (let i = 0; i < patchCount; i++) {
+      const x = (i * 1337) % config.ROOM_WIDTH;
+      const y = (i * 7331) % config.ROOM_HEIGHT;
+
+      this.ctx.fillStyle = i % 2 === 0 ? '#2a2a3e' : '#151525';
+      this.ctx.beginPath();
+      this.ctx.ellipse(x, y, patchSize * (0.7 + (i % 10) / 20), patchSize * 0.6, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+
+    // Subtle crack lines
+    this.ctx.strokeStyle = '#0a0a1e';
+    this.ctx.lineWidth = 1;
+    this.ctx.globalAlpha = 0.1;
+
+    for (let i = 0; i < 30; i++) {
+      const startX = (i * 2341) % config.ROOM_WIDTH;
+      const startY = (i * 4567) % config.ROOM_HEIGHT;
+      const endX = startX + ((i * 89) % 100) - 50;
+      const endY = startY + ((i * 137) % 100) - 50;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(startX, startY);
+      this.ctx.lineTo(endX, endY);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
   }
 
   renderGrid(config) {
@@ -227,10 +273,79 @@ class Renderer {
 
     walls.forEach(wall => {
       this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+
+      // Wall decorations (graffiti, cracks, posters)
+      this.renderWallDecorations(wall);
+
       this.ctx.strokeStyle = '#3d3d54';
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
     });
+  }
+
+  renderWallDecorations(wall) {
+    // Check performance settings
+    if (window.performanceSettings && !window.performanceSettings.shouldRenderGrid()) {
+      return;
+    }
+
+    this.ctx.save();
+
+    // Deterministic random based on wall position
+    const seed = Math.floor(wall.x / 100) * 1000 + Math.floor(wall.y / 100);
+    const random = () => {
+      const x = Math.sin(seed + this.decorSeed++) * 10000;
+      return x - Math.floor(x);
+    };
+    this.decorSeed = seed;
+
+    // Add cracks (30% chance)
+    if (random() < 0.3) {
+      this.ctx.strokeStyle = '#1d1d34';
+      this.ctx.lineWidth = 1;
+      this.ctx.globalAlpha = 0.5;
+
+      const crackX = wall.x + wall.width * random();
+      const crackY = wall.y + wall.height * random();
+      const crackLength = 20 + random() * 30;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(crackX, crackY);
+      this.ctx.lineTo(crackX + (random() - 0.5) * crackLength, crackY + crackLength * random());
+      this.ctx.stroke();
+    }
+
+    // Add graffiti marks (20% chance)
+    if (random() < 0.2) {
+      this.ctx.fillStyle = random() > 0.5 ? '#ff6b6b' : '#4ecdc4';
+      this.ctx.globalAlpha = 0.3;
+
+      const grafX = wall.x + wall.width * 0.3;
+      const grafY = wall.y + wall.height * 0.5;
+
+      // Simple X mark
+      this.ctx.font = 'bold 24px Arial';
+      this.ctx.fillText('X', grafX, grafY);
+    }
+
+    // Add poster remnants (15% chance)
+    if (random() < 0.15 && wall.width > 80) {
+      this.ctx.fillStyle = '#f4e4c1';
+      this.ctx.globalAlpha = 0.4;
+
+      const posterX = wall.x + wall.width * 0.4;
+      const posterY = wall.y + wall.height * 0.3;
+      const posterW = 30;
+      const posterH = 40;
+
+      this.ctx.fillRect(posterX, posterY, posterW, posterH);
+
+      // Torn edges
+      this.ctx.fillStyle = '#d4c4a1';
+      this.ctx.fillRect(posterX, posterY + posterH - 5, posterW * 0.6, 5);
+    }
+
+    this.ctx.restore();
   }
 
   renderDoors(doors) {
