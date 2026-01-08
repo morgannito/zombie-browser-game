@@ -25,6 +25,13 @@ class Renderer {
     // Damage numbers system
     this.damageNumbers = [];
     this.lastZombieHealthCheck = {}; // Track zombie health to detect damage
+
+    // Kill feed system
+    this.lastZombieCount = 0; // Track zombie count to detect kills
+    this.killFeedItems = [];
+
+    // Combo tracking
+    this.lastComboValue = 0;
   }
 
   setCamera(camera) {
@@ -138,6 +145,9 @@ class Renderer {
 
     // Render minimap
     this.renderMinimap(gameState, playerId);
+
+    // Update kill feed and combo display
+    this.updateKillFeedAndCombo(gameState);
 
     // Update boss health bar
     this.updateBossHealthBar(gameState);
@@ -2322,3 +2332,85 @@ class Renderer {
 
 // Export to window
 window.Renderer = Renderer;
+
+  // Kill Feed & Combo Methods (added before updateBossHealthBar)
+  updateKillFeedAndCombo(gameState) {
+    const player = gameState.state.players[gameState.playerId];
+    if (!player) return;
+
+    // Update combo display
+    const combo = player.combo || 0;
+    const comboDisplay = document.getElementById('combo-display');
+    const comboCount = document.getElementById('combo-count');
+    const comboMultiplier = document.getElementById('combo-multiplier');
+
+    if (combo > 0) {
+      comboDisplay.style.display = 'block';
+      comboCount.textContent = combo;
+      const multiplier = Math.min(1 + (combo * 0.05), 3).toFixed(1);
+      comboMultiplier.textContent = multiplier;
+
+      // Trigger animation on combo increase
+      if (combo > this.lastComboValue) {
+        comboCount.style.animation = 'none';
+        setTimeout(() => { comboCount.style.animation = ''; }, 10);
+      }
+    } else {
+      comboDisplay.style.display = 'none';
+    }
+    this.lastComboValue = combo;
+
+    // Simple kill feed (detect zombie count decrease)
+    const currentZombieCount = Object.keys(gameState.state.zombies).length;
+    if (currentZombieCount < this.lastZombieCount) {
+      this.addKillFeedItem(player.nickname || 'Player', 'Zombie');
+    }
+    this.lastZombieCount = currentZombieCount;
+
+    // Update kill feed items (remove old ones)
+    this.updateKillFeed();
+  }
+
+  addKillFeedItem(killer, victim, type = 'normal') {
+    const feedEl = document.getElementById('kill-feed');
+    if (!feedEl) return;
+
+    const item = document.createElement('div');
+    item.classList.add('kill-feed-item');
+    if (type === 'elite') item.classList.add('elite');
+    if (type === 'boss') item.classList.add('boss');
+
+    item.innerHTML = `
+      <div class="kill-feed-text">
+        <span class="kill-feed-killer">${killer}</span>
+        <span>☠</span>
+        <span class="kill-feed-victim ${type}">${victim}</span>
+      </div>
+    `;
+
+    feedEl.prepend(item);
+
+    // Store item with timestamp
+    this.killFeedItems.push({ element: item, createdAt: Date.now() });
+
+    // Limit to 5 items
+    while (this.killFeedItems.length > 5) {
+      const oldest = this.killFeedItems.shift();
+      oldest.element.remove();
+    }
+  }
+
+  updateKillFeed() {
+    const now = Date.now();
+    for (let i = this.killFeedItems.length - 1; i >= 0; i--) {
+      const item = this.killFeedItems[i];
+      const age = now - item.createdAt;
+
+      // Remove after 5 seconds
+      if (age > 5000) {
+        item.element.classList.add('removing');
+        setTimeout(() => item.element.remove(), 300);
+        this.killFeedItems.splice(i, 1);
+      }
+    }
+  }

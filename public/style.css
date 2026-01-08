@@ -747,6 +747,206 @@ body {
 }
 
 /* ============================================
+   KILL FEED
+   ============================================ */
+#kill-feed {
+  position: fixed;
+  top: calc(150px + var(--safe-area-top));
+  right: calc(var(--space-lg) + var(--safe-area-right));
+  z-index: var(--z-ui);
+  pointer-events: none;
+  max-width: 300px;
+}
+
+.kill-feed-item {
+  background: rgba(0, 0, 0, 0.85);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-xs);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  animation: kill-feed-appear 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.kill-feed-item.removing {
+  animation: kill-feed-disappear 0.3s ease-in forwards;
+}
+
+.kill-feed-item.elite {
+  border-left-color: #2196f3;
+  background: rgba(10, 10, 40, 0.9);
+}
+
+.kill-feed-item.boss {
+  border-left-color: var(--color-danger);
+  background: rgba(40, 0, 0, 0.95);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+}
+
+.kill-feed-text {
+  font-size: var(--font-sm);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.kill-feed-killer {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.kill-feed-victim {
+  color: #ccc;
+}
+
+.kill-feed-victim.elite {
+  color: #2196f3;
+  font-weight: bold;
+}
+
+.kill-feed-victim.boss {
+  color: var(--color-danger);
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+@keyframes kill-feed-appear {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes kill-feed-disappear {
+  to {
+    opacity: 0;
+    transform: translateX(50px);
+    height: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* ============================================
+   COMBO DISPLAY
+   ============================================ */
+#combo-display {
+  position: fixed;
+  top: 50%;
+  right: calc(var(--space-xl) + var(--safe-area-right));
+  transform: translateY(-50%);
+  z-index: var(--z-ui);
+  pointer-events: none;
+}
+
+.combo-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
+  border: 3px solid var(--color-accent);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg) var(--space-xl);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  animation: combo-pulse 0.5s ease-in-out;
+}
+
+.combo-text {
+  font-size: var(--font-md);
+  color: var(--color-accent);
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+}
+
+.combo-count {
+  font-size: var(--font-4xl);
+  color: #fff;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 140, 0, 0.6);
+  animation: combo-number-scale 0.3s ease-out;
+}
+
+.combo-multiplier {
+  font-size: var(--font-lg);
+  color: var(--color-accent-orange);
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 140, 0, 0.8);
+}
+
+@keyframes combo-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes combo-number-scale {
+  0% {
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Mobile Kill Feed & Combo */
+@media (max-width: 768px) {
+  #kill-feed {
+    top: calc(80px + var(--safe-area-top));
+    right: calc(var(--space-sm) + var(--safe-area-right));
+    max-width: 200px;
+  }
+
+  .kill-feed-item {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .kill-feed-text {
+    font-size: var(--font-xs);
+  }
+
+  #combo-display {
+    top: auto;
+    bottom: calc(120px + var(--safe-area-bottom));
+    right: calc(var(--space-sm) + var(--safe-area-right));
+    transform: none;
+  }
+
+  .combo-wrapper {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .combo-text {
+    font-size: var(--font-sm);
+    letter-spacing: 2px;
+  }
+
+  .combo-count {
+    font-size: var(--font-3xl);
+  }
+
+  .combo-multiplier {
+    font-size: var(--font-md);
+  }
+}
+
+/* ============================================
    MINIMAP
    ============================================ */
 #minimap {
