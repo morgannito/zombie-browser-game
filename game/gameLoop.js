@@ -278,11 +278,29 @@ function updatePlayerTimers(player, now, io, playerId) {
     player.speedBoost = null;
   }
 
+  // MEDIUM FIX: Combo timer logic with proper validation
   const COMBO_TIMEOUT = 5000;
-  if (player.combo > 0 && player.comboTimer > 0 && now - player.comboTimer > COMBO_TIMEOUT) {
-    player.combo = 0;
-    player.comboTimer = 0;
-    io.to(playerId).emit('comboReset');
+
+  if (player.combo > 0) {
+    // Initialize comboTimer if missing
+    if (!player.comboTimer || typeof player.comboTimer !== 'number') {
+      player.comboTimer = now;
+    } else if (now - player.comboTimer > COMBO_TIMEOUT) {
+      // Timeout exceeded - reset combo
+      const oldCombo = player.combo;
+      player.combo = 0;
+      player.comboTimer = 0;
+
+      // Update highest combo if needed
+      if (oldCombo > (player.highestCombo || 0)) {
+        player.highestCombo = oldCombo;
+      }
+
+      io.to(playerId).emit('comboReset', {
+        previousCombo: oldCombo,
+        wasHighest: oldCombo === player.highestCombo
+      });
+    }
   }
 }
 
@@ -378,13 +396,41 @@ function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager
 
 /**
  * Apply Tesla Coil damage to zombie
+ * HIGH FIX: Comprehensive validation
  */
 function applyTeslaDamage(zombie, damage, player, teslaWeapon, entityManager, gameState, now) {
+  // HIGH FIX: Validate zombie object
+  if (!zombie || typeof zombie !== 'object') {
+    return; // Silent fail - zombie may have been removed
+  }
+
+  if (typeof zombie.health !== 'number' || !isFinite(zombie.health)) {
+    return; // Invalid zombie health
+  }
+
+  // HIGH FIX: Validate damage value
+  if (!isFinite(damage) || damage < 0) {
+    return; // Invalid damage value
+  }
+
+  // HIGH FIX: Check if zombie still exists in gameState
+  if (!gameState.zombies[zombie.id]) {
+    return; // Zombie already removed
+  }
+
+  // Apply damage
   zombie.health -= damage;
 
-  if (player.lifeSteal > 0) {
+  // Life steal (only if player and values are valid)
+  if (player && player.lifeSteal > 0 && isFinite(player.lifeSteal)) {
     const lifeStolen = damage * player.lifeSteal;
-    player.health = Math.min(player.health + lifeStolen, player.maxHealth);
+
+    if (isFinite(lifeStolen) && lifeStolen > 0) {
+      player.health = Math.min(
+        player.health + lifeStolen,
+        player.maxHealth || player.health + lifeStolen
+      );
+    }
   }
 
   createTeslaVisuals(player, zombie, teslaWeapon, entityManager);
