@@ -185,7 +185,7 @@ async function startServer() {
 
   // Always available routes
   app.use('/api/metrics', initMetricsRoutes(metricsCollector));
-  app.use('/', initHealthRoutes(dbManager));
+  app.use('/health', initHealthRoutes(dbManager));
 
   // ============================================
   // GAME INITIALIZATION
