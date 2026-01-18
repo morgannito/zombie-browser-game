@@ -1147,17 +1147,26 @@ class Renderer {
   /**
    * Render bullets with optimized batching
    * OPTIMIZED: Avoid Object.values() allocation, batch by color, single shadowBlur pass
+   * FIX: Added null checks and NaN validation for bullet positions
    */
   renderBullets(bullets, config) {
+    // FIX: Early return if no bullets or invalid config
+    if (!bullets || !config) return;
+
     // OPTIMIZATION: Group bullets by color to minimize ctx state changes
     const bulletsByColor = new Map();
     const defaultColor = '#ffff00';
-    const defaultSize = config.BULLET_SIZE;
+    const defaultSize = config.BULLET_SIZE || 5;
 
     // OPTIMIZATION: Use Object.keys + direct access instead of Object.values() (avoids array allocation)
     const bulletIds = Object.keys(bullets);
     for (let i = 0; i < bulletIds.length; i++) {
       const bullet = bullets[bulletIds[i]];
+
+      // FIX: Skip null/undefined bullets and bullets with invalid positions
+      if (!bullet || !Number.isFinite(bullet.x) || !Number.isFinite(bullet.y)) {
+        continue;
+      }
 
       // Viewport culling - early exit before any processing
       if (!this.camera.isInViewport(bullet.x, bullet.y, 50)) {

@@ -233,6 +233,7 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
 /**
  * Move zombie towards player or randomly
  * SSSS OPTIMIZATION: Uses cached pathfinding for performance
+ * FIX: Added deltaTime for frame-rate independent movement
  */
 function moveZombie(zombie, zombieId, collisionManager, gameState) {
   // SSSS OPTIMIZATION: Use cached pathfinding for movement (called every frame for all zombies)
@@ -244,17 +245,68 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
   const now = Date.now();
   const roomManager = gameState.roomManager;
 
+  // FIX: Calculate deltaTime for frame-rate independent movement
+  // Target is 60 FPS (16.67ms per frame)
+  const lastUpdate = zombie.lastMoveUpdate || now;
+  const deltaTime = Math.min((now - lastUpdate) / 16.67, 3); // Cap at 3x to prevent teleporting on lag spikes
+  zombie.lastMoveUpdate = now;
+
+  // FIX: Apply zombie-zombie separation to prevent stacking
+  applyZombieSeparation(zombie, zombieId, collisionManager);
+
   if (closestPlayer) {
-    moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now);
+    moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now, deltaTime);
   } else {
-    moveRandomly(zombie, now, roomManager);
+    moveRandomly(zombie, now, roomManager, deltaTime);
   }
 }
 
 /**
- * Move zombie towards closest player
+ * Apply separation force between zombies to prevent stacking
+ * FIX: Prevents zombie-zombie overlap that causes blocking
  */
-function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now) {
+function applyZombieSeparation(zombie, zombieId, collisionManager) {
+  const separationRadius = zombie.size * 2;
+  const nearbyZombies = collisionManager.findZombiesInRadius(zombie.x, zombie.y, separationRadius, zombieId);
+
+  if (nearbyZombies.length === 0) {
+    return;
+  }
+
+  let separationX = 0;
+  let separationY = 0;
+  const separationForce = 0.5; // Strength of push-apart force
+
+  for (const other of nearbyZombies) {
+    if (!other || other.id === zombie.id) {
+      continue;
+    }
+
+    const dx = zombie.x - other.x;
+    const dy = zombie.y - other.y;
+    const distSq = dx * dx + dy * dy;
+    const minDist = (zombie.size + other.size) * 0.8; // 80% of combined sizes
+    const minDistSq = minDist * minDist;
+
+    if (distSq < minDistSq && distSq > 0.01) {
+      const dist = Math.sqrt(distSq);
+      const overlap = minDist - dist;
+      // Push away from overlapping zombie
+      separationX += (dx / dist) * overlap * separationForce;
+      separationY += (dy / dist) * overlap * separationForce;
+    }
+  }
+
+  // Apply separation (will be bounded by wall collision later)
+  zombie.x += separationX;
+  zombie.y += separationY;
+}
+
+/**
+ * Move zombie towards closest player
+ * FIX: Added deltaTime parameter for frame-rate independent movement
+ */
+function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now, deltaTime) {
   const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
 
   if (zombie.type === 'shielded') {
@@ -262,7 +314,7 @@ function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisi
   }
 
   const effectiveSpeed = calculateEffectiveSpeed(zombie, angle);
-  const { newX, newY } = calculateNewPosition(zombie, angle, effectiveSpeed);
+  const { newX, newY } = calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime);
   const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
 
   zombie.x = finalX;
@@ -273,6 +325,7 @@ function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisi
 
 /**
  * Calculate zombie effective speed
+ * FIX: Added speed capping to prevent teleportation on extreme multipliers
  */
 function calculateEffectiveSpeed(zombie, angle) {
   let effectiveSpeed = zombie.speed;
@@ -291,13 +344,17 @@ function calculateEffectiveSpeed(zombie, angle) {
     effectiveSpeed = bruteType.chargeSpeed;
   }
 
-  return effectiveSpeed;
+  // FIX: Cap maximum speed to prevent teleportation
+  // Max speed = 15 pixels per frame at 60fps (900 pixels/sec)
+  const MAX_SPEED = 15;
+  return Math.min(effectiveSpeed, MAX_SPEED);
 }
 
 /**
  * Calculate new zombie position
+ * FIX: Added deltaTime for frame-rate independent movement
  */
-function calculateNewPosition(zombie, angle, effectiveSpeed) {
+function calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime = 1) {
   if (zombie.isDashing) {
     angle = zombie.dashAngle;
   }
@@ -305,27 +362,43 @@ function calculateNewPosition(zombie, angle, effectiveSpeed) {
     angle = zombie.chargeAngle;
   }
 
+  // FIX: Multiply by deltaTime for consistent movement regardless of frame rate
+  const frameSpeed = effectiveSpeed * deltaTime;
+
   return {
-    newX: zombie.x + MathUtils.fastCos(angle) * effectiveSpeed,
-    newY: zombie.y + MathUtils.fastSin(angle) * effectiveSpeed
+    newX: zombie.x + MathUtils.fastCos(angle) * frameSpeed,
+    newY: zombie.y + MathUtils.fastSin(angle) * frameSpeed
   };
 }
 
 /**
  * Resolve wall collisions with sliding
+ * FIX: Added fallback boundary check when roomManager is null
  */
 function resolveWallCollisions(zombie, newX, newY, roomManager) {
   let finalX = zombie.x;
   let finalY = zombie.y;
 
-  if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
+  // FIX: If roomManager is null, use basic boundary check to prevent out-of-bounds
+  if (!roomManager) {
+    const margin = zombie.size + CONFIG.WALL_THICKNESS;
+    const maxX = CONFIG.ROOM_WIDTH - margin;
+    const maxY = CONFIG.ROOM_HEIGHT - margin;
+
+    finalX = Math.max(margin, Math.min(newX, maxX));
+    finalY = Math.max(margin, Math.min(newY, maxY));
+    return { finalX, finalY };
+  }
+
+  if (!roomManager.checkWallCollision(newX, newY, zombie.size)) {
     finalX = newX;
     finalY = newY;
   } else {
-    if (roomManager && !roomManager.checkWallCollision(newX, zombie.y, zombie.size)) {
+    // Wall sliding: try X only, then Y only
+    if (!roomManager.checkWallCollision(newX, zombie.y, zombie.size)) {
       finalX = newX;
     }
-    if (roomManager && !roomManager.checkWallCollision(zombie.x, newY, zombie.size)) {
+    if (!roomManager.checkWallCollision(zombie.x, newY, zombie.size)) {
       finalY = newY;
     }
   }
@@ -392,20 +465,27 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
 
 /**
  * Move zombie randomly when no player visible
+ * FIX: Added deltaTime for frame-rate independent movement
  */
-function moveRandomly(zombie, now, roomManager) {
+function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
   if (!zombie.randomMoveTimer || now - zombie.randomMoveTimer > 2000) {
     zombie.randomAngle = Math.random() * Math.PI * 2;
     zombie.randomMoveTimer = now;
   }
 
-  const newX = zombie.x + Math.cos(zombie.randomAngle) * zombie.speed;
-  const newY = zombie.y + Math.sin(zombie.randomAngle) * zombie.speed;
+  // FIX: Apply deltaTime for consistent random movement
+  const frameSpeed = zombie.speed * deltaTime;
+  const newX = zombie.x + Math.cos(zombie.randomAngle) * frameSpeed;
+  const newY = zombie.y + Math.sin(zombie.randomAngle) * frameSpeed;
 
-  if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-    zombie.x = newX;
-    zombie.y = newY;
+  // FIX: Use resolveWallCollisions for consistent boundary handling
+  const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
+
+  if (finalX !== zombie.x || finalY !== zombie.y) {
+    zombie.x = finalX;
+    zombie.y = finalY;
   } else {
+    // Hit a wall, change direction
     zombie.randomAngle = Math.random() * Math.PI * 2;
   }
 }

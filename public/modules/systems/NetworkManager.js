@@ -217,6 +217,11 @@ class NetworkManager {
       localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
     }
 
+    // FIX: Update server time offset for latency compensation
+    if (state.serverTime) {
+      window.gameState.updateServerTime(state.serverTime);
+    }
+
     // Update state with server data
     window.gameState.updateState(state);
 
@@ -264,6 +269,11 @@ class NetworkManager {
       localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
       prevHealth = localPlayer.health;
       prevMaxHealth = localPlayer.maxHealth;
+    }
+
+    // FIX: Update server time offset for latency compensation
+    if (delta.serverTime) {
+      window.gameState.updateServerTime(delta.serverTime);
     }
 
     // Apply delta updates

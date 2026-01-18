@@ -71,6 +71,10 @@ class GameStateManager {
     this.networkLatency = 50; // Initial estimate in ms
     this.serverTickRate = 20; // Expected server updates per second
 
+    // FIX: Server time synchronization for latency compensation
+    this.serverTimeOffset = 0; // (serverTime - clientTime) when packet was received
+    this.lastServerTime = 0; // Last received server timestamp
+
     // CLIENT-SIDE PREDICTION: Predicted bullets for instant visual feedback
     this.predictedBullets = {};
     this.nextPredictedBulletId = 1;
@@ -117,9 +121,55 @@ class GameStateManager {
   }
 
   /**
+   * FIX: Update server time offset for latency compensation
+   * Called when receiving gameState or delta with serverTime
+   * @param {number} serverTime - Server timestamp from the packet
+   */
+  updateServerTime(serverTime) {
+    const clientTime = Date.now();
+    this.lastServerTime = serverTime;
+
+    // Calculate offset (how far ahead server is from client)
+    // Positive = server ahead, Negative = client ahead
+    const newOffset = serverTime - clientTime;
+
+    // Use exponential moving average for stability (avoid jitter from network variance)
+    // Blend factor 0.2 means 20% new value, 80% old (smooth but responsive)
+    if (this.serverTimeOffset === 0) {
+      // First measurement - use directly
+      this.serverTimeOffset = newOffset;
+    } else {
+      this.serverTimeOffset = this.serverTimeOffset * 0.8 + newOffset * 0.2;
+    }
+  }
+
+  /**
+   * FIX: Get estimated current server time
+   * Useful for time-sensitive interpolation calculations
+   * @returns {number} Estimated current server time
+   */
+  getEstimatedServerTime() {
+    return Date.now() + this.serverTimeOffset;
+  }
+
+  /**
+   * FIX: Get time since last server update (accounts for latency)
+   * @returns {number} Milliseconds since server generated the last state
+   */
+  getTimeSinceServerUpdate() {
+    if (this.lastServerTime === 0) {
+      return 0;
+    }
+    return this.getEstimatedServerTime() - this.lastServerTime;
+  }
+
+  /**
    * Apply visual interpolation to entities for smooth movement
    * Uses velocity-based extrapolation with adaptive smoothing
    * Call this in the render loop, not in network handlers
+   *
+   * FIXED: Properly separates server position tracking from display position
+   * to avoid velocity corruption and jitter caused by comparing display vs target
    */
   applyInterpolation() {
     if (!this.interpolation.enabled) {
@@ -146,10 +196,13 @@ class GameStateManager {
 
       if (!state) {
         // Initialize state for new zombie
+        // FIXED: Track serverX/serverY separately to detect real server updates
         state = {
-          displayX: zombie.x,
+          serverX: zombie.x,    // Last known server position
+          serverY: zombie.y,
+          displayX: zombie.x,   // Current rendered position
           displayY: zombie.y,
-          targetX: zombie.x,
+          targetX: zombie.x,    // Interpolation target (may include extrapolation)
           targetY: zombie.y,
           velocityX: 0,
           velocityY: 0,
@@ -158,28 +211,44 @@ class GameStateManager {
         entityStates.zombies.set(id, state);
       }
 
-      // Check if server position changed (new update received)
-      if (zombie.x !== state.targetX || zombie.y !== state.targetY) {
-        // Calculate velocity from position delta
+      // FIXED: Compare against stored server position, not zombie.x (which may be displayX)
+      // This detects REAL server updates, not our own interpolation modifications
+      if (zombie.x !== state.serverX || zombie.y !== state.serverY) {
+        // Real server update received - calculate velocity from server position delta
         const timeSinceLastUpdate = now - state.lastUpdateTime;
         if (timeSinceLastUpdate > 0 && timeSinceLastUpdate < 500) {
-          state.velocityX = (zombie.x - state.targetX) / timeSinceLastUpdate * 1000;
-          state.velocityY = (zombie.y - state.targetY) / timeSinceLastUpdate * 1000;
+          // Velocity based on server-to-server position change
+          state.velocityX = (zombie.x - state.serverX) / timeSinceLastUpdate * 1000;
+          state.velocityY = (zombie.y - state.serverY) / timeSinceLastUpdate * 1000;
+        } else {
+          // Too long since last update or first update - reset velocity
+          state.velocityX = 0;
+          state.velocityY = 0;
         }
+        // Update stored server position
+        state.serverX = zombie.x;
+        state.serverY = zombie.y;
         state.targetX = zombie.x;
         state.targetY = zombie.y;
         state.lastUpdateTime = now;
       }
 
       // Extrapolate position based on velocity (dead reckoning)
+      // FIXED: Limit extrapolation to avoid overshooting and reduce jitter
       const timeSinceUpdate = now - state.lastUpdateTime;
       let predictedX = state.targetX;
       let predictedY = state.targetY;
 
-      // Only extrapolate for short periods to avoid overshooting
-      if (timeSinceUpdate < 200) {
-        predictedX += state.velocityX * timeSinceUpdate / 1000;
-        predictedY += state.velocityY * timeSinceUpdate / 1000;
+      // Only extrapolate for short periods (< 100ms) to avoid overshooting
+      // FIXED: Reduced from 200ms to 100ms and added velocity clamping
+      if (timeSinceUpdate < 100 && timeSinceUpdate > 0) {
+        const extrapolationFactor = timeSinceUpdate / 1000;
+        // Clamp extrapolation to prevent extreme jumps
+        const maxExtrapolation = 50; // Max 50px extrapolation
+        const extraX = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityX * extrapolationFactor));
+        const extraY = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityY * extrapolationFactor));
+        predictedX += extraX;
+        predictedY += extraY;
       }
 
       // Smoothly interpolate display position towards predicted position
@@ -199,17 +268,20 @@ class GameStateManager {
       }
     }
 
-    // Interpolate other players (not local player) with same approach
+    // Interpolate other players (not local player) with same fixed approach
     for (const [id, player] of Object.entries(this.state.players)) {
       if (id === this.playerId) continue; // Skip local player
 
       let state = entityStates.players.get(id);
 
       if (!state) {
+        // FIXED: Track serverX/serverY separately for players too
         state = {
-          displayX: player.x,
+          serverX: player.x,    // Last known server position
+          serverY: player.y,
+          displayX: player.x,   // Current rendered position
           displayY: player.y,
-          targetX: player.x,
+          targetX: player.x,    // Interpolation target
           targetY: player.y,
           velocityX: 0,
           velocityY: 0,
@@ -218,26 +290,38 @@ class GameStateManager {
         entityStates.players.set(id, state);
       }
 
-      // Check if server position changed
-      if (player.x !== state.targetX || player.y !== state.targetY) {
+      // FIXED: Compare against stored server position to detect REAL server updates
+      if (player.x !== state.serverX || player.y !== state.serverY) {
         const timeSinceLastUpdate = now - state.lastUpdateTime;
         if (timeSinceLastUpdate > 0 && timeSinceLastUpdate < 500) {
-          state.velocityX = (player.x - state.targetX) / timeSinceLastUpdate * 1000;
-          state.velocityY = (player.y - state.targetY) / timeSinceLastUpdate * 1000;
+          // Velocity based on server-to-server position change
+          state.velocityX = (player.x - state.serverX) / timeSinceLastUpdate * 1000;
+          state.velocityY = (player.y - state.serverY) / timeSinceLastUpdate * 1000;
+        } else {
+          state.velocityX = 0;
+          state.velocityY = 0;
         }
+        // Update stored server position
+        state.serverX = player.x;
+        state.serverY = player.y;
         state.targetX = player.x;
         state.targetY = player.y;
         state.lastUpdateTime = now;
       }
 
-      // Extrapolate and smooth
+      // Extrapolate and smooth with clamping
       const timeSinceUpdate = now - state.lastUpdateTime;
       let predictedX = state.targetX;
       let predictedY = state.targetY;
 
-      if (timeSinceUpdate < 200) {
-        predictedX += state.velocityX * timeSinceUpdate / 1000;
-        predictedY += state.velocityY * timeSinceUpdate / 1000;
+      // FIXED: Reduced extrapolation window and added clamping
+      if (timeSinceUpdate < 100 && timeSinceUpdate > 0) {
+        const extrapolationFactor = timeSinceUpdate / 1000;
+        const maxExtrapolation = 50;
+        const extraX = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityX * extrapolationFactor));
+        const extraY = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityY * extrapolationFactor));
+        predictedX += extraX;
+        predictedY += extraY;
       }
 
       state.displayX += (predictedX - state.displayX) * smoothFactor;
@@ -338,6 +422,12 @@ class GameStateManager {
       return null;
     }
 
+    // FIX: Validate inputs to prevent NaN positions
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(angle)) {
+      console.warn('[BULLET] Invalid predicted bullet params:', { x, y, angle });
+      return null;
+    }
+
     const weapon = this.weapons[weaponType] || this.weapons.pistol;
     const bulletSpeed = weapon.bulletSpeed || 15;
     const bulletColor = weapon.color || '#ffff00';
@@ -367,7 +457,8 @@ class GameStateManager {
 
   /**
    * CLIENT-SIDE PREDICTION: Update predicted bullets (called every frame)
-   * Moves bullets and removes expired ones
+   * Moves bullets, checks collisions with zombies/walls, and removes expired ones
+   * FIX: Added zombie and wall collision detection for visual consistency
    */
   updatePredictedBullets() {
     if (!this.bulletPredictionEnabled) {
@@ -376,10 +467,16 @@ class GameStateManager {
 
     const now = Date.now();
     const bulletIds = Object.keys(this.predictedBullets);
+    const zombies = this.state.zombies;
+    const walls = this.state.walls || [];
+    const zombieSize = this.config.ZOMBIE_SIZE || 25;
+    const bulletBaseSize = this.config.BULLET_SIZE || 5;
 
     for (let i = 0; i < bulletIds.length; i++) {
       const bulletId = bulletIds[i];
       const bullet = this.predictedBullets[bulletId];
+
+      if (!bullet) continue;
 
       // Update position
       bullet.x += bullet.vx;
@@ -393,6 +490,46 @@ class GameStateManager {
 
       if (age > bullet.maxLifetime || outOfBounds) {
         delete this.predictedBullets[bulletId];
+        continue;
+      }
+
+      // FIX: Check collision with walls (client-side visual feedback)
+      let hitWall = false;
+      for (let w = 0; w < walls.length; w++) {
+        const wall = walls[w];
+        if (bullet.x >= wall.x && bullet.x <= wall.x + wall.width &&
+            bullet.y >= wall.y && bullet.y <= wall.y + wall.height) {
+          hitWall = true;
+          break;
+        }
+      }
+      if (hitWall) {
+        delete this.predictedBullets[bulletId];
+        continue;
+      }
+
+      // FIX: Check collision with zombies (client-side visual feedback)
+      // This prevents bullets from visually passing through zombies
+      const bulletSize = bullet.size || bulletBaseSize;
+      let hitZombie = false;
+      for (const zombieId in zombies) {
+        const zombie = zombies[zombieId];
+        if (!zombie || zombie.isDead) continue;
+
+        // Circle-circle collision
+        const dx = bullet.x - zombie.x;
+        const dy = bullet.y - zombie.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = bulletSize + (zombie.size || zombieSize);
+
+        if (distSq < minDist * minDist) {
+          hitZombie = true;
+          break;
+        }
+      }
+      if (hitZombie) {
+        delete this.predictedBullets[bulletId];
+        continue;
       }
     }
   }
@@ -410,17 +547,23 @@ class GameStateManager {
   /**
    * CLIENT-SIDE PREDICTION: Clear old predicted bullets when server state arrives
    * This prevents visual doubling of bullets
+   * FIX: Improved reconciliation logic with network latency awareness
    */
   reconcilePredictedBullets() {
     const now = Date.now();
-    const RECONCILIATION_AGE = 100; // Remove predicted bullets older than 100ms when server data exists
+    // FIX: Use network latency to determine reconciliation age
+    // Add buffer for processing delays (min 150ms to account for RTT + server processing)
+    const RECONCILIATION_AGE = Math.max(150, this.networkLatency * 1.5 + 50);
 
     // If we have server bullets, remove old predicted bullets
-    if (Object.keys(this.state.bullets).length > 0) {
+    const serverBulletCount = Object.keys(this.state.bullets).length;
+    if (serverBulletCount > 0) {
       const bulletIds = Object.keys(this.predictedBullets);
       for (let i = 0; i < bulletIds.length; i++) {
         const bulletId = bulletIds[i];
         const bullet = this.predictedBullets[bulletId];
+        if (!bullet) continue;
+
         const age = now - bullet.createdAt;
 
         // Remove predicted bullets that are old enough to have been reconciled with server
