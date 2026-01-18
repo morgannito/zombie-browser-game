@@ -54,6 +54,10 @@ class TutorialSystem {
     this.levelUpDetected = false;
     this.waveProgressDetected = false;
 
+    // MEMORY LEAK FIX: Track active intervals for cleanup
+    this.activeIntervals = [];
+    this.activeTimeouts = [];
+
     this.init();
   }
 
@@ -382,30 +386,48 @@ class TutorialSystem {
     const interval = setInterval(() => {
       if (!this.isActive) {
         clearInterval(interval);
+        // MEMORY LEAK FIX: Remove from tracking
+        this.activeIntervals = this.activeIntervals.filter(i => i !== interval);
         return;
       }
 
       if (step.condition()) {
         clearInterval(interval);
-        setTimeout(() => {
+        // MEMORY LEAK FIX: Remove from tracking
+        this.activeIntervals = this.activeIntervals.filter(i => i !== interval);
+
+        const timeout = setTimeout(() => {
+          // MEMORY LEAK FIX: Remove from tracking
+          this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeout);
           if (this.isActive) {
             this.nextStep();
           }
         }, 1000);
+        // MEMORY LEAK FIX: Track timeout
+        this.activeTimeouts.push(timeout);
       }
     }, 100);
 
+    // MEMORY LEAK FIX: Track interval
+    this.activeIntervals.push(interval);
+
     // Auto-skip after delay
     if (step.skipDelay) {
-      setTimeout(() => {
+      const skipTimeout = setTimeout(() => {
+        // MEMORY LEAK FIX: Remove from tracking
+        this.activeTimeouts = this.activeTimeouts.filter(t => t !== skipTimeout);
         if (this.isActive && this.currentStep === stepIndex) {
           clearInterval(interval);
+          // MEMORY LEAK FIX: Remove interval from tracking
+          this.activeIntervals = this.activeIntervals.filter(i => i !== interval);
           const nextBtn = document.getElementById('tutorial-next');
           if (nextBtn) {
             nextBtn.style.display = 'block';
           }
         }
       }, step.skipDelay);
+      // MEMORY LEAK FIX: Track timeout
+      this.activeTimeouts.push(skipTimeout);
     }
   }
 
@@ -447,12 +469,26 @@ class TutorialSystem {
     this.hasCompleted = true;
     this.markCompleted();
 
+    // MEMORY LEAK FIX: Clear all tracked intervals and timeouts
+    this.cleanupTimers();
+
     const overlay = document.getElementById('tutorial-overlay');
     if (overlay) {
       overlay.style.display = 'none';
     }
 
     this.hideHighlight();
+  }
+
+  // MEMORY LEAK FIX: Cleanup all tracked timers
+  cleanupTimers() {
+    // Clear all active intervals
+    this.activeIntervals.forEach(interval => clearInterval(interval));
+    this.activeIntervals = [];
+
+    // Clear all active timeouts
+    this.activeTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.activeTimeouts = [];
   }
 
   checkCompletion() {

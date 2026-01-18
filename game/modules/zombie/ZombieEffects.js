@@ -11,13 +11,24 @@ const { ZOMBIE_TYPES } = ConfigManager;
 
 /**
  * Update poison trails left by poison zombies
+ * CRITICAL FIX: Defer trail deletion to EntityManager to prevent race conditions
  */
 function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
-  for (const trailId in gameState.poisonTrails) {
+  // CRITICAL FIX: Create snapshot of trail IDs to avoid modification during iteration
+  const trailIds = Object.keys(gameState.poisonTrails);
+
+  for (const trailId of trailIds) {
     const trail = gameState.poisonTrails[trailId];
 
+    // Skip if trail was already cleaned up by EntityManager
+    if (!trail) {
+      continue;
+    }
+
+    // CRITICAL FIX: Check expiration but don't delete here
+    // Let EntityManager.cleanupExpiredEntities() handle deletion to prevent race condition
     if (now - trail.createdAt > trail.duration) {
-      delete gameState.poisonTrails[trailId];
+      // Trail expired - skip damage processing but let EntityManager clean it up
       continue;
     }
 
@@ -58,8 +69,10 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
 
 /**
  * Update poisoned zombies - apply damage over time
+ *
+ * BUG FIX: Added io and zombieManager params to handle boss kills properly
  */
-function updatePoisonedZombies(gameState, now, entityManager) {
+function updatePoisonedZombies(gameState, now, entityManager, io = null, zombieManager = null) {
   for (const zombieId in gameState.zombies) {
     const zombie = gameState.zombies[zombieId];
 
@@ -78,7 +91,7 @@ function updatePoisonedZombies(gameState, now, entityManager) {
         createParticles(zombie.x, zombie.y, '#00ff00', 3, entityManager);
 
         if (zombie.health <= 0) {
-          killPoisonedZombie(zombie, zombieId, gameState, entityManager);
+          killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zombieManager);
         }
       }
     }
@@ -87,12 +100,20 @@ function updatePoisonedZombies(gameState, now, entityManager) {
 
 /**
  * Kill zombie from poison damage
+ *
+ * BUG FIX: Handle boss kills to trigger new wave
  */
-function killPoisonedZombie(zombie, zombieId, gameState, entityManager) {
+function killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zombieManager) {
   createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
   createLoot(zombie.x, zombie.y, zombie.goldDrop, zombie.xpDrop, gameState);
   delete gameState.zombies[zombieId];
   gameState.zombiesKilledThisWave++;
+
+  // BUG FIX: Si c'était un boss, déclencher la nouvelle wave
+  if (zombie.isBoss && io && zombieManager) {
+    const { handleNewWave } = require('../wave/WaveManager');
+    handleNewWave(gameState, io, zombieManager);
+  }
 }
 
 /**
@@ -143,6 +164,7 @@ function spawnSplitterMinion(zombie, index, splitterType, gameState, entityManag
   const splitY = zombie.y + Math.sin(angle) * spawnDistance;
 
   const splitId = gameState.nextZombieId++;
+  const splitSpeed = splitterType.speed * splitterType.splitSpeedMultiplier;
   gameState.zombies[splitId] = {
     id: splitId,
     x: splitX,
@@ -152,7 +174,8 @@ function spawnSplitterMinion(zombie, index, splitterType, gameState, entityManag
     type: 'splitterMinion',
     health: zombie.maxHealth * splitterType.splitHealthPercent,
     maxHealth: zombie.maxHealth * splitterType.splitHealthPercent,
-    speed: splitterType.speed * splitterType.splitSpeedMultiplier,
+    speed: splitSpeed,
+    baseSpeed: splitSpeed, // FIX: Store base speed for freeze/slow effect restoration
     damage: zombie.damage * splitterType.splitDamageMultiplier,
     goldDrop: Math.floor(splitterType.gold / splitterType.splitCount),
     xpDrop: Math.floor(splitterType.xp / splitterType.splitCount),

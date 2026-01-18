@@ -24,10 +24,13 @@ const {
 /**
  * Main zombie update function
  * LATENCY OPTIMIZATION: Fast-path guards to skip boss/special updates for regular zombies
+ * CRITICAL FIX: Use snapshot of zombie IDs to safely iterate while zombies may be deleted
  */
 function updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
   const zombies = gameState.zombies;
-  const zombieIds = Object.keys(zombies);
+  // CRITICAL FIX: Create snapshot with .slice() to prevent iteration issues
+  // when zombies are deleted by other systems (tesla kill, poison, etc.)
+  const zombieIds = Object.keys(zombies).slice();
 
   for (let i = 0; i < zombieIds.length; i++) {
     const zombieId = zombieIds[i];
@@ -372,36 +375,117 @@ function calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime = 1) {
 }
 
 /**
- * Resolve wall collisions with sliding
- * FIX: Added fallback boundary check when roomManager is null
+ * Resolve wall collisions with proper sliding and unstuck mechanism
+ * FIX: Complete rewrite for robust collision handling
+ *
+ * Features:
+ * - Wall sliding: Zombie glides along wall surface
+ * - Soft repulsion: Smooth push-back from walls
+ * - Corner handling: Works when touching 2+ walls
+ * - Unstuck mechanism: Escapes if trapped inside wall
  */
 function resolveWallCollisions(zombie, newX, newY, roomManager) {
-  let finalX = zombie.x;
-  let finalY = zombie.y;
-
-  // FIX: If roomManager is null, use basic boundary check to prevent out-of-bounds
+  // Fallback boundary check when roomManager is null
   if (!roomManager) {
     const margin = zombie.size + CONFIG.WALL_THICKNESS;
     const maxX = CONFIG.ROOM_WIDTH - margin;
     const maxY = CONFIG.ROOM_HEIGHT - margin;
 
-    finalX = Math.max(margin, Math.min(newX, maxX));
-    finalY = Math.max(margin, Math.min(newY, maxY));
-    return { finalX, finalY };
+    return {
+      finalX: Math.max(margin, Math.min(newX, maxX)),
+      finalY: Math.max(margin, Math.min(newY, maxY))
+    };
   }
 
+  // Check if new position is clear - fast path
   if (!roomManager.checkWallCollision(newX, newY, zombie.size)) {
-    finalX = newX;
-    finalY = newY;
-  } else {
-    // Wall sliding: try X only, then Y only
-    if (!roomManager.checkWallCollision(newX, zombie.y, zombie.size)) {
+    return { finalX: newX, finalY: newY };
+  }
+
+  // Get detailed collision info for the new position
+  const collisionInfo = roomManager.getWallCollisionInfo(newX, newY, zombie.size);
+
+  // Calculate movement vector
+  const moveX = newX - zombie.x;
+  const moveY = newY - zombie.y;
+
+  let finalX = zombie.x;
+  let finalY = zombie.y;
+
+  // Strategy 1: Try wall sliding (move along the wall)
+  // Test X movement alone
+  const xOnlyCollision = roomManager.checkWallCollision(newX, zombie.y, zombie.size);
+  // Test Y movement alone
+  const yOnlyCollision = roomManager.checkWallCollision(zombie.x, newY, zombie.size);
+
+  if (!xOnlyCollision && !yOnlyCollision) {
+    // Both axes work individually - choose the one with more movement
+    if (Math.abs(moveX) > Math.abs(moveY)) {
       finalX = newX;
-    }
-    if (!roomManager.checkWallCollision(zombie.x, newY, zombie.size)) {
+    } else {
       finalY = newY;
     }
+  } else if (!xOnlyCollision) {
+    // Can slide along X axis
+    finalX = newX;
+  } else if (!yOnlyCollision) {
+    // Can slide along Y axis
+    finalY = newY;
+  } else {
+    // Strategy 2: Both axes blocked - apply soft repulsion
+    // Use collision info to push away from walls
+    if (collisionInfo.colliding && collisionInfo.penetration > 0) {
+      const repulsionStrength = 0.5; // Soft push strength (0-1)
+      const pushMagnitude = Math.min(collisionInfo.penetration * repulsionStrength, zombie.speed);
+
+      // Normalize push vector
+      const pushLen = Math.sqrt(collisionInfo.pushX * collisionInfo.pushX + collisionInfo.pushY * collisionInfo.pushY);
+      if (pushLen > 0.001) {
+        const pushDirX = collisionInfo.pushX / pushLen;
+        const pushDirY = collisionInfo.pushY / pushLen;
+
+        // Apply push and verify it doesn't cause another collision
+        const pushedX = zombie.x + pushDirX * pushMagnitude;
+        const pushedY = zombie.y + pushDirY * pushMagnitude;
+
+        if (!roomManager.checkWallCollision(pushedX, pushedY, zombie.size)) {
+          finalX = pushedX;
+          finalY = pushedY;
+        } else {
+          // Try push on each axis separately
+          if (!roomManager.checkWallCollision(pushedX, zombie.y, zombie.size)) {
+            finalX = pushedX;
+          }
+          if (!roomManager.checkWallCollision(zombie.x, pushedY, zombie.size)) {
+            finalY = pushedY;
+          }
+        }
+      }
+    }
   }
+
+  // Strategy 3: Unstuck mechanism - zombie is trapped inside a wall
+  // Check if zombie is CURRENTLY stuck (not just blocked)
+  const currentCollision = roomManager.getWallCollisionInfo(finalX, finalY, zombie.size);
+  if (currentCollision.colliding && currentCollision.penetration > zombie.size * 0.5) {
+    // Severely stuck - emergency push toward room center
+    const roomCenterX = CONFIG.ROOM_WIDTH / 2;
+    const roomCenterY = CONFIG.ROOM_HEIGHT / 2;
+    const toCenterX = roomCenterX - finalX;
+    const toCenterY = roomCenterY - finalY;
+    const toCenterDist = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY);
+
+    if (toCenterDist > 0.001) {
+      const unstuckSpeed = Math.max(zombie.speed, 3); // At least 3 pixels per frame
+      finalX += (toCenterX / toCenterDist) * unstuckSpeed;
+      finalY += (toCenterY / toCenterDist) * unstuckSpeed;
+    }
+  }
+
+  // Final boundary clamp to prevent going outside room
+  const margin = zombie.size + 1;
+  finalX = Math.max(margin, Math.min(finalX, CONFIG.ROOM_WIDTH - margin));
+  finalY = Math.max(margin, Math.min(finalY, CONFIG.ROOM_HEIGHT - margin));
 
   return { finalX, finalY };
 }
@@ -421,7 +505,10 @@ function checkPlayerCollisions(zombie, zombieId, collisionManager, gameState, no
       continue;
     }
 
-    if (distance(zombie.x, zombie.y, player.x, player.y) < zombie.size) {
+    // BUG FIX: La collision doit utiliser zombie.size + PLAYER_SIZE, pas seulement zombie.size
+    // Sinon le joueur doit etre DANS le zombie pour prendre des degats
+    const collisionDistance = zombie.size + CONFIG.PLAYER_SIZE;
+    if (distance(zombie.x, zombie.y, player.x, player.y) < collisionDistance) {
       if (Math.random() < (player.dodgeChance || 0)) {
         continue;
       }
@@ -466,6 +553,7 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
 /**
  * Move zombie randomly when no player visible
  * FIX: Added deltaTime for frame-rate independent movement
+ * FIX: Improved wall collision handling with smart direction change
  */
 function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
   if (!zombie.randomMoveTimer || now - zombie.randomMoveTimer > 2000) {
@@ -481,12 +569,36 @@ function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
   // FIX: Use resolveWallCollisions for consistent boundary handling
   const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
 
-  if (finalX !== zombie.x || finalY !== zombie.y) {
-    zombie.x = finalX;
-    zombie.y = finalY;
-  } else {
-    // Hit a wall, change direction
-    zombie.randomAngle = Math.random() * Math.PI * 2;
+  // Calculate how much movement was blocked
+  const intendedMoveX = newX - zombie.x;
+  const intendedMovY = newY - zombie.y;
+  const actualMoveX = finalX - zombie.x;
+  const actualMoveY = finalY - zombie.y;
+
+  // Check if significantly blocked (less than 50% of intended movement)
+  const intendedDist = Math.sqrt(intendedMoveX * intendedMoveX + intendedMovY * intendedMovY);
+  const actualDist = Math.sqrt(actualMoveX * actualMoveX + actualMoveY * actualMoveY);
+  const wasBlocked = intendedDist > 0.1 && actualDist < intendedDist * 0.5;
+
+  zombie.x = finalX;
+  zombie.y = finalY;
+
+  if (wasBlocked) {
+    // Hit a wall - change direction intelligently
+    // Try to pick a direction that goes away from the wall
+    if (Math.abs(actualMoveX) < Math.abs(intendedMoveX) * 0.5) {
+      // X was blocked - move more in Y direction
+      zombie.randomAngle = actualMoveY >= 0 ? Math.PI / 2 : -Math.PI / 2;
+      zombie.randomAngle += (Math.random() - 0.5) * Math.PI / 2; // Add some variance
+    } else if (Math.abs(actualMoveY) < Math.abs(intendedMovY) * 0.5) {
+      // Y was blocked - move more in X direction
+      zombie.randomAngle = actualMoveX >= 0 ? 0 : Math.PI;
+      zombie.randomAngle += (Math.random() - 0.5) * Math.PI / 2; // Add some variance
+    } else {
+      // Both blocked (corner) - pick random new direction
+      zombie.randomAngle = Math.random() * Math.PI * 2;
+    }
+    zombie.randomMoveTimer = now;
   }
 }
 

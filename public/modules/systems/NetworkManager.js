@@ -47,17 +47,25 @@ class NetworkManager {
   }
 
   setupLatencyMonitoring() {
-    // Monitor ping/pong for latency measurement
-    this.socket.on('ping', () => {
+    // MEMORY LEAK FIX: Track ping/pong handlers for cleanup
+    const pingHandler = () => {
       this.lastPingTime = Date.now();
-    });
+    };
 
-    this.socket.on('pong', () => {
+    const pongHandler = () => {
       if (this.lastPingTime) {
         const latency = Date.now() - this.lastPingTime;
         this.updateLatency(latency);
       }
-    });
+    };
+
+    // Monitor ping/pong for latency measurement
+    this.socket.on('ping', pingHandler);
+    this.socket.on('pong', pongHandler);
+
+    // MEMORY LEAK FIX: Track these listeners for cleanup
+    this.listeners.push({ event: 'ping', handler: pingHandler });
+    this.listeners.push({ event: 'pong', handler: pongHandler });
 
     // Manual ping every 2 seconds for more accurate measurements
     this.pingInterval = setInterval(() => {

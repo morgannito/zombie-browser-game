@@ -108,24 +108,32 @@ describe('ZombieSpawnManager', () => {
       expect(['normal', 'fast']).toContain(type);
     });
 
-    it('should return boss for wave 25', () => {
+    // BUG FIX: selectZombieType should NOT return boss types for regular spawns
+    // Bosses are spawned separately by spawnBoss() when all regular zombies are killed
+    it('should NOT return boss for wave 25 (bosses are spawned separately)', () => {
       const type = spawnManager.selectZombieType(25);
-      expect(type).toBe('bossCharnier');
+      // Should return a regular zombie type from the previous phase
+      expect(type).not.toBe('bossCharnier');
+      expect(['normal', 'fast', 'tank', 'healer', 'slower']).toContain(type);
     });
 
-    it('should return boss for wave 50', () => {
+    it('should NOT return boss for wave 50 (bosses are spawned separately)', () => {
       const type = spawnManager.selectZombieType(50);
-      expect(type).toBe('bossInfect');
+      expect(type).not.toBe('bossInfect');
+      // Should return a valid non-boss zombie type
+      expect(typeof type).toBe('string');
     });
 
-    it('should return boss for wave 100', () => {
+    it('should NOT return boss for wave 100 (bosses are spawned separately)', () => {
       const type = spawnManager.selectZombieType(100);
-      expect(type).toBe('bossRoi');
+      expect(type).not.toBe('bossRoi');
+      expect(typeof type).toBe('string');
     });
 
-    it('should return boss for wave 200', () => {
+    it('should NOT return boss for wave 200 (bosses are spawned separately)', () => {
       const type = spawnManager.selectZombieType(200);
-      expect(type).toBe('bossApocalypse');
+      expect(type).not.toBe('bossApocalypse');
+      expect(typeof type).toBe('string');
     });
 
     it('should return valid zombie type for wave 30', () => {

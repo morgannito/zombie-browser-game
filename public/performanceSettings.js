@@ -30,6 +30,9 @@ class PerformanceSettingsManager {
     this.fpsHistory = [];
     this.autoAdjust = true;
 
+    // MEMORY LEAK FIX: Track FPS monitoring interval
+    this.fpsMonitoringInterval = null;
+
     this.loadSettings();
     this.createUI();
     this.startFPSMonitoring();
@@ -867,7 +870,10 @@ class PerformanceSettingsManager {
   startFPSMonitoring() {
     this.autoAdjustCooldown = 0; // Cooldown to prevent spam adjustments
 
-    setInterval(() => {
+    // MEMORY LEAK FIX: Clear existing interval before starting new one
+    this.stopFPSMonitoring();
+
+    this.fpsMonitoringInterval = setInterval(() => {
       this.updateFPS();
 
       // DISABLED: Auto-adjust performance
@@ -879,6 +885,24 @@ class PerformanceSettingsManager {
       //   this.autoAdjustCooldown = now;
       // }
     }, 1000);
+  }
+
+  /**
+   * MEMORY LEAK FIX: Stop FPS monitoring
+   */
+  stopFPSMonitoring() {
+    if (this.fpsMonitoringInterval) {
+      clearInterval(this.fpsMonitoringInterval);
+      this.fpsMonitoringInterval = null;
+    }
+  }
+
+  /**
+   * MEMORY LEAK FIX: Destroy the manager and cleanup
+   */
+  destroy() {
+    this.stopFPSMonitoring();
+    console.log('PerformanceSettingsManager destroyed');
   }
 
   /**

@@ -67,11 +67,17 @@ function calculateComboMultiplier(combo) {
 
 /**
  * Calculate gold and XP bonuses
+ * BUG FIX: Added validation for zombie drop values
  */
 function calculateBonuses(zombie, comboMultiplier) {
+  // BUG FIX: Validate zombie drop values
+  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
+  const multiplier = typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
+
   return {
-    goldBonus: Math.floor(zombie.goldDrop * comboMultiplier),
-    xpBonus: Math.floor(zombie.xpDrop * comboMultiplier)
+    goldBonus: Math.floor(goldDrop * multiplier),
+    xpBonus: Math.floor(xpDrop * multiplier)
   };
 }
 
@@ -99,11 +105,32 @@ function emitComboUpdate(shooter, playerId, comboMultiplier, goldBonus, xpBonus,
 
 /**
  * Handle player level up
+ * BUG FIX: Added validation for player and XP values
  */
 function handlePlayerLevelUp(player, playerId, io) {
-  while (player.xp >= getXPForLevel(player.level)) {
+  // BUG FIX: Validate player object
+  if (!player || typeof player !== 'object') {
+    return;
+  }
+
+  // BUG FIX: Initialize missing values
+  if (typeof player.xp !== 'number' || !isFinite(player.xp)) {
+    player.xp = 0;
+    return;
+  }
+
+  if (typeof player.level !== 'number' || player.level < 1) {
+    player.level = 1;
+  }
+
+  // BUG FIX: Limit level up iterations to prevent infinite loop
+  let levelUps = 0;
+  const MAX_LEVEL_UPS = 100;
+
+  while (player.xp >= getXPForLevel(player.level) && levelUps < MAX_LEVEL_UPS) {
     player.xp -= getXPForLevel(player.level);
     player.level++;
+    levelUps++;
 
     const milestoneBonus = checkMilestoneBonus(player);
     const upgradeChoices = generateUpgradeChoices();

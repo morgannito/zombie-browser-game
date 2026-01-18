@@ -276,6 +276,12 @@ class Renderer {
     this.ctx.fillStyle = '#2d2d44';
 
     walls.forEach(wall => {
+      // FIX: Viewport culling for walls
+      const maxDimension = Math.max(wall.width, wall.height);
+      if (!this.camera.isInViewport(wall.x + wall.width / 2, wall.y + wall.height / 2, maxDimension)) {
+        return;
+      }
+
       this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
 
       // Wall decorations (graffiti, cracks, posters)
@@ -358,6 +364,12 @@ class Renderer {
     }
 
     doors.forEach(door => {
+      // FIX: Viewport culling for doors
+      const maxDimension = Math.max(door.width, door.height);
+      if (!this.camera.isInViewport(door.x + door.width / 2, door.y + door.height / 2, maxDimension)) {
+        return;
+      }
+
       this.ctx.fillStyle = door.active ? '#00ff00' : '#ff0000';
       this.ctx.fillRect(door.x, door.y, door.width, door.height);
 
@@ -370,6 +382,11 @@ class Renderer {
 
   renderPowerups(powerups, powerupTypes, config, now = Date.now()) {
     Object.values(powerups).forEach(powerup => {
+      // FIX: Viewport culling for powerups
+      if (!this.camera.isInViewport(powerup.x, powerup.y, config.POWERUP_SIZE * 2)) {
+        return;
+      }
+
       const type = powerupTypes[powerup.type];
       if (!type) {
         return;
@@ -406,6 +423,11 @@ class Renderer {
 
   renderLoot(loot, config, now = Date.now()) {
     Object.values(loot).forEach(item => {
+      // FIX: Viewport culling for loot
+      if (!this.camera.isInViewport(item.x, item.y, 30)) {
+        return;
+      }
+
       const rotation = (now / 500) % (Math.PI * 2);
 
       this.ctx.save();
@@ -1822,6 +1844,11 @@ class Renderer {
 
   renderZombies(zombies, timestamp = performance.now()) {
     Object.values(zombies).forEach(zombie => {
+      // FIX: Skip invalid zombies (dead or missing properties)
+      if (!zombie || zombie.health <= 0 || !Number.isFinite(zombie.x) || !Number.isFinite(zombie.y)) {
+        return;
+      }
+
       // Viewport culling - ne rendre que les zombies visibles
       // Augmenter la marge pour les boss avec leurs grandes auras (jusqu'à 80px d'aura)
       const cullMargin = zombie.isBoss ? zombie.size * 4 : zombie.size * 2;
@@ -2667,6 +2694,11 @@ class Renderer {
         return;
       }
 
+      // FIX: Viewport culling for other players (always render current player)
+      if (!isCurrentPlayer && !this.camera.isInViewport(p.x, p.y, config.PLAYER_SIZE * 3)) {
+        return;
+      }
+
       // Speed effect
       if (p.speedBoost && dateNow < p.speedBoost) {
         this.ctx.shadowBlur = 20;
@@ -3061,10 +3093,14 @@ class Renderer {
     }
 
     const layers = parallax.layers || [];
+    if (layers.length === 0) {
+      return;
+    }
 
-    this.ctx.save();
-
+    // FIX: Refactored save/restore pattern for clarity - each layer gets its own save/restore
     layers.forEach(layer => {
+      this.ctx.save();
+
       const offsetX = camera.x * layer.parallaxSpeed;
       const offsetY = camera.y * layer.parallaxSpeed * 0.5;
 
@@ -3111,10 +3147,7 @@ class Renderer {
       });
 
       this.ctx.restore();
-      this.ctx.save();
     });
-
-    this.ctx.restore();
   }
 
   renderEnvironmentalParticles(envParticles) {
@@ -3279,17 +3312,13 @@ class Renderer {
     this.ctx.save();
 
     for (const dmg of this.damageNumbers) {
-      // Convert world to screen coordinates
-      const screenX = dmg.x - this.camera.x;
-      const screenY = dmg.y - this.camera.y;
-
-      // Only render if on screen
-      if (screenX < -50 || screenX > this.canvas.width + 50 ||
-          screenY < -50 || screenY > this.canvas.height + 50) {
+      // FIX: Context is already translated by camera, so use world coordinates directly
+      // Viewport culling using camera bounds
+      if (!this.camera.isInViewport(dmg.x, dmg.y, 50)) {
         continue;
       }
 
-      // Render damage number
+      // Render damage number at world coordinates (context already translated)
       this.ctx.globalAlpha = dmg.opacity;
       this.ctx.font = 'bold 20px Arial';
       this.ctx.textAlign = 'center';
@@ -3298,11 +3327,11 @@ class Renderer {
       // Outline
       this.ctx.strokeStyle = '#000';
       this.ctx.lineWidth = 4;
-      this.ctx.strokeText(`-${dmg.damage}`, screenX, screenY);
+      this.ctx.strokeText(`-${dmg.damage}`, dmg.x, dmg.y);
 
       // Fill
       this.ctx.fillStyle = dmg.color;
-      this.ctx.fillText(`-${dmg.damage}`, screenX, screenY);
+      this.ctx.fillText(`-${dmg.damage}`, dmg.x, dmg.y);
     }
 
     this.ctx.restore();

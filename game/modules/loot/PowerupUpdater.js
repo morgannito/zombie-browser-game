@@ -57,12 +57,21 @@ function canCollectPowerup(player, powerup) {
 
 /**
  * Collect powerup and apply effect
+ * BUG FIX: Added validation for powerup type existence
  */
 function collectPowerup(player, powerup, powerupId, gameState, entityManager) {
-  POWERUP_TYPES[powerup.type].effect(player);
+  // BUG FIX: Validate powerup type exists before applying effect
+  const powerupType = POWERUP_TYPES[powerup.type];
+  if (!powerupType || typeof powerupType.effect !== 'function') {
+    console.error(`[POWERUP] Invalid powerup type: ${powerup.type}`);
+    delete gameState.powerups[powerupId];
+    return;
+  }
+
+  powerupType.effect(player);
   delete gameState.powerups[powerupId];
 
-  createParticles(powerup.x, powerup.y, POWERUP_TYPES[powerup.type].color, 12, entityManager);
+  createParticles(powerup.x, powerup.y, powerupType.color || '#ffffff', 12, entityManager);
 }
 
 module.exports = {

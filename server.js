@@ -83,7 +83,7 @@ const { INACTIVITY_TIMEOUT, HEARTBEAT_CHECK_INTERVAL } = require('./config/const
 // ============================================
 // IMPORTS - Socket Handlers
 // ============================================
-const { initSocketHandlers } = require('./sockets/socketHandlers');
+const { initSocketHandlers, stopSessionCleanupInterval } = require('./sockets/socketHandlers');
 
 // ============================================
 // SERVER INITIALIZATION
@@ -234,6 +234,12 @@ async function startServer() {
   gameState.adminCommands = adminCommands;
   logger.info('Admin commands initialized (debug mode enabled)');
 
+  // BUG FIX: Start powerup spawner - was missing, powerups never spawned
+  const { spawnPowerup } = require('./game/lootFunctions');
+  powerupSpawnerTimer = setInterval(() => {
+    spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector);
+  }, CONFIG.POWERUP_SPAWN_INTERVAL);
+  logger.info(`Powerup spawner started (interval: ${CONFIG.POWERUP_SPAWN_INTERVAL}ms)`);
 
   // ============================================
   // GAME LOOP
@@ -250,73 +256,99 @@ async function startServer() {
   }, perfIntegration.getTickInterval());
 
   // CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
+  // Uses a flag to prevent race conditions with game loop
+  let heartbeatInProgress = false;
+
   heartbeatTimer = setInterval(() => {
-    const now = Date.now();
-    const playerIds = Object.keys(gameState.players);
-    let cleanedUp = 0;
-    let orphanedObjects = 0;
+    // CRITICAL FIX: Prevent concurrent execution with game loop
+    if (heartbeatInProgress) {
+      return;
+    }
+    heartbeatInProgress = true;
 
-    for (const playerId of playerIds) {
-      const player = gameState.players[playerId];
+    try {
+      const now = Date.now();
+      // CRITICAL FIX: Take snapshot of player IDs to avoid iteration issues
+      const playerIds = Object.keys(gameState.players).slice();
+      let cleanedUp = 0;
+      let orphanedObjects = 0;
 
-      // CRITICAL FIX: Safety check for orphaned/corrupted player objects
-      if (!player || typeof player !== 'object') {
-        logger.warn('⚠️  Orphaned player object detected', { playerId });
-        delete gameState.players[playerId];
-        orphanedObjects++;
-        cleanedUp++;
-        continue;
-      }
+      // CRITICAL FIX: Mark players for deletion instead of deleting during iteration
+      const playersToDelete = [];
 
-      // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
-      if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
-        player.lastActivityTime = now;
-        logger.warn('⚠️  Player missing lastActivityTime, initialized', {
-          playerId,
-          nickname: player.nickname
-        });
-        continue;
-      }
+      for (const playerId of playerIds) {
+        const player = gameState.players[playerId];
 
-      const inactiveDuration = now - player.lastActivityTime;
-
-      // Check if player is inactive for too long
-      if (inactiveDuration > INACTIVITY_TIMEOUT) {
-        logger.info('⏱️  Player timeout', {
-          player: player.nickname || playerId,
-          inactiveDuration,
-          wasConnected: !!player.socketId
-        });
-
-        // Disconnect player socket if still connected
-        if (player.socketId) {
-          const socket = io.sockets.sockets.get(player.socketId);
-          if (socket) {
-            socket.disconnect(true);
-          }
+        // CRITICAL FIX: Safety check for orphaned/corrupted player objects
+        if (!player || typeof player !== 'object') {
+          logger.warn('Orphaned player object detected', { playerId });
+          playersToDelete.push(playerId);
+          orphanedObjects++;
+          cleanedUp++;
+          continue;
         }
 
+        // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
+        if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
+          player.lastActivityTime = now;
+          logger.warn('Player missing lastActivityTime, initialized', {
+            playerId,
+            nickname: player.nickname
+          });
+          continue;
+        }
+
+        const inactiveDuration = now - player.lastActivityTime;
+
+        // Check if player is inactive for too long
+        if (inactiveDuration > INACTIVITY_TIMEOUT) {
+          logger.info('Player timeout', {
+            player: player.nickname || playerId,
+            inactiveDuration,
+            wasConnected: !!player.socketId
+          });
+
+          // Disconnect player socket if still connected
+          if (player.socketId) {
+            const socket = io.sockets.sockets.get(player.socketId);
+            if (socket) {
+              socket.disconnect(true);
+            }
+          }
+
+          playersToDelete.push(playerId);
+          cleanedUp++;
+        }
+      }
+
+      // CRITICAL FIX: Delete players after iteration to prevent race conditions
+      for (const playerId of playersToDelete) {
         delete gameState.players[playerId];
-        cleanedUp++;
+        // Also cleanup NetworkManager tracking data
+        if (networkManager) {
+          networkManager.cleanupPlayer(playerId);
+        }
       }
-    }
 
-    // CRITICAL FIX: Log cleanup stats for monitoring
-    if (cleanedUp > 0) {
-      logger.info('🧹 Heartbeat cleanup completed', {
-        playersRemoved: cleanedUp,
-        orphanedObjects,
-        remainingPlayers: Object.keys(gameState.players).length,
-        timestamp: now
-      });
-
-      // Track cleanup metrics
-      if (metricsCollector) {
-        metricsCollector.recordCleanup({
+      // CRITICAL FIX: Log cleanup stats for monitoring
+      if (cleanedUp > 0) {
+        logger.info('Heartbeat cleanup completed', {
           playersRemoved: cleanedUp,
-          orphaned: orphanedObjects
+          orphanedObjects,
+          remainingPlayers: Object.keys(gameState.players).length,
+          timestamp: now
         });
+
+        // Track cleanup metrics
+        if (metricsCollector) {
+          metricsCollector.recordCleanup({
+            playersRemoved: cleanedUp,
+            orphaned: orphanedObjects
+          });
+        }
       }
+    } finally {
+      heartbeatInProgress = false;
     }
   }, HEARTBEAT_CHECK_INTERVAL);
 
@@ -368,6 +400,7 @@ startServer().catch(err => {
 let isShuttingDown = false;
 let gameLoopTimer = null;
 let heartbeatTimer = null;
+let powerupSpawnerTimer = null;
 
 function cleanupServer() {
   // CRITICAL FIX: Prevent multiple simultaneous shutdowns
@@ -390,6 +423,15 @@ function cleanupServer() {
     heartbeatTimer = null;
     logger.info('✅ Heartbeat timer stopped');
   }
+  if (powerupSpawnerTimer) {
+    clearInterval(powerupSpawnerTimer);
+    powerupSpawnerTimer = null;
+    logger.info('Powerup spawner stopped');
+  }
+
+  // MEMORY LEAK FIX: Stop session cleanup interval from socketHandlers
+  stopSessionCleanupInterval();
+  logger.info('Session cleanup interval stopped');
 
   // MEDIUM FIX: Cleanup HazardManager
   if (gameState.hazardManager) {

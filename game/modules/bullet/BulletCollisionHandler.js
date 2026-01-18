@@ -66,6 +66,11 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
   const hitZombies = collisionManager.checkBulletZombieCollisions(bullet);
 
   for (const {id: zombieId, zombie} of hitZombies) {
+    // FIX: Check if bullet was destroyed (e.g., by exceeding pierce limit)
+    if (!gameState.bullets[bulletId]) {
+      break;
+    }
+
     if (bullet.piercedZombies && bullet.piercedZombies.includes(zombieId)) {
       continue;
     }
@@ -87,7 +92,12 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
     if (zombie.health <= 0) {
       handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, perfIntegration);
     }
-    break;
+
+    // FIX: Only break if bullet has no piercing or was destroyed
+    // Piercing bullets continue to hit multiple zombies in the same frame
+    if (!gameState.bullets[bulletId]) {
+      break;
+    }
   }
 }
 

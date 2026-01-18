@@ -123,7 +123,9 @@ function processChainJump(bullet, sourceZombie, target, weapon, gameState, entit
   bullet.chainJumps++;
   bullet.chainedZombies.push(target.id);
 
-  const chainDamage = bullet.damage * weapon.chainDamageReduction;
+  // FIX: Use chainDamage for current chain effect without modifying bullet.damage
+  // This preserves original damage for any subsequent piercing hits
+  const chainDamage = (bullet.chainDamage || bullet.damage) * weapon.chainDamageReduction;
   target.zombie.health -= chainDamage;
 
   applyChainLifeSteal(bullet, chainDamage, gameState);
@@ -133,7 +135,8 @@ function processChainJump(bullet, sourceZombie, target, weapon, gameState, entit
     handleChainKill(target.zombie, target.id, bullet, gameState, entityManager);
   }
 
-  bullet.damage = chainDamage;
+  // FIX: Store chain damage separately instead of overwriting bullet.damage
+  bullet.chainDamage = chainDamage;
   handleChainLightning(bullet, target.zombie, target.id, gameState, entityManager, collisionManager, io);
 }
 
@@ -286,10 +289,17 @@ function handleIceCannon(bullet, zombie, zombieId, gameState, entityManager) {
  * Freeze zombie completely
  */
 function freezeZombie(zombie, weapon, now, entityManager) {
+  // FIX: Get the true original speed, not the currently reduced speed
+  // Priority: existing frozen originalSpeed > existing slowed originalSpeed > baseSpeed > current speed
+  const trueOriginalSpeed = zombie.frozen?.originalSpeed ||
+                            zombie.slowed?.originalSpeed ||
+                            zombie.baseSpeed ||
+                            zombie.speed;
+
   zombie.frozen = {
     startTime: now,
     duration: weapon.freezeDuration,
-    originalSpeed: zombie.speed
+    originalSpeed: trueOriginalSpeed
   };
   zombie.speed = 0;
 
@@ -301,13 +311,20 @@ function freezeZombie(zombie, weapon, now, entityManager) {
  */
 function slowZombie(zombie, weapon, now, entityManager) {
   if (!zombie.slowed || zombie.slowed.endTime < now + weapon.slowDuration) {
+    // FIX: Get the true original speed, not the currently reduced speed
+    // Priority: existing slowed originalSpeed > existing frozen originalSpeed > baseSpeed > current speed
+    const trueOriginalSpeed = zombie.slowed?.originalSpeed ||
+                              zombie.frozen?.originalSpeed ||
+                              zombie.baseSpeed ||
+                              zombie.speed;
+
     zombie.slowed = {
       startTime: now,
       endTime: now + weapon.slowDuration,
-      originalSpeed: zombie.speed,
+      originalSpeed: trueOriginalSpeed,
       slowAmount: weapon.slowAmount
     };
-    zombie.speed = zombie.slowed.originalSpeed * (1 - weapon.slowAmount);
+    zombie.speed = trueOriginalSpeed * (1 - weapon.slowAmount);
 
     createParticles(zombie.x, zombie.y, '#aaddff', 8, entityManager);
   }

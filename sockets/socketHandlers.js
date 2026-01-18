@@ -33,23 +33,49 @@ const MathUtils = require('../lib/MathUtils');
 const disconnectedPlayers = new Map();
 
 /**
- * Periodically clean up expired session recovery states
+ * MEMORY LEAK FIX: Track the session cleanup interval for proper shutdown
+ * @type {NodeJS.Timeout|null}
  */
-setInterval(() => {
-  const now = Date.now();
-  let cleanedCount = 0;
+let sessionCleanupInterval = null;
 
-  for (const [sessionId, data] of disconnectedPlayers.entries()) {
-    if (now - data.disconnectedAt > SESSION_RECOVERY_TIMEOUT) {
-      disconnectedPlayers.delete(sessionId);
-      cleanedCount++;
+/**
+ * Start the session cleanup interval
+ * MEMORY LEAK FIX: Now properly tracked for cleanup
+ */
+function startSessionCleanupInterval() {
+  // Clear any existing interval first
+  stopSessionCleanupInterval();
+
+  sessionCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [sessionId, data] of disconnectedPlayers.entries()) {
+      if (now - data.disconnectedAt > SESSION_RECOVERY_TIMEOUT) {
+        disconnectedPlayers.delete(sessionId);
+        cleanedCount++;
+      }
     }
-  }
 
-  if (cleanedCount > 0) {
-    logger.info('Session recovery cleanup', { cleanedCount, expiredSessions: cleanedCount });
+    if (cleanedCount > 0) {
+      logger.info('Session recovery cleanup', { cleanedCount, expiredSessions: cleanedCount });
+    }
+  }, 60000); // Check every minute
+}
+
+/**
+ * Stop the session cleanup interval
+ * MEMORY LEAK FIX: Cleanup function for graceful shutdown
+ */
+function stopSessionCleanupInterval() {
+  if (sessionCleanupInterval) {
+    clearInterval(sessionCleanupInterval);
+    sessionCleanupInterval = null;
   }
-}, 60000); // Check every minute
+}
+
+// MEMORY LEAK FIX: Auto-start the interval when module loads
+startSessionCleanupInterval();
 
 /**
  * Rate limiting system
@@ -219,8 +245,16 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
       // Créer un nouveau joueur (Rogue-like)
       // Add random spawn offset to prevent players spawning on top of each other
+      // Safe spawn zone: wallThickness + playerSize as minimum margin from walls
+      const wallThickness = CONFIG.WALL_THICKNESS || 40;
+      const playerSize = CONFIG.PLAYER_SIZE || 20;
+      const safeMargin = wallThickness + playerSize + 20; // Extra 20px safety buffer
+
       const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
-      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
+      const spawnOffsetY = Math.random() * 40; // 0-40px variation (always towards center)
+
+      // Spawn Y: safeMargin from bottom wall, not too close to center
+      const spawnY = CONFIG.ROOM_HEIGHT - safeMargin - 50 - spawnOffsetY;
 
       gameState.players[socket.id] = {
         id: socket.id,
@@ -233,7 +267,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
         invisibleEndTime: 0, // Fin de l'invisibilité
         lastActivityTime: Date.now(), // Pour détecter l'inactivité
         x: CONFIG.ROOM_WIDTH / 2 + spawnOffsetX,
-        y: CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY,
+        y: spawnY,
         health: CONFIG.PLAYER_MAX_HEALTH,
         maxHealth: CONFIG.PLAYER_MAX_HEALTH,
         level: 1,
@@ -484,21 +518,40 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
     }
 
     // Vérifier collision avec les murs
-    // Use a smaller hitbox (0.5x) for server validation to prevent "sticky" walls
-    // where server thinks player is colliding but client doesn't.
-    // This allows the client to be the primary authority for smooth collision sliding.
-    if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE * 0.5)) {
+    // BUG FIX: Utiliser 0.8x au lieu de 0.5x pour éviter que le joueur traverse les murs
+    // La valeur 0.5x était trop petite et permettait au joueur de passer à travers
+    // La valeur 0.8x donne une légère tolérance pour le sliding tout en empêchant le passage
+    if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE * 0.8)) {
       player.x = newX;
       player.y = newY;
     } else {
-      // Collision detected - send position correction to client to keep them in sync
-      // Only send if the client position is significantly different (> 20px)
-      // We relaxed this from 5px to 20px to reduce "snapping" when rubbing against walls
-      const clientDistance = Math.sqrt(
-        Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
-      );
-      if (clientDistance > 20) {
-        socket.emit('positionCorrection', { x: player.x, y: player.y });
+      // BUG FIX: Essayer le sliding (mouvement sur un seul axe) avant de rejeter
+      // Cela évite que le joueur reste "collé" aux murs
+      let slideX = player.x;
+      let slideY = player.y;
+
+      // Essayer de glisser sur l'axe X
+      if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE * 0.8)) {
+        slideX = newX;
+      }
+      // Essayer de glisser sur l'axe Y
+      if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE * 0.8)) {
+        slideY = newY;
+      }
+
+      // Appliquer le sliding si on a pu bouger
+      if (slideX !== player.x || slideY !== player.y) {
+        player.x = slideX;
+        player.y = slideY;
+      } else {
+        // Collision totale - envoyer correction de position au client
+        // BUG FIX: Réduire le seuil de 20px à 10px pour une meilleure synchronisation
+        const clientDistance = Math.sqrt(
+          Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
+        );
+        if (clientDistance > 10) {
+          socket.emit('positionCorrection', { x: player.x, y: player.y });
+        }
       }
     }
 
@@ -584,7 +637,9 @@ function registerShootHandler(socket, gameState, entityManager) {
       }
 
       // Piercing (de base + piercing de l'arme)
-      const totalPiercing = (player.bulletPiercing || 0) + (weapon.piercing || 0);
+      // FIX: Support plasmaPiercing for plasma rifle weapon
+      const weaponPiercing = weapon.piercing || weapon.plasmaPiercing || 0;
+      const totalPiercing = (player.bulletPiercing || 0) + weaponPiercing;
 
       // CORRECTION: Utilisation du pool d'objets au lieu de création manuelle
       entityManager.createBullet({
@@ -674,10 +729,16 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.invisible = false;
       player.invisibleEndTime = 0;
       // Add random spawn offset to prevent players spawning on top of each other
-      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
-      const spawnOffsetY = (Math.random() - 0.5) * 50;  // ±25px vertically
-      player.x = CONFIG.ROOM_WIDTH / 2 + spawnOffsetX;
-      player.y = CONFIG.ROOM_HEIGHT - 100 + spawnOffsetY;
+      // Safe spawn zone: wallThickness + playerSize as minimum margin from walls
+      const respawnWallThickness = CONFIG.WALL_THICKNESS || 40;
+      const respawnPlayerSize = CONFIG.PLAYER_SIZE || 20;
+      const respawnSafeMargin = respawnWallThickness + respawnPlayerSize + 20; // Extra 20px safety buffer
+
+      const respawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
+      const respawnOffsetY = Math.random() * 40; // 0-40px variation (always towards center)
+
+      player.x = CONFIG.ROOM_WIDTH / 2 + respawnOffsetX;
+      player.y = CONFIG.ROOM_HEIGHT - respawnSafeMargin - 50 - respawnOffsetY;
       player.health = totalMaxHealth;
       player.maxHealth = totalMaxHealth;
       player.alive = true;
@@ -1116,5 +1177,7 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId) 
 }
 
 module.exports = {
-  initSocketHandlers
+  initSocketHandlers,
+  // MEMORY LEAK FIX: Export cleanup function for graceful shutdown
+  stopSessionCleanupInterval
 };

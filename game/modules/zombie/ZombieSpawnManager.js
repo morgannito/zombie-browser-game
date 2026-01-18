@@ -83,6 +83,9 @@ class ZombieSpawnManager {
 
   /**
    * Sélectionne le type de zombie basé sur la wave actuelle
+   *
+   * BUG FIX: Ne retourne JAMAIS de boss type pour les spawns réguliers.
+   * Les boss sont gérés séparément par spawnBoss().
    */
   selectZombieType(currentWave) {
     // Trouver la config de wave
@@ -100,9 +103,17 @@ class ZombieSpawnManager {
       wavePhase = { types: 'ALL', forceBoss: false };
     }
 
-    // Boss forcé
+    // BUG FIX: Sur les boss waves (forceBoss), ne pas spawner de zombies réguliers
+    // via cette méthode. Utiliser la config de la wave précédente pour les types.
+    // Le boss sera spawné séparément par spawnBoss() quand tous les zombies sont morts.
     if (wavePhase.forceBoss) {
-      return wavePhase.types[0];
+      // Trouver la config de la wave non-boss la plus proche avant celle-ci
+      const fallbackPhase = this.getFallbackWaveConfig(currentWave);
+      if (fallbackPhase && fallbackPhase.types !== 'ALL') {
+        return this.weightedSelection(fallbackPhase.types, currentWave);
+      }
+      // Fallback ultime: zombies de base
+      return this.weightedSelection(['normal', 'fast', 'tank'], currentWave);
     }
 
     // Mode ALL (chaos waves)
@@ -113,6 +124,28 @@ class ZombieSpawnManager {
 
     // Sélection pondérée normale
     return this.weightedSelection(wavePhase.types, currentWave);
+  }
+
+  /**
+   * Récupère la config de wave non-boss la plus proche pour fallback
+   */
+  getFallbackWaveConfig(currentWave) {
+    // Chercher la dernière config non-boss avant cette wave
+    let closestPhase = null;
+    let closestDistance = Infinity;
+
+    for (const phase in this.waveConfig) {
+      const config = this.waveConfig[phase];
+      if (!config.forceBoss && config.range[1] < currentWave) {
+        const distance = currentWave - config.range[1];
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestPhase = config;
+        }
+      }
+    }
+
+    return closestPhase;
   }
 
   /**

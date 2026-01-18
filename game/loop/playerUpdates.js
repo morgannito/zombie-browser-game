@@ -119,14 +119,17 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
 
 /**
  * Update Tesla Coil weapon effects
+ * BUG FIX: Added io and zombieManager for boss kill handling
  * @param {Object} player - Player object
  * @param {String} playerId - Player ID
  * @param {Number} now - Current timestamp
  * @param {Object} gameState - Game state
  * @param {Object} collisionManager - Collision manager
  * @param {Object} entityManager - Entity manager
+ * @param {Object} io - Socket.IO instance (optional)
+ * @param {Object} zombieManager - Zombie manager (optional)
  */
-function updateTeslaCoil(player, playerId, now, gameState, collisionManager, entityManager) {
+function updateTeslaCoil(player, playerId, now, gameState, collisionManager, entityManager, io = null, zombieManager = null) {
   if (player.weapon === 'teslaCoil' && player.hasNickname && !player.spawnProtection) {
     if (!player.lastTeslaShot) {
       player.lastTeslaShot = 0;
@@ -179,6 +182,12 @@ function updateTeslaCoil(player, playerId, now, gameState, collisionManager, ent
             createLoot(zombie.x, zombie.y, goldBonus, xpBonus, gameState);
             delete gameState.zombies[zombie.id];
             gameState.zombiesKilledThisWave++;
+
+            // BUG FIX: Si c'etait un boss, declencher la nouvelle wave
+            if (zombie.isBoss && io && zombieManager) {
+              const { handleNewWave } = require('../modules/wave/WaveManager');
+              handleNewWave(gameState, io, zombieManager);
+            }
           }
         }
 

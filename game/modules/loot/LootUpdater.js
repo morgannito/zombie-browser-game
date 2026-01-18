@@ -58,10 +58,15 @@ function canCollectLoot(player, loot) {
 
 /**
  * Collect loot and update player stats
+ * BUG FIX: Added validation for loot values to prevent NaN
  */
 function collectLoot(player, playerId, loot, lootId, gameState, io, entityManager) {
-  player.gold += loot.gold;
-  player.xp += loot.xp;
+  // BUG FIX: Validate loot values before adding
+  const goldToAdd = typeof loot.gold === 'number' && isFinite(loot.gold) ? loot.gold : 0;
+  const xpToAdd = typeof loot.xp === 'number' && isFinite(loot.xp) ? loot.xp : 0;
+
+  player.gold = (player.gold || 0) + goldToAdd;
+  player.xp = (player.xp || 0) + xpToAdd;
 
   createParticles(loot.x, loot.y, '#ffff00', 10, entityManager);
   delete gameState.loot[lootId];

@@ -531,6 +531,9 @@
     }
   }
 
+  // MEMORY LEAK FIX: Track intervals for cleanup
+  let waveCheckInterval = null;
+
   /**
      * Écoute les changements de vague
      */
@@ -546,8 +549,13 @@
       });
     }
 
+    // MEMORY LEAK FIX: Clear existing interval before creating new one
+    if (waveCheckInterval) {
+      clearInterval(waveCheckInterval);
+    }
+
     // Vérifier périodiquement
-    setInterval(() => {
+    waveCheckInterval = setInterval(() => {
       const waveElement = document.getElementById('wave-value');
       if (waveElement) {
         const waveNumber = parseInt(waveElement.textContent) || 1;
@@ -555,6 +563,15 @@
       }
     }, 1000);
   }
+
+  // MEMORY LEAK FIX: Expose cleanup function
+  window.cleanupAssetIntegration = function() {
+    if (waveCheckInterval) {
+      clearInterval(waveCheckInterval);
+      waveCheckInterval = null;
+    }
+    console.log('Asset integration cleaned up');
+  };
 
   /**
      * Patch le système audio pour utiliser les sons chargés
@@ -598,13 +615,19 @@
      * Initialise tous les patches
      */
   async function initialize() {
-    console.log('🚀 Démarrage de l\'intégration des assets...');
+    console.log('Demarrage de l\'integration des assets...');
 
     // Charger les assets
     await initializeAssets();
 
+    // MEMORY LEAK FIX: Track attempts and add timeout to prevent infinite interval
+    let waitAttempts = 0;
+    const maxAttempts = 100; // 10 seconds max wait
+
     // Attendre que le GameRenderer soit disponible
     const waitForRenderer = setInterval(() => {
+      waitAttempts++;
+
       if (window.GameRenderer) {
         clearInterval(waitForRenderer);
 
@@ -614,7 +637,11 @@
         patchAudioSystem();
         listenForWaveChanges();
 
-        console.log('✅ Intégration des assets complétée');
+        console.log('Integration des assets completee');
+      } else if (waitAttempts >= maxAttempts) {
+        // MEMORY LEAK FIX: Clear interval after timeout to prevent infinite loop
+        clearInterval(waitForRenderer);
+        console.warn('GameRenderer not found after 10s, asset integration aborted');
       }
     }, 100);
   }

@@ -7,6 +7,7 @@ class AddictionIntegration {
   constructor() {
     this.initialized = false;
     this.gameStarted = false;
+    this.periodicCheckInterval = null; // MEMORY LEAK FIX: Track interval for cleanup
   }
 
   // Initialiser tous les systèmes
@@ -528,6 +529,32 @@ class AddictionIntegration {
 
     return stats;
   }
+
+  // MEMORY LEAK FIX: Start periodic check with tracked interval
+  startPeriodicCheck() {
+    // Clear any existing interval first
+    this.stopPeriodicCheck();
+
+    this.periodicCheckInterval = setInterval(() => {
+      this.periodicCheck();
+    }, 5000);
+  }
+
+  // MEMORY LEAK FIX: Stop periodic check and clear interval
+  stopPeriodicCheck() {
+    if (this.periodicCheckInterval) {
+      clearInterval(this.periodicCheckInterval);
+      this.periodicCheckInterval = null;
+    }
+  }
+
+  // MEMORY LEAK FIX: Cleanup method for destroying the system
+  destroy() {
+    this.stopPeriodicCheck();
+    this.initialized = false;
+    this.gameStarted = false;
+    console.log('AddictionIntegration destroyed');
+  }
 }
 
 // Initialiser le système d'intégration
@@ -537,16 +564,11 @@ window.addictionIntegration = new AddictionIntegration();
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     window.addictionIntegration.initialize();
+    window.addictionIntegration.startPeriodicCheck(); // MEMORY LEAK FIX: Use tracked interval
   });
 } else {
   window.addictionIntegration.initialize();
+  window.addictionIntegration.startPeriodicCheck(); // MEMORY LEAK FIX: Use tracked interval
 }
 
-// Check périodique toutes les 5 secondes
-setInterval(() => {
-  if (window.addictionIntegration) {
-    window.addictionIntegration.periodicCheck();
-  }
-}, 5000);
-
-console.log('🎮 Addiction Integration Loaded!');
+console.log('Addiction Integration Loaded!');
