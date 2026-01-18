@@ -15,7 +15,12 @@ const PORT = process.env.PORT || 3000;
 // Security: Configure allowed origins from environment
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').filter(o => o.length > 0)
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  : [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://zombie.lonewolf.fr',
+      'http://zombie.lonewolf.fr'
+    ];
 
 // CORS strict validation in production
 if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
