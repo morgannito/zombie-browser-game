@@ -235,17 +235,22 @@ class EventSystem {
 
     document.body.appendChild(announcement);
 
+    // Helper pour setTimeout avec contexte correct
+    const safeTimeout = (cb, delay) => window.timerManager
+      ? window.timerManager.setTimeout(cb, delay)
+      : setTimeout(cb, delay);
+
     announcement.querySelector('.event-close-btn').addEventListener('click', () => {
       announcement.classList.remove('show');
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.remove(), 500);
+      safeTimeout(() => announcement.remove(), 500);
     });
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.classList.add('show'), 100);
+    safeTimeout(() => announcement.classList.add('show'), 100);
 
     // Auto-fermer après 10 secondes
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
+    safeTimeout(() => {
       announcement.classList.remove('show');
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => announcement.remove(), 500);
+      safeTimeout(() => announcement.remove(), 500);
     }, 10000);
 
     // Toast aussi
