@@ -1,4 +1,4 @@
-module.exports = {
+const config = {
   testEnvironment: 'node',
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
@@ -12,13 +12,18 @@ module.exports = {
     '**/__tests__/**/*.js',
     '**/?(*.)+(spec|test).js'
   ],
-  coverageThreshold: {
+  verbose: true
+};
+
+if (process.env.CI) {
+  config.coverageThreshold = {
     global: {
       branches: 70,
       functions: 70,
       lines: 70,
       statements: 70
     }
-  },
-  verbose: true
-};
+  };
+}
+
+module.exports = config;
