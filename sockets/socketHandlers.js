@@ -13,7 +13,6 @@
 const logger = require('../lib/infrastructure/Logger');
 const ConfigManager = require('../lib/server/ConfigManager');
 const { cleanupPlayerBullets } = require('../game/utilityFunctions');
-const { loadRoom } = require('../game/roomFunctions');
 const {
   validateMovementData,
   validateShootData,
@@ -27,7 +26,7 @@ const MathUtils = require('../lib/MathUtils');
 
 /**
  * Map to store disconnected player states for recovery
- * Key: sessionId, Value: { playerState, disconnectedAt, previousSocketId }
+ * Key: sessionId, Value: { playerState, disconnectedAt, previousSocketId, accountId }
  * States are kept for 5 minutes after disconnection
  */
 const disconnectedPlayers = new Map();
@@ -83,6 +82,35 @@ startSessionCleanupInterval();
 const rateLimits = new Map();
 
 const { RATE_LIMIT_CONFIG } = require('../config/constants');
+
+const SESSION_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizeSessionId(sessionId) {
+  if (typeof sessionId !== 'string') {
+    return null;
+  }
+  const trimmed = sessionId.trim();
+  return SESSION_ID_REGEX.test(trimmed) ? trimmed : null;
+}
+
+function sanitizePlayerState(player) {
+  if (!player || typeof player !== 'object') {
+    return player;
+  }
+  const sanitized = Object.assign(Object.create(null), player);
+  delete sanitized.sessionId;
+  delete sanitized.socketId;
+  delete sanitized.accountId;
+  return sanitized;
+}
+
+function sanitizePlayersState(players) {
+  const sanitized = {};
+  for (const id in players) {
+    sanitized[id] = sanitizePlayerState(players[id]);
+  }
+  return sanitized;
+}
 
 function checkRateLimit(socketId, eventName) {
   const config = RATE_LIMIT_CONFIG[eventName];
@@ -184,12 +212,17 @@ function safeHandler(handlerName, handler, options = {}) {
  * @param {Object} perfIntegration - Performance integration instance
  * @param {Object} container - Dependency injection container (optional)
  * @returns {Function} Connection handler
- */
+  */
 function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration, container = null) {
   return (socket) => {
-    const sessionId = socket.handshake.auth?.sessionId;
+    const sessionId = normalizeSessionId(socket.handshake.auth?.sessionId);
+    const accountId = socket.userId || null;
 
-    logger.info('Player connected', { socketId: socket.id, sessionId: sessionId || 'none' });
+    logger.info('Player connected', {
+      socketId: socket.id,
+      sessionId: sessionId || 'none',
+      accountId: accountId || 'none'
+    });
 
     // RECOVERY: Check if this session has a saved state
     let playerRecovered = false;
@@ -197,31 +230,42 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       const savedData = disconnectedPlayers.get(sessionId);
       const timeSinceDisconnect = Date.now() - savedData.disconnectedAt;
 
-      logger.info('Session recovery found', {
-        sessionId,
-        disconnectedSecs: Math.round(timeSinceDisconnect / 1000)
-      });
+      if (accountId && savedData.accountId && savedData.accountId !== accountId) {
+        logger.warn('Session recovery refused - account mismatch', {
+          sessionId,
+          accountId,
+          savedAccountId: savedData.accountId
+        });
+      } else {
+        logger.info('Session recovery found', {
+          sessionId,
+          disconnectedSecs: Math.round(timeSinceDisconnect / 1000)
+        });
 
-      // Restore player state with new socket ID
-      const restoredPlayer = {
-        ...savedData.playerState,
-        id: socket.id, // Update to new socket ID
-        sessionId: sessionId, // Ensure sessionId is set
-        lastActivityTime: Date.now() // Reset activity timer
-      };
+        // Restore player state with new socket ID
+        const restoredAccountId = accountId || savedData.accountId || null;
+        const restoredPlayer = {
+          ...savedData.playerState,
+          id: socket.id, // Update to new socket ID
+          socketId: socket.id,
+          sessionId: sessionId, // Ensure sessionId is set
+          accountId: restoredAccountId,
+          lastActivityTime: Date.now() // Reset activity timer
+        };
 
-      gameState.players[socket.id] = restoredPlayer;
-      disconnectedPlayers.delete(sessionId);
-      playerRecovered = true;
+        gameState.players[socket.id] = restoredPlayer;
+        disconnectedPlayers.delete(sessionId);
+        playerRecovered = true;
 
-      logger.info('Player session restored', {
-        sessionId,
-        nickname: restoredPlayer.nickname || 'Unknown',
-        level: restoredPlayer.level,
-        health: restoredPlayer.health,
-        maxHealth: restoredPlayer.maxHealth,
-        gold: restoredPlayer.gold
-      });
+        logger.info('Player session restored', {
+          sessionId,
+          nickname: restoredPlayer.nickname || 'Unknown',
+          level: restoredPlayer.level,
+          health: restoredPlayer.health,
+          maxHealth: restoredPlayer.maxHealth,
+          gold: restoredPlayer.gold
+        });
+      }
     }
 
     // Create new player if no recovery happened
@@ -258,7 +302,9 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
       gameState.players[socket.id] = {
         id: socket.id,
-        sessionId: sessionId || null, // Store sessionId for progression tracking
+        socketId: socket.id,
+        sessionId: sessionId || null, // Store sessionId for recovery tracking
+        accountId: accountId,
         nickname: null, // Pseudo non défini au départ
         hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
         spawnProtection: false, // Protection de spawn inactive
@@ -316,15 +362,15 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       };
     }
 
-    // Apply skill bonuses from account progression (if player has UUID/sessionId)
+    // Apply skill bonuses from account progression (if player has account ID)
     const player = gameState.players[socket.id];
-    if (sessionId && player && gameState.progressionIntegration) {
+    if (accountId && player && gameState.progressionIntegration) {
       // Apply skill bonuses asynchronously (don't block spawn)
-      gameState.progressionIntegration.applySkillBonusesOnSpawn(player, sessionId, CONFIG)
+      gameState.progressionIntegration.applySkillBonusesOnSpawn(player, accountId, CONFIG)
         .then(() => {
           logger.info('Skill bonuses applied', {
             socketId: socket.id,
-            sessionId,
+            accountId,
             health: player.health,
             maxHealth: player.maxHealth
           });
@@ -332,7 +378,7 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
         .catch(error => {
           logger.error('Failed to apply skill bonuses', {
             socketId: socket.id,
-            sessionId,
+            accountId,
             error: error.message
           });
         });
@@ -359,8 +405,9 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
 
     // CRITICAL FIX: Send full game state immediately to new player
     // This ensures they see all existing players, zombies, etc. right away
+    const publicPlayers = sanitizePlayersState(gameState.players);
     socket.emit('gameState', {
-      players: gameState.players,
+      players: publicPlayers,
       zombies: gameState.zombies,
       bullets: gameState.bullets,
       particles: gameState.particles,
@@ -378,14 +425,14 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
     // Register event handlers
     registerPlayerMoveHandler(socket, gameState, roomManager);
     registerShootHandler(socket, gameState, entityManager);
-    registerRespawnHandler(socket, gameState, entityManager, roomManager);
+    registerRespawnHandler(socket, gameState, entityManager);
     registerSelectUpgradeHandler(socket, gameState);
     registerBuyItemHandler(socket, gameState);
     registerSetNicknameHandler(socket, gameState, io, container);
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
-    registerDisconnectHandler(socket, gameState, entityManager, sessionId);
+    registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId);
 
     // Register admin commands handlers
     if (gameState.adminCommands) {
@@ -679,7 +726,7 @@ function registerShootHandler(socket, gameState, entityManager) {
 /**
  * Register respawn handler
  */
-function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
+function registerRespawnHandler(socket, gameState, entityManager) {
   socket.on('respawn', safeHandler('respawn', function () {
     const player = gameState.players[socket.id];
     if (player) {
@@ -782,8 +829,6 @@ function registerRespawnHandler(socket, gameState, entityManager, roomManager) {
       player.speedMultiplier = savedMultipliers.speed;
       player.fireRateMultiplier = savedMultipliers.fireRate;
 
-      // Recharger depuis la première salle
-      loadRoom(0, roomManager);
     }
   }));
 }
@@ -998,19 +1043,23 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
 
     logger.info('Player chose nickname', { socketId: socket.id, nickname });
 
-    // HIGH FIX: Create player in database if container available and sessionId exists
-    if (container && player.sessionId) {
+    const accountId = player.accountId || socket.userId || null;
+    if (container && accountId) {
       try {
-        const createPlayerUseCase = container.get('createPlayerUseCase');
-        await createPlayerUseCase.execute({
-          id: player.sessionId,
-          username: nickname
-        });
-        logger.info('Player created in database', { sessionId: player.sessionId, username: nickname });
+        const playerRepository = container.get('playerRepository');
+        const existingPlayer = await playerRepository.findById(accountId);
+        if (!existingPlayer) {
+          const createPlayerUseCase = container.get('createPlayerUseCase');
+          await createPlayerUseCase.execute({
+            id: accountId,
+            username: nickname
+          });
+          logger.info('Player created in database', { accountId, username: nickname });
+        }
       } catch (error) {
         // Log but don't block gameplay - player creation is optional for progression features
-        logger.warn('Failed to create player in database', {
-          sessionId: player.sessionId,
+        logger.warn('Failed to ensure player exists in database', {
+          accountId,
           username: nickname,
           error: error.message
         });
@@ -1088,19 +1137,24 @@ function registerPingHandler(socket) {
 /**
  * Register disconnect handler
  */
-function registerDisconnectHandler(socket, gameState, entityManager, sessionId) {
+function registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId) {
   socket.on('disconnect', safeHandler('disconnect', function () {
     const player = gameState.players[socket.id];
 
-    logger.info('Player disconnected', { socketId: socket.id, sessionId: sessionId || 'none' });
+    logger.info('Player disconnected', {
+      socketId: socket.id,
+      sessionId: sessionId || 'none',
+      accountId: accountId || 'none'
+    });
 
     // SESSION RECOVERY: Save player state for recovery if session exists
-    if (sessionId && player) {
+    if (sessionId && accountId && player) {
       // Only save state if player has actually started playing (has nickname)
       if (player.hasNickname && player.alive) {
         // Create a safe copy of player state (avoiding circular references)
         const playerStateCopy = {
           id: player.id,
+          accountId: accountId,
           nickname: player.nickname,
           hasNickname: player.hasNickname,
           spawnProtection: player.spawnProtection,
@@ -1152,7 +1206,8 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId) 
         disconnectedPlayers.set(sessionId, {
           playerState: playerStateCopy,
           disconnectedAt: Date.now(),
-          previousSocketId: socket.id
+          previousSocketId: socket.id,
+          accountId
         });
 
         logger.info('Session state saved', {

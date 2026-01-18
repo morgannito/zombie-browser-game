@@ -85,8 +85,11 @@ function calculateBonuses(zombie, comboMultiplier) {
  * Update player score
  */
 function updatePlayerScore(shooter, zombie, comboMultiplier) {
-  const baseScore = zombie.goldDrop + zombie.xpDrop;
-  const comboScore = baseScore * (comboMultiplier - 1);
+  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
+  const multiplier = typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
+  const baseScore = goldDrop + xpDrop;
+  const comboScore = baseScore * (multiplier - 1);
   shooter.totalScore += baseScore + comboScore;
 }
 
@@ -94,12 +97,14 @@ function updatePlayerScore(shooter, zombie, comboMultiplier) {
  * Emit combo update event
  */
 function emitComboUpdate(shooter, playerId, comboMultiplier, goldBonus, xpBonus, zombie, io) {
+  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
   io.to(playerId).emit('comboUpdate', {
     combo: shooter.combo,
     multiplier: comboMultiplier,
     score: shooter.totalScore,
-    goldBonus: goldBonus - zombie.goldDrop,
-    xpBonus: xpBonus - zombie.xpDrop
+    goldBonus: goldBonus - goldDrop,
+    xpBonus: xpBonus - xpDrop
   });
 }
 

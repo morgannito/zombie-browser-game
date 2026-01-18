@@ -17,8 +17,7 @@ module.exports = [
       'uploads/**',
       'public/lib/**',
       'dist/**',
-      '**/*.min.js',
-      'game/gameLoop.old.js'
+      '**/*.min.js'
     ]
   },
 

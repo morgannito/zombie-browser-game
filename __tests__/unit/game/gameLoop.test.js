@@ -28,7 +28,7 @@ describe('Player Death Progression Handler', () => {
 
     mockPlayer = {
       id: 'player-123',
-      sessionId: 'session-456',
+      accountId: 'account-456',
       nickname: 'TestPlayer',
       health: 0,
       alive: true,
@@ -91,7 +91,7 @@ describe('Player Death Progression Handler', () => {
 
     expect(mockGameState.progressionIntegration.handlePlayerDeath).toHaveBeenCalledWith(
       mockPlayer,
-      mockPlayer.sessionId,
+      mockPlayer.accountId,
       expect.objectContaining({
         wave: 5,
         level: 10,
@@ -117,10 +117,10 @@ describe('Player Death Progression Handler', () => {
     expect(mockGameState.failedDeathQueue[0]).toMatchObject({
       player: {
         id: mockPlayer.id,
-        sessionId: mockPlayer.sessionId,
+        accountId: mockPlayer.accountId,
         nickname: mockPlayer.nickname
       },
-      sessionId: mockPlayer.sessionId,
+      accountId: mockPlayer.accountId,
       stats: expect.any(Object),
       timestamp: now,
       retryCount: 0
@@ -156,7 +156,7 @@ describe('Player Death Progression Handler', () => {
 
     expect(mockGameState.progressionIntegration.handlePlayerDeath).toHaveBeenCalledWith(
       mockPlayer,
-      mockPlayer.sessionId,
+      mockPlayer.accountId,
       expect.objectContaining({
         bossKills: 1
       })
@@ -172,7 +172,7 @@ describe('Player Death Progression Handler', () => {
 
     expect(mockGameState.progressionIntegration.handlePlayerDeath).toHaveBeenCalledWith(
       mockPlayer,
-      mockPlayer.sessionId,
+      mockPlayer.accountId,
       expect.objectContaining({
         comboMax: 15
       })

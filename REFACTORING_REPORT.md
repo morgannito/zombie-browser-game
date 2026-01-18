@@ -69,7 +69,6 @@ Refactoriser `game/gameLoop.js` (2348 lignes) en modules <300 lignes chacun avec
 
 ## Fichiers modifiés
 - `game/gameLoop.js` - Refactoré (2348 → 358 lignes)
-- `game/gameLoop.old.js` - Backup de l'original
 
 ## Bénéfices
 

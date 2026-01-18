@@ -21,7 +21,6 @@
 - **Cache hit rate:** ~80% (zombies chase same target for multiple frames)
 - **Files modified:**
   - `lib/server/CollisionManager.js`: Added `findClosestPlayerCached()` method
-  - `game/loop/zombieAI.js`: Shooter zombie targeting
   - `game/modules/zombie/ZombieUpdater.js`: Main movement + shooter ability
 - **Performance impact:**
   - Early game (10-15 zombies): +2-3 FPS (12ms → 10ms avg)

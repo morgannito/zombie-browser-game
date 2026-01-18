@@ -73,7 +73,6 @@ const EntityManager = require('./lib/server/EntityManager');
 const CollisionManager = require('./lib/server/CollisionManager');
 const NetworkManager = require('./lib/server/NetworkManager');
 const RoomManager = require('./lib/server/RoomManager');
-const PlayerManager = require('./lib/server/PlayerManager');
 const ZombieManager = require('./lib/server/ZombieManager');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
@@ -112,6 +111,10 @@ const io = require('socket.io')(server, {
 // HIGH FIX: Async database initialization with error handling
 const dbManager = DatabaseManager.getInstance();
 let dbAvailable = false;
+let gameState = null;
+let gameLoopTimer = null;
+let heartbeatTimer = null;
+let powerupSpawnerTimer = null;
 
 async function initializeDatabase() {
   try {
@@ -160,8 +163,8 @@ async function startServer() {
   await initializeDatabase();
 
   // Initialize dependency injection container AFTER database
-  const container = Container.getInstance();
-  if (dbAvailable) {
+  const container = dbAvailable ? Container.getInstance() : null;
+  if (container) {
     container.initialize();
   }
 
@@ -172,8 +175,8 @@ async function startServer() {
   // API ROUTES
   // ============================================
 
+  app.use('/api/auth', initAuthRoutes(container, jwtService));
   if (dbAvailable) {
-    app.use('/api/auth', initAuthRoutes(container, jwtService));
     app.use('/api/leaderboard', initLeaderboardRoutes(container));
     app.use('/api/players', initPlayersRoutes(container));
     app.use('/api/progression', require('./routes/progression')(container));
@@ -192,7 +195,7 @@ async function startServer() {
   // ============================================
 
   // Initialize game state
-  const gameState = initializeGameState();
+  gameState = initializeGameState();
 
   // Initialize rooms (Rogue-like system)
   initializeRooms(gameState, CONFIG);
@@ -202,7 +205,6 @@ async function startServer() {
   const collisionManager = new CollisionManager(gameState, CONFIG);
   const networkManager = new NetworkManager(io, gameState);
   const roomManager = new RoomManager(gameState, CONFIG, io);
-  const playerManager = new PlayerManager(gameState, CONFIG, LEVEL_UP_UPGRADES);
   const zombieManager = new ZombieManager(
     gameState,
     CONFIG,
@@ -215,10 +217,14 @@ async function startServer() {
   gameState.roomManager = roomManager;
 
   // Initialize progression integration (XP, skills, achievements)
-  const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
-  const progressionIntegration = new ProgressionIntegration(container, io);
-  gameState.progressionIntegration = progressionIntegration;
-  logger.info('Progression integration initialized');
+  if (dbAvailable) {
+    const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
+    const progressionIntegration = new ProgressionIntegration(container, io);
+    gameState.progressionIntegration = progressionIntegration;
+    logger.info('Progression integration initialized');
+  } else {
+    logger.warn('Progression integration disabled (database unavailable)');
+  }
 
   // Load first room after roomManager is initialized
   const { loadRoom } = require('./game/roomFunctions');
@@ -356,6 +362,7 @@ async function startServer() {
   // SOCKET.IO HANDLERS
   // ============================================
 
+  io.use(jwtService.socketMiddleware());
   const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration, dbAvailable ? container : null);
   io.on('connection', socketHandler);
 
@@ -398,9 +405,6 @@ startServer().catch(err => {
 // ============================================
 
 let isShuttingDown = false;
-let gameLoopTimer = null;
-let heartbeatTimer = null;
-let powerupSpawnerTimer = null;
 
 function cleanupServer() {
   // CRITICAL FIX: Prevent multiple simultaneous shutdowns
@@ -434,7 +438,7 @@ function cleanupServer() {
   logger.info('Session cleanup interval stopped');
 
   // MEDIUM FIX: Cleanup HazardManager
-  if (gameState.hazardManager) {
+  if (gameState && gameState.hazardManager) {
     try {
       gameState.hazardManager.clearAll();
       logger.info('✅ HazardManager cleaned up');

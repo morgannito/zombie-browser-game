@@ -88,7 +88,7 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
   if (!revived) {
     player.alive = false;
 
-    if (gameState.progressionIntegration && player.sessionId) {
+    if (gameState.progressionIntegration && player.accountId) {
       player.wave = gameState.wave;
       player.maxCombo = player.highestCombo || player.combo || 0;
       player.survivalTime = Math.floor((now - player.survivalTime) / GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER);
@@ -104,14 +104,14 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
       };
 
       // CRITICAL FIX: Comprehensive error handling + retry queue
-      gameState.progressionIntegration.handlePlayerDeath(player, player.sessionId, sessionStats)
+      gameState.progressionIntegration.handlePlayerDeath(player, player.accountId, sessionStats)
         .catch(err => {
           if (logger) {
             logger.error('❌ CRITICAL: Failed to handle player death', {
               error: err.message,
               stack: err.stack,
               playerId: player.id || playerId,
-              sessionId: player.sessionId,
+              accountId: player.accountId,
               stats: sessionStats
             });
           } else {
@@ -128,10 +128,10 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
             gameState.failedDeathQueue.push({
               player: {
                 id: player.id,
-                sessionId: player.sessionId,
+                accountId: player.accountId,
                 nickname: player.nickname
               },
-              sessionId: player.sessionId,
+              accountId: player.accountId,
               stats: sessionStats,
               timestamp: now,
               retryCount: 0
@@ -307,6 +307,10 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
 
     updatePowerups(gameState, now, entityManager);
     updateLoot(gameState, now, io, entityManager);
+    if (!gameState._lastDeathQueueProcess || now - gameState._lastDeathQueueProcess > 5000) {
+      gameState._lastDeathQueueProcess = now;
+      processFailedDeathQueue(gameState, logger);
+    }
 
   } catch (error) {
     logger.error('❌ Game loop error', {
@@ -705,7 +709,7 @@ function processFailedDeathQueue(gameState, logger) {
       if (logger) {
         logger.error('Failed death permanently abandoned', {
           playerId: entry.player?.id,
-          sessionId: entry.sessionId,
+          accountId: entry.accountId,
           retryCount: entry.retryCount
         });
       }
@@ -715,10 +719,19 @@ function processFailedDeathQueue(gameState, logger) {
 
     // Attempt retry
     if (gameState.progressionIntegration) {
+      if (!entry.accountId) {
+        if (logger) {
+          logger.warn('Failed death entry missing account ID', {
+            playerId: entry.player?.id
+          });
+        }
+        gameState.failedDeathQueue.splice(i, 1);
+        continue;
+      }
       entry.retryCount++;
       entry.lastRetry = now;
 
-      gameState.progressionIntegration.handlePlayerDeath(entry.player, entry.sessionId, entry.stats)
+      gameState.progressionIntegration.handlePlayerDeath(entry.player, entry.accountId, entry.stats)
         .then(() => {
           // Success - remove from queue
           const idx = gameState.failedDeathQueue.indexOf(entry);

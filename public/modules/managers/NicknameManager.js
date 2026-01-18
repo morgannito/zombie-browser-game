@@ -15,6 +15,7 @@ class NicknameManager {
     this.respawnBtn = document.getElementById('respawn-btn');
 
     this.spawnProtectionInterval = null; // Store interval for cleanup
+    this.isStarting = false;
 
     // Store handler references for cleanup
     this.handlers = {
@@ -65,16 +66,22 @@ class NicknameManager {
     }
   }
 
-  startGame() {
+  async startGame() {
+    if (this.isStarting) {
+      return;
+    }
+    this.isStarting = true;
     const nickname = this.nicknameInput.value.trim();
 
     if (nickname.length < CONSTANTS.NICKNAME.MIN_LENGTH) {
       alert(`Votre pseudo doit contenir au moins ${CONSTANTS.NICKNAME.MIN_LENGTH} caractères !`);
+      this.isStarting = false;
       return;
     }
 
     if (nickname.length > CONSTANTS.NICKNAME.MAX_LENGTH) {
       alert(`Votre pseudo ne peut pas dépasser ${CONSTANTS.NICKNAME.MAX_LENGTH} caractères !`);
+      this.isStarting = false;
       return;
     }
 
@@ -82,6 +89,38 @@ class NicknameManager {
     const nicknameRegex = /^[\w\s-]+$/u;
     if (!nicknameRegex.test(nickname)) {
       alert('Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
+      this.isStarting = false;
+      return;
+    }
+
+    let token = null;
+    if (window.authManager) {
+      try {
+        await window.authManager.login(nickname);
+        token = window.authManager.getToken();
+      } catch (error) {
+        alert(`Connexion impossible: ${error.message || 'authentification échouée'}`);
+        this.isStarting = false;
+        return;
+      }
+    } else {
+      alert('Authentification non disponible');
+      this.isStarting = false;
+      return;
+    }
+
+    const sessionId = window.sessionManager ? window.sessionManager.getSessionId() : null;
+    if (window.networkManager && window.networkManager.connectWithAuth) {
+      try {
+        await window.networkManager.connectWithAuth({ sessionId, token });
+      } catch (error) {
+        alert(`Connexion au serveur impossible: ${error.message || 'erreur réseau'}`);
+        this.isStarting = false;
+        return;
+      }
+    } else {
+      alert('Connexion réseau indisponible');
+      this.isStarting = false;
       return;
     }
 
@@ -108,6 +147,7 @@ class NicknameManager {
 
     // Show spawn protection
     this.showSpawnProtection();
+    this.isStarting = false;
   }
 
   showSpawnProtection() {

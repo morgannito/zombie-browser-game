@@ -22,30 +22,54 @@ function initAuthRoutes(container, jwtService) {
    */
   router.post('/login', async (req, res) => {
     try {
-      const { username } = req.body;
+      const rawUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
 
       // Validation
-      if (!username || username.length < 2 || username.length > 20) {
+      if (!rawUsername || rawUsername.length < 2 || rawUsername.length > 15) {
         return res.status(400).json({
-          error: 'Invalid username (2-20 characters required)'
+          error: 'Invalid username (2-15 characters required)'
         });
       }
 
-      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      if (!/^[a-zA-Z0-9 _-]+$/.test(rawUsername)) {
         return res.status(400).json({
-          error: 'Username can only contain letters, numbers, underscore and dash'
+          error: 'Username can only contain letters, numbers, spaces, underscore and dash'
+        });
+      }
+
+      const playerId = require('crypto').randomUUID();
+
+      if (!container || typeof container.get !== 'function') {
+        const token = jwtService.generateToken({
+          userId: playerId,
+          username: rawUsername
+        });
+
+        logger.warn('Player authenticated without database', {
+          userId: playerId,
+          username: rawUsername
+        });
+
+        return res.json({
+          token,
+          player: {
+            id: playerId,
+            username: rawUsername,
+            highScore: 0,
+            totalKills: 0,
+            gamesPlayed: 0
+          }
         });
       }
 
       // Créer ou récupérer le joueur
       const playerRepository = container.get('playerRepository');
-      let player = await playerRepository.findByUsername(username);
+      let player = await playerRepository.findByUsername(rawUsername);
 
       if (!player) {
         // Créer un nouveau joueur
         const createPlayerUseCase = container.get('createPlayerUseCase');
-        const playerId = require('crypto').randomUUID();
-        player = await createPlayerUseCase.execute({ id: playerId, username });
+        player = await createPlayerUseCase.execute({ id: playerId, username: rawUsername });
       }
 
       // Générer JWT

@@ -129,13 +129,15 @@ class GameEngine {
     const socket = io({
       transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
       upgrade: true, // Allow upgrade to WebSocket from polling (important for stability)
+      autoConnect: false, // Connect after auth/session is ready
       reconnection: true,
       reconnectionDelay: 500, // Faster initial reconnection
       reconnectionDelayMax: 3000, // Reduced max delay
       reconnectionAttempts: 10, // More attempts with shorter delays
       timeout: 30000, // 30s timeout (balance between speed and stability)
       auth: {
-        sessionId: window.sessionManager.getSessionId()
+        sessionId: window.sessionManager.getSessionId(),
+        token: window.authManager ? window.authManager.getToken() : null
       },
       // Enable ping/pong for latency monitoring
       pingInterval: 10000, // Check connection every 10s
@@ -144,6 +146,7 @@ class GameEngine {
       forceNew: false // Reuse existing connection when possible
     });
 
+    window.socket = socket;
     window.networkManager = new NetworkManager(socket);
     window.gameUI = new UIManager(window.gameState);
 

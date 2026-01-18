@@ -525,6 +525,36 @@ class NetworkManager {
     }, 500);
   }
 
+  connectWithAuth(auth) {
+    return new Promise((resolve, reject) => {
+      if (auth && typeof auth === 'object') {
+        this.socket.auth = auth;
+      }
+
+      if (this.socket.connected) {
+        resolve();
+        return;
+      }
+
+      const onConnect = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = (error) => {
+        cleanup();
+        reject(error);
+      };
+      const cleanup = () => {
+        this.socket.off('connect', onConnect);
+        this.socket.off('connect_error', onError);
+      };
+
+      this.socket.once('connect', onConnect);
+      this.socket.once('connect_error', onError);
+      this.socket.connect();
+    });
+  }
+
   // Send events to server
   setNickname(nickname) {
     this.socket.emit('setNickname', { nickname });

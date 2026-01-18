@@ -392,8 +392,7 @@ The Zombie Browser Game has successfully achieved **SSSS+ tier quality certifica
 
 **Files Modified:**
 1. `lib/server/CollisionManager.js` - Added `findClosestPlayerCached()` method
-2. `game/loop/zombieAI.js` - Shooter zombie targeting optimization
-3. `game/modules/zombie/ZombieUpdater.js` - Main movement + shooter ability optimization
+2. `game/modules/zombie/ZombieUpdater.js` - Main movement + shooter ability optimization
 
 **Implementation:**
 ```javascript
