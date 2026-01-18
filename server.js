@@ -240,7 +240,7 @@ async function startServer() {
   // ============================================
 
   // Start game loop with adaptive tick rate
-  const gameLoopTimer = setInterval(() => {
+  gameLoopTimer = setInterval(() => {
     gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger);
 
     // Broadcast game state conditionally based on performance mode
@@ -250,7 +250,7 @@ async function startServer() {
   }, perfIntegration.getTickInterval());
 
   // CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
-  const heartbeatTimer = setInterval(() => {
+  heartbeatTimer = setInterval(() => {
     const now = Date.now();
     const playerIds = Object.keys(gameState.players);
     let cleanedUp = 0;
@@ -366,6 +366,8 @@ startServer().catch(err => {
 // ============================================
 
 let isShuttingDown = false;
+let gameLoopTimer = null;
+let heartbeatTimer = null;
 
 function cleanupServer() {
   // CRITICAL FIX: Prevent multiple simultaneous shutdowns
