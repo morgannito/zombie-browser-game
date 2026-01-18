@@ -1,19 +1,77 @@
 /**
  * ADVANCED WEAPON AUDIO SYSTEM
  * Realistic weapon sounds with variations, reverb, and distance attenuation
- * @version 2.0.0
+ * Now with throttling and shared AudioContext support
+ * @version 3.0.0
  */
 
 class WeaponAudioSystem {
   constructor(audioContext) {
-    this.context = audioContext;
+    // Use shared context from OptimizedAudioCore if available
+    if (window.getAudioCore) {
+      const core = window.getAudioCore();
+      this.context = core.audioContext;
+      this.sharedCore = core;
+    } else {
+      this.context = audioContext;
+      this.sharedCore = null;
+    }
+
     this.reverbNode = null;
     this.masterGain = null;
 
     // Audio pools pour éviter les clics
     this.activeNodes = new Set();
+    this.maxActiveNodes = 24; // Limit concurrent sounds
+
+    // Throttling configuration (ms between sounds)
+    this.throttleConfig = {
+      pistol: 80,
+      shotgun: 400,
+      machinegun: 25,
+      rifle: 150,
+      reload: 500,
+      dryFire: 100,
+      shellCasing: 30,
+      mechanicalClick: 50
+    };
+
+    // Last play timestamps
+    this.lastPlayTime = new Map();
 
     this.init();
+  }
+
+  /**
+   * Check if sound should be throttled
+   */
+  shouldThrottle(soundType) {
+    const now = performance.now();
+    const lastTime = this.lastPlayTime.get(soundType) || 0;
+    const throttleMs = this.throttleConfig[soundType] || 50;
+
+    if (now - lastTime < throttleMs) {
+      return true;
+    }
+
+    this.lastPlayTime.set(soundType, now);
+    return false;
+  }
+
+  /**
+   * Enforce max active nodes limit
+   */
+  enforceNodeLimit() {
+    if (this.activeNodes.size >= this.maxActiveNodes) {
+      // Stop oldest node
+      const oldest = this.activeNodes.values().next().value;
+      if (oldest) {
+        try {
+          oldest.stop();
+        } catch (e) { /* already stopped */ }
+        this.activeNodes.delete(oldest);
+      }
+    }
   }
 
   /**
@@ -78,12 +136,20 @@ class WeaponAudioSystem {
   }
 
   /**
-   * PISTOL - Son de pistolet réaliste
+   * PISTOL - Son de pistolet réaliste (with throttling)
    */
   playPistol(distance = 0, variation = true) {
     if (!this.context) {
       return;
     }
+
+    // Throttle check
+    if (this.shouldThrottle('pistol')) {
+      return;
+    }
+
+    // Enforce node limit
+    this.enforceNodeLimit();
 
     const now = this.context.currentTime;
     const baseFreq = variation ? 280 + Math.random() * 40 : 300;
@@ -134,12 +200,20 @@ class WeaponAudioSystem {
   }
 
   /**
-   * SHOTGUN - Son de fusil à pompe réaliste
+   * SHOTGUN - Son de fusil à pompe réaliste (with throttling)
    */
   playShotgun(distance = 0, variation = true) {
     if (!this.context) {
       return;
     }
+
+    // Throttle check
+    if (this.shouldThrottle('shotgun')) {
+      return;
+    }
+
+    // Enforce node limit
+    this.enforceNodeLimit();
 
     const now = this.context.currentTime;
     const attenuation = this.calculateDistanceAttenuation(distance);
@@ -194,12 +268,20 @@ class WeaponAudioSystem {
   }
 
   /**
-   * MACHINEGUN/MINIGUN - Tir rapide avec variations
+   * MACHINEGUN/MINIGUN - Tir rapide avec variations (with throttling)
    */
   playMachinegun(distance = 0, variation = true) {
     if (!this.context) {
       return;
     }
+
+    // Throttle check - machinegun has low throttle for rapid fire
+    if (this.shouldThrottle('machinegun')) {
+      return;
+    }
+
+    // Enforce node limit
+    this.enforceNodeLimit();
 
     const now = this.context.currentTime;
     const baseFreq = variation ? 380 + Math.random() * 60 : 400;
@@ -246,12 +328,20 @@ class WeaponAudioSystem {
   }
 
   /**
-   * RIFLE/SNIPER - Coup puissant avec crack sonique
+   * RIFLE/SNIPER - Coup puissant avec crack sonique (with throttling)
    */
   playRifle(distance = 0, variation = true) {
     if (!this.context) {
       return;
     }
+
+    // Throttle check
+    if (this.shouldThrottle('rifle')) {
+      return;
+    }
+
+    // Enforce node limit
+    this.enforceNodeLimit();
 
     const now = this.context.currentTime;
     const attenuation = this.calculateDistanceAttenuation(distance);
@@ -445,10 +535,15 @@ class WeaponAudioSystem {
   }
 
   /**
-   * Son de rechargement (clip insertion)
+   * Son de rechargement (clip insertion) (with throttling)
    */
   playReload(weaponType = 'pistol', volume = 0.4) {
     if (!this.context) {
+      return;
+    }
+
+    // Throttle check
+    if (this.shouldThrottle('reload')) {
       return;
     }
 
@@ -489,10 +584,15 @@ class WeaponAudioSystem {
   }
 
   /**
-   * Son d'arme vide (dry fire)
+   * Son d'arme vide (dry fire) (with throttling)
    */
   playDryFire(volume = 0.3) {
     if (!this.context) {
+      return;
+    }
+
+    // Throttle check
+    if (this.shouldThrottle('dryFire')) {
       return;
     }
 

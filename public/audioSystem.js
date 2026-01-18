@@ -2,25 +2,37 @@
  * ADVANCED AUDIO SYSTEM
  * Complete audio and music system with Web Audio API
  * Synthesized sounds and procedural music
- * @version 1.0.0
+ * Now integrated with OptimizedAudioCore for better resource management
+ * @version 2.0.0
  */
 
 /* ============================================
    MUSIC GENERATOR
+   Uses shared AudioContext from OptimizedAudioCore
    ============================================ */
 
 class MusicGenerator {
   constructor(audioContext) {
-    this.context = audioContext;
+    // Use shared context from OptimizedAudioCore if available
+    if (window.getAudioCore) {
+      const core = window.getAudioCore();
+      this.context = core.audioContext;
+      this.sharedCore = core;
+    } else {
+      this.context = audioContext;
+      this.sharedCore = null;
+    }
+
     this.masterGain = null;
     this.isPlaying = false;
     this.currentTheme = 'menu';
     this.tempo = 120; // BPM
     this.volume = 0.3;
 
-    // Oscillators pour la musique
+    // Oscillators pour la musique - with better tracking
     this.oscillators = [];
     this.scheduledNotes = [];
+    this.maxOscillators = 16; // Limit concurrent oscillators
   }
 
   /**
@@ -37,11 +49,21 @@ class MusicGenerator {
   }
 
   /**
-   * Joue une note
+   * Joue une note - with oscillator limit
    */
   playNote(frequency, duration, type = 'sine', volume = 0.3) {
     if (!this.context || !this.masterGain) {
       return;
+    }
+
+    // Enforce oscillator limit
+    if (this.oscillators.length >= this.maxOscillators) {
+      // Remove oldest oscillator
+      const oldest = this.oscillators.shift();
+      try {
+        oldest.stop();
+        oldest.disconnect();
+      } catch (e) { /* already stopped */ }
     }
 
     const oscillator = this.context.createOscillator();
@@ -65,13 +87,18 @@ class MusicGenerator {
 
     this.oscillators.push(oscillator);
 
-    // Nettoyage
+    // Nettoyage with proper cleanup
+    const cleanupTime = Math.max(duration * 1000 + 100, 200);
     (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
       const index = this.oscillators.indexOf(oscillator);
       if (index > -1) {
         this.oscillators.splice(index, 1);
       }
-    }, duration * 1000);
+      try {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      } catch (e) { /* already disconnected */ }
+    }, cleanupTime);
   }
 
   /**
@@ -262,21 +289,44 @@ class MusicGenerator {
 
 class EnhancedSoundEffects {
   constructor(audioContext) {
-    this.context = audioContext;
+    // Use shared context from OptimizedAudioCore if available
+    if (window.getAudioCore) {
+      const core = window.getAudioCore();
+      this.context = core.audioContext;
+      this.sharedCore = core;
+    } else {
+      this.context = audioContext;
+      this.sharedCore = null;
+    }
+
     this.sounds = {};
 
-    // Intégration du système d'armes avancé
+    // Use OptimizedSoundEffects if available (preferred)
+    this.optimizedSounds = null;
+    if (typeof OptimizedSoundEffects !== 'undefined') {
+      this.optimizedSounds = new OptimizedSoundEffects();
+      console.log('[EnhancedSoundEffects] Using OptimizedSoundEffects');
+    }
+
+    // Fallback: Intégration du système d'armes avancé
     this.weaponAudio = null;
-    if (typeof WeaponAudioSystem !== 'undefined') {
-      this.weaponAudio = new WeaponAudioSystem(audioContext);
+    if (!this.optimizedSounds && typeof WeaponAudioSystem !== 'undefined') {
+      this.weaponAudio = new WeaponAudioSystem(this.context);
     }
   }
 
   /**
    * Joue un son de tir amélioré avec variations et réverbération
+   * Now uses OptimizedSoundEffects with throttling
    */
   playShoot(weaponType = 'pistol', distance = 0) {
-    // Utiliser le nouveau système si disponible
+    // Use optimized system (preferred)
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playShoot(weaponType, distance);
+      return;
+    }
+
+    // Fallback: Utiliser le système d'armes si disponible
     if (this.weaponAudio) {
       switch (weaponType) {
       case 'pistol':
@@ -347,6 +397,10 @@ class EnhancedSoundEffects {
    * Son de rechargement
    */
   playReload(weaponType = 'pistol') {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playReload(weaponType);
+      return;
+    }
     if (this.weaponAudio) {
       this.weaponAudio.playReload(weaponType);
     }
@@ -356,15 +410,24 @@ class EnhancedSoundEffects {
    * Son d'arme vide
    */
   playDryFire() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playDryFire();
+      return;
+    }
     if (this.weaponAudio) {
       this.weaponAudio.playDryFire();
     }
   }
 
   /**
-   * Son d'impact sur zombie
+   * Son d'impact sur zombie - with throttling
    */
   playHit(isCritical = false) {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playHit(isCritical);
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -388,9 +451,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son de mort de zombie
+   * Son de mort de zombie - with throttling
    */
   playZombieDeath() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playZombieDeath();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -420,9 +488,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son d'explosion
+   * Son d'explosion - with throttling
    */
   playExplosion() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playExplosion();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -459,9 +532,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son de collecte (or, power-up)
+   * Son de collecte (or, power-up) - with throttling
    */
   playCollect(type = 'gold') {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playCollect(type);
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -491,9 +569,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son de level up
+   * Son de level up - delegated to optimized system
    */
   playLevelUp() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playLevelUp();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -521,9 +604,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son de damage sur le joueur
+   * Son de damage sur le joueur - delegated to optimized system
    */
   playPlayerDamage() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playPlayerDamage();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -547,9 +635,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son de heal
+   * Son de heal - delegated to optimized system
    */
   playHeal() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playHeal();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -573,9 +666,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son d'apparition de boss
+   * Son d'apparition de boss - delegated to optimized system
    */
   playBossSpawn() {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playBossSpawn();
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -603,9 +701,14 @@ class EnhancedSoundEffects {
   }
 
   /**
-   * Son d'UI (clic, hover)
+   * Son d'UI (clic, hover) - delegated to optimized system
    */
   playUISound(type = 'click') {
+    if (this.optimizedSounds) {
+      this.optimizedSounds.playUISound(type);
+      return;
+    }
+
     if (!this.context) {
       return;
     }
@@ -641,6 +744,7 @@ class EnhancedSoundEffects {
 class AdvancedAudioManager {
   constructor() {
     this.context = null;
+    this.core = null; // Reference to OptimizedAudioCore
     this.music = null;
     this.sounds = null;
     this.enabled = true;
@@ -655,19 +759,45 @@ class AdvancedAudioManager {
 
   /**
    * Initialise le système audio
+   * Uses shared AudioContext from OptimizedAudioCore when available
    */
   init() {
     try {
-      this.context = new (window.AudioContext || window.webkitAudioContext)();
+      // Use shared context from OptimizedAudioCore if available
+      if (window.getAudioCore) {
+        this.core = window.getAudioCore();
+        this.context = this.core.audioContext;
+        console.log('[AdvancedAudioManager] Using shared OptimizedAudioCore');
+      } else {
+        // Fallback: create own context
+        this.context = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('[AdvancedAudioManager] Using standalone AudioContext');
+      }
+
       this.music = new MusicGenerator(this.context);
       this.sounds = new EnhancedSoundEffects(this.context);
 
       this.music.init();
       this.music.setVolume(this.musicVolume * this.masterVolume);
+
+      // Set master volume on core if available
+      if (this.core) {
+        this.core.setMasterVolume(this.masterVolume);
+      }
     } catch (e) {
       console.warn('Web Audio API not supported', e);
       this.enabled = false;
     }
+  }
+
+  /**
+   * Get audio system stats (for debugging)
+   */
+  getStats() {
+    if (this.core) {
+      return this.core.getStats();
+    }
+    return null;
   }
 
   /**

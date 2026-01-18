@@ -1,13 +1,32 @@
 /**
  * @fileoverview Bullet collision handlers
  * @description Handles collisions between bullets and zombies/players
+ * OPTIMIZED: All requires moved to module level to avoid repeated lookups
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
+const MathUtils = require('../../../lib/MathUtils');
 const { createParticles, createLoot } = require('../../lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+
+// OPTIMIZATION: Pre-load all dependencies at module level instead of inside loops
+const { handleSplitterDeath } = require('../zombie/ZombieEffects');
+const { handleNewWave } = require('../wave/WaveManager');
+const { updatePlayerCombo } = require('../player/PlayerProgression');
+
+// OPTIMIZATION: Pre-load BulletEffects at module level
+const BulletEffects = require('./BulletEffects');
+
+// Lazy-loaded reference for circular dependency (gameLoop)
+let handlePlayerDeathProgressionRef = null;
+function getHandlePlayerDeathProgression() {
+  if (!handlePlayerDeathProgressionRef) {
+    handlePlayerDeathProgressionRef = require('../../gameLoop').handlePlayerDeathProgression;
+  }
+  return handlePlayerDeathProgressionRef;
+}
 
 /**
  * Handle zombie bullet collisions with players
@@ -29,8 +48,8 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
       player.health -= bullet.damage;
 
       if (player.health <= 0) {
-        const handlePlayerDeathProgression = require('../../gameLoop').handlePlayerDeathProgression;
-        handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
+        // OPTIMIZATION: Use cached reference instead of require() in loop
+        getHandlePlayerDeathProgression()(player, playerId, gameState, Date.now(), false);
       }
 
       createParticles(player.x, player.y, '#ff0000', 8, entityManager);
@@ -57,13 +76,11 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
     applyLifeSteal(bullet, gameState, finalDamage);
     handlePiercing(bullet, bulletId, zombieId, entityManager);
 
-    const { handleExplosiveBullet } = require('./BulletEffects');
-    handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager);
-
-    const { handleChainLightning, handlePoisonDart, handleIceCannon } = require('./BulletEffects');
-    handleChainLightning(bullet, zombie, zombieId, gameState, entityManager, collisionManager, io);
-    handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager);
-    handleIceCannon(bullet, zombie, zombieId, gameState, entityManager);
+    // OPTIMIZATION: BulletEffects already imported at module level
+    BulletEffects.handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager);
+    BulletEffects.handleChainLightning(bullet, zombie, zombieId, gameState, entityManager, collisionManager, io);
+    BulletEffects.handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager);
+    BulletEffects.handleIceCannon(bullet, zombie, zombieId, gameState, entityManager);
 
     createParticles(zombie.x, zombie.y, zombie.color, 5, entityManager);
 
@@ -145,7 +162,7 @@ function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManage
   }
 
   if (zombie.type === 'splitter') {
-    const { handleSplitterDeath } = require('../zombie/ZombieEffects');
+    // OPTIMIZATION: handleSplitterDeath imported at module level
     handleSplitterDeath(zombie, zombieId, gameState, entityManager);
     delete gameState.zombies[zombieId];
     gameState.zombiesKilledThisWave++;
@@ -163,7 +180,7 @@ function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManage
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss) {
-    const { handleNewWave } = require('../wave/WaveManager');
+    // OPTIMIZATION: handleNewWave imported at module level
     handleNewWave(gameState, io, zombieManager);
   }
 }
@@ -171,9 +188,11 @@ function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManage
 /**
  * Handle explosive zombie death
  */
+// OPTIMIZATION: createExplosion imported at module level via lootFunctions
+const { createExplosion } = require('../../lootFunctions');
+
 function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) {
   const explosiveType = ZOMBIE_TYPES.explosive;
-  const { createExplosion } = require('../../lootFunctions');
   createExplosion(zombie.x, zombie.y, explosiveType.explosionRadius, false, entityManager);
 
   for (const otherId in gameState.zombies) {
@@ -199,8 +218,8 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
       createParticles(player.x, player.y, '#ff8800', 10, entityManager);
 
       if (player.health <= 0) {
-        const handlePlayerDeathProgression = require('../../gameLoop').handlePlayerDeathProgression;
-        handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
+        // OPTIMIZATION: Use cached reference instead of require() in loop
+        getHandlePlayerDeathProgression()(player, playerId, gameState, Date.now(), false);
       }
     }
   }
@@ -237,7 +256,7 @@ function calculateLootBonus(bullet, zombie, gameState, io) {
   let xpBonus = zombie.xpDrop;
 
   if (bullet.playerId) {
-    const { updatePlayerCombo } = require('../player/PlayerProgression');
+    // OPTIMIZATION: updatePlayerCombo imported at module level
     const comboResult = updatePlayerCombo(bullet.playerId, zombie, gameState, io);
     if (comboResult) {
       goldBonus = comboResult.goldBonus;

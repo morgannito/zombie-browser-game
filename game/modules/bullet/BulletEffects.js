@@ -1,10 +1,12 @@
 /**
  * @fileoverview Bullet special effects
  * @description Handles explosive, chain lightning, poison dart, and ice cannon effects
+ * OPTIMIZED: Use distanceSquared to avoid sqrt, optimized loops
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
+const MathUtils = require('../../../lib/MathUtils');
 const { createParticles, createExplosion, createLoot } = require('../../lootFunctions');
 
 /**
@@ -31,16 +33,23 @@ function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManage
 
 /**
  * Apply explosion damage to nearby zombies
+ * OPTIMIZED: Use distanceSquared to avoid expensive sqrt
  */
 function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager) {
-  for (const otherId in gameState.zombies) {
+  // OPTIMIZATION: Pre-calculate squared radius to avoid sqrt in loop
+  const radiusSq = bullet.explosionRadius * bullet.explosionRadius;
+  const explosionDmg = (bullet.rocketExplosionDamage !== null && bullet.rocketExplosionDamage !== undefined) ?
+    bullet.rocketExplosionDamage :
+    (bullet.damage * bullet.explosionDamagePercent);
+
+  const zombieIds = Object.keys(gameState.zombies);
+  for (let i = 0; i < zombieIds.length; i++) {
+    const otherId = zombieIds[i];
     if (otherId !== zombieId) {
       const other = gameState.zombies[otherId];
-      const dist = distance(zombie.x, zombie.y, other.x, other.y);
-      if (dist < bullet.explosionRadius) {
-        const explosionDmg = (bullet.rocketExplosionDamage !== null && bullet.rocketExplosionDamage !== undefined) ?
-          bullet.rocketExplosionDamage :
-          (bullet.damage * bullet.explosionDamagePercent);
+      // OPTIMIZATION: Use distanceSquared instead of distance (avoids sqrt)
+      const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
+      if (distSq < radiusSq) {
         other.health -= explosionDmg;
         createParticles(other.x, other.y, other.color, 8, entityManager);
       }
@@ -74,22 +83,31 @@ function handleChainLightning(bullet, zombie, zombieId, gameState, entityManager
 
 /**
  * Find next chain lightning target
+ * OPTIMIZED: Use distanceSquared and Set for O(1) lookup
  */
 function findNextChainTarget(bullet, zombie, weapon, gameState) {
-  let closestDistance = Infinity;
+  // OPTIMIZATION: Pre-calculate squared range
+  const chainRangeSq = weapon.chainRange * weapon.chainRange;
+  let closestDistanceSq = chainRangeSq;
   let closestZombie = null;
   let closestZombieId = null;
 
-  for (const otherId in gameState.zombies) {
-    if (bullet.chainedZombies.includes(otherId)) {
+  // OPTIMIZATION: Convert array to Set for O(1) lookup instead of O(n) includes()
+  const chainedSet = new Set(bullet.chainedZombies);
+
+  const zombieIds = Object.keys(gameState.zombies);
+  for (let i = 0; i < zombieIds.length; i++) {
+    const otherId = zombieIds[i];
+    if (chainedSet.has(otherId)) {
       continue;
     }
 
     const other = gameState.zombies[otherId];
-    const dist = distance(zombie.x, zombie.y, other.x, other.y);
+    // OPTIMIZATION: Use distanceSquared instead of distance
+    const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
 
-    if (dist < weapon.chainRange && dist < closestDistance) {
-      closestDistance = dist;
+    if (distSq < closestDistanceSq) {
+      closestDistanceSq = distSq;
       closestZombie = other;
       closestZombieId = otherId;
     }
@@ -204,18 +222,29 @@ function applyPoison(zombie, weapon, now, entityManager) {
 
 /**
  * Spread poison to nearby zombies
+ * OPTIMIZED: Use distanceSquared and optimized loop
  */
 function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
   if (Math.random() < weapon.poisonSpreadChance) {
-    for (const otherId in gameState.zombies) {
+    // OPTIMIZATION: Pre-calculate squared radius
+    const spreadRadiusSq = weapon.poisonSpreadRadius * weapon.poisonSpreadRadius;
+
+    const zombieIds = Object.keys(gameState.zombies);
+    for (let i = 0; i < zombieIds.length; i++) {
+      const otherId = zombieIds[i];
       if (otherId === zombieId) {
         continue;
       }
 
       const other = gameState.zombies[otherId];
-      const dist = distance(zombie.x, zombie.y, other.x, other.y);
+      if (other.poisoned) {
+        continue; // Early exit before distance calculation
+      }
 
-      if (dist < weapon.poisonSpreadRadius && !other.poisoned) {
+      // OPTIMIZATION: Use distanceSquared instead of distance
+      const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
+
+      if (distSq < spreadRadiusSq) {
         other.poisoned = {
           damage: weapon.poisonDamage * 0.7,
           duration: weapon.poisonDuration * 0.8,
@@ -286,28 +315,41 @@ function slowZombie(zombie, weapon, now, entityManager) {
 
 /**
  * Apply ice area effect to nearby zombies
+ * OPTIMIZED: Use distanceSquared and optimized loop
  */
 function applyIceAreaEffect(zombie, zombieId, weapon, gameState, now, entityManager) {
-  for (const otherId in gameState.zombies) {
+  // OPTIMIZATION: Pre-calculate squared radius and common values
+  const iceRadiusSq = weapon.iceExplosionRadius * weapon.iceExplosionRadius;
+  const halfSlowDuration = weapon.slowDuration * 0.5;
+  const reducedSlowAmount = weapon.slowAmount * 0.6;
+
+  const zombieIds = Object.keys(gameState.zombies);
+  for (let i = 0; i < zombieIds.length; i++) {
+    const otherId = zombieIds[i];
     if (otherId === zombieId) {
       continue;
     }
 
     const other = gameState.zombies[otherId];
-    const dist = distance(zombie.x, zombie.y, other.x, other.y);
 
-    if (dist < weapon.iceExplosionRadius) {
-      if (!other.slowed || other.slowed.endTime < now + weapon.slowDuration * 0.5) {
-        other.slowed = {
-          startTime: now,
-          endTime: now + weapon.slowDuration * 0.5,
-          originalSpeed: other.speed,
-          slowAmount: weapon.slowAmount * 0.6
-        };
-        other.speed = other.slowed.originalSpeed * (1 - weapon.slowAmount * 0.6);
+    // OPTIMIZATION: Early exit if already slowed long enough
+    if (other.slowed && other.slowed.endTime >= now + halfSlowDuration) {
+      continue;
+    }
 
-        createParticles(other.x, other.y, '#aaddff', 4, entityManager);
-      }
+    // OPTIMIZATION: Use distanceSquared instead of distance
+    const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
+
+    if (distSq < iceRadiusSq) {
+      other.slowed = {
+        startTime: now,
+        endTime: now + halfSlowDuration,
+        originalSpeed: other.speed,
+        slowAmount: reducedSlowAmount
+      };
+      other.speed = other.slowed.originalSpeed * (1 - reducedSlowAmount);
+
+      createParticles(other.x, other.y, '#aaddff', 4, entityManager);
     }
   }
 }

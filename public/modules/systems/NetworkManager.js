@@ -83,6 +83,11 @@ class NetworkManager {
     // Update UI indicator if available
     this.updateLatencyIndicator();
 
+    // Update GameStateManager with latency for adaptive interpolation
+    if (window.gameState && window.gameState.updateNetworkLatency) {
+      window.gameState.updateNetworkLatency(latency);
+    }
+
     // Log high latency warnings
     if (latency > 200) {
       console.warn(`[Network] High latency detected: ${latency}ms`);

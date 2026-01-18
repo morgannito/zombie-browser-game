@@ -146,7 +146,11 @@ class Renderer {
     if (window.screenEffects) {
       window.screenEffects.drawTrails(this.ctx, this.camera);
     }
-    this.renderBullets(gameState.state.bullets, gameState.config);
+    // CLIENT-SIDE PREDICTION: Use combined bullets (server + predicted) for rendering
+    const bulletsToRender = gameState.getAllBulletsForRendering
+      ? gameState.getAllBulletsForRendering()
+      : gameState.state.bullets;
+    this.renderBullets(bulletsToRender, gameState.config);
     this.renderZombies(gameState.state.zombies, timestamp);
     this.renderPlayers(gameState.state.players, playerId, gameState.config, dateNow, timestamp);
 
@@ -1140,22 +1144,54 @@ class Renderer {
     });
   }
 
+  /**
+   * Render bullets with optimized batching
+   * OPTIMIZED: Avoid Object.values() allocation, batch by color, single shadowBlur pass
+   */
   renderBullets(bullets, config) {
-    Object.values(bullets).forEach(bullet => {
-      // Viewport culling
+    // OPTIMIZATION: Group bullets by color to minimize ctx state changes
+    const bulletsByColor = new Map();
+    const defaultColor = '#ffff00';
+    const defaultSize = config.BULLET_SIZE;
+
+    // OPTIMIZATION: Use Object.keys + direct access instead of Object.values() (avoids array allocation)
+    const bulletIds = Object.keys(bullets);
+    for (let i = 0; i < bulletIds.length; i++) {
+      const bullet = bullets[bulletIds[i]];
+
+      // Viewport culling - early exit before any processing
       if (!this.camera.isInViewport(bullet.x, bullet.y, 50)) {
-        return;
+        continue;
       }
 
-      const bulletSize = bullet.size || config.BULLET_SIZE;
-      this.ctx.fillStyle = bullet.color || '#ffff00';
+      const color = bullet.color || defaultColor;
+      if (!bulletsByColor.has(color)) {
+        bulletsByColor.set(color, []);
+      }
+      bulletsByColor.get(color).push(bullet);
+    }
+
+    // OPTIMIZATION: Batch render by color - single shadowBlur setup per color group
+    for (const [color, colorBullets] of bulletsByColor) {
+      // Set shadow once per color batch (expensive operation)
+      this.ctx.fillStyle = color;
       this.ctx.shadowBlur = 10;
-      this.ctx.shadowColor = bullet.color || '#ffff00';
+      this.ctx.shadowColor = color;
+
+      // Draw all bullets of this color in single path
       this.ctx.beginPath();
-      this.ctx.arc(bullet.x, bullet.y, bulletSize, 0, Math.PI * 2);
+      for (let i = 0; i < colorBullets.length; i++) {
+        const bullet = colorBullets[i];
+        const bulletSize = bullet.size || defaultSize;
+        // Use moveTo to start each circle (arc doesn't auto-move)
+        this.ctx.moveTo(bullet.x + bulletSize, bullet.y);
+        this.ctx.arc(bullet.x, bullet.y, bulletSize, 0, Math.PI * 2);
+      }
       this.ctx.fill();
-      this.ctx.shadowBlur = 0;
-    });
+    }
+
+    // Reset shadow once at the end
+    this.ctx.shadowBlur = 0;
   }
 
   drawZombieSprite(zombie, timestamp) {

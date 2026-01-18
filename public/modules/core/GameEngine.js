@@ -243,6 +243,14 @@ class GameEngine {
       this._cleanupFrameCounter = 0;
     }
 
+    // CLIENT-SIDE PREDICTION: Update predicted bullets and reconcile with server
+    if (window.gameState.updatePredictedBullets) {
+      window.gameState.updatePredictedBullets();
+    }
+    if (window.gameState.reconcilePredictedBullets) {
+      window.gameState.reconcilePredictedBullets();
+    }
+
     // Update screen effects (trails decay, etc.) (SCREEN EFFECTS)
     if (window.screenEffects) {
       window.screenEffects.update(deltaTime);
@@ -269,8 +277,8 @@ class GameEngine {
     }
 
     // Use CSS pixels (window dimensions) instead of physical canvas dimensions
-    // to ensure proper camera centering on high-DPI displays (mobile)
-    this.playerController.update(window.innerWidth, window.innerHeight);
+    // Pass deltaTime for frame-independent movement
+    this.playerController.update(window.innerWidth, window.innerHeight, deltaTime);
   }
 
   render() {
