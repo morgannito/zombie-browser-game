@@ -8,6 +8,13 @@ const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
 
 const { ZOMBIE_TYPES } = ConfigManager;
+let handlePlayerDeathProgressionRef = null;
+function getHandlePlayerDeathProgression() {
+  if (!handlePlayerDeathProgressionRef) {
+    handlePlayerDeathProgressionRef = require('../../gameLoop').handlePlayerDeathProgression;
+  }
+  return handlePlayerDeathProgressionRef;
+}
 function updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState) {
   if (zombie.type !== 'bossCharnier') {
     return;
@@ -75,6 +82,7 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
         createParticles(player.x, player.y, '#00ff00', 5, entityManager);
 
         if (player.health <= 0) {
+          const handlePlayerDeathProgression = getHandlePlayerDeathProgression();
           handlePlayerDeathProgression(player, playerId, gameState, now, true);
         }
       }
@@ -387,6 +395,7 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
           createParticles(player.x, player.y, '#ff0000', 15, entityManager);
 
           if (player.health <= 0) {
+            const handlePlayerDeathProgression = getHandlePlayerDeathProgression();
             handlePlayerDeathProgression(player, playerId, gameState, now, true);
           }
         }

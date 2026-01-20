@@ -42,9 +42,8 @@
           const generator = new ProfessionalAssetGenerator();
           await generator.loadProfessionalAssetsIntoManager(window.assetManager);
           console.log('✅ Assets professionnels chargés avec succès');
-        }
-        // Fallback vers le générateur de démo basique
-        else if (typeof DemoAssetGenerator !== 'undefined') {
+        } else if (typeof DemoAssetGenerator !== 'undefined') {
+          // Fallback vers le générateur de démo basique
           const generator = new DemoAssetGenerator();
           await generator.loadDemoAssetsIntoManager(window.assetManager);
           console.log('✅ Assets de démonstration chargés avec succès');
@@ -100,7 +99,7 @@
       return;
     }
 
-    const originalDrawZombie = window.GameRenderer.prototype.drawZombieSprite;
+    const _originalDrawZombie = window.GameRenderer.prototype.drawZombieSprite;
 
     window.GameRenderer.prototype.drawZombieSprite = function(zombie, config) {
       // Essayer de charger le sprite du zombie selon son type
@@ -152,7 +151,7 @@
       this.ctx.save();
 
       // Animation de marche
-      const walkCycle = Math.sin(Date.now() / 200) * 0.3;
+      const _walkCycle = Math.sin(Date.now() / 200) * 0.3;
       const legSwing = Math.sin(Date.now() / 150) * 15;
       const armSwing = Math.sin(Date.now() / 180) * 20;
 
@@ -352,7 +351,7 @@
       return;
     }
 
-    const originalDrawPlayer = window.GameRenderer.prototype.drawPlayerSprite;
+    const _originalDrawPlayer = window.GameRenderer.prototype.drawPlayerSprite;
 
     window.GameRenderer.prototype.drawPlayerSprite = function(player, isCurrentPlayer, config) {
       // Essayer de charger le sprite du joueur
@@ -540,7 +539,7 @@
   function listenForWaveChanges() {
     // Intercepter les mises à jour de vague du serveur
     if (window.socket) {
-      const originalOnGameState = window.socket._callbacks?.$gameState;
+      const _originalOnGameState = window.socket._callbacks?.$gameState;
 
       window.socket.on('gameState', function(state) {
         if (state && state.wave && state.wave !== currentWave) {

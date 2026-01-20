@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/27</span>
+                <span class='fraction'>0/29</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/25</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
@@ -161,7 +161,16 @@
 <a name='L96'></a><a href='#L96'>96</a>
 <a name='L97'></a><a href='#L97'>97</a>
 <a name='L98'></a><a href='#L98'>98</a>
-<a name='L99'></a><a href='#L99'>99</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -189,14 +198,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -205,6 +209,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -285,31 +303,40 @@ function <span class="fstat-no" title="function not covered" >generateRoom(</spa
 &nbsp;
   const w = <span class="cstat-no" title="statement not covered" >CONFIG.WALL_THICKNESS;</span>
 &nbsp;
-  // Murs extérieurs
+  // Calcul de la position de la porte (centre du mur du haut)
+  const doorWidth = <span class="cstat-no" title="statement not covered" >CONFIG.DOOR_WIDTH;</span>
+  const doorX = <span class="cstat-no" title="statement not covered" >(room.width - doorWidth) / 2;</span>
+&nbsp;
+  // Murs extérieurs (AVEC ouverture pour la porte en haut)
 <span class="cstat-no" title="statement not covered" >  room.walls.push(</span>
-    { x: 0, y: 0, width: room.width, height: w }, // Haut
+    // Haut: deux segments avec ouverture pour la porte
+    { x: 0, y: 0, width: doorX, height: w }, // Mur haut gauche
+    { x: doorX + doorWidth, y: 0, width: room.width - (doorX + doorWidth), height: w }, // Mur haut droit
+    // Bas, Gauche, Droite: murs complets
     { x: 0, y: room.height - w, width: room.width, height: w }, // Bas
     { x: 0, y: 0, width: w, height: room.height }, // Gauche
     { x: room.width - w, y: 0, width: w, height: room.height } // Droite
   );
 &nbsp;
   // Porte en haut (pour passer à la salle suivante)
-  const doorX = <span class="cstat-no" title="statement not covered" >(room.width - CONFIG.DOOR_WIDTH) / 2;</span>
 <span class="cstat-no" title="statement not covered" >  room.doors.push({</span>
     x: doorX,
     y: 0,
-    width: CONFIG.DOOR_WIDTH,
+    width: doorWidth,
     height: w,
     active: false // S'active quand tous les zombies sont morts
   });
 &nbsp;
   // Obstacles aléatoires (piliers, caisses)
+  // Safe margin: wall thickness + buffer to avoid spawning on walls
+  const obstacleMargin = <span class="cstat-no" title="statement not covered" >w + 60;</span> // 60px buffer from wall interior
+&nbsp;
   const numObstacles = <span class="cstat-no" title="statement not covered" >Math.floor(Math.random() * 5) + 3;</span>
 <span class="cstat-no" title="statement not covered" >  for (let i = <span class="cstat-no" title="statement not covered" >0;</span> i &lt; numObstacles; i++) {</span>
     const obsWidth = <span class="cstat-no" title="statement not covered" >40 + Math.random() * 40;</span>
     const obsHeight = <span class="cstat-no" title="statement not covered" >40 + Math.random() * 40;</span>
-    const obsX = <span class="cstat-no" title="statement not covered" >100 + Math.random() * (room.width - 200 - obsWidth);</span>
-    const obsY = <span class="cstat-no" title="statement not covered" >100 + Math.random() * (room.height - 200 - obsHeight);</span>
+    const obsX = <span class="cstat-no" title="statement not covered" >obstacleMargin + Math.random() * (room.width - obstacleMargin * 2 - obsWidth);</span>
+    const obsY = <span class="cstat-no" title="statement not covered" >obstacleMargin + Math.random() * (room.height - obstacleMargin * 2 - obsHeight);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    room.obstacles.push({</span>
       x: obsX,
@@ -364,7 +391,7 @@ function <span class="fstat-no" title="function not covered" >loadRoom(</span>ro
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T20:27:29.801Z
+                at 2026-01-20T15:23:22.362Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -99,7 +99,7 @@ class StaticPropsSystem {
    * Spawn props on the map
    */
   spawnProps(mapWidth, mapHeight, density = 0.8) {
-    const types = Object.keys(this.propTypes);
+    const _types = Object.keys(this.propTypes);
     const totalProps = Math.floor(density * 100); // ~80 props per map
     const margin = 150;
 
@@ -125,7 +125,7 @@ class StaticPropsSystem {
         typeKey = 'bench';
       }
 
-      const type = this.propTypes[typeKey];
+      const _type = this.propTypes[typeKey];
 
       // Random position, avoiding center spawn
       let x, y;

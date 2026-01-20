@@ -113,7 +113,7 @@ class LightingSystem {
   /**
    * Update all light sources
    */
-  update(deltaTime = 16) {
+  update(_deltaTime = 16) {
     this.frameCount++;
     const now = Date.now();
 
@@ -180,7 +180,7 @@ class LightingSystem {
   /**
    * Calculate shadow positions for entities
    */
-  calculateShadows(entities, lights, camera) {
+  calculateShadows(entities, lights, _camera) {
     if (this.ambientLight >= 0.95) {
       return [];
     } // No shadows in full daylight

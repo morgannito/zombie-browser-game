@@ -261,7 +261,7 @@ class AdminCommands {
   /**
    * Check if user is admin (simple implementation)
    */
-  isAdmin(playerId) {
+  isAdmin(_playerId) {
     // In production, check against database or config
     // For now, all users are admin in debug mode
     return process.env.NODE_ENV !== 'production';

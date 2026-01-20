@@ -68,7 +68,7 @@ class DynamicPropsSystem {
    * Spawn dynamic props on map
    */
   spawnProps(mapWidth, mapHeight, density = 0.3) {
-    const types = Object.keys(this.propTypes);
+    const _types = Object.keys(this.propTypes);
     const totalProps = Math.floor(density * 30); // ~10 dynamic props
     const margin = 200;
 
@@ -143,7 +143,7 @@ class DynamicPropsSystem {
   /**
    * Update dynamic props and generate particles
    */
-  update(deltaTime = 16) {
+  update(_deltaTime = 16) {
     // Update particles
     this.particles = this.particles.filter(p => {
       p.life--;

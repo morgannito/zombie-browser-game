@@ -160,7 +160,7 @@ class UIManager {
     }, 3000);
   }
 
-  showMilestoneBonus(bonus, level) {
+  showMilestoneBonus(bonus, _level) {
     const announcement = document.getElementById('wave-announcement');
     announcement.querySelector('h1').innerHTML = `${bonus.icon} ${bonus.title}`;
     announcement.querySelector('p').textContent = bonus.description;

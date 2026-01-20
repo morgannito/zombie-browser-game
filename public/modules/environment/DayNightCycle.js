@@ -92,7 +92,7 @@ class DayNightCycle {
   /**
    * Update time progression
    */
-  update(deltaTime = 16) {
+  update(_deltaTime = 16) {
     if (this.isPaused) {
       return;
     }

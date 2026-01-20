@@ -345,7 +345,6 @@ class TutorialSystem {
     const text = document.getElementById('tutorial-text');
     const progressFill = document.getElementById('tutorial-progress-fill');
     const stepCount = document.getElementById('tutorial-step-count');
-    const nextBtn = document.getElementById('tutorial-next');
 
     if (!overlay) {
       return;

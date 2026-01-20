@@ -6,7 +6,6 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
-const MathUtils = require('../../../lib/MathUtils');
 const { createParticles, createLoot } = require('../../lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -62,7 +61,7 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
 /**
  * Handle player bullet collisions with zombies
  */
-function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, perfIntegration) {
+function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, _perfIntegration) {
   const hitZombies = collisionManager.checkBulletZombieCollisions(bullet);
 
   for (const {id: zombieId, zombie} of hitZombies) {
@@ -90,7 +89,7 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
     createParticles(zombie.x, zombie.y, zombie.color, 5, entityManager);
 
     if (zombie.health <= 0) {
-      handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, perfIntegration);
+      handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, _perfIntegration);
     }
 
     // FIX: Only break if bullet has no piercing or was destroyed
@@ -164,7 +163,7 @@ function handlePiercing(bullet, bulletId, zombieId, entityManager) {
 /**
  * Handle zombie death from bullet
  */
-function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, perfIntegration) {
+function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, _perfIntegration) {
   createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
 
   if (zombie.type === 'explosive') {

@@ -16,7 +16,7 @@ const { AppError } = require('../lib/domain/errors/DomainErrors');
  * @param {Object} res - Express response
  * @param {Function} next - Next middleware
  */
-function notFoundHandler(req, res, next) {
+function notFoundHandler(req, res, _next) {
   res.status(404).send(`
     <!DOCTYPE html>
     <html lang="fr">
@@ -54,7 +54,7 @@ function notFoundHandler(req, res, next) {
  * @param {Object} res - Express response
  * @param {Function} next - Next middleware
  */
-function serverErrorHandler(err, req, res, next) {
+function serverErrorHandler(err, req, res, _next) {
   logger.error('Server error', { status: err.status || 500, stack: err.stack });
   res.status(err.status || 500).send(`
     <!DOCTYPE html>

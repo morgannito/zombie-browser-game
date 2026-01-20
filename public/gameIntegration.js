@@ -458,7 +458,7 @@ function populateWeaponSkins() {
 /**
  * Ajoute un bouton de skins dans l'UI
  */
-function addSkinsButton() {
+function _addSkinsButton() {
   const button = document.createElement('button');
   button.id = 'open-skins-btn';
   button.textContent = '🎨 SKINS';

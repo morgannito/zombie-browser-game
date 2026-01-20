@@ -204,12 +204,18 @@ class LeaderboardSystem {
     });
 
     container.querySelectorAll('.leaderboard-tab').forEach(tab => {
-      (window.eventListenerManager ? window.eventListenerManager.add(tab, 'click', (e) : (window.eventListenerManager ? window.eventListenerManager.add(tab, 'click', (e)) : tab.addEventListener('click', (e))) => {
+      const onClick = (e) => {
         container.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
         const period = e.target.dataset.period;
         this.showLeaderboard(period);
-      });
+      };
+
+      if (window.eventListenerManager) {
+        window.eventListenerManager.add(tab, 'click', onClick);
+      } else {
+        tab.addEventListener('click', onClick);
+      }
     });
 
     return container;
@@ -283,16 +289,16 @@ class LeaderboardSystem {
       </div>
       <div class="leaderboard-widget-list">
         ${topScores.map((entry, index) => {
-          const rank = index + 1;
-          const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-          return `
+    const rank = index + 1;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    return `
             <div class="leaderboard-widget-entry">
               <span class="rank">${medal}</span>
               <span class="player">${entry.playerName}</span>
               <span class="score">${entry.score.toLocaleString()}</span>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     `;
 

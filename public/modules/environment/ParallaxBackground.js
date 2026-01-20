@@ -77,7 +77,7 @@ class ParallaxBackground {
   /**
    * Update layers (for animated backgrounds in future)
    */
-  update(deltaTime = 16) {
+  update(_deltaTime = 16) {
     // Reserved for future animated backgrounds
   }
 

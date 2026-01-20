@@ -76,7 +76,7 @@ class AssetManager {
      * Charge une image de manière asynchrone
      */
   loadImage(path, key) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const img = new Image();
 
       img.onload = () => {
@@ -102,7 +102,7 @@ class AssetManager {
      * Charge un fichier audio de manière asynchrone
      */
   loadSound(path, key) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const audio = new Audio();
 
       audio.oncanplaythrough = () => {
@@ -318,7 +318,7 @@ class AssetManager {
      * Arrête tous les sons
      */
   stopAllSounds() {
-    this.sounds.forEach((sound, key) => {
+    this.sounds.forEach((sound, _key) => {
       if (sound) {
         sound.pause();
         sound.currentTime = 0;

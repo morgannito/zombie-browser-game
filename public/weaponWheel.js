@@ -153,7 +153,7 @@ class WeaponWheel {
     });
   }
 
-  updateHover(e) {
+  updateHover(_e) {
     // Optional: could implement mouse position-based selection
     // For now, relying on hover events from renderWeapons
   }

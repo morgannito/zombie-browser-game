@@ -54,7 +54,7 @@ describe('Player Death Progression Handler', () => {
   test('should return false if player health is invalid', () => {
     mockPlayer.health = 'invalid';
 
-    const result = handlePlayerDeathProgression(mockPlayer, 'player-123', mockGameState, Date.now(), false, mockLogger);
+    handlePlayerDeathProgression(mockPlayer, 'player-123', mockGameState, Date.now(), false, mockLogger);
 
     expect(mockLogger.warn).toHaveBeenCalled();
     expect(mockPlayer.health).toBe(0);

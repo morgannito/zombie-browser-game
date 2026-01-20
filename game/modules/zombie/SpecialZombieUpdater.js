@@ -120,7 +120,7 @@ function spawnMinions(zombie, zombieId, currentMinions, summonerType, zombieMana
 /**
  * Update berserker zombie
  */
-function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, _gameState) {
   if (zombie.type !== 'berserker') {
     return;
   }

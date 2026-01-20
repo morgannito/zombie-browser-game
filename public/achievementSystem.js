@@ -500,7 +500,7 @@ class AchievementSystem {
   // Obtenir tous les titres débloqués
   getUnlockedTitles() {
     const titles = [];
-    for (const [id, data] of Object.entries(this.unlockedAchievements)) {
+    for (const [id, _data] of Object.entries(this.unlockedAchievements)) {
       const achievement = this.achievements[id];
       if (achievement && achievement.reward.title) {
         titles.push(achievement.reward.title);

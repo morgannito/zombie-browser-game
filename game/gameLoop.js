@@ -8,7 +8,6 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const MathUtils = require('../lib/MathUtils');
-const { distance } = require('./utilityFunctions');
 const { createLoot, createParticles } = require('./lootFunctions');
 
 const { CONFIG, GAMEPLAY_CONSTANTS } = ConfigManager;
@@ -19,7 +18,6 @@ const { updatePoisonTrails, updatePoisonedZombies, updateFrozenSlowedZombies } =
 const { updateBullets } = require('./modules/bullet/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');
-const { handlePlayerLevelUp } = require('./modules/player/PlayerProgression');
 const HazardManager = require('./modules/hazards/HazardManager');
 
 // HIGH FIX: Race condition protection with stuck detection
@@ -414,10 +412,8 @@ function updatePlayerTimers(player, now, io, playerId) {
 
 /**
  * Update player regeneration
- * CRITICAL FIX: Now uses deltaMultiplier for frame-rate independent regeneration
- * This prevents missed regen ticks during lag spikes
  */
-function updatePlayerRegeneration(player, now, deltaMultiplier = 1) {
+function updatePlayerRegeneration(player, now, _deltaMultiplier = 1) {
   if (player.regeneration > 0) {
     if (!player.lastRegenTick) {
       player.lastRegenTick = now;
@@ -440,7 +436,7 @@ function updatePlayerRegeneration(player, now, deltaMultiplier = 1) {
 /**
  * Update auto turrets
  */
-function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, gameState) {
+function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, _gameState) {
   if (player.autoTurrets > 0 && player.hasNickname && !player.spawnProtection) {
     const autoFireCooldown = GAMEPLAY_CONSTANTS.AUTO_TURRET_BASE_COOLDOWN / player.autoTurrets;
 

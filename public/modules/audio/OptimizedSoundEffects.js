@@ -18,28 +18,32 @@ class OptimizedSoundEffects {
    * SHOOT SOUNDS - Optimized with throttling
    */
   playShoot(weaponType = 'pistol', distance = 0) {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     const attenuation = this.calculateDistanceAttenuation(distance);
-    if (attenuation < 0.05) return; // Too far, don't play
+    if (attenuation < 0.05) {
+      return;
+    } // Too far, don't play
 
     switch (weaponType) {
-      case 'pistol':
-        this.playPistolShot(attenuation);
-        break;
-      case 'shotgun':
-        this.playShotgunShot(attenuation);
-        break;
-      case 'machinegun':
-      case 'minigun':
-        this.playMachinegunShot(attenuation);
-        break;
-      case 'rifle':
-      case 'sniper':
-        this.playRifleShot(attenuation);
-        break;
-      default:
-        this.playPistolShot(attenuation);
+    case 'pistol':
+      this.playPistolShot(attenuation);
+      break;
+    case 'shotgun':
+      this.playShotgunShot(attenuation);
+      break;
+    case 'machinegun':
+    case 'minigun':
+      this.playMachinegunShot(attenuation);
+      break;
+    case 'rifle':
+    case 'sniper':
+      this.playRifleShot(attenuation);
+      break;
+    default:
+      this.playPistolShot(attenuation);
     }
   }
 
@@ -142,7 +146,9 @@ class OptimizedSoundEffects {
    * HIT SOUNDS
    */
   playHit(isCritical = false) {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playTone({
       type: 'hit',
@@ -158,7 +164,9 @@ class OptimizedSoundEffects {
    * ZOMBIE DEATH
    */
   playZombieDeath() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playTone({
       type: 'zombieDeath',
@@ -178,7 +186,9 @@ class OptimizedSoundEffects {
    * EXPLOSION
    */
   playExplosion() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playNoise({
       type: 'explosion',
@@ -194,7 +204,9 @@ class OptimizedSoundEffects {
    * COLLECT (gold, powerup)
    */
   playCollect(type = 'gold') {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     if (type === 'gold') {
       this.core.playTone({
@@ -221,7 +233,9 @@ class OptimizedSoundEffects {
    * LEVEL UP - Arpeggio
    */
   playLevelUp() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C
     frequencies.forEach((freq, i) => {
@@ -241,7 +255,9 @@ class OptimizedSoundEffects {
    * PLAYER DAMAGE
    */
   playPlayerDamage() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playTone({
       type: 'playerDamage',
@@ -257,7 +273,9 @@ class OptimizedSoundEffects {
    * HEAL
    */
   playHeal() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playTone({
       type: 'collect',
@@ -273,7 +291,9 @@ class OptimizedSoundEffects {
    * BOSS SPAWN
    */
   playBossSpawn() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     // Triple bass drone
     for (let i = 0; i < 3; i++) {
@@ -292,7 +312,9 @@ class OptimizedSoundEffects {
    * UI SOUNDS
    */
   playUISound(type = 'click') {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     if (type === 'click') {
       this.core.playTone({
@@ -317,7 +339,9 @@ class OptimizedSoundEffects {
    * RELOAD
    */
   playReload(weaponType = 'pistol') {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     // Magazine out
     this.core.playTone({
@@ -363,7 +387,9 @@ class OptimizedSoundEffects {
    * DRY FIRE (empty gun)
    */
   playDryFire() {
-    if (!this.core) return;
+    if (!this.core) {
+      return;
+    }
 
     this.core.playTone({
       type: 'ui',
@@ -378,7 +404,9 @@ class OptimizedSoundEffects {
    * Distance attenuation calculation
    */
   calculateDistanceAttenuation(distance, maxDistance = 1000) {
-    if (distance >= maxDistance) return 0;
+    if (distance >= maxDistance) {
+      return 0;
+    }
     return Math.max(0, 1 - (distance / maxDistance));
   }
 

@@ -71,7 +71,7 @@ class NetworkManager {
     this.pingInterval = setInterval(() => {
       if (this.socket.connected) {
         const start = Date.now();
-        this.socket.emit('ping', start, (ack) => {
+        this.socket.emit('ping', start, (_ack) => {
           const latency = Date.now() - start;
           this.updateLatency(latency);
         });
@@ -378,7 +378,7 @@ class NetworkManager {
     // Detect boss death for slow motion effect (SCREEN EFFECTS)
     if (delta.removed && delta.removed.zombies && window.screenEffects) {
       // Check if any removed zombie was a boss
-      delta.removed.zombies.forEach(zombieId => {
+      delta.removed.zombies.forEach(_zombieId => {
         // We need to check if it was a boss before removal
         // The server should send a specific event for boss death, but we can also detect it here
         // For now, we'll rely on the bossSpawned meta flag change
@@ -472,7 +472,7 @@ class NetworkManager {
     }
   }
 
-  handleUpgradeSelected(data) {
+  handleUpgradeSelected(_data) {
     // Upgrade successfully selected
   }
 

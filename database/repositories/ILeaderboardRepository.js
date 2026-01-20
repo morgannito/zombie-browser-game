@@ -18,7 +18,7 @@ class ILeaderboardRepository {
    * @param {number} [scoreData.sessionId] - Session ID
    * @returns {Promise<void>}
    */
-  async submitScore(scoreData) {
+  async submitScore(_scoreData) {
     throw new Error('Method not implemented');
   }
 
@@ -28,7 +28,7 @@ class ILeaderboardRepository {
    * @param {number} [limit=100] - Number of entries to return
    * @returns {Promise<Array>} Array of leaderboard entries with player info
    */
-  async getTopScores(leaderboardType, limit = 100) {
+  async getTopScores(_leaderboardType, _limit = 100) {
     throw new Error('Method not implemented');
   }
 
@@ -38,7 +38,7 @@ class ILeaderboardRepository {
    * @param {string} leaderboardType - Type of leaderboard
    * @returns {Promise<Object|null>} Rank info or null if not ranked
    */
-  async getPlayerRank(playerId, leaderboardType) {
+  async getPlayerRank(_playerId, _leaderboardType) {
     throw new Error('Method not implemented');
   }
 
@@ -49,7 +49,7 @@ class ILeaderboardRepository {
    * @param {number} [range=5] - Number of players above and below
    * @returns {Promise<Array>} Array of leaderboard entries
    */
-  async getScoresAroundRank(rank, leaderboardType, range = 5) {
+  async getScoresAroundRank(_rank, _leaderboardType, _range = 5) {
     throw new Error('Method not implemented');
   }
 
@@ -60,7 +60,7 @@ class ILeaderboardRepository {
    * @param {number} [range=5] - Number of players above and below
    * @returns {Promise<Array>} Array of leaderboard entries
    */
-  async getScoresAroundPlayer(playerId, leaderboardType, range = 5) {
+  async getScoresAroundPlayer(_playerId, _leaderboardType, _range = 5) {
     throw new Error('Method not implemented');
   }
 
@@ -69,7 +69,7 @@ class ILeaderboardRepository {
    * @param {string} leaderboardType - Type of leaderboard
    * @returns {Promise<void>}
    */
-  async recalculateRanks(leaderboardType) {
+  async recalculateRanks(_leaderboardType) {
     throw new Error('Method not implemented');
   }
 
@@ -78,7 +78,7 @@ class ILeaderboardRepository {
    * @param {number} daysToKeep - Number of days to keep
    * @returns {Promise<number>} Number of entries archived
    */
-  async archiveOldEntries(daysToKeep) {
+  async archiveOldEntries(_daysToKeep) {
     throw new Error('Method not implemented');
   }
 
@@ -87,7 +87,7 @@ class ILeaderboardRepository {
    * @param {string} leaderboardType - Type of leaderboard
    * @returns {number} Period start timestamp
    */
-  getPeriodStart(leaderboardType) {
+  getPeriodStart(_leaderboardType) {
     throw new Error('Method not implemented');
   }
 }

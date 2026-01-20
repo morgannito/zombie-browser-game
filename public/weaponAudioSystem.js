@@ -330,7 +330,7 @@ class WeaponAudioSystem {
   /**
    * RIFLE/SNIPER - Coup puissant avec crack sonique (with throttling)
    */
-  playRifle(distance = 0, variation = true) {
+  playRifle(distance = 0, _variation = true) {
     if (!this.context) {
       return;
     }

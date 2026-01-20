@@ -389,7 +389,7 @@ class AdvancedEffectsManager {
   /**
    * Met à jour tous les effets
    */
-  update(deltaTime = 16) {
+  update(_deltaTime = 16) {
     if (!this.enabled) {
       return;
     }
@@ -401,7 +401,7 @@ class AdvancedEffectsManager {
   /**
    * Dessine tous les effets
    */
-  render(ctx, canvasWidth, canvasHeight) {
+  render(ctx, _canvasWidth, _canvasHeight) {
     if (!this.enabled) {
       return;
     }
@@ -458,7 +458,7 @@ class AdvancedEffectsManager {
   /**
    * Effet lors d'une explosion
    */
-  onExplosion(x, y, radius) {
+  onExplosion(x, y, _radius) {
     // Réduit de 50 à 25 particules pour l'explosion principale
     this.particles.createExplosion(x, y, '#ff6600', 25, 4);
 

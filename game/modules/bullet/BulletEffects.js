@@ -5,7 +5,6 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require('../../utilityFunctions');
 const MathUtils = require('../../../lib/MathUtils');
 const { createParticles, createExplosion, createLoot } = require('../../lootFunctions');
 

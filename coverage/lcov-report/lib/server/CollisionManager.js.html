@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/108</span>
+                <span class='fraction'>0/112</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/82</span>
+                <span class='fraction'>0/88</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/108</span>
+                <span class='fraction'>0/112</span>
             </div>
         
             
@@ -808,7 +808,18 @@
 <a name='L743'></a><a href='#L743'>743</a>
 <a name='L744'></a><a href='#L744'>744</a>
 <a name='L745'></a><a href='#L745'>745</a>
-<a name='L746'></a><a href='#L746'>746</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L746'></a><a href='#L746'>746</a>
+<a name='L747'></a><a href='#L747'>747</a>
+<a name='L748'></a><a href='#L748'>748</a>
+<a name='L749'></a><a href='#L749'>749</a>
+<a name='L750'></a><a href='#L750'>750</a>
+<a name='L751'></a><a href='#L751'>751</a>
+<a name='L752'></a><a href='#L752'>752</a>
+<a name='L753'></a><a href='#L753'>753</a>
+<a name='L754'></a><a href='#L754'>754</a>
+<a name='L755'></a><a href='#L755'>755</a>
+<a name='L756'></a><a href='#L756'>756</a>
+<a name='L757'></a><a href='#L757'>757</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1337,7 +1348,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1355,6 +1369,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1423,6 +1439,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1436,6 +1455,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -2082,10 +2104,13 @@ class CollisionManager {
 <span class="cstat-no" title="statement not covered" >      return [];</span>
     }
 &nbsp;
+    // BUG FIX: Utiliser une taille max pour le rayon de recherche
+    // car les zombies ont des tailles variables (boss = 120px, normal = 25px)
+    const maxZombieSize = <span class="cstat-no" title="statement not covered" >120;</span> // Taille max possible d'un zombie (boss)
     const candidates = <span class="cstat-no" title="statement not covered" >this.quadtree.queryRadius(</span>
       bullet.x,
       bullet.y,
-      this.config.ZOMBIE_SIZE + this.config.BULLET_SIZE
+      maxZombieSize + this.config.BULLET_SIZE
     );
 &nbsp;
     const hitZombies = <span class="cstat-no" title="statement not covered" >[];</span>
@@ -2099,10 +2124,12 @@ class CollisionManager {
 <span class="cstat-no" title="statement not covered" >          continue;</span>
         }
 &nbsp;
-        // Vérifier collision avec distance carrée
+        // BUG FIX: Utiliser zombie.size au lieu de config.ZOMBIE_SIZE
+        // car les zombies ont des tailles variables
+        const zombieSize = <span class="cstat-no" title="statement not covered" >zombie.size || this.config.ZOMBIE_SIZE;</span>
 <span class="cstat-no" title="statement not covered" >        if (MathUtils.circleCollision(</span>
           bullet.x, bullet.y, this.config.BULLET_SIZE,
-          zombie.x, zombie.y, this.config.ZOMBIE_SIZE
+          zombie.x, zombie.y, zombieSize
         )) {
 <span class="cstat-no" title="statement not covered" >          hitZombies.push({ id: entity.entityId, zombie });</span>
         }
@@ -2168,10 +2195,13 @@ class CollisionManager {
       const zombie = <span class="cstat-no" title="statement not covered" >this.gameState.zombies[zombieId];</span>
 &nbsp;
       // Chercher les joueurs proches
+      // BUG FIX: Utiliser zombie.size au lieu de config.ZOMBIE_SIZE
+      // pour tenir compte des zombies de tailles variables (boss, tank, etc.)
+      const zombieSize = <span class="cstat-no" title="statement not covered" >zombie.size || this.config.ZOMBIE_SIZE;</span>
       const nearbyPlayers = <span class="cstat-no" title="statement not covered" >this.findPlayersInRadius(</span>
         zombie.x,
         zombie.y,
-        this.config.ZOMBIE_SIZE + this.config.PLAYER_SIZE + 5
+        zombieSize + this.config.PLAYER_SIZE + 5
       );
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      for (const player of nearbyPlayers) {</span>
@@ -2181,8 +2211,11 @@ class CollisionManager {
         }
 &nbsp;
         // Vérifier collision exacte
+        // BUG FIX: Utiliser zombie.size au lieu de config.ZOMBIE_SIZE
+        // car les zombies ont des tailles variables (boss, tank, etc.)
+        const zombieSize = <span class="cstat-no" title="statement not covered" >zombie.size || this.config.ZOMBIE_SIZE;</span>
 <span class="cstat-no" title="statement not covered" >        if (MathUtils.circleCollision(</span>
-          zombie.x, zombie.y, this.config.ZOMBIE_SIZE,
+          zombie.x, zombie.y, zombieSize,
           player.x, player.y, this.config.PLAYER_SIZE
         )) {
 <span class="cstat-no" title="statement not covered" >          collisions.push({ zombie, player });</span>
@@ -2305,7 +2338,7 @@ class CollisionManager {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T20:27:29.801Z
+                at 2026-01-20T15:23:22.362Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

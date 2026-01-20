@@ -954,18 +954,17 @@ class PerformanceSettingsManager {
 
     // Step 1: Disable particles first (least visual impact)
     if (this.settings.particlesEnabled) {
+      // Step 1: Disable particles first (least visual impact)
       this.settings.particlesEnabled = false;
       adjusted = true;
       console.log('→ Disabled particles');
-    }
-    // Step 2: Disable grid
-    else if (this.settings.gridEnabled) {
+    } else if (this.settings.gridEnabled) {
+      // Step 2: Disable grid
       this.settings.gridEnabled = false;
       adjusted = true;
       console.log('→ Disabled grid');
-    }
-    // Step 3: Reduce resolution gradually
-    else if (this.settings.resolutionScale > 0.5) {
+    } else if (this.settings.resolutionScale > 0.5) {
+      // Step 3: Reduce resolution gradually
       this.settings.resolutionScale = Math.max(0.5, this.settings.resolutionScale - 0.1);
       this.applyResolutionScale();
       adjusted = true;

@@ -3,8 +3,11 @@
  * @description Mécaniques spéciales pour nouveaux boss (Infernus, Cryos, Vortex, Nexus, Apocalypse)
  */
 
+const ConfigManager = require('../../../lib/server/ConfigManager');
 const { createParticles } = require('../../lootFunctions');
 const { distance } = require('../../utilityFunctions');
+
+const { ZOMBIE_TYPES } = ConfigManager;
 
 /**
  * Update Boss Infernal (wave 115)
@@ -14,8 +17,7 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
     return;
   }
 
-  const bossType = gameState.ZOMBIE_TYPES?.bossInfernal;
-  if (!bossType) {
+  if (!ZOMBIE_TYPES.bossInfernal) {
     return;
   }
 

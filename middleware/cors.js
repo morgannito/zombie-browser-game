@@ -6,8 +6,6 @@
  * - Supports credentials and specific methods
  */
 
-const { ALLOWED_ORIGINS } = require('../config/constants');
-
 /**
  * Socket.IO CORS configuration
  * @returns {Object} CORS configuration object for Socket.IO

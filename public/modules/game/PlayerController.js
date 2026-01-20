@@ -139,7 +139,7 @@ class PlayerController {
 
     if (dx !== 0 || dy !== 0) {
       // Calculate speed with multipliers and delta time
-      let baseSpeed = this.gameState.config.PLAYER_SPEED;
+      const baseSpeed = this.gameState.config.PLAYER_SPEED;
       let speed = baseSpeed * (player.speedMultiplier || 1);
 
       if (player.speedBoost && now < player.speedBoost) {
@@ -196,7 +196,7 @@ class PlayerController {
       player.angle = angle;
 
       // Record input for reconciliation
-      const inputSequence = this.input.recordInput(finalX, finalY, angle, deltaTime);
+      const _inputSequence = this.input.recordInput(finalX, finalY, angle, deltaTime);
 
       // Adaptive network throttling
       const positionDelta = Math.sqrt(
@@ -250,7 +250,7 @@ class PlayerController {
     this.input.clearJustPressed();
   }
 
-  shoot(canvasWidth, canvasHeight) {
+  shoot(_canvasWidth, _canvasHeight) {
     const player = this.gameState.getPlayer();
     if (!player || !player.alive || !this.gameStarted) {
       return;

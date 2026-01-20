@@ -131,7 +131,7 @@ class RetentionHooksSystem {
   }
 
   // Vérifier si proche d'un achievement
-  checkNearAchievement(stats) {
+  checkNearAchievement(_stats) {
     if (!window.achievementSystem) {
       return null;
     }
@@ -179,7 +179,7 @@ class RetentionHooksSystem {
   }
 
   // Vérifier si proche de terminer un défi
-  checkNearChallenge(stats) {
+  checkNearChallenge(_stats) {
     if (!window.dailyChallengeSystem) {
       return null;
     }

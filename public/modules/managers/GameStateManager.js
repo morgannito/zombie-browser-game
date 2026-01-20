@@ -270,7 +270,9 @@ class GameStateManager {
 
     // Interpolate other players (not local player) with same fixed approach
     for (const [id, player] of Object.entries(this.state.players)) {
-      if (id === this.playerId) continue; // Skip local player
+      if (id === this.playerId) {
+        continue;
+      } // Skip local player
 
       let state = entityStates.players.get(id);
 
@@ -476,7 +478,9 @@ class GameStateManager {
       const bulletId = bulletIds[i];
       const bullet = this.predictedBullets[bulletId];
 
-      if (!bullet) continue;
+      if (!bullet) {
+        continue;
+      }
 
       // Update position
       bullet.x += bullet.vx;
@@ -514,7 +518,9 @@ class GameStateManager {
       let hitZombie = false;
       for (const zombieId in zombies) {
         const zombie = zombies[zombieId];
-        if (!zombie || zombie.isDead) continue;
+        if (!zombie || zombie.isDead) {
+          continue;
+        }
 
         // Circle-circle collision
         const dx = bullet.x - zombie.x;
@@ -562,7 +568,9 @@ class GameStateManager {
       for (let i = 0; i < bulletIds.length; i++) {
         const bulletId = bulletIds[i];
         const bullet = this.predictedBullets[bulletId];
-        if (!bullet) continue;
+        if (!bullet) {
+          continue;
+        }
 
         const age = now - bullet.createdAt;
 

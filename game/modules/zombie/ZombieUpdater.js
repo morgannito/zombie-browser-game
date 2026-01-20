@@ -77,34 +77,34 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
     }
 
     // Boss updates (rare, so grouped together)
-    if (zombieType === 'charnier') {
+    if (zombieType === 'bossCharnier') {
       updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
     }
-    if (zombieType === 'infect') {
+    if (zombieType === 'bossInfect') {
       updateBossInfect(zombie, now, entityManager, gameState);
     }
-    if (zombieType === 'colosse') {
+    if (zombieType === 'bossColosse') {
       updateBossColosse(zombie, zombieId, now, io, entityManager);
     }
-    if (zombieType === 'roi') {
+    if (zombieType === 'bossRoi') {
       updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
     }
-    if (zombieType === 'omega') {
+    if (zombieType === 'bossOmega') {
       updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
     }
-    if (zombieType === 'infernal') {
+    if (zombieType === 'bossInfernal') {
       updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
     }
-    if (zombieType === 'cryos') {
+    if (zombieType === 'bossCryos') {
       updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
     }
-    if (zombieType === 'vortex') {
+    if (zombieType === 'bossVortex') {
       updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
     }
-    if (zombieType === 'nexus') {
+    if (zombieType === 'bossNexus') {
       updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
     }
-    if (zombieType === 'apocalypse') {
+    if (zombieType === 'bossApocalypse') {
       updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
     }
 
@@ -330,7 +330,7 @@ function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisi
  * Calculate zombie effective speed
  * FIX: Added speed capping to prevent teleportation on extreme multipliers
  */
-function calculateEffectiveSpeed(zombie, angle) {
+function calculateEffectiveSpeed(zombie, _angle) {
   let effectiveSpeed = zombie.speed;
 
   if (zombie.type === 'berserker' && zombie.rageSpeedMultiplier) {

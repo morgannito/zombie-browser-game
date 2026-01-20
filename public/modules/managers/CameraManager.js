@@ -56,7 +56,7 @@ class CameraManager {
     deltaTime = Math.min(deltaTime, 100);
 
     // Calculate delta factor for frame-independent movement
-    const deltaFactor = deltaTime / this.targetFrameTime;
+    const _deltaFactor = deltaTime / this.targetFrameTime;
 
     // Calculate player velocity for look-ahead
     let lookAheadX = 0;
@@ -147,7 +147,7 @@ class CameraManager {
    * Update screen shake
    * @param {number} deltaTime - Time since last frame
    */
-  updateShake(deltaTime) {
+  updateShake(_deltaTime) {
     if (this.shakeIntensity <= 0 || this.shakeDuration <= 0) {
       this.shakeOffset = { x: 0, y: 0 };
       return;

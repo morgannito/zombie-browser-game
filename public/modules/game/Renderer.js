@@ -874,7 +874,7 @@ class Renderer {
     });
   }
 
-  renderFireBase(prop) {
+  renderFireBase(_prop) {
     // Fire logs/wood base
     this.ctx.fillStyle = '#3a2410';
     this.ctx.fillRect(-15, 0, 10, 6);
@@ -882,7 +882,7 @@ class Renderer {
     this.ctx.fillRect(-8, -3, 16, 5);
   }
 
-  renderSparksBase(prop) {
+  renderSparksBase(_prop) {
     // Broken wire or source
     this.ctx.strokeStyle = '#666';
     this.ctx.lineWidth = 2;
@@ -1173,7 +1173,9 @@ class Renderer {
    */
   renderBullets(bullets, config) {
     // FIX: Early return if no bullets or invalid config
-    if (!bullets || !config) return;
+    if (!bullets || !config) {
+      return;
+    }
 
     // OPTIMIZATION: Group bullets by color to minimize ctx state changes
     const bulletsByColor = new Map();
@@ -2125,10 +2127,8 @@ class Renderer {
         this.ctx.stroke();
         this.ctx.restore();
       }
-    }
-
-    // === BOSS SPÉCIAUX ===
-    else if (zombie.type === 'bossCharnier') {
+    } else if (zombie.type === 'bossCharnier') {
+      // === BOSS SPÉCIAUX ===
       // Le Charnier - Aura rouge sang pulsante
       this.ctx.save();
       this.ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
@@ -2302,7 +2302,7 @@ class Renderer {
 
     // Bubble dimensions
     const paddingX = 12;
-    const paddingY = 8;
+    const _paddingY = 8;
     const bubbleWidth = textWidth + paddingX * 2;
     const bubbleHeight = 24;
     const borderRadius = 12;
@@ -2951,7 +2951,7 @@ class Renderer {
    * Update and render damage numbers
    * @param {number} deltaTime - Time since last frame (ms)
    */
-  updateDamageNumbers(deltaTime) {
+  updateDamageNumbers(_deltaTime) {
     const now = Date.now();
 
     // Update damage numbers
@@ -3087,7 +3087,7 @@ class Renderer {
     }
   }
 
-  renderParallaxBackground(parallax, camera, viewport) {
+  renderParallaxBackground(parallax, camera, _viewport) {
     if (!parallax) {
       return;
     }

@@ -14,7 +14,7 @@ class IPlayerRepository {
    * @param {string} [playerData.passwordHash] - Optional password hash
    * @returns {Promise<Object>} Created player with id
    */
-  async create(playerData) {
+  async create(_playerData) {
     throw new Error('Method not implemented');
   }
 
@@ -23,7 +23,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object|null>} Player object or null if not found
    */
-  async findById(playerId) {
+  async findById(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -32,7 +32,7 @@ class IPlayerRepository {
    * @param {string} playerUuid - Player UUID
    * @returns {Promise<Object|null>} Player object or null if not found
    */
-  async findByUuid(playerUuid) {
+  async findByUuid(_playerUuid) {
     throw new Error('Method not implemented');
   }
 
@@ -41,7 +41,7 @@ class IPlayerRepository {
    * @param {string} nickname - Player nickname
    * @returns {Promise<Object|null>} Player object or null if not found
    */
-  async findByNickname(nickname) {
+  async findByNickname(_nickname) {
     throw new Error('Method not implemented');
   }
 
@@ -50,7 +50,7 @@ class IPlayerRepository {
    * @param {string} nickname - Nickname to check
    * @returns {Promise<boolean>} True if available
    */
-  async isNicknameAvailable(nickname) {
+  async isNicknameAvailable(_nickname) {
     throw new Error('Method not implemented');
   }
 
@@ -59,7 +59,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<void>}
    */
-  async updateLastLogin(playerId) {
+  async updateLastLogin(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -68,7 +68,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object|null>} Player with stats or null
    */
-  async getPlayerProfile(playerId) {
+  async getPlayerProfile(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -77,7 +77,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object|null>} Player stats or null
    */
-  async getStats(playerId) {
+  async getStats(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -87,7 +87,7 @@ class IPlayerRepository {
    * @param {Object} updates - Stat updates (will be added to existing values)
    * @returns {Promise<void>}
    */
-  async updateStats(playerId, updates) {
+  async updateStats(_playerId, _updates) {
     throw new Error('Method not implemented');
   }
 
@@ -96,7 +96,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object>} Map of upgrade_type to upgrade_level
    */
-  async getPermanentUpgrades(playerId) {
+  async getPermanentUpgrades(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -107,7 +107,7 @@ class IPlayerRepository {
    * @param {number} cost - Gold cost
    * @returns {Promise<boolean>} True if successful
    */
-  async purchaseUpgrade(playerId, upgradeType, cost) {
+  async purchaseUpgrade(_playerId, _upgradeType, _cost) {
     throw new Error('Method not implemented');
   }
 
@@ -117,7 +117,7 @@ class IPlayerRepository {
    * @param {string} [unlockType] - Optional filter by type
    * @returns {Promise<Array>} Array of unlocks
    */
-  async getUnlocks(playerId, unlockType = null) {
+  async getUnlocks(_playerId, _unlockType = null) {
     throw new Error('Method not implemented');
   }
 
@@ -129,7 +129,7 @@ class IPlayerRepository {
    * @param {number} price - Purchase price
    * @returns {Promise<void>}
    */
-  async addUnlock(playerId, unlockType, unlockId, price) {
+  async addUnlock(_playerId, _unlockType, _unlockId, _price) {
     throw new Error('Method not implemented');
   }
 
@@ -140,7 +140,7 @@ class IPlayerRepository {
    * @param {number|null} expiresAt - Unix timestamp or null for permanent
    * @returns {Promise<void>}
    */
-  async banPlayer(playerId, reason, expiresAt = null) {
+  async banPlayer(_playerId, _reason, _expiresAt = null) {
     throw new Error('Method not implemented');
   }
 
@@ -149,7 +149,7 @@ class IPlayerRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<boolean>} True if banned
    */
-  async isBanned(playerId) {
+  async isBanned(_playerId) {
     throw new Error('Method not implemented');
   }
 }

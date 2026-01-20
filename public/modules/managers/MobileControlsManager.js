@@ -344,7 +344,7 @@ class MobileControlsManager {
       }
       const touch = e.changedTouches[0];
       const dx = touch.clientX - this.swipeStartX;
-      const dy = touch.clientY - this.swipeStartY;
+      const _dy = touch.clientY - this.swipeStartY;
       const dt = Date.now() - this.swipeStartTime;
 
       // Swipe detection (fast movement)
@@ -365,7 +365,7 @@ class MobileControlsManager {
     // Double-tap on auto-shoot for burst mode
     const autoShootBtn = this.elements.autoShootBtn || document.getElementById('auto-shoot-btn');
     if (autoShootBtn) {
-      const handleDoubleTapDetect = (e) => {
+      const handleDoubleTapDetect = (_e) => {
         const now = Date.now();
         if (now - this.lastTapTime < 300) {
           this.tapCount++;
@@ -392,7 +392,7 @@ class MobileControlsManager {
     }
   }
 
-  handleLongPress(x, y) {
+  handleLongPress(_x, _y) {
     // Long press detected
     if (window.audioManager) {
       window.audioManager.play('longPress');

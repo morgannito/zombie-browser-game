@@ -83,7 +83,7 @@ class WeatherSystem {
   /**
    * Update weather state
    */
-  update(deltaTime = 16, viewport = { width: 800, height: 600 }, camera = { x: 0, y: 0 }) {
+  update(_deltaTime = 16, viewport = { width: 800, height: 600 }, camera = { x: 0, y: 0 }) {
     // Smooth transition to target intensity
     if (this.intensity < this.targetIntensity) {
       this.intensity = Math.min(this.targetIntensity, this.intensity + this.transitionSpeed);

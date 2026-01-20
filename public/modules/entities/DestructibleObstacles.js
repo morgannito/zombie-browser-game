@@ -88,7 +88,7 @@ class DestructibleObstaclesSystem {
 
     for (let i = 0; i < count; i++) {
       const typeKey = types[Math.floor(Math.random() * types.length)];
-      const type = this.obstacleTypes[typeKey];
+      const _type = this.obstacleTypes[typeKey];
 
       // Random position, avoiding center spawn area
       let x, y;
@@ -145,7 +145,7 @@ class DestructibleObstaclesSystem {
    * @returns {object|null} Hit obstacle if any
    */
   checkBulletCollision(bullet) {
-    for (const [id, obstacle] of this.obstacles) {
+    for (const [_id, obstacle] of this.obstacles) {
       if (obstacle.destroyed) {
         continue;
       }

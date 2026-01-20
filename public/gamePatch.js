@@ -77,8 +77,8 @@
     // PATCH 1: Améliorer la boucle de jeu via update()
     // ===============================================
     // On patche update() plutôt que gameLoop() pour éviter les animation frame leaks
-    const originalUpdate = GameEngine.prototype.update;
-    GameEngine.prototype.update = function(deltaTime) {
+    const originalUpdate = window.GameEngine.prototype.update;
+    window.GameEngine.prototype.update = function(deltaTime) {
       // Appeler l'update original
       if (originalUpdate) {
         originalUpdate.call(this, deltaTime);

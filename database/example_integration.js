@@ -157,7 +157,7 @@ class GameServerIntegration {
           console.log(`[DB] Recovered session for ${nickname}`);
 
           // Parse and restore game state
-          const savedState = JSON.parse(activeSession.game_state_json);
+          const _savedState = JSON.parse(activeSession.game_state_json);
           // Apply saved state to player object
           // ... restore HP, level, gold, position, etc
         }

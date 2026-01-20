@@ -212,7 +212,7 @@ function checkBulletCollisionAtPosition(
  * Legacy update bullet position (kept for reference)
  * @deprecated Use updateBulletPositionWithCollision instead
  */
-function updateBulletPosition(bullet, now) {
+function _updateBulletPosition(bullet, _now) {
   bullet.x += bullet.vx;
   bullet.y += bullet.vy;
 

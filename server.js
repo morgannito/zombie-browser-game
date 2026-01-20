@@ -17,7 +17,6 @@
 // ============================================
 const express = require('express');
 const http = require('http');
-const path = require('path');
 
 // ============================================
 // IMPORTS - Configuration
@@ -76,7 +75,7 @@ const RoomManager = require('./lib/server/RoomManager');
 const ZombieManager = require('./lib/server/ZombieManager');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
-const { CONFIG, ZOMBIE_TYPES, LEVEL_UP_UPGRADES } = ConfigManager;
+const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 const { INACTIVITY_TIMEOUT, HEARTBEAT_CHECK_INTERVAL } = require('./config/constants');
 
 // ============================================

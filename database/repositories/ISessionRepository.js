@@ -14,7 +14,7 @@ class ISessionRepository {
    * @param {string} [sessionData.clientPlatform] - Client platform
    * @returns {Promise<Object>} Created session with id
    */
-  async create(sessionData) {
+  async create(_sessionData) {
     throw new Error('Method not implemented');
   }
 
@@ -32,7 +32,7 @@ class ISessionRepository {
    * @param {number} endData.highestCombo - Highest combo
    * @returns {Promise<void>}
    */
-  async endSession(sessionId, endData) {
+  async endSession(_sessionId, _endData) {
     throw new Error('Method not implemented');
   }
 
@@ -44,7 +44,7 @@ class ISessionRepository {
    * @param {string} [roomId] - Room ID
    * @returns {Promise<void>}
    */
-  async saveActiveSession(sessionId, socketId, gameState, roomId = null) {
+  async saveActiveSession(_sessionId, _socketId, _gameState, _roomId = null) {
     throw new Error('Method not implemented');
   }
 
@@ -53,7 +53,7 @@ class ISessionRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object|null>} Active session or null
    */
-  async getActiveSession(playerId) {
+  async getActiveSession(_playerId) {
     throw new Error('Method not implemented');
   }
 
@@ -62,7 +62,7 @@ class ISessionRepository {
    * @param {number} sessionId - Session ID
    * @returns {Promise<void>}
    */
-  async updateHeartbeat(sessionId) {
+  async updateHeartbeat(_sessionId) {
     throw new Error('Method not implemented');
   }
 
@@ -71,7 +71,7 @@ class ISessionRepository {
    * @param {number} timeoutSeconds - Timeout in seconds
    * @returns {Promise<number>} Number of sessions cleaned up
    */
-  async cleanupStaleSessions(timeoutSeconds) {
+  async cleanupStaleSessions(_timeoutSeconds) {
     throw new Error('Method not implemented');
   }
 
@@ -81,7 +81,7 @@ class ISessionRepository {
    * @param {number} [limit=10] - Number of sessions to return
    * @returns {Promise<Array>} Array of sessions
    */
-  async getPlayerSessions(playerId, limit = 10) {
+  async getPlayerSessions(_playerId, _limit = 10) {
     throw new Error('Method not implemented');
   }
 
@@ -90,7 +90,7 @@ class ISessionRepository {
    * @param {string} sessionUuid - Session UUID
    * @returns {Promise<Object|null>} Session or null
    */
-  async findByUuid(sessionUuid) {
+  async findByUuid(_sessionUuid) {
     throw new Error('Method not implemented');
   }
 
@@ -99,7 +99,7 @@ class ISessionRepository {
    * @param {number} playerId - Player ID
    * @returns {Promise<Object>} Session statistics
    */
-  async getSessionStats(playerId) {
+  async getSessionStats(_playerId) {
     throw new Error('Method not implemented');
   }
 }

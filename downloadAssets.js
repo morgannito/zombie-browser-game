@@ -232,32 +232,29 @@ class AssetDownloader {
     pngFiles.forEach(filePath => {
       const fileName = path.basename(filePath).toLowerCase();
 
-      // Zombies
       if (fileName.includes('zombie') || fileName.includes('zomb')) {
+        // Zombies
         const destName = `zombie_kenney_${++zombieCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'zombies', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Zombie: ${destName}`);
-      }
-      // Player/Soldier/Character
-      else if (fileName.includes('soldier') || fileName.includes('player') ||
-                     fileName.includes('man') || fileName.includes('character')) {
+      } else if (fileName.includes('soldier') || fileName.includes('player') ||
+                 fileName.includes('man') || fileName.includes('character')) {
+        // Player/Soldier/Character
         const destName = `player_kenney_${++playerCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'player', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Player: ${destName}`);
-      }
-      // Items (coins, health, etc)
-      else if (fileName.includes('coin') || fileName.includes('health') ||
-                     fileName.includes('heart') || fileName.includes('item')) {
+      } else if (fileName.includes('coin') || fileName.includes('health') ||
+                 fileName.includes('heart') || fileName.includes('item')) {
+        // Items (coins, health, etc)
         const destName = `item_kenney_${++itemCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'items', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Item: ${destName}`);
-      }
-      // Backgrounds/Tiles
-      else if (fileName.includes('tile') || fileName.includes('floor') ||
-                     fileName.includes('ground') || fileName.includes('background')) {
+      } else if (fileName.includes('tile') || fileName.includes('floor') ||
+                 fileName.includes('ground') || fileName.includes('background')) {
+        // Backgrounds/Tiles
         const destName = `bg_kenney_${++bgCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'backgrounds', destName);
         fs.copyFileSync(filePath, destPath);

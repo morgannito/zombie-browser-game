@@ -85,7 +85,7 @@ class EnvironmentalParticles {
   /**
    * Update particles
    */
-  update(deltaTime = 16, camera, viewport) {
+  update(_deltaTime = 16, camera, viewport) {
     if (!this.enabled) {
       return;
     }

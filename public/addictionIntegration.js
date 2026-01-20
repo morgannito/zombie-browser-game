@@ -247,14 +247,14 @@ class AddictionIntegration {
     });
 
     // Custom events pour missions
-    document.addEventListener('mission_reward_gold', (e) => {
+    document.addEventListener('mission_reward_gold', (_e) => {
       // Ajouter or au joueur
       if (window.gameEngine) {
         // Sera géré par le jeu principal
       }
     });
 
-    document.addEventListener('mission_reward_xp', (e) => {
+    document.addEventListener('mission_reward_xp', (_e) => {
       // Ajouter XP au joueur
       if (window.gameEngine) {
         // Sera géré par le jeu principal

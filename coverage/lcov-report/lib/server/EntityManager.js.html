@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/146</span>
+                <span class='fraction'>0/150</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/145</span>
+                <span class='fraction'>0/149</span>
             </div>
         
             
@@ -783,7 +783,17 @@
 <a name='L718'></a><a href='#L718'>718</a>
 <a name='L719'></a><a href='#L719'>719</a>
 <a name='L720'></a><a href='#L720'>720</a>
-<a name='L721'></a><a href='#L721'>721</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L721'></a><a href='#L721'>721</a>
+<a name='L722'></a><a href='#L722'>722</a>
+<a name='L723'></a><a href='#L723'>723</a>
+<a name='L724'></a><a href='#L724'>724</a>
+<a name='L725'></a><a href='#L725'>725</a>
+<a name='L726'></a><a href='#L726'>726</a>
+<a name='L727'></a><a href='#L727'>727</a>
+<a name='L728'></a><a href='#L728'>728</a>
+<a name='L729'></a><a href='#L729'>729</a>
+<a name='L730'></a><a href='#L730'>730</a>
+<a name='L731'></a><a href='#L731'>731</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -826,6 +836,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -836,6 +849,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -847,6 +862,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1001,10 +1017,14 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1543,7 +1563,10 @@ class EntityManager {
         isGrenade: false,
         isCrossbow: false,
         gravity: 0,
-        lifetime: null
+        lifetime: null,
+        // PHYSICS FIX: Track last update time for deltaTime calculation
+        lastUpdateTime: 0,
+        createdAt: 0
       }),
 <span class="fstat-no" title="function not covered" >      (b</span>ullet) =&gt; {
 <span class="cstat-no" title="statement not covered" >        bullet.vx = 0;</span>
@@ -1569,6 +1592,9 @@ class EntityManager {
 <span class="cstat-no" title="statement not covered" >        bullet.isCrossbow = false;</span>
 <span class="cstat-no" title="statement not covered" >        bullet.gravity = 0;</span>
 <span class="cstat-no" title="statement not covered" >        bullet.lifetime = null;</span>
+        // PHYSICS FIX: Reset timing fields
+<span class="cstat-no" title="statement not covered" >        bullet.lastUpdateTime = 0;</span>
+<span class="cstat-no" title="statement not covered" >        bullet.createdAt = 0;</span>
       },
       200 // Taille initiale
     );
@@ -1727,7 +1753,11 @@ class EntityManager {
 <span class="cstat-no" title="statement not covered" >    bullet.isCrossbow = params.isCrossbow || false;</span>
 <span class="cstat-no" title="statement not covered" >    bullet.gravity = params.gravity || 0;</span>
 <span class="cstat-no" title="statement not covered" >    bullet.lifetime = params.lifetime || null;</span>
-<span class="cstat-no" title="statement not covered" >    bullet.createdAt = params.createdAt || Date.now();</span>
+&nbsp;
+    // PHYSICS FIX: Initialize timing fields for deltaTime calculation
+    const now = <span class="cstat-no" title="statement not covered" >Date.now();</span>
+<span class="cstat-no" title="statement not covered" >    bullet.createdAt = params.createdAt || now;</span>
+<span class="cstat-no" title="statement not covered" >    bullet.lastUpdateTime = now; </span>// Initialize to creation time
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    this.gameState.bullets[bullet.id] = bullet;</span>
 <span class="cstat-no" title="statement not covered" >    return bullet;</span>
@@ -2230,7 +2260,7 @@ class EntityManager {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-08T20:27:29.801Z
+                at 2026-01-20T15:23:22.362Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

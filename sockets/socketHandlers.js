@@ -22,7 +22,6 @@ const {
 
 const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS, LEVEL_UP_UPGRADES } = ConfigManager;
 const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
-const MathUtils = require('../lib/MathUtils');
 
 /**
  * Map to store disconnected player states for recovery
@@ -156,7 +155,7 @@ function cleanupRateLimits(socketId) {
  * @param {boolean} options.skipRateLimit - Skip rate limiting for this handler
  * @returns {Function} Wrapped handler with error handling
  */
-function safeHandler(handlerName, handler, options = {}) {
+function safeHandler(handlerName, handler, _options = {}) {
   return function (...args) {
     try {
       // Apply rate limiting unless explicitly skipped (some handlers already check manually)

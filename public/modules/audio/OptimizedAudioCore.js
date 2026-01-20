@@ -106,7 +106,9 @@ class OptimizedAudioCore {
    * Create shared reverb for all sounds
    */
   createSharedReverb() {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+      return;
+    }
 
     const sampleRate = this.audioContext.sampleRate;
     const length = sampleRate * 1.5; // 1.5 seconds
@@ -250,7 +252,9 @@ class OptimizedAudioCore {
 
     // Sort by priority (lowest first), then by age (oldest first)
     cullCandidates.sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority - b.priority;
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
       return a.startTime - b.startTime;
     });
 
@@ -293,12 +297,18 @@ class OptimizedAudioCore {
    */
   unregisterSound(id) {
     const sound = this.activeSounds.get(id);
-    if (!sound) return;
+    if (!sound) {
+      return;
+    }
 
     // Release pooled nodes
     if (sound.nodes) {
-      if (sound.nodes.gain) this.releaseGainNode(sound.nodes.gain);
-      if (sound.nodes.filter) this.releaseFilterNode(sound.nodes.filter);
+      if (sound.nodes.gain) {
+        this.releaseGainNode(sound.nodes.gain);
+      }
+      if (sound.nodes.filter) {
+        this.releaseFilterNode(sound.nodes.filter);
+      }
     }
 
     // Update type counter
@@ -313,7 +323,9 @@ class OptimizedAudioCore {
    */
   stopSound(id) {
     const sound = this.activeSounds.get(id);
-    if (!sound) return;
+    if (!sound) {
+      return;
+    }
 
     if (sound.nodes && sound.nodes.oscillator) {
       try {
@@ -342,7 +354,9 @@ class OptimizedAudioCore {
    * @returns {number|null} Sound ID or null if throttled/blocked
    */
   playTone(options) {
-    if (!this.enabled || !this.audioContext) return null;
+    if (!this.enabled || !this.audioContext) {
+      return null;
+    }
 
     const {
       type = 'shoot',
@@ -431,7 +445,9 @@ class OptimizedAudioCore {
    * Play white noise (explosions, etc.)
    */
   playNoise(options) {
-    if (!this.enabled || !this.audioContext) return null;
+    if (!this.enabled || !this.audioContext) {
+      return null;
+    }
 
     const {
       type = 'explosion',
@@ -498,7 +514,9 @@ class OptimizedAudioCore {
    * Start periodic cleanup
    */
   startCleanupInterval() {
-    if (this.cleanupInterval) return;
+    if (this.cleanupInterval) {
+      return;
+    }
 
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
