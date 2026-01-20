@@ -205,15 +205,37 @@ class NetworkManager {
     this.on('comboUpdate', (data) => this.handleComboUpdate(data));
     this.on('comboReset', () => this.handleComboReset());
     this.on('sessionTimeout', (data) => this.handleSessionTimeout(data));
+    this.on('mutatorsUpdated', (data) => this.handleMutatorsUpdated(data));
   }
 
   handleInit(data) {
     window.gameState.initialize(data);
+    if (data.mutators && window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
+      window.runMutatorsSystem.applyServerMutators(data.mutators, {
+        effects: data.mutatorEffects,
+        nextRotationWave: data.nextMutatorWave,
+        wave: window.gameState.state.wave || 1
+      });
+    }
 
     // Show notification if session was recovered
     if (data.recovered && window.toastManager) {
       window.toastManager.show('🔄 Session restaurée ! Votre progression a été récupérée.', 'success');
       console.log('[Session] State successfully recovered');
+    }
+  }
+
+  handleMutatorsUpdated(data) {
+    if (!data || !data.mutators) {
+      return;
+    }
+
+    if (window.gameState && window.gameState.state) {
+      window.gameState.state.mutators = data.mutators;
+    }
+
+    if (window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
+      window.runMutatorsSystem.applyServerMutators(data.mutators, data);
     }
   }
 
@@ -452,6 +474,9 @@ class NetworkManager {
     if (window.gameUI) {
       window.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
       setTimeout(() => window.gameUI.showShop(), CONSTANTS.ANIMATIONS.SHOP_DELAY);
+    }
+    if (data.mutators && window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
+      window.runMutatorsSystem.applyServerMutators(data.mutators, data);
     }
     document.dispatchEvent(new CustomEvent('wave_changed', { detail: data }));
   }

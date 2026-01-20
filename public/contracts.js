@@ -122,6 +122,7 @@
         if (window.toastManager) {
           window.toastManager.show(`🎯 Contrat terminé: Étape ${this.contract.currentStage + 1}`, 'success', 3000);
         }
+        this.playSound('reward');
       }
 
       this.safeSave();
@@ -140,6 +141,7 @@
 
       stage.claimed = true;
       this.applyReward(stage.reward, `${this.contract.name} - Étape ${this.contract.currentStage + 1}`);
+      this.playSound('reward');
 
       if (this.contract.currentStage < this.contract.stages.length - 1) {
         this.contract.currentStage += 1;
@@ -152,6 +154,13 @@
 
       this.safeSave();
       this.refreshUI();
+    }
+
+    playSound(type = 'click') {
+      const audio = window.advancedAudio || window.audioManager;
+      if (audio && audio.playSound) {
+        audio.playSound('ui', type);
+      }
     }
 
     applyReward(reward, source) {

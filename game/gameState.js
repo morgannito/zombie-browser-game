@@ -69,6 +69,17 @@ function initializeGameState() {
     wave: 1,
     zombiesKilledThisWave: 0,
     zombiesSpawnedThisWave: 0,
+    activeMutators: [],
+    mutatorEffects: {
+      zombieHealthMultiplier: 1,
+      zombieDamageMultiplier: 1,
+      zombieSpeedMultiplier: 1,
+      spawnCountMultiplier: 1,
+      spawnIntervalMultiplier: 1,
+      playerDamageMultiplier: 1,
+      playerFireRateCooldownMultiplier: 1
+    },
+    nextMutatorWave: 0,
     permanentUpgrades: {
       maxHealthUpgrade: 0,
       damageUpgrade: 0,

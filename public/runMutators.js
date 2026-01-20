@@ -12,6 +12,8 @@
       this.mutatorState = {};
       this.panel = null;
       this.currentWave = 1;
+      this.useServerMutators = false;
+      this.nextRotationWave = null;
       this.init();
     }
 
@@ -61,12 +63,22 @@
       panel.innerHTML = `
         <div class="mutators-title">Mutateurs de run</div>
         <div class="mutators-list"></div>
+        <div class="mutators-footer"></div>
       `;
       document.body.appendChild(panel);
       this.panel = panel;
     }
 
     startRun() {
+      if (this.useServerMutators && this.activeMutators.length) {
+        this.mutatorState = {};
+        this.refreshPanel();
+        if (this.panel) {
+          this.panel.classList.remove('hidden');
+        }
+        return;
+      }
+
       this.activeMutators = this.pickMutators();
       this.mutatorState = {};
       this.currentWave = 1;
@@ -74,15 +86,18 @@
       this.activeMutators.forEach((mutator) => {
         this.mutatorState[mutator.id] = {
           progress: 0,
-          completed: !mutator.goal,
+          completed: false,
           failed: false
         };
       });
 
       this.refreshPanel();
+      this.flashPanel();
+      this.playMutatorSound('reward');
       if (this.panel) {
         this.panel.classList.remove('hidden');
       }
+
     }
 
     finishRun(_stats) {
@@ -178,6 +193,7 @@
           ? `${Math.min(state.progress || 0, mutator.goal.target)}/${mutator.goal.target}`
           : 'Actif';
         const rewardText = mutator.reward?.gems ? `+${mutator.reward.gems} 💎` : '';
+        const tagText = Array.isArray(mutator.tags) ? mutator.tags : [];
         return `
           <div class="mutator-card ${statusClass}">
             <div class="mutator-name">${mutator.name}</div>
@@ -185,10 +201,66 @@
             <div class="mutator-tags">
               <span class="mutator-tag">${goalText}</span>
               ${rewardText ? `<span class="mutator-tag">${rewardText}</span>` : ''}
+              ${tagText.map(tag => `<span class="mutator-tag alt">${tag}</span>`).join('')}
             </div>
           </div>
         `;
       }).join('');
+
+      const footer = this.panel.querySelector('.mutators-footer');
+      if (footer) {
+        footer.textContent = this.nextRotationWave
+          ? `Rotation à la vague ${this.nextRotationWave}`
+          : '';
+      }
+    }
+
+    applyServerMutators(mutators, metadata = {}) {
+      if (!Array.isArray(mutators) || mutators.length === 0) {
+        return;
+      }
+
+      this.useServerMutators = true;
+      this.activeMutators = mutators;
+      this.mutatorState = {};
+      this.nextRotationWave = metadata.nextRotationWave || metadata.nextMutatorWave || this.nextRotationWave;
+
+      this.activeMutators.forEach((mutator) => {
+        this.mutatorState[mutator.id] = {
+          progress: 0,
+          completed: false,
+          failed: false
+        };
+      });
+
+      this.refreshPanel();
+      this.flashPanel();
+      this.playMutatorSound('reward');
+      if (this.panel) {
+        this.panel.classList.remove('hidden');
+      }
+
+      if (window.toastManager && metadata.wave && metadata.wave > 1) {
+        const names = this.activeMutators.map((mutator) => mutator.name).join(' • ');
+        window.toastManager.show(`⚙️ Mutateurs actifs: ${names}`, 'info', 3000);
+      }
+    }
+
+    flashPanel() {
+      if (!this.panel) {
+        return;
+      }
+      this.panel.classList.remove('flash');
+      void this.panel.offsetWidth;
+      this.panel.classList.add('flash');
+      setTimeout(() => this.panel && this.panel.classList.remove('flash'), 800);
+    }
+
+    playMutatorSound(type = 'click') {
+      const audio = window.advancedAudio || window.audioManager;
+      if (audio && audio.playSound) {
+        audio.playSound('ui', type);
+      }
     }
 
     pickMutators() {

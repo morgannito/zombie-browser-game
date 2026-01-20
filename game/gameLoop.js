@@ -436,7 +436,7 @@ function updatePlayerRegeneration(player, now, _deltaMultiplier = 1) {
 /**
  * Update auto turrets
  */
-function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, _gameState) {
+function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, gameState) {
   if (player.autoTurrets > 0 && player.hasNickname && !player.spawnProtection) {
     const autoFireCooldown = GAMEPLAY_CONSTANTS.AUTO_TURRET_BASE_COOLDOWN / player.autoTurrets;
 
@@ -444,7 +444,7 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
       const closestZombie = collisionManager.findClosestZombie(player.x, player.y, GAMEPLAY_CONSTANTS.AUTO_TURRET_RANGE);
 
       if (closestZombie) {
-        fireAutoTurret(player, playerId, closestZombie, now, entityManager);
+        fireAutoTurret(player, playerId, closestZombie, now, entityManager, gameState);
       }
     }
   }
@@ -453,10 +453,11 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
 /**
  * Fire auto turret bullet
  */
-function fireAutoTurret(player, playerId, closestZombie, now, entityManager) {
+function fireAutoTurret(player, playerId, closestZombie, now, entityManager, gameState) {
   const angle = Math.atan2(closestZombie.y - player.y, closestZombie.x - player.x);
   const baseDamage = CONFIG.BULLET_DAMAGE * 0.6;
-  const damage = baseDamage * (player.damageMultiplier || 1);
+  const mutatorDamageMultiplier = gameState?.mutatorEffects?.playerDamageMultiplier || 1;
+  const damage = baseDamage * (player.damageMultiplier || 1) * mutatorDamageMultiplier;
 
   entityManager.createBullet({
     x: player.x,
@@ -491,7 +492,8 @@ function updateTeslaCoil(player, playerId, now, collisionManager, entityManager,
   }
 
   const teslaWeapon = ConfigManager.WEAPONS.teslaCoil;
-  const teslaCooldown = teslaWeapon.fireRate * (player.fireRateMultiplier || 1);
+  const fireRateCooldownMultiplier = gameState.mutatorEffects?.playerFireRateCooldownMultiplier || 1;
+  const teslaCooldown = teslaWeapon.fireRate * (player.fireRateMultiplier || 1) * fireRateCooldownMultiplier;
 
   if (now - player.lastTeslaShot >= teslaCooldown) {
     fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager, gameState, io, zombieManager);
@@ -507,7 +509,8 @@ function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager
   const targets = zombiesInRange.slice(0, teslaWeapon.teslaMaxTargets);
 
   if (targets.length > 0) {
-    const damage = teslaWeapon.damage * (player.damageMultiplier || 1);
+    const mutatorDamageMultiplier = gameState.mutatorEffects?.playerDamageMultiplier || 1;
+    const damage = teslaWeapon.damage * (player.damageMultiplier || 1) * mutatorDamageMultiplier;
 
     for (const zombie of targets) {
       applyTeslaDamage(zombie, damage, player, teslaWeapon, entityManager, gameState, now, io, zombieManager);

@@ -143,6 +143,12 @@ class AdminCommands {
     this.gameState.wave = wave;
     this.gameState.zombiesSpawnedThisWave = 0;
     this.gameState.bossSpawned = false;
+    if (this.gameState.mutatorManager) {
+      this.gameState.mutatorManager.handleWaveChange(wave);
+    }
+    if (this.zombieManager) {
+      this.zombieManager.restartZombieSpawner();
+    }
 
     this.io.emit('adminResponse', {
       success: true,

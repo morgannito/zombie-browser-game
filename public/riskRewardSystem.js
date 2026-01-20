@@ -156,6 +156,7 @@
       }
 
       this.modal.classList.add('active');
+      this.playSound('hover');
 
       if (this.offerTimeout) {
         clearTimeout(this.offerTimeout);
@@ -179,11 +180,13 @@
       this.pendingOffer = null;
       this.hideOffer();
       this.updateStatus();
+      this.playSound('click');
     }
 
     declineOffer() {
       this.pendingOffer = null;
       this.hideOffer();
+      this.playSound('click');
     }
 
     hideOffer() {
@@ -245,6 +248,7 @@
         window.toastManager.show(`🎉 Pacte rempli: ${challenge.title}`, 'success', 3500);
       }
 
+      this.playSound('reward');
       this.activeChallenge = null;
       this.updateStatus();
     }
@@ -264,6 +268,13 @@
       const status = this.activeChallenge.failed ? 'Échec' : `${progress}/${goal.target}`;
       this.statusPill.textContent = `⚖️ ${this.activeChallenge.title} • ${status}`;
       this.statusPill.style.display = 'block';
+    }
+
+    playSound(type = 'click') {
+      const audio = window.advancedAudio || window.audioManager;
+      if (audio && audio.playSound) {
+        audio.playSound('ui', type);
+      }
     }
 
     reset() {

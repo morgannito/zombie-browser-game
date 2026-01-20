@@ -11,6 +11,9 @@ const { CONFIG } = ConfigManager;
  */
 function handleNewWave(gameState, io, zombieManager) {
   incrementWave(gameState);
+  if (gameState.mutatorManager) {
+    gameState.mutatorManager.handleWaveChange(gameState.wave);
+  }
   restartSpawner(zombieManager);
   notifyPlayers(gameState, io);
   rewardSurvivors(gameState);
@@ -38,10 +41,15 @@ function restartSpawner(zombieManager) {
  */
 function notifyPlayers(gameState, io) {
   const effectiveWave = Math.min(gameState.wave, 130);
+  const spawnCountMultiplier = gameState.mutatorEffects?.spawnCountMultiplier || 1;
+  const baseZombies = CONFIG.ZOMBIES_PER_ROOM + (effectiveWave - 1) * 7;
+  const adjustedZombies = Math.max(1, Math.floor(baseZombies * spawnCountMultiplier));
 
   io.emit('newWave', {
     wave: gameState.wave,
-    zombiesCount: CONFIG.ZOMBIES_PER_ROOM + (effectiveWave - 1) * 7
+    zombiesCount: adjustedZombies,
+    mutators: gameState.activeMutators || [],
+    nextMutatorWave: gameState.nextMutatorWave || 0
   });
 }
 

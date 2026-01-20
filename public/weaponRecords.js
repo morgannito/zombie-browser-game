@@ -78,8 +78,10 @@
       if (window.toastManager) {
         if ((stats.wave || 0) > (prevBestWave || 0)) {
           window.toastManager.show(`🏆 Record de vague avec ${this.formatWeapon(weapon)}!`, 'success', 3000);
+          this.highlightRecords();
         } else if ((stats.score || 0) > (prevBestScore || 0)) {
           window.toastManager.show(`✨ Nouveau record de score avec ${this.formatWeapon(weapon)}!`, 'success', 3000);
+          this.highlightRecords();
         }
       }
     }
@@ -159,6 +161,20 @@
       } catch (error) {
         console.warn('Weapon record save failed', error);
       }
+    }
+
+    highlightRecords() {
+      if (!this.container) {
+        return;
+      }
+      this.container.classList.remove('weapon-records-highlight');
+      void this.container.offsetWidth;
+      this.container.classList.add('weapon-records-highlight');
+      setTimeout(() => {
+        if (this.container) {
+          this.container.classList.remove('weapon-records-highlight');
+        }
+      }, 800);
     }
   }
 

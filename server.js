@@ -73,6 +73,7 @@ const CollisionManager = require('./lib/server/CollisionManager');
 const NetworkManager = require('./lib/server/NetworkManager');
 const RoomManager = require('./lib/server/RoomManager');
 const ZombieManager = require('./lib/server/ZombieManager');
+const RunMutatorManager = require('./lib/server/RunMutatorManager');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -204,6 +205,7 @@ async function startServer() {
   const collisionManager = new CollisionManager(gameState, CONFIG);
   const networkManager = new NetworkManager(io, gameState);
   const roomManager = new RoomManager(gameState, CONFIG, io);
+  const mutatorManager = new RunMutatorManager(gameState, io);
   const zombieManager = new ZombieManager(
     gameState,
     CONFIG,
@@ -214,6 +216,10 @@ async function startServer() {
 
   // CRITICAL FIX: Add roomManager to gameState for zombie movement
   gameState.roomManager = roomManager;
+  gameState.mutatorManager = mutatorManager;
+
+  mutatorManager.initialize();
+  logger.info('Run mutators initialized');
 
   // Initialize progression integration (XP, skills, achievements)
   if (dbAvailable) {

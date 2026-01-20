@@ -399,6 +399,9 @@ function initSocketHandlers(io, gameState, entityManager, roomManager, metricsCo
       walls: gameState.walls,
       rooms: gameState.rooms.length,
       currentRoom: gameState.currentRoom,
+      mutators: gameState.activeMutators || [],
+      mutatorEffects: gameState.mutatorEffects || null,
+      nextMutatorWave: gameState.nextMutatorWave || 0,
       recovered: playerRecovered // Indicate if state was recovered
     });
 
@@ -643,8 +646,11 @@ function registerShootHandler(socket, gameState, entityManager) {
       return;
     }
 
+    const mutatorEffects = gameState.mutatorEffects || {};
+    const fireRateCooldownMultiplier = mutatorEffects.playerFireRateCooldownMultiplier || 1;
+
     // Appliquer le multiplicateur de cadence de tir
-    const fireRate = weapon.fireRate * (player.fireRateMultiplier || 1);
+    const fireRate = weapon.fireRate * (player.fireRateMultiplier || 1) * fireRateCooldownMultiplier;
 
     // Vérifier le cooldown de l'arme
     if (now - player.lastShot < fireRate) {
@@ -672,7 +678,7 @@ function registerShootHandler(socket, gameState, entityManager) {
       const spreadAngle = validatedData.angle + (Math.random() - 0.5) * weapon.spread;
 
       // Appliquer le multiplicateur de dégâts
-      let damage = weapon.damage * (player.damageMultiplier || 1);
+      let damage = weapon.damage * (player.damageMultiplier || 1) * (mutatorEffects.playerDamageMultiplier || 1);
 
       // Critique (chance de base + chance de l'arme)
       const totalCritChance = (player.criticalChance || 0) + (weapon.criticalChance || 0);
