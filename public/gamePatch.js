@@ -205,6 +205,10 @@
     // FONCTION: Détection des événements de jeu
     // ===============================================
     function detectGameEvents(oldState, newState) {
+      const dispatchGameEvent = (name, detail) => {
+        document.dispatchEvent(new CustomEvent(name, { detail }));
+      };
+
       // Détecter la mort de zombies
       if (oldState.zombies && newState.zombies) {
         Object.keys(oldState.zombies).forEach(zid => {
@@ -213,6 +217,16 @@
             if (window.onZombieDeath) {
               const color = getZombieColor(zombie.type);
               window.onZombieDeath(zombie.x, zombie.y, color);
+            }
+            dispatchGameEvent('zombie_killed', {
+              zombieType: zombie.type,
+              isElite: !!zombie.isElite,
+              isBoss: !!zombie.isBoss,
+              x: zombie.x,
+              y: zombie.y
+            });
+            if (zombie.isBoss) {
+              dispatchGameEvent('boss_defeated', { bossType: zombie.type, x: zombie.x, y: zombie.y });
             }
           }
         });
@@ -225,8 +239,10 @@
             const loot = oldState.loot[lid];
             if (loot.type === 'gold' && window.onGoldCollect) {
               window.onGoldCollect(loot.x, loot.y, loot.amount);
+              dispatchGameEvent('gold_collected', { amount: loot.amount || 0, x: loot.x, y: loot.y });
             } else if (loot.type === 'xp' && window.onXPGain) {
               window.onXPGain(loot.x, loot.y, loot.amount);
+              dispatchGameEvent('xp_gained', { amount: loot.amount || 0, x: loot.x, y: loot.y });
             }
           }
         });
@@ -242,18 +258,21 @@
           // Level up
           if (newPlayer.level > oldPlayer.level && window.onLevelUp) {
             window.onLevelUp(newPlayer.x, newPlayer.y, newPlayer.level);
+            dispatchGameEvent('level_up', { level: newPlayer.level });
           }
 
           // Dégâts reçus
           if (newPlayer.health < oldPlayer.health && window.onPlayerDamage) {
             const damage = oldPlayer.health - newPlayer.health;
             window.onPlayerDamage(newPlayer.x, newPlayer.y, damage);
+            dispatchGameEvent('player_damage', { damage, x: newPlayer.x, y: newPlayer.y });
           }
 
           // Heal
           if (newPlayer.health > oldPlayer.health && window.onPlayerHeal) {
             const heal = newPlayer.health - oldPlayer.health;
             window.onPlayerHeal(newPlayer.x, newPlayer.y, heal);
+            dispatchGameEvent('player_heal', { heal, x: newPlayer.x, y: newPlayer.y });
           }
         }
       }
@@ -263,6 +282,7 @@
         Object.entries(newState.zombies).forEach(([zid, zombie]) => {
           if (!oldState.zombies[zid] && zombie.type === 'boss' && window.onBossSpawn) {
             window.onBossSpawn(zombie.x, zombie.y);
+            dispatchGameEvent('boss_spawned', { bossType: zombie.type, x: zombie.x, y: zombie.y });
           }
         });
       }
@@ -271,6 +291,7 @@
       if (!oldState.zombies || Object.keys(oldState.zombies).length === 0) {
         if (newState.zombies && Object.keys(newState.zombies).length > 0 && window.onCombatStart) {
           window.onCombatStart();
+          dispatchGameEvent('combat_start', {});
         }
       }
     }

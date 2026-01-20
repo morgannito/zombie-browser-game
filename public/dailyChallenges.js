@@ -10,6 +10,9 @@ class DailyChallengeSystem {
     this.challengeProgress = this.loadProgress();
     this.loginStreak = this.loadLoginStreak();
     this.lastLoginDate = this.loadLastLogin();
+    this.lastRerollDate = this.loadLastReroll();
+    this.panel = null;
+    this.timerInterval = null;
 
     this.initializeChallenges();
     this.checkAndResetChallenges();
@@ -276,6 +279,7 @@ class DailyChallengeSystem {
           5000
         );
       }
+      this.applyReward(reward, `Streak ${this.loginStreak} jours`);
       return reward;
     }
 
@@ -331,6 +335,7 @@ class DailyChallengeSystem {
 
     if (updated) {
       this.saveChallenges();
+      this.refreshPanel();
     }
   }
 
@@ -346,6 +351,7 @@ class DailyChallengeSystem {
 
     // Créer popup spéciale
     this.createChallengePopup(challenge, period);
+    this.refreshPanel();
   }
 
   // Créer popup de défi complété
@@ -391,6 +397,7 @@ class DailyChallengeSystem {
     challenge.claimed = true;
     this.saveChallenges();
 
+    this.applyReward(challenge.reward, `Défi ${period === 'daily' ? 'quotidien' : 'hebdomadaire'}: ${challenge.name}`);
     return challenge.reward;
   }
 
@@ -459,6 +466,106 @@ class DailyChallengeSystem {
     return localStorage.getItem('last_login');
   }
 
+  saveLastReroll() {
+    localStorage.setItem('daily_challenge_reroll', this.lastRerollDate || '');
+  }
+
+  loadLastReroll() {
+    const saved = localStorage.getItem('daily_challenge_reroll');
+    return saved || null;
+  }
+
+  canRerollDaily() {
+    if (!this.lastRerollDate) {
+      return true;
+    }
+
+    return !this.isSameDay(new Date(this.lastRerollDate), new Date());
+  }
+
+  rerollDailyChallenge() {
+    if (!this.canRerollDaily()) {
+      if (window.toastManager) {
+        window.toastManager.show('🎲 Reroll déjà utilisé aujourd\'hui', 'info', 3000);
+      }
+      return false;
+    }
+
+    const replaceIndex = this.dailyChallenges.findIndex(challenge => !challenge.completed);
+    if (replaceIndex === -1) {
+      if (window.toastManager) {
+        window.toastManager.show('✅ Tous les défis sont déjà complétés', 'info', 3000);
+      }
+      return false;
+    }
+
+    const currentIds = new Set(this.dailyChallenges.map(challenge => challenge.id));
+    const pool = this.availableDailyChallenges.filter(challenge => !currentIds.has(challenge.id));
+    if (pool.length === 0) {
+      if (window.toastManager) {
+        window.toastManager.show('🎯 Aucun défi disponible pour reroll', 'info', 3000);
+      }
+      return false;
+    }
+
+    const nextChallenge = pool[Math.floor(Math.random() * pool.length)];
+    this.dailyChallenges[replaceIndex] = {
+      ...nextChallenge,
+      progress: 0,
+      completed: false,
+      claimed: false
+    };
+
+    this.lastRerollDate = new Date().toISOString();
+    this.saveLastReroll();
+    this.saveChallenges();
+    this.refreshPanel();
+
+    if (window.toastManager) {
+      window.toastManager.show('🎲 Défi reroll avec succès!', 'success', 2500);
+    }
+
+    return true;
+  }
+
+  applyReward(reward, source) {
+    if (!reward) {
+      return;
+    }
+
+    if (reward.gold) {
+      if (window.lifetimeStatsSystem) {
+        window.lifetimeStatsSystem.recordGoldEarned(reward.gold);
+      }
+
+      const gameState = window.gameState;
+      const playerId = gameState?.playerId;
+      const player = gameState?.state?.players?.[playerId];
+      if (player) {
+        player.gold = (player.gold || 0) + reward.gold;
+        if (window.gameUI && window.gameUI.update) {
+          window.gameUI.update();
+        }
+      }
+    }
+
+    if (reward.gems && window.gemSystem) {
+      window.gemSystem.addGems(reward.gems, source || 'Défi');
+    }
+
+    if (reward.skin && window.skinManager) {
+      const unlocked = window.skinManager.unlockPlayerSkin(reward.skin) ||
+        window.skinManager.unlockWeaponSkin(reward.skin);
+      if (unlocked && window.toastManager) {
+        window.toastManager.show(`🎨 Nouveau skin débloqué: ${reward.skin}`, 'success', 4000);
+      }
+    }
+
+    if (reward.title && window.toastManager) {
+      window.toastManager.show(`🎖️ Nouveau titre: ${reward.title}`, 'success', 4000);
+    }
+  }
+
   loadProgress() {
     const saved = localStorage.getItem('challenges_progress');
     return saved ? JSON.parse(saved) : {};
@@ -484,41 +591,73 @@ class DailyChallengeSystem {
         <button class="challenges-close-btn">×</button>
       </div>
       <div class="challenges-panel-content">
-        <div class="challenges-section">
-          <h3>📅 Défis Quotidiens</h3>
-          <div class="challenges-timer">
+        <div class="challenges-section" data-period="daily">
+          <div class="challenges-section-header">
+            <h3>📅 Défis Quotidiens</h3>
+            <button class="challenge-reroll-btn" type="button">🎲 Reroll</button>
+          </div>
+          <div class="challenges-timer" data-period="daily">
             Réinitialisation dans: ${this.formatTimeRemaining(this.getTimeUntilReset('daily'))}
           </div>
           <div class="challenges-list">
-            ${this.renderChallengeList(this.dailyChallenges)}
+            ${this.renderChallengeList(this.dailyChallenges, 'daily')}
           </div>
         </div>
-        <div class="challenges-section">
+        <div class="challenges-section" data-period="weekly">
           <h3>📆 Défis Hebdomadaires</h3>
-          <div class="challenges-timer">
+          <div class="challenges-timer" data-period="weekly">
             Réinitialisation dans: ${this.formatTimeRemaining(this.getTimeUntilReset('weekly'))}
           </div>
           <div class="challenges-list">
-            ${this.renderChallengeList(this.weeklyChallenges)}
+            ${this.renderChallengeList(this.weeklyChallenges, 'weekly')}
           </div>
         </div>
       </div>
     `;
 
     document.body.appendChild(container);
+    this.panel = container;
 
     container.querySelector('.challenges-close-btn').addEventListener('click', () => {
       container.style.display = 'none';
+      this.stopTimerUpdates();
     });
 
+    container.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!target || !target.classList) {
+        return;
+      }
+
+      if (target.classList.contains('challenge-claim-btn')) {
+        const challengeId = target.getAttribute('data-id');
+        const period = target.getAttribute('data-period');
+        if (challengeId && period) {
+          const reward = this.claimReward(challengeId, period);
+          if (reward) {
+            this.playClaimFeedback(target);
+            setTimeout(() => this.refreshPanel(), 250);
+          } else {
+            this.refreshPanel();
+          }
+        }
+      }
+
+      if (target.classList.contains('challenge-reroll-btn')) {
+        this.rerollDailyChallenge();
+      }
+    });
+
+    this.updateRerollState();
     return container;
   }
 
   // Rendre la liste de défis
-  renderChallengeList(challenges) {
+  renderChallengeList(challenges, period) {
     return challenges.map(challenge => {
       const percentage = Math.min(100, (challenge.progress / challenge.target) * 100);
       const status = challenge.completed ? (challenge.claimed ? 'claimed' : 'completed') : 'active';
+      const canClaim = challenge.completed && !challenge.claimed;
 
       return `
         <div class="challenge-card ${status}">
@@ -537,6 +676,10 @@ class DailyChallengeSystem {
             ${challenge.reward.gold ? `💰 ${challenge.reward.gold}` : ''}
             ${challenge.reward.gems ? ` | 💎 ${challenge.reward.gems}` : ''}
             ${challenge.reward.skin ? ` | 🎨 ${challenge.reward.skin}` : ''}
+            ${challenge.reward.title ? ` | 🎖️ "${challenge.reward.title}"` : ''}
+          </div>
+          <div class="challenge-card-actions">
+            ${canClaim ? `<button class="challenge-claim-btn" data-id="${challenge.id}" data-period="${period}">Récupérer</button>` : ''}
           </div>
         </div>
       `;
@@ -545,18 +688,119 @@ class DailyChallengeSystem {
 
   // Ouvrir le panneau des défis
   openPanel() {
-    const panel = document.getElementById('challenges-panel');
+    const panel = this.panel || document.getElementById('challenges-panel');
     if (panel) {
       panel.style.display = 'block';
-      // Refresh l'affichage
-      const dailyList = panel.querySelector('.challenges-section:nth-child(1) .challenges-list');
-      const weeklyList = panel.querySelector('.challenges-section:nth-child(2) .challenges-list');
-      if (dailyList) {
-        dailyList.innerHTML = this.renderChallengeList(this.dailyChallenges);
+      this.refreshPanel();
+      this.startTimerUpdates();
+    }
+  }
+
+  playClaimFeedback(button) {
+    const card = button.closest('.challenge-card');
+    if (card) {
+      card.classList.remove('claim-animate');
+      void card.offsetWidth;
+      card.classList.add('claim-animate');
+      setTimeout(() => card.classList.remove('claim-animate'), 650);
+    }
+
+    button.classList.remove('claiming');
+    void button.offsetWidth;
+    button.classList.add('claiming');
+    setTimeout(() => button.classList.remove('claiming'), 450);
+
+    const audio = window.advancedAudio || window.audioManager;
+    if (audio && audio.playSound) {
+      audio.playSound('ui', 'reward');
+    }
+  }
+
+  refreshPanel() {
+    if (!this.panel || this.panel.style.display !== 'block') {
+      return;
+    }
+
+    const dailyList = this.panel.querySelector('[data-period="daily"] .challenges-list');
+    const weeklyList = this.panel.querySelector('[data-period="weekly"] .challenges-list');
+    if (dailyList) {
+      dailyList.innerHTML = this.renderChallengeList(this.dailyChallenges, 'daily');
+    }
+    if (weeklyList) {
+      weeklyList.innerHTML = this.renderChallengeList(this.weeklyChallenges, 'weekly');
+    }
+
+    this.updateStreakDisplay();
+    this.updateTimerDisplay();
+    this.updateRerollState();
+    if (window.contractsSystem && window.contractsSystem.refreshUI) {
+      window.contractsSystem.refreshUI();
+    }
+  }
+
+  updateStreakDisplay() {
+    if (!this.panel) {
+      return;
+    }
+
+    const streakEl = this.panel.querySelector('.login-streak');
+    if (streakEl) {
+      streakEl.textContent = `🔥 Streak: ${this.loginStreak} jour${this.loginStreak > 1 ? 's' : ''}`;
+    }
+  }
+
+  updateTimerDisplay() {
+    if (!this.panel) {
+      return;
+    }
+
+    const dailyTimer = this.panel.querySelector('.challenges-timer[data-period="daily"]');
+    const weeklyTimer = this.panel.querySelector('.challenges-timer[data-period="weekly"]');
+    if (dailyTimer) {
+      dailyTimer.textContent = `Réinitialisation dans: ${this.formatTimeRemaining(this.getTimeUntilReset('daily'))}`;
+    }
+    if (weeklyTimer) {
+      weeklyTimer.textContent = `Réinitialisation dans: ${this.formatTimeRemaining(this.getTimeUntilReset('weekly'))}`;
+    }
+  }
+
+  updateRerollState() {
+    if (!this.panel) {
+      return;
+    }
+
+    const rerollBtn = this.panel.querySelector('.challenge-reroll-btn');
+    if (!rerollBtn) {
+      return;
+    }
+
+    const canReroll = this.canRerollDaily();
+    rerollBtn.disabled = !canReroll;
+    rerollBtn.title = canReroll ? 'Reroll un défi quotidien' : 'Reroll déjà utilisé aujourd\'hui';
+  }
+
+  startTimerUpdates() {
+    if (this.timerInterval) {
+      return;
+    }
+
+    this.timerInterval = setInterval(() => {
+      if (!this.panel || this.panel.style.display !== 'block') {
+        this.stopTimerUpdates();
+        return;
       }
-      if (weeklyList) {
-        weeklyList.innerHTML = this.renderChallengeList(this.weeklyChallenges);
-      }
+
+      this.updateTimerDisplay();
+      this.updateRerollState();
+    }, 60000);
+
+    this.updateTimerDisplay();
+  }
+
+  stopTimerUpdates() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
   }
 }

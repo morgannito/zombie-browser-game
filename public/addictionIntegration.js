@@ -187,6 +187,14 @@ class AddictionIntegration {
         window.gemSystem.openPanel();
       });
     }
+
+    // Meta Progression
+    const progressionBtn = document.getElementById('menu-btn-progression');
+    if (progressionBtn && window.metaProgressionSystem) {
+      progressionBtn.addEventListener('click', () => {
+        window.metaProgressionSystem.openPanel();
+      });
+    }
   }
 
   // Setup event listeners

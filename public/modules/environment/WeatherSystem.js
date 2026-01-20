@@ -116,21 +116,33 @@ class WeatherSystem {
       this.updateLightning();
     }
 
-    // Update existing particles
-    this.raindrops = this.raindrops.filter(drop => {
+    // Update existing particles with in-place compaction to avoid allocations
+    const raindrops = this.raindrops;
+    let rainWrite = 0;
+    for (let i = 0; i < raindrops.length; i++) {
+      const drop = raindrops[i];
       drop.x += drop.vx;
       drop.y += drop.vy;
       drop.life--;
-      return drop.life > 0 && drop.y < camera.y + viewport.height + 100;
-    });
+      if (drop.life > 0 && drop.y < camera.y + viewport.height + 100) {
+        raindrops[rainWrite++] = drop;
+      }
+    }
+    raindrops.length = rainWrite;
 
-    this.snowflakes = this.snowflakes.filter(flake => {
+    const snowflakes = this.snowflakes;
+    let snowWrite = 0;
+    for (let i = 0; i < snowflakes.length; i++) {
+      const flake = snowflakes[i];
       flake.x += flake.vx;
       flake.y += flake.vy;
       flake.rotation += flake.rotationSpeed;
       flake.life--;
-      return flake.life > 0 && flake.y < camera.y + viewport.height + 100;
-    });
+      if (flake.life > 0 && flake.y < camera.y + viewport.height + 100) {
+        snowflakes[snowWrite++] = flake;
+      }
+    }
+    snowflakes.length = snowWrite;
   }
 
   updateRain(config, viewport, camera) {

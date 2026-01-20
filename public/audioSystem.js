@@ -727,6 +727,11 @@ class EnhancedSoundEffects {
       oscillator.frequency.value = 600;
       gainNode.gain.setValueAtTime(0.1, now);
       gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+    } else if (type === 'reward') {
+      oscillator.frequency.setValueAtTime(900, now);
+      oscillator.frequency.exponentialRampToValueAtTime(1400, now + 0.12);
+      gainNode.gain.setValueAtTime(0.18, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
     }
 
     oscillator.connect(gainNode);

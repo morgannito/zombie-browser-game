@@ -144,16 +144,23 @@ class DynamicPropsSystem {
    * Update dynamic props and generate particles
    */
   update(_deltaTime = 16) {
-    // Update particles
-    this.particles = this.particles.filter(p => {
+    // Update particles with in-place compaction to avoid per-frame allocations
+    const particles = this.particles;
+    let writeIndex = 0;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
       p.life--;
       p.x += p.vx;
       p.y += p.vy;
       p.vy += p.gravity || 0;
       p.size *= 0.98; // Shrink over time
       p.alpha = p.life / p.maxLife;
-      return p.life > 0;
-    });
+
+      if (p.life > 0) {
+        particles[writeIndex++] = p;
+      }
+    }
+    particles.length = writeIndex;
 
     // Generate new particles from props
     this.props.forEach(prop => {

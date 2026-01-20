@@ -101,8 +101,11 @@ class EnvironmentalParticles {
       }
     }
 
-    // Update existing particles
-    this.particles = this.particles.filter(p => {
+    // Update existing particles with in-place compaction to reduce GC churn
+    const particles = this.particles;
+    let writeIndex = 0;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
       p.life--;
       p.x += p.vx + this.windX;
       p.y += p.vy + this.windY;
@@ -119,9 +122,12 @@ class EnvironmentalParticles {
       // Fade out
       p.alpha = p.life / p.maxLife;
 
-      // Remove if dead or off-screen
-      return p.life > 0 && this.isInViewport(p, camera, viewport);
-    });
+      // Keep if alive and in viewport
+      if (p.life > 0 && this.isInViewport(p, camera, viewport)) {
+        particles[writeIndex++] = p;
+      }
+    }
+    particles.length = writeIndex;
   }
 
   spawnParticle(config, camera, viewport) {

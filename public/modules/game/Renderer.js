@@ -32,6 +32,39 @@ class Renderer {
 
     // Combo tracking
     this.lastComboValue = 0;
+
+    // Cache UI elements and last values to reduce DOM churn
+    this.uiElements = {};
+    this.uiState = {
+      bossVisible: false,
+      bossId: null,
+      bossHealthPercent: null,
+      bossHealthText: null,
+      bossPhase: null,
+      bossName: null,
+      comboValue: null,
+      comboMultiplier: null,
+      comboVisible: null,
+      wave: null,
+      waveKills: null,
+      waveTarget: null
+    };
+    this._zombieCountFrame = 0;
+
+    // Local map for boss names (fallback if CONSTANTS.BOSS_NAMES is missing)
+    this.bossNameMap = (typeof CONSTANTS !== 'undefined' && CONSTANTS.BOSS_NAMES) ? CONSTANTS.BOSS_NAMES : {
+      boss: 'BOSS',
+      bossCharnier: 'RAIIVY',
+      bossInfect: 'SORENZA',
+      bossColosse: 'HAIER',
+      bossRoi: 'KUROI TO SUTA',
+      bossOmega: 'MORGANNITO',
+      bossInfernal: 'LORD INFERNUS',
+      bossCryos: 'CRYOS L\'ÉTERNEL',
+      bossVortex: 'VORTEX LE DESTRUCTEUR',
+      bossNexus: 'NEXUS DU VIDE',
+      bossApocalypse: 'APOCALYPSE PRIME'
+    };
   }
 
   setCamera(camera) {
@@ -381,10 +414,15 @@ class Renderer {
   }
 
   renderPowerups(powerups, powerupTypes, config, now = Date.now()) {
-    Object.values(powerups).forEach(powerup => {
+    if (!powerups) {
+      return;
+    }
+
+    for (const powerupId in powerups) {
+      const powerup = powerups[powerupId];
       // FIX: Viewport culling for powerups
       if (!this.camera.isInViewport(powerup.x, powerup.y, config.POWERUP_SIZE * 2)) {
-        return;
+        continue;
       }
 
       const type = powerupTypes[powerup.type];
@@ -418,14 +456,19 @@ class Renderer {
       };
 
       this.ctx.fillText(symbols[powerup.type] || '?', powerup.x, powerup.y);
-    });
+    }
   }
 
   renderLoot(loot, config, now = Date.now()) {
-    Object.values(loot).forEach(item => {
+    if (!loot) {
+      return;
+    }
+
+    for (const lootId in loot) {
+      const item = loot[lootId];
       // FIX: Viewport culling for loot
       if (!this.camera.isInViewport(item.x, item.y, 30)) {
-        return;
+        continue;
       }
 
       const rotation = (now / 500) % (Math.PI * 2);
@@ -444,7 +487,7 @@ class Renderer {
       this.ctx.stroke();
 
       this.ctx.restore();
-    });
+    }
   }
 
   renderDestructibleObstacles(obstacles) {
@@ -959,10 +1002,15 @@ class Renderer {
       return; // Skip particles rendering in performance mode
     }
 
-    Object.values(particles).forEach(particle => {
+    if (!particles) {
+      return;
+    }
+
+    for (const particleId in particles) {
+      const particle = particles[particleId];
       // Viewport culling
       if (!this.camera.isInViewport(particle.x, particle.y, 50)) {
-        return;
+        continue;
       }
 
       this.ctx.fillStyle = particle.color;
@@ -971,14 +1019,16 @@ class Renderer {
       this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.globalAlpha = 1;
-    });
+    }
   }
 
   renderPoisonTrails(poisonTrails, now = Date.now()) {
-    Object.values(poisonTrails || {}).forEach(trail => {
+    const trails = poisonTrails || {};
+    for (const trailId in trails) {
+      const trail = trails[trailId];
       // Viewport culling
       if (!this.camera.isInViewport(trail.x, trail.y, trail.radius * 2)) {
-        return;
+        continue;
       }
 
       // Effet de pulsation pour montrer que c'est toxique
@@ -1009,7 +1059,7 @@ class Renderer {
       this.ctx.stroke();
 
       this.ctx.globalAlpha = 1;
-    });
+    }
   }
 
   renderToxicPools(toxicPools, now = Date.now()) {
@@ -1072,18 +1122,20 @@ class Renderer {
   }
 
   renderExplosions(explosions, now = Date.now()) {
-    Object.values(explosions || {}).forEach(explosion => {
+    const explosionMap = explosions || {};
+    for (const explosionId in explosionMap) {
+      const explosion = explosionMap[explosionId];
       const age = now - explosion.createdAt;
       const progress = age / explosion.duration;
 
       // Ne pas afficher si l'explosion est terminée
       if (progress >= 1) {
-        return;
+        continue;
       }
 
       // Viewport culling
       if (!this.camera.isInViewport(explosion.x, explosion.y, explosion.radius * 2)) {
-        return;
+        continue;
       }
 
       // Animation d'expansion
@@ -1163,7 +1215,7 @@ class Renderer {
       }
 
       this.ctx.globalAlpha = 1;
-    });
+    }
   }
 
   /**
@@ -1845,17 +1897,18 @@ class Renderer {
   }
 
   renderZombies(zombies, timestamp = performance.now()) {
-    Object.values(zombies).forEach(zombie => {
+    for (const zombieId in zombies) {
+      const zombie = zombies[zombieId];
       // FIX: Skip invalid zombies (dead or missing properties)
       if (!zombie || zombie.health <= 0 || !Number.isFinite(zombie.x) || !Number.isFinite(zombie.y)) {
-        return;
+        continue;
       }
 
       // Viewport culling - ne rendre que les zombies visibles
       // Augmenter la marge pour les boss avec leurs grandes auras (jusqu'à 80px d'aura)
       const cullMargin = zombie.isBoss ? zombie.size * 4 : zombie.size * 2;
       if (!this.camera.isInViewport(zombie.x, zombie.y, cullMargin)) {
-        return;
+        continue;
       }
 
       // Dessiner le sprite du zombie
@@ -1911,7 +1964,7 @@ class Renderer {
 
       // Special zombie indicators
       this.renderZombieSpecialIndicator(zombie);
-    });
+    }
   }
 
   renderZombieSpecialIndicator(zombie) {
@@ -3337,53 +3390,80 @@ class Renderer {
     this.ctx.restore();
   }
 
+  getUiElement(key, id) {
+    if (this.uiElements[key]) {
+      return this.uiElements[key];
+    }
+
+    const element = document.getElementById(id);
+    if (element) {
+      this.uiElements[key] = element;
+    }
+
+    return element;
+  }
+
   /**
    * Update Boss Health Bar UI
    * @param {object} gameState - Game state object
    */
   updateBossHealthBar(gameState) {
-    const container = document.getElementById('boss-health-container');
-    const nameEl = document.getElementById('boss-name');
-    const phaseEl = document.getElementById('boss-phase');
-    const healthBar = document.getElementById('boss-health-bar');
-    const healthText = document.getElementById('boss-health-text');
+    const container = this.getUiElement('bossContainer', 'boss-health-container');
+    const nameEl = this.getUiElement('bossName', 'boss-name');
+    const phaseEl = this.getUiElement('bossPhase', 'boss-phase');
+    const healthBar = this.getUiElement('bossHealthBar', 'boss-health-bar');
+    const healthText = this.getUiElement('bossHealthText', 'boss-health-text');
 
     if (!container || !nameEl || !phaseEl || !healthBar || !healthText) {
       return;
     }
 
     // Find active boss
-    const bosses = Object.values(gameState.state.zombies).filter(z => z.isBoss);
+    const zombies = gameState.state.zombies || {};
+    let boss = null;
+    let bossId = null;
+    for (const zombieId in zombies) {
+      const candidate = zombies[zombieId];
+      if (candidate && candidate.isBoss) {
+        boss = candidate;
+        bossId = zombieId;
+        break;
+      }
+    }
 
-    if (bosses.length === 0) {
+    if (!boss) {
       // No boss - hide health bar
-      container.style.display = 'none';
+      if (this.uiState.bossVisible) {
+        container.style.display = 'none';
+        this.uiState.bossVisible = false;
+      }
       return;
     }
 
     // Show boss health bar
-    container.style.display = 'block';
+    if (!this.uiState.bossVisible) {
+      container.style.display = 'block';
+      this.uiState.bossVisible = true;
+    }
 
-    // Get first boss (primary boss)
-    const boss = bosses[0];
-    const healthPercent = (boss.health / boss.maxHealth) * 100;
+    if (bossId !== this.uiState.bossId) {
+      this.uiState.bossId = bossId;
+      this.uiState.bossHealthPercent = null;
+      this.uiState.bossHealthText = null;
+      this.uiState.bossPhase = null;
+      this.uiState.bossName = null;
+    }
 
-    // Update boss name (use type as name if available, otherwise "BOSS")
-    const bossNames = {
-      'boss': 'BOSS',
-      'bossCharnier': 'RAIIVY',
-      'bossInfect': 'SORENZA',
-      'bossColosse': 'HAIER',
-      'bossRoi': 'KUROI TO SUTA',
-      'bossOmega': 'MORGANNITO',
-      'bossInfernal': 'LORD INFERNUS',
-      'bossCryos': 'CRYOS L\'ÉTERNEL',
-      'bossVortex': 'VORTEX LE DESTRUCTEUR',
-      'bossNexus': 'NEXUS DU VIDE',
-      'bossApocalypse': 'APOCALYPSE PRIME'
-    };
-    const bossName = bossNames[boss.type] || 'BOSS';
-    nameEl.textContent = bossName;
+    const rawHealthPercent = (boss.health / boss.maxHealth) * 100;
+    const healthPercent = Math.max(0, Math.min(100, rawHealthPercent));
+    const healthPercentRounded = Math.round(healthPercent * 10) / 10;
+    const healthTextValue = `${Math.ceil(healthPercent)}%`;
+
+    const bossName = this.bossNameMap[boss.type] || 'BOSS';
+    if (bossName !== this.uiState.bossName) {
+      nameEl.textContent = bossName;
+      this.uiState.bossName = bossName;
+    }
 
     // Determine phase based on health percentage
     let phase = 1;
@@ -3393,18 +3473,25 @@ class Renderer {
       phase = 2;
     }
 
-    phaseEl.textContent = `Phase ${phase}`;
+    if (phase !== this.uiState.bossPhase) {
+      phaseEl.textContent = `Phase ${phase}`;
+      healthBar.classList.remove('phase-2', 'phase-3');
+      if (phase === 2) {
+        healthBar.classList.add('phase-2');
+      } else if (phase === 3) {
+        healthBar.classList.add('phase-3');
+      }
+      this.uiState.bossPhase = phase;
+    }
 
-    // Update health bar width
-    healthBar.style.width = `${healthPercent}%`;
-    healthText.textContent = `${Math.ceil(healthPercent)}%`;
+    if (healthPercentRounded !== this.uiState.bossHealthPercent) {
+      healthBar.style.width = `${healthPercentRounded}%`;
+      this.uiState.bossHealthPercent = healthPercentRounded;
+    }
 
-    // Update health bar class for phase coloring
-    healthBar.classList.remove('phase-2', 'phase-3');
-    if (phase === 2) {
-      healthBar.classList.add('phase-2');
-    } else if (phase === 3) {
-      healthBar.classList.add('phase-3');
+    if (healthTextValue !== this.uiState.bossHealthText) {
+      healthText.textContent = healthTextValue;
+      this.uiState.bossHealthText = healthTextValue;
     }
   }
 
@@ -3417,34 +3504,50 @@ class Renderer {
 
     // Update combo display
     const combo = player.combo || 0;
-    const comboDisplay = document.getElementById('combo-display');
-    const comboCount = document.getElementById('combo-count');
-    const comboMultiplier = document.getElementById('combo-multiplier');
+    const comboDisplay = this.getUiElement('comboDisplay', 'combo-display');
+    const comboCount = this.getUiElement('comboCount', 'combo-count');
+    const comboMultiplier = this.getUiElement('comboMultiplier', 'combo-multiplier');
 
-    if (combo > 0) {
-      comboDisplay.style.display = 'block';
-      comboCount.textContent = combo;
-      const multiplier = Math.min(1 + (combo * 0.05), 3).toFixed(1);
-      comboMultiplier.textContent = multiplier;
-
-      // Trigger animation on combo increase
-      if (combo > this.lastComboValue) {
-        comboCount.style.animation = 'none';
-        setTimeout(() => {
-          comboCount.style.animation = '';
-        }, 10);
+    if (comboDisplay && comboCount && comboMultiplier) {
+      const comboVisible = combo > 0;
+      if (comboVisible !== this.uiState.comboVisible) {
+        comboDisplay.style.display = comboVisible ? 'block' : 'none';
+        this.uiState.comboVisible = comboVisible;
       }
-    } else {
-      comboDisplay.style.display = 'none';
+
+      if (comboVisible) {
+        if (combo !== this.uiState.comboValue) {
+          comboCount.textContent = combo;
+          this.uiState.comboValue = combo;
+        }
+
+        const multiplier = Math.min(1 + (combo * 0.05), 3).toFixed(1);
+        if (multiplier !== this.uiState.comboMultiplier) {
+          comboMultiplier.textContent = multiplier;
+          this.uiState.comboMultiplier = multiplier;
+        }
+
+        // Trigger animation on combo increase
+        if (combo > this.lastComboValue) {
+          comboCount.style.animation = 'none';
+          setTimeout(() => {
+            comboCount.style.animation = '';
+          }, 10);
+        }
+      }
     }
     this.lastComboValue = combo;
 
     // Simple kill feed (detect zombie count decrease)
-    const currentZombieCount = Object.keys(gameState.state.zombies).length;
-    if (currentZombieCount < this.lastZombieCount) {
-      this.addKillFeedItem(player.nickname || 'Player', 'Zombie');
+    const countInterval = 10;
+    if (++this._zombieCountFrame >= countInterval) {
+      const currentZombieCount = Object.keys(gameState.state.zombies).length;
+      if (currentZombieCount < this.lastZombieCount) {
+        this.addKillFeedItem(player.nickname || 'Player', 'Zombie');
+      }
+      this.lastZombieCount = currentZombieCount;
+      this._zombieCountFrame = 0;
     }
-    this.lastZombieCount = currentZombieCount;
 
     // Update kill feed items (remove old ones)
     this.updateKillFeed();
@@ -3501,10 +3604,10 @@ class Renderer {
   }
 
   updateWaveProgress(gameState) {
-    const waveNumberEl = document.getElementById('wave-progress-number');
-    const waveKillsEl = document.getElementById('wave-kills');
-    const waveTargetEl = document.getElementById('wave-target');
-    const progressBar = document.getElementById('wave-progress-bar');
+    const waveNumberEl = this.getUiElement('waveNumber', 'wave-progress-number');
+    const waveKillsEl = this.getUiElement('waveKills', 'wave-kills');
+    const waveTargetEl = this.getUiElement('waveTarget', 'wave-target');
+    const progressBar = this.getUiElement('waveProgressBar', 'wave-progress-bar');
 
     if (!waveNumberEl || !waveKillsEl || !waveTargetEl || !progressBar) {
       return;
@@ -3516,14 +3619,29 @@ class Renderer {
     // Calculate target zombies for this wave (base 10 + wave scaling)
     const targetZombies = Math.floor(10 + (wave * 2));
 
+    const waveChanged = wave !== this.uiState.wave;
+    const killsChanged = zombiesKilled !== this.uiState.waveKills;
+    const targetChanged = targetZombies !== this.uiState.waveTarget;
+
     // Update display
-    waveNumberEl.textContent = wave;
-    waveKillsEl.textContent = zombiesKilled;
-    waveTargetEl.textContent = targetZombies;
+    if (waveChanged) {
+      waveNumberEl.textContent = wave;
+      this.uiState.wave = wave;
+    }
+    if (killsChanged) {
+      waveKillsEl.textContent = zombiesKilled;
+      this.uiState.waveKills = zombiesKilled;
+    }
+    if (targetChanged) {
+      waveTargetEl.textContent = targetZombies;
+      this.uiState.waveTarget = targetZombies;
+    }
 
     // Update progress bar width
-    const progress = Math.min((zombiesKilled / targetZombies) * 100, 100);
-    progressBar.style.width = `${progress}%`;
+    if (killsChanged || targetChanged) {
+      const progress = Math.min((zombiesKilled / targetZombies) * 100, 100);
+      progressBar.style.width = `${progress}%`;
+    }
   }
 }
 

@@ -332,6 +332,15 @@ class OptimizedSoundEffects {
         volume: 0.1,
         waveType: 'sine'
       });
+    } else if (type === 'reward') {
+      this.core.playTone({
+        type: 'ui',
+        frequency: 900,
+        frequencyEnd: 1400,
+        duration: 0.14,
+        volume: 0.2,
+        waveType: 'sine'
+      });
     }
   }
 

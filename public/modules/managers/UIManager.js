@@ -10,6 +10,8 @@ class UIManager {
   constructor(gameState) {
     this.gameState = gameState;
     this.shopOpen = false;
+    this.gameStartedDispatched = false;
+    this.gameOverDispatched = false;
 
     // Store handler references for cleanup
     this.handlers = {
@@ -63,6 +65,17 @@ class UIManager {
       return;
     }
 
+    if (player.alive && !this.gameStartedDispatched) {
+      const startStats = {
+        wave: this.gameState.state.wave || 1,
+        level: player.level || 1,
+        weapon: player.weapon || 'pistol'
+      };
+      document.dispatchEvent(new CustomEvent('game_started', { detail: startStats }));
+      this.gameStartedDispatched = true;
+      this.gameOverDispatched = false;
+    }
+
     // Health bar
     const healthPercent = (player.health / player.maxHealth) * 100;
     const healthBar = document.getElementById('health-bar');
@@ -111,9 +124,24 @@ class UIManager {
         this.deathRecorded = true;
         window.leaderboardSystem.addEntry(player);
       }
+
+      if (!this.gameOverDispatched) {
+        const gameOverStats = {
+          score: player.totalScore || player.score || 0,
+          wave: this.gameState.state.wave || 1,
+          level: player.level || 1,
+          gold: player.gold || 0,
+          weapon: player.weapon || 'pistol',
+          zombiesKilled: player.zombiesKilled || player.kills || 0
+        };
+        document.dispatchEvent(new CustomEvent('game_over', { detail: gameOverStats }));
+        this.gameOverDispatched = true;
+        this.gameStartedDispatched = false;
+      }
     } else {
       // Réinitialiser le flag quand le joueur est vivant
       this.deathRecorded = false;
+      this.gameOverDispatched = false;
     }
 
     // Player count - only count players with nicknames (actually playing)
@@ -207,6 +235,9 @@ class UIManager {
         if (window.networkManager) {
           window.networkManager.selectUpgrade(upgrade.id);
         }
+        document.dispatchEvent(new CustomEvent('upgrade_obtained', {
+          detail: { upgradeId: upgrade.id, rarity: upgrade.rarity }
+        }));
         levelUpScreen.style.display = 'none';
       });
 

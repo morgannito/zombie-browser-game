@@ -56,7 +56,8 @@
 .unlock-panel,
 .synergy-panel,
 .lifetime-stats-panel,
-.gem-shop-panel {
+.gem-shop-panel,
+.meta-progression-panel {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -79,7 +80,8 @@
 .unlock-panel-header,
 .synergy-panel-header,
 .lifetime-stats-header,
-.gem-shop-header {
+.gem-shop-header,
+.meta-progression-header {
   background: linear-gradient(90deg, #4a90e2, #6ab7ff);
   padding: 20px;
   position: relative;
@@ -91,7 +93,8 @@
 .unlock-panel-header h2,
 .synergy-panel-header h2,
 .lifetime-stats-header h2,
-.gem-shop-header h2 {
+.gem-shop-header h2,
+.meta-progression-header h2 {
   margin: 0;
   color: white;
   font-size: 28px;
@@ -104,7 +107,8 @@
 .unlock-close-btn,
 .synergy-close-btn,
 .lifetime-stats-close-btn,
-.gem-shop-close-btn {
+.gem-shop-close-btn,
+.meta-progression-close-btn {
   position: absolute;
   top: 15px;
   right: 15px;
@@ -125,7 +129,8 @@
 .unlock-close-btn:hover,
 .synergy-close-btn:hover,
 .lifetime-stats-close-btn:hover,
-.gem-shop-close-btn:hover {
+.gem-shop-close-btn:hover,
+.meta-progression-close-btn:hover {
   background: rgba(255, 0, 0, 0.7);
   transform: rotate(90deg);
 }
@@ -136,7 +141,8 @@
 .unlock-panel-content,
 .synergy-panel-content,
 .lifetime-stats-content,
-.gem-shop-content {
+.gem-shop-content,
+.meta-progression-content {
   padding: 20px;
   max-height: calc(85vh - 100px);
   overflow-y: auto;
@@ -149,7 +155,8 @@
 .unlock-panel-content::-webkit-scrollbar,
 .synergy-panel-content::-webkit-scrollbar,
 .lifetime-stats-content::-webkit-scrollbar,
-.gem-shop-content::-webkit-scrollbar {
+.gem-shop-content::-webkit-scrollbar,
+.meta-progression-content::-webkit-scrollbar {
   width: 10px;
 }
 
@@ -159,7 +166,8 @@
 .unlock-panel-content::-webkit-scrollbar-track,
 .synergy-panel-content::-webkit-scrollbar-track,
 .lifetime-stats-content::-webkit-scrollbar-track,
-.gem-shop-content::-webkit-scrollbar-track {
+.gem-shop-content::-webkit-scrollbar-track,
+.meta-progression-content::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 5px;
 }
@@ -170,7 +178,8 @@
 .unlock-panel-content::-webkit-scrollbar-thumb,
 .synergy-panel-content::-webkit-scrollbar-thumb,
 .lifetime-stats-content::-webkit-scrollbar-thumb,
-.gem-shop-content::-webkit-scrollbar-thumb {
+.gem-shop-content::-webkit-scrollbar-thumb,
+.meta-progression-content::-webkit-scrollbar-thumb {
   background: #4a90e2;
   border-radius: 5px;
 }
@@ -405,6 +414,35 @@
   padding-bottom: 10px;
 }
 
+.challenges-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.challenge-reroll-btn {
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  color: #ffd700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.challenge-reroll-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.challenge-reroll-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .challenges-timer {
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
@@ -424,6 +462,7 @@
   border-radius: 12px;
   padding: 15px;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .challenge-card.completed {
@@ -484,6 +523,51 @@
   color: #FFD700;
   font-size: 14px;
   margin-top: 10px;
+}
+
+.challenge-card.claim-animate {
+  animation: challenge-claim-pulse 0.6s ease;
+  border-color: rgba(34, 197, 94, 0.9);
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+}
+
+.challenge-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.challenge-claim-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.challenge-claim-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+}
+
+.challenge-claim-btn.claiming {
+  animation: challenge-claim-button 0.45s ease;
+}
+
+@keyframes challenge-claim-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes challenge-claim-button {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 /* Popup de défi */
@@ -1777,5 +1861,457 @@
 
   .event-icon-large {
     font-size: 70px;
+  }
+}
+
+/* ========================================
+   RUN MUTATORS & BIOME INDICATOR
+   ======================================== */
+
+.mutators-panel {
+  position: fixed;
+  top: 120px;
+  left: 20px;
+  width: 240px;
+  background: rgba(10, 12, 24, 0.9);
+  border: 2px solid rgba(90, 200, 120, 0.6);
+  border-radius: 14px;
+  padding: 12px;
+  color: #e8f5e9;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.45);
+  z-index: 850;
+  pointer-events: auto;
+}
+
+.mutators-panel.hidden {
+  display: none;
+}
+
+.mutators-title {
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #b2ff59;
+  margin-bottom: 8px;
+}
+
+.mutator-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.mutator-card.completed {
+  border-color: rgba(76, 175, 80, 0.7);
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.25);
+}
+
+.mutator-card.failed {
+  border-color: rgba(244, 67, 54, 0.6);
+  opacity: 0.65;
+}
+
+.mutator-card:last-child {
+  margin-bottom: 0;
+}
+
+.mutator-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #e6ffe7;
+}
+
+.mutator-desc {
+  font-size: 12px;
+  color: rgba(232, 245, 233, 0.8);
+  margin-top: 4px;
+}
+
+.mutator-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.mutator-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(90, 200, 120, 0.2);
+  border: 1px solid rgba(90, 200, 120, 0.45);
+  color: #b7ffcf;
+}
+
+#biome-indicator {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+  border: 1px solid rgba(90, 200, 120, 0.5);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: #d9ffe9;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  z-index: 850;
+  pointer-events: none;
+}
+
+/* ========================================
+   SYNERGY TRACKER
+   ======================================== */
+
+.synergy-tracker {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 240px;
+  background: rgba(18, 12, 36, 0.92);
+  border: 2px solid rgba(158, 115, 255, 0.5);
+  border-radius: 14px;
+  padding: 12px;
+  color: #efe9ff;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.45);
+  z-index: 850;
+  pointer-events: auto;
+}
+
+.synergy-tracker.hidden {
+  display: none;
+}
+
+.synergy-tracker-title {
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #cdb7ff;
+  margin-bottom: 8px;
+}
+
+.synergy-tracker-item {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.synergy-tracker-item:last-child {
+  margin-bottom: 0;
+}
+
+.synergy-tracker-item.ready {
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+}
+
+.synergy-tracker-name {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.synergy-tracker-missing {
+  font-size: 11px;
+  color: rgba(239, 233, 255, 0.7);
+  margin-top: 4px;
+}
+
+/* ========================================
+   RISK / REWARD ALTAR
+   ======================================== */
+
+.altar-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 15, 0.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  pointer-events: auto;
+}
+
+.altar-modal.active {
+  display: flex;
+}
+
+.altar-card {
+  background: linear-gradient(135deg, rgba(18, 10, 30, 0.98), rgba(40, 12, 18, 0.98));
+  border: 2px solid rgba(255, 122, 89, 0.7);
+  border-radius: 18px;
+  padding: 24px;
+  width: min(420px, 90vw);
+  color: #ffe8e0;
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.6);
+}
+
+.altar-title {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.altar-desc {
+  font-size: 14px;
+  color: rgba(255, 232, 224, 0.8);
+  margin-bottom: 16px;
+}
+
+.altar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.altar-tag {
+  background: rgba(255, 122, 89, 0.2);
+  border: 1px solid rgba(255, 122, 89, 0.6);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #ffcdbd;
+}
+
+.altar-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.altar-actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.altar-accept {
+  background: #ff7a59;
+  color: #1a0f0a;
+}
+
+.altar-decline {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffe8e0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.altar-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.altar-status {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: rgba(15, 15, 25, 0.9);
+  border: 1px solid rgba(255, 122, 89, 0.5);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: #ffe8e0;
+  font-size: 12px;
+  z-index: 850;
+  pointer-events: none;
+}
+
+/* ========================================
+   CONTRACTS (WEEKLY)
+   ======================================== */
+
+.contracts-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.contracts-section h3 {
+  margin: 0 0 10px 0;
+  color: #ffd166;
+}
+
+.contract-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 209, 102, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.contract-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.contract-stage.completed {
+  color: #8ef9b3;
+}
+
+.contract-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.contract-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd166, #fca311);
+  transition: width 0.3s ease;
+}
+
+.contract-claim-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: #ffd166;
+  color: #3d2a00;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ========================================
+   WEAPON RECORDS (GAME OVER)
+   ======================================== */
+
+#weapon-records {
+  margin-top: 18px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+}
+
+.weapon-records-title {
+  color: #f4d35e;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.weapon-record-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.weapon-record-row:last-child {
+  border-bottom: none;
+}
+
+/* ========================================
+   META PROGRESSION PANEL
+   ======================================== */
+
+.meta-progression-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.meta-progression-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: #e3f2fd;
+  font-size: 12px;
+}
+
+.meta-skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.meta-skill-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+  color: #f0f8ff;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.meta-skill-card.locked {
+  opacity: 0.7;
+}
+
+.meta-skill-card.unlocked {
+  border-color: rgba(102, 255, 178, 0.6);
+}
+
+.meta-skill-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+}
+
+.meta-skill-desc {
+  font-size: 12px;
+  color: rgba(240, 248, 255, 0.75);
+  min-height: 32px;
+}
+
+.meta-skill-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.meta-skill-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: #4a90e2;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.meta-skill-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .mutators-panel {
+    top: auto;
+    bottom: 120px;
+    left: 10px;
+    width: 200px;
+  }
+
+  .synergy-tracker {
+    top: auto;
+    bottom: 120px;
+    right: 10px;
+    width: 200px;
+  }
+
+  #biome-indicator {
+    font-size: 11px;
   }
 }

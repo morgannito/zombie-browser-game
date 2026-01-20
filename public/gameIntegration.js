@@ -269,6 +269,9 @@ function updateEnhancedSystems(deltaTime = 16) {
   if (window.enhancedUI) {
     window.enhancedUI.update();
   }
+  if (window.biomeSystem && window.biomeSystem.update) {
+    window.biomeSystem.update(deltaTime);
+  }
 }
 
 /**

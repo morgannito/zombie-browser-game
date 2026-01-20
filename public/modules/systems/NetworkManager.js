@@ -233,6 +233,11 @@ class NetworkManager {
     // Update state with server data
     window.gameState.updateState(state);
 
+    // Re-apply client-side environment systems (biome/weather)
+    if (window.biomeSystem && window.biomeSystem.applyToGameState) {
+      window.biomeSystem.applyToGameState();
+    }
+
     // Client prediction: restore local position unless server differs significantly
     if (localPlayerState && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
       const serverPlayer = window.gameState.state.players[window.gameState.playerId];
@@ -337,6 +342,10 @@ class NetworkManager {
       }
     }
 
+    if (window.biomeSystem && window.biomeSystem.applyToGameState) {
+      window.biomeSystem.applyToGameState();
+    }
+
     // Server reconciliation: check if server position differs significantly
     // Increased tolerance to 200px to reduce rubber banding
     if (localPlayerState && delta.updated && delta.updated.players && delta.updated.players[window.gameState.playerId]) {
@@ -436,6 +445,7 @@ class NetworkManager {
     if (window.gameUI) {
       window.gameUI.showBossAnnouncement(data.bossName);
     }
+    document.dispatchEvent(new CustomEvent('boss_spawned', { detail: data }));
   }
 
   handleNewWave(data) {
@@ -443,6 +453,7 @@ class NetworkManager {
       window.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
       setTimeout(() => window.gameUI.showShop(), CONSTANTS.ANIMATIONS.SHOP_DELAY);
     }
+    document.dispatchEvent(new CustomEvent('wave_changed', { detail: data }));
   }
 
   handleLevelUp(data) {
@@ -464,6 +475,7 @@ class NetworkManager {
     if (window.gameUI) {
       window.gameUI.showRoomAnnouncement(data.roomIndex + 1, data.totalRooms);
     }
+    document.dispatchEvent(new CustomEvent('room_changed', { detail: data }));
   }
 
   handleRunCompleted(data) {
