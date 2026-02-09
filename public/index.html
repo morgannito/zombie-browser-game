@@ -465,9 +465,13 @@
     <!-- Memory Leak Prevention (MUST be loaded first) -->
     <script src="EventListenerManager.js"></script>
     <script src="TimerManager.js"></script>
+    <!-- Conditional Logger -->
+    <script src="lib/ClientLogger.js"></script>
     <!-- Performance & Math Utilities -->
     <script src="lib/MathUtils.js"></script>
     <script src="lib/PerformanceUtils.js"></script>
+    <!-- Storage Abstraction (must load before systems using localStorage) -->
+    <script src="lib/StorageManager.js"></script>
     <!-- Asset Management -->
     <script src="assetManager.js"></script>
     <script src="professionalAssetGenerator.js"></script>
@@ -545,15 +549,22 @@
     <!-- Audio -->
     <script src="modules/audio/AmbientAudioSystem.js"></script>
 
+    <!-- Performance Optimizations -->
+    <script src="modules/rendering/FrustumCuller.js"></script>
+
+    <!-- Rendering Sub-modules (must be before Renderer.js) -->
+    <script src="modules/rendering/BackgroundRenderer.js"></script>
+    <script src="modules/rendering/EntityRenderer.js"></script>
+    <script src="modules/rendering/EffectsRenderer.js"></script>
+    <script src="modules/rendering/MinimapRenderer.js"></script>
+    <script src="modules/rendering/UIRenderer.js"></script>
+
     <!-- Game Logic -->
     <script src="modules/game/PlayerController.js"></script>
     <script src="modules/game/Renderer.js"></script>
 
     <!-- Game Engine (must be after all dependencies) -->
     <script src="modules/core/GameEngine.js"></script>
-
-    <!-- Performance Optimizations -->
-    <script src="modules/rendering/FrustumCuller.js"></script>
 
     <!-- Utilities -->
     <script src="modules/utils/initHelpers.js"></script>
