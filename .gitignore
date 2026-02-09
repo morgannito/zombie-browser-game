@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Database
 data/
@@ -51,3 +50,4 @@ deploy-stdout.log
 deploy-stderr.log
 server.log
 server.js.backup
+.game.pid

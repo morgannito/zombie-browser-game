@@ -17,9 +17,9 @@ RUN npm install --production && \
 # Copier le reste de l'application
 COPY . .
 
-# Créer les répertoires nécessaires avec permissions
+# Créer les répertoires nécessaires avec permissions pour l'user node
 RUN mkdir -p /app/data /app/logs && \
-    chmod -R 755 /app/data /app/logs
+    chown -R node:node /app/data /app/logs
 
 # Exposer le port 3000
 EXPOSE 3000
@@ -33,6 +33,9 @@ ENV NODE_ENV=production \
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Ne pas tourner en root
+USER node
 
 # Commande pour démarrer l'application
 CMD ["node", "server.js"]

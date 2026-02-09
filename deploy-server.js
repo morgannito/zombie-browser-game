@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AUTO-DEPLOY SERVER
- * Écoute les webhooks GitHub et redémarre automatiquement le projet
+ * Ecoute les webhooks GitHub et redémarre automatiquement le projet
  * Port: 9000 (configurable via DEPLOY_PORT)
  */
 
@@ -13,9 +13,20 @@ const path = require('path');
 
 // Configuration
 const PORT = process.env.DEPLOY_PORT || 9000;
-const SECRET = process.env.GITHUB_WEBHOOK_SECRET || 'your-webhook-secret-change-me';
+const SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 const PROJECT_DIR = __dirname;
 const LOG_FILE = path.join(PROJECT_DIR, 'deploy.log');
+const PID_FILE = path.join(PROJECT_DIR, '.game.pid');
+
+// Require GITHUB_WEBHOOK_SECRET - refuse to start without it
+if (!SECRET) {
+  console.error(
+    '[FATAL] GITHUB_WEBHOOK_SECRET environment variable is not set. ' +
+      'The deploy server cannot start without a webhook secret. ' +
+      'Set it via: export GITHUB_WEBHOOK_SECRET="your-secret"'
+  );
+  process.exit(1);
+}
 
 // Logs
 function log(message) {
@@ -34,10 +45,7 @@ function verifySignature(payload, signature) {
   const hmac = crypto.createHmac('sha256', SECRET);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(digest)
-  );
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
 
 // Exécute une commande shell
@@ -60,60 +68,165 @@ function runCommand(command) {
   });
 }
 
+/**
+ * Write a PID to the PID file after starting the game server.
+ * @param {number} pid - The process ID to record
+ */
+function writePidFile(pid) {
+  fs.writeFileSync(PID_FILE, String(pid), 'utf-8');
+  log(`PID ${pid} written to ${PID_FILE}`);
+}
+
+/**
+ * Read the PID from the PID file, if it exists and is valid.
+ * @returns {number|null} The PID or null if unavailable
+ */
+function readPidFile() {
+  try {
+    if (!fs.existsSync(PID_FILE)) {
+      return null;
+    }
+    const content = fs.readFileSync(PID_FILE, 'utf-8').trim();
+    const pid = parseInt(content, 10);
+    if (isNaN(pid) || pid <= 0) {
+      return null;
+    }
+    return pid;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a process with the given PID is still running.
+ * @param {number} pid
+ * @returns {boolean}
+ */
+function isProcessRunning(pid) {
+  try {
+    // signal 0 checks existence without killing
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Stop the game server gracefully using the PID file.
+ * Sends SIGTERM and waits for exit. Falls back to SIGKILL
+ * only on the recorded PID if SIGTERM fails.
+ */
+async function stopGameServer() {
+  const pid = readPidFile();
+  if (!pid) {
+    log('No PID file found, no server to stop');
+    return;
+  }
+
+  if (!isProcessRunning(pid)) {
+    log(`PID ${pid} is not running, cleaning up stale PID file`);
+    cleanupPidFile();
+    return;
+  }
+
+  log(`Sending SIGTERM to PID ${pid}...`);
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch (err) {
+    log(`Failed to send SIGTERM to ${pid}: ${err.message}`);
+    cleanupPidFile();
+    return;
+  }
+
+  // Wait up to 10 seconds for graceful shutdown
+  const maxWait = 10;
+  for (let i = 0; i < maxWait; i++) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!isProcessRunning(pid)) {
+      log(`PID ${pid} stopped gracefully`);
+      cleanupPidFile();
+      return;
+    }
+  }
+
+  // Force kill only this specific PID as last resort
+  log(`PID ${pid} did not exit after ${maxWait}s, sending SIGKILL`);
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch {
+    // Process may have exited between check and kill
+  }
+  cleanupPidFile();
+}
+
+/**
+ * Remove the PID file.
+ */
+function cleanupPidFile() {
+  try {
+    if (fs.existsSync(PID_FILE)) {
+      fs.unlinkSync(PID_FILE);
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+/**
+ * Start the game server and record its PID.
+ */
+async function startGameServer() {
+  log('Starting game server...');
+  const child = exec('node server.js > server.log 2>&1', { cwd: PROJECT_DIR });
+
+  if (child.pid) {
+    writePidFile(child.pid);
+    // Detach so deploy-server does not wait on it
+    child.unref();
+  }
+}
+
 // Script de déploiement
 async function deploy() {
   log('========================================');
-  log('🚀 Starting deployment...');
+  log('Starting deployment...');
 
   try {
-    // 1. Arrêter le serveur existant
-    log('Step 1/6: Stopping existing server...');
-    try {
-      await runCommand('lsof -ti:3000 | xargs kill -9 2>/dev/null || true');
-      await runCommand('pkill -f "node.*server.js" || true');
-    } catch (err) {
-      log('No server to stop (this is OK)');
-    }
+    // 1. Arrêter le serveur existant via PID file
+    log('Step 1/5: Stopping existing server...');
+    await stopGameServer();
 
     // 2. Git fetch et pull
-    log('Step 2/6: Pulling latest changes...');
+    log('Step 2/5: Pulling latest changes...');
     await runCommand('git fetch origin');
     await runCommand('git reset --hard origin/main');
 
     // 3. Installer les dépendances
-    log('Step 3/6: Installing dependencies...');
+    log('Step 3/5: Installing dependencies...');
     await runCommand('npm install --production');
 
-    // 4. Build si nécessaire (optionnel)
-    // await runCommand('npm run build');
+    // 4. Redémarrer le serveur
+    log('Step 4/5: Starting server...');
+    await startGameServer();
 
-    // 5. Nettoyer les anciens processus zombies
-    log('Step 4/6: Cleaning up zombie processes...');
-    await runCommand('pkill -9 node || true');
-
-    // 6. Redémarrer le serveur
-    log('Step 5/6: Starting server...');
-    // Utiliser nohup pour garder le processus actif après déconnexion
-    await runCommand('nohup npm start > server.log 2>&1 &');
-
-    // 7. Vérifier que le serveur démarre
-    log('Step 6/6: Verifying server startup...');
+    // 5. Vérifier que le serveur démarre
+    log('Step 5/5: Verifying server startup...');
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     try {
       await runCommand('lsof -i:3000');
-      log('✅ Server is running on port 3000');
+      log('Server is running on port 3000');
     } catch (err) {
-      log('⚠️  Warning: Could not verify server is running');
+      log('Warning: Could not verify server is running');
     }
 
-    log('✅ Deployment completed successfully!');
+    log('Deployment completed successfully!');
     log('========================================\n');
 
     return { success: true, message: 'Deployment successful' };
-
   } catch (error) {
-    log(`❌ Deployment failed: ${error.message}`);
+    log(`Deployment failed: ${error.message}`);
     log('========================================\n');
     return { success: false, message: error.message };
   }
@@ -134,7 +247,7 @@ const server = http.createServer((req, res) => {
         const signature = req.headers['x-hub-signature-256'];
 
         if (!verifySignature(body, signature)) {
-          log('⚠️  Invalid signature from webhook request');
+          log('Invalid signature from webhook request');
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid signature' }));
           return;
@@ -144,11 +257,11 @@ const server = http.createServer((req, res) => {
         const payload = JSON.parse(body);
         const event = req.headers['x-github-event'];
 
-        log(`📬 Received GitHub event: ${event}`);
+        log(`Received GitHub event: ${event}`);
 
         // Ne déployer que sur push vers main
         if (event === 'push' && payload.ref === 'refs/heads/main') {
-          log(`🔔 Push detected to main branch by ${payload.pusher.name}`);
+          log(`Push detected to main branch by ${payload.pusher.name}`);
           log(`Commits: ${payload.commits.length}`);
 
           // Lancer le déploiement de manière asynchrone
@@ -158,32 +271,33 @@ const server = http.createServer((req, res) => {
 
           // Répondre immédiatement au webhook
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            message: 'Deployment started',
-            status: 'processing'
-          }));
+          res.end(
+            JSON.stringify({
+              message: 'Deployment started',
+              status: 'processing'
+            })
+          );
         } else {
-          log(`ℹ️  Ignoring event ${event} for ref ${payload.ref || 'N/A'}`);
+          log(`Ignoring event ${event} for ref ${payload.ref || 'N/A'}`);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ message: 'Event ignored' }));
         }
-
       } catch (error) {
-        log(`❌ Error processing webhook: ${error.message}`);
+        log(`Error processing webhook: ${error.message}`);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Internal server error' }));
       }
     });
-
   } else if (req.method === 'GET' && req.url === '/health') {
     // Health check endpoint
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'healthy',
-      uptime: process.uptime(),
-      deployServer: 'running'
-    }));
-
+    res.end(
+      JSON.stringify({
+        status: 'healthy',
+        uptime: process.uptime(),
+        deployServer: 'running'
+      })
+    );
   } else if (req.method === 'POST' && req.url === '/deploy') {
     // Manual deploy endpoint (protégé par secret)
     const authHeader = req.headers['authorization'];
@@ -194,19 +308,22 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    log('🔧 Manual deployment triggered');
+    log('Manual deployment triggered');
 
-    deploy().then(result => {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result));
-    }).catch(error => {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        success: false,
-        message: error.message
-      }));
-    });
-
+    deploy()
+      .then(result => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      })
+      .catch(error => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            success: false,
+            message: error.message
+          })
+        );
+      });
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
@@ -215,15 +332,16 @@ const server = http.createServer((req, res) => {
 
 // Démarrer le serveur
 server.listen(PORT, () => {
-  log(`🎧 Deploy server listening on port ${PORT}`);
-  log(`📁 Project directory: ${PROJECT_DIR}`);
-  log(`🔐 Webhook secret: ${SECRET.slice(0, 3)}***`);
-  log(`📝 Logs: ${LOG_FILE}`);
+  log(`Deploy server listening on port ${PORT}`);
+  log(`Project directory: ${PROJECT_DIR}`);
+  log(`Webhook secret: ${SECRET.slice(0, 3)}***`);
+  log(`PID file: ${PID_FILE}`);
+  log(`Logs: ${LOG_FILE}`);
   log('Ready to receive GitHub webhooks!\n');
 });
 
 // Gérer les erreurs
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   log(`Uncaught exception: ${error.message}`);
   console.error(error);
 });

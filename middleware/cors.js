@@ -6,16 +6,29 @@
  * - Supports credentials and specific methods
  */
 
+const { ALLOWED_ORIGINS } = require('../config/constants');
+
 /**
  * Socket.IO CORS configuration
+ * Uses a callback to validate each origin against ALLOWED_ORIGINS,
+ * matching the same security policy as the Express CORS middleware.
  * @returns {Object} CORS configuration object for Socket.IO
  */
 function getSocketIOCorsConfig() {
   return {
-    origin: '*', // Allow all origins
+    origin: function (origin, callback) {
+      // Allow requests with no origin (server-to-server, health checks)
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     methods: ['GET', 'POST'],
-    credentials: false, // Must be false when origin is "*"
-    allowedHeaders: ['*']
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
   };
 }
 
