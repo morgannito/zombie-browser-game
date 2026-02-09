@@ -17,14 +17,18 @@
 // ============================================
 const express = require('express');
 const http = require('http');
+const compression = require('compression');
 
 // ============================================
 // IMPORTS - Configuration
 // ============================================
-const {
-  PORT,
-  ALLOWED_ORIGINS
-} = require('./config/constants');
+const { PORT, ALLOWED_ORIGINS } = require('./config/constants');
+
+// ============================================
+// BOOT VALIDATION - Environment variables
+// ============================================
+const { validateEnv } = require('./lib/infrastructure/EnvValidator');
+validateEnv();
 
 // ============================================
 // IMPORTS - Infrastructure
@@ -33,11 +37,13 @@ const logger = require('./lib/infrastructure/Logger');
 const DatabaseManager = require('./lib/database/DatabaseManager');
 const Container = require('./lib/application/Container');
 const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
+const MemoryMonitor = require('./lib/infrastructure/MemoryMonitor');
 const JwtService = require('./lib/infrastructure/auth/JwtService');
 
 // ============================================
 // IMPORTS - Middleware
 // ============================================
+const { requestIdMiddleware } = require('./middleware/requestId');
 const { getSocketIOCorsConfig } = require('./middleware/cors');
 const {
   configureHelmet,
@@ -59,6 +65,7 @@ const initHealthRoutes = require('./routes/health');
 const initMetricsRoutes = require('./routes/metrics');
 const initLeaderboardRoutes = require('./routes/leaderboard');
 const initPlayersRoutes = require('./routes/players');
+const featuresRoutes = require('./routes/features');
 
 // ============================================
 // IMPORTS - Game Logic & Managers
@@ -112,7 +119,7 @@ const io = require('socket.io')(server, {
 const dbManager = DatabaseManager.getInstance();
 let dbAvailable = false;
 let gameState = null;
-let gameLoopTimer = null;
+let stopGameLoop = null; // cleanup function returned by startGameLoop
 let heartbeatTimer = null;
 let powerupSpawnerTimer = null;
 
@@ -145,9 +152,23 @@ async function initializeDatabase() {
 // Initialize metrics collector (doesn't need DB)
 const metricsCollector = MetricsCollector.getInstance();
 
+// Initialize memory monitor (infrastructure layer)
+const memoryMonitor = new MemoryMonitor({
+  interval: 60000,
+  warningThresholdMB: 256,
+  criticalThresholdMB: 512
+});
+memoryMonitor.start();
+
 // ============================================
 // MIDDLEWARE CONFIGURATION
 // ============================================
+
+// Request ID (before all other middleware for tracing)
+app.use(requestIdMiddleware);
+
+// HTTP compression (before all routes and static files)
+app.use(compression());
 
 // Security middleware
 app.use(configureHelmet());
@@ -155,8 +176,61 @@ app.use('/api/', configureApiLimiter());
 app.use(...configureBodyParser());
 app.use(additionalSecurityHeaders);
 
-// Static files
-app.use(express.static('public'));
+// Shared constants (available to both server and client via /shared/socketEvents.js)
+app.use('/shared', express.static('shared'));
+
+// Static files with cache headers
+const isProduction = process.env.NODE_ENV === 'production';
+app.use(
+  express.static('public', {
+    maxAge: isProduction ? '1d' : 0,
+    etag: true,
+    lastModified: true
+  })
+);
+
+/**
+ * Start game loop with setTimeout recursive pattern and drift compensation.
+ * Unlike setInterval, this prevents tick overlap: the next tick is only
+ * scheduled after the current one completes, with time compensation to
+ * maintain the target frame rate.
+ *
+ * @param {Object} perfIntegration - Performance config (provides tickInterval)
+ * @param {Function} tickFn - Function to execute each tick
+ * @returns {Function} Cleanup function to stop the loop
+ */
+function startGameLoop(perfIntegration, tickFn) {
+  const { performance: perf } = require('perf_hooks');
+  const tickInterval = perfIntegration.getTickInterval();
+  let tickTimeout = null;
+  let running = true;
+
+  function tick() {
+    if (!running) {
+      return;
+    }
+
+    const now = perf.now();
+
+    tickFn();
+
+    // Compensate for drift: subtract execution time from next delay
+    const elapsed = perf.now() - now;
+    const nextTick = Math.max(0, tickInterval - elapsed);
+    tickTimeout = setTimeout(tick, nextTick);
+  }
+
+  tick();
+
+  // Return cleanup function
+  return function stop() {
+    running = false;
+    if (tickTimeout !== null) {
+      clearTimeout(tickTimeout);
+      tickTimeout = null;
+    }
+  };
+}
 
 // HIGH FIX: Initialize database before routes
 async function startServer() {
@@ -172,23 +246,43 @@ async function startServer() {
   const jwtService = new JwtService(logger);
 
   // ============================================
-  // API ROUTES
+  // API ROUTES - Versioned (v1) + Legacy (backward compat)
   // ============================================
 
-  app.use('/api/auth', initAuthRoutes(container, jwtService));
+  const authRoutes = initAuthRoutes(container, jwtService);
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/auth', authRoutes);
+
   if (dbAvailable) {
-    app.use('/api/leaderboard', initLeaderboardRoutes(container));
-    app.use('/api/players', initPlayersRoutes(container));
-    app.use('/api/progression', require('./routes/progression')(container));
-    app.use('/api/achievements', require('./routes/achievements')(container));
-    logger.info('✅ Database-dependent routes initialized');
+    const leaderboardRoutes = initLeaderboardRoutes(container);
+    const playerRoutes = initPlayersRoutes(container);
+    const progressionRoutes = require('./routes/progression')(container);
+    const achievementRoutes = require('./routes/achievements')(container);
+
+    // Versioned API (v1)
+    app.use('/api/v1/leaderboard', leaderboardRoutes);
+    app.use('/api/v1/players', playerRoutes);
+    app.use('/api/v1/progression', progressionRoutes);
+    app.use('/api/v1/achievements', achievementRoutes);
+
+    // Legacy (non-versioned, keep for backward compatibility)
+    app.use('/api/leaderboard', leaderboardRoutes);
+    app.use('/api/players', playerRoutes);
+    app.use('/api/progression', progressionRoutes);
+    app.use('/api/achievements', achievementRoutes);
+
+    logger.info('Database-dependent routes initialized (v1 + legacy)');
   } else {
-    logger.warn('⚠️  Database-dependent routes disabled');
+    logger.warn('Database-dependent routes disabled');
   }
 
   // Always available routes
-  app.use('/api/metrics', initMetricsRoutes(metricsCollector));
-  app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration));
+  const metricsRoutes = initMetricsRoutes(metricsCollector);
+  app.use('/api/v1/metrics', metricsRoutes);
+  app.use('/api/metrics', metricsRoutes);
+  app.use('/api/v1/features', featuresRoutes);
+  app.use('/api/features', featuresRoutes);
+  app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
 
   // ============================================
   // GAME INITIALIZATION
@@ -253,18 +347,26 @@ async function startServer() {
   logger.info(`Powerup spawner started (interval: ${CONFIG.POWERUP_SPAWN_INTERVAL}ms)`);
 
   // ============================================
-  // GAME LOOP
+  // GAME LOOP - setTimeout recursive with drift compensation
   // ============================================
 
-  // Start game loop with adaptive tick rate
-  gameLoopTimer = setInterval(() => {
-    gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger);
+  stopGameLoop = startGameLoop(perfIntegration, () => {
+    gameLoop(
+      gameState,
+      io,
+      metricsCollector,
+      perfIntegration,
+      collisionManager,
+      entityManager,
+      zombieManager,
+      logger
+    );
 
     // Broadcast game state conditionally based on performance mode
     if (perfIntegration.shouldBroadcast()) {
       networkManager.emitGameState();
     }
-  }, perfIntegration.getTickInterval());
+  });
 
   // CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
   // Uses a flag to prevent race conditions with game loop
@@ -368,7 +470,15 @@ async function startServer() {
   // ============================================
 
   io.use(jwtService.socketMiddleware());
-  const socketHandler = initSocketHandlers(io, gameState, entityManager, roomManager, metricsCollector, perfIntegration, dbAvailable ? container : null);
+  const socketHandler = initSocketHandlers(
+    io,
+    gameState,
+    entityManager,
+    roomManager,
+    metricsCollector,
+    perfIntegration,
+    dbAvailable ? container : null
+  );
   io.on('connection', socketHandler);
 
   // ============================================
@@ -421,11 +531,11 @@ function cleanupServer() {
 
   logger.info('🛑 Server shutting down gracefully...');
 
-  // Stop game loop timers
-  if (gameLoopTimer) {
-    clearInterval(gameLoopTimer);
-    gameLoopTimer = null;
-    logger.info('✅ Game loop stopped');
+  // Stop game loop (setTimeout-based)
+  if (stopGameLoop) {
+    stopGameLoop();
+    stopGameLoop = null;
+    logger.info('Game loop stopped');
   }
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
@@ -437,6 +547,10 @@ function cleanupServer() {
     powerupSpawnerTimer = null;
     logger.info('Powerup spawner stopped');
   }
+
+  // Stop memory monitor
+  memoryMonitor.stop();
+  logger.info('Memory monitor stopped');
 
   // MEMORY LEAK FIX: Stop session cleanup interval from socketHandlers
   stopSessionCleanupInterval();
@@ -492,7 +606,7 @@ process.on('SIGTERM', cleanupServer);
 process.on('SIGINT', cleanupServer);
 
 // Handle uncaught errors
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   logger.error('💥 Uncaught Exception:', err);
   cleanupServer();
 });

@@ -12,11 +12,12 @@ const router = express.Router();
  * @param {Object} dbManager - Database manager instance
  * @param {Object} metricsCollector - Metrics collector instance
  * @param {Object} perfIntegration - Performance integration instance
+ * @param {Object} [memoryMonitor] - Optional MemoryMonitor instance
  * @returns {Router} Express router
  */
-function initHealthRoute(dbManager, metricsCollector, perfIntegration) {
+function initHealthRoute(dbManager, metricsCollector, perfIntegration, memoryMonitor) {
   /**
-   * GET /health - Health check avancé avec métriques détaillées
+   * GET /health - Health check with detailed metrics and memory monitoring
    */
   router.get('/', (req, res) => {
     const dbStatus = dbManager.isInitialized ? 'healthy' : 'unhealthy';
@@ -67,6 +68,9 @@ function initHealthRoute(dbManager, metricsCollector, perfIntegration) {
           loadAverage: metrics.system.system.loadAverage
         }
       },
+
+      // Memory monitor (trend analysis)
+      memoryMonitor: memoryMonitor ? memoryMonitor.getStats() : null,
 
       // Database
       database: dbStatus
