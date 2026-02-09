@@ -21,7 +21,7 @@ class TimerManager {
    */
   setTimeout(callback, delay, ...args) {
     if (typeof callback !== 'function') {
-      console.warn('[TimerManager] Invalid callback for setTimeout');
+      logger.warn('[TimerManager] Invalid callback for setTimeout');
       return null;
     }
 
@@ -60,7 +60,7 @@ class TimerManager {
    */
   setInterval(callback, interval, ...args) {
     if (typeof callback !== 'function') {
-      console.warn('[TimerManager] Invalid callback for setInterval');
+      logger.warn('[TimerManager] Invalid callback for setInterval');
       return null;
     }
 
@@ -216,7 +216,8 @@ class TimerManager {
     let oldestInterval = Infinity;
     let newestInterval = 0;
     for (const interval of this.intervals.values()) {
-      stats.intervals.byInterval[interval.interval] = (stats.intervals.byInterval[interval.interval] || 0) + 1;
+      stats.intervals.byInterval[interval.interval] =
+        (stats.intervals.byInterval[interval.interval] || 0) + 1;
       if (interval.createdAt < oldestInterval) {
         oldestInterval = interval.createdAt;
         stats.intervals.oldest = interval.createdAt;
@@ -237,26 +238,30 @@ class TimerManager {
     const stats = this.getStats();
     const counts = this.getActiveCount();
 
-    console.group('[TimerManager] Statistics');
-    console.log('Active timeouts:', counts.timeouts);
-    console.log('Active intervals:', counts.intervals);
-    console.log('Total active timers:', counts.total);
+    logger.debug('[TimerManager] Statistics');
+    logger.debug('Active timeouts:', counts.timeouts);
+    logger.debug('Active intervals:', counts.intervals);
+    logger.debug('Total active timers:', counts.total);
 
     if (stats.timeouts.count > 0) {
-      console.log('Timeouts by delay:', stats.timeouts.byDelay);
+      logger.debug('Timeouts by delay:', stats.timeouts.byDelay);
       if (stats.timeouts.oldest) {
-        console.log('Oldest timeout age:', Math.round((Date.now() - stats.timeouts.oldest) / 1000) + 's');
+        logger.debug(
+          'Oldest timeout age:',
+          Math.round((Date.now() - stats.timeouts.oldest) / 1000) + 's'
+        );
       }
     }
 
     if (stats.intervals.count > 0) {
-      console.log('Intervals by period:', stats.intervals.byInterval);
+      logger.debug('Intervals by period:', stats.intervals.byInterval);
       if (stats.intervals.oldest) {
-        console.log('Oldest interval age:', Math.round((Date.now() - stats.intervals.oldest) / 1000) + 's');
+        logger.debug(
+          'Oldest interval age:',
+          Math.round((Date.now() - stats.intervals.oldest) / 1000) + 's'
+        );
       }
     }
-
-    console.groupEnd();
   }
 
   /**
@@ -296,7 +301,7 @@ class TimerManager {
     }
 
     if (suspects.intervals.length > 0 || suspects.longRunningTimeouts.length > 0) {
-      console.warn('[TimerManager] Potential leaks detected:', suspects);
+      logger.warn('[TimerManager] Potential leaks detected:', suspects);
     }
 
     return suspects;
@@ -341,10 +346,10 @@ window.setManagedInterval = (callback, interval, ...args) => {
   return window.timerManager.setInterval(callback, interval, ...args);
 };
 
-window.clearManagedTimeout = (id) => {
+window.clearManagedTimeout = id => {
   return window.timerManager.clearTimeout(id);
 };
 
-window.clearManagedInterval = (id) => {
+window.clearManagedInterval = id => {
   return window.timerManager.clearInterval(id);
 };

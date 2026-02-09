@@ -20,14 +20,14 @@ class EventListenerManager {
    */
   add(target, event, handler, options = {}) {
     if (!target || !event || !handler) {
-      console.warn('[EventListenerManager] Invalid parameters:', { target, event, handler });
+      logger.warn('[EventListenerManager] Invalid parameters:', { target, event, handler });
       return null;
     }
 
     const id = ++this.listenerCounter;
 
     // Wrapper pour capturer le contexte
-    const wrappedHandler = (e) => {
+    const wrappedHandler = e => {
       try {
         handler(e);
       } catch (error) {
@@ -63,11 +63,7 @@ class EventListenerManager {
     }
 
     try {
-      listener.target.removeEventListener(
-        listener.event,
-        listener.handler,
-        listener.options
-      );
+      listener.target.removeEventListener(listener.event, listener.handler, listener.options);
       this.listeners.delete(id);
       return true;
     } catch (error) {
@@ -151,9 +147,12 @@ class EventListenerManager {
       stats.byEvent[listener.event] = (stats.byEvent[listener.event] || 0) + 1;
 
       // Par type de target
-      const targetType = listener.target === window ? 'window' :
-        listener.target === document ? 'document' :
-          listener.target?.tagName || 'unknown';
+      const targetType =
+        listener.target === window
+          ? 'window'
+          : listener.target === document
+            ? 'document'
+            : listener.target?.tagName || 'unknown';
       stats.byTarget[targetType] = (stats.byTarget[targetType] || 0) + 1;
 
       // Plus ancien/récent
@@ -175,14 +174,13 @@ class EventListenerManager {
    */
   logStats() {
     const stats = this.getStats();
-    console.group('[EventListenerManager] Statistics');
-    console.log('Total active listeners:', stats.total);
-    console.log('By event type:', stats.byEvent);
-    console.log('By target type:', stats.byTarget);
+    logger.debug('[EventListenerManager] Statistics');
+    logger.debug('Total active listeners:', stats.total);
+    logger.debug('By event type:', stats.byEvent);
+    logger.debug('By target type:', stats.byTarget);
     if (stats.oldest) {
-      console.log('Oldest listener age:', Math.round((Date.now() - stats.oldest) / 1000) + 's');
+      logger.debug('Oldest listener age:', Math.round((Date.now() - stats.oldest) / 1000) + 's');
     }
-    console.groupEnd();
   }
 
   /**
@@ -201,15 +199,18 @@ class EventListenerManager {
           id,
           event: listener.event,
           age: Math.round(age / 1000) + 's',
-          target: listener.target === window ? 'window' :
-            listener.target === document ? 'document' :
-              listener.target?.tagName || 'unknown'
+          target:
+            listener.target === window
+              ? 'window'
+              : listener.target === document
+                ? 'document'
+                : listener.target?.tagName || 'unknown'
         });
       }
     }
 
     if (suspects.length > 0) {
-      console.warn('[EventListenerManager] Potential leaks detected:', suspects);
+      logger.warn('[EventListenerManager] Potential leaks detected:', suspects);
     }
 
     return suspects;
@@ -226,6 +227,6 @@ window.addManagedListener = (target, event, handler, options) => {
   return window.eventListenerManager.add(target, event, handler, options);
 };
 
-window.removeManagedListener = (id) => {
+window.removeManagedListener = id => {
   return window.eventListenerManager.remove(id);
 };

@@ -5,19 +5,21 @@
  * @version 1.0.0
  */
 
-(function() {
+(function () {
   'use strict';
 
-  console.log('Applying game patches for enhanced systems...');
+  logger.debug('Applying game patches for enhanced systems...');
 
   // Vérifier si les systèmes requis sont prêts
   function areSystemsReady() {
-    return window.GameEngine &&
-           window.Renderer &&
-           window.PlayerController &&
-           typeof window.GameEngine === 'function' &&
-           typeof window.Renderer === 'function' &&
-           typeof window.PlayerController === 'function';
+    return (
+      window.GameEngine &&
+      window.Renderer &&
+      window.PlayerController &&
+      typeof window.GameEngine === 'function' &&
+      typeof window.Renderer === 'function' &&
+      typeof window.PlayerController === 'function'
+    );
   }
 
   // Attendre que le DOM soit chargé avant de commencer
@@ -31,31 +33,33 @@
     let patchAttempts = 0;
     const MAX_PATCH_ATTEMPTS = 50; // 5 secondes max (50 * 100ms)
 
-    const patchInterval = window.timerManager ?
-      window.timerManager.setInterval(() => {
-        if (areSystemsReady()) {
-          window.timerManager.clearInterval(patchInterval);
-          applyPatches();
-        } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
-          window.timerManager.clearInterval(patchInterval);
-          console.error('❌ Failed to load game systems after 5 seconds. Required: GameEngine, Renderer, PlayerController');
-          console.error('Available:', {
-            GameEngine: !!window.GameEngine,
-            Renderer: !!window.Renderer,
-            PlayerController: !!window.PlayerController
-          });
-        }
-      }, 100) :
-      // Fallback si timerManager pas encore chargé
-      (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
-        if (areSystemsReady()) {
-          clearInterval(patchInterval);
-          applyPatches();
-        } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
-          clearInterval(patchInterval);
-          console.error('❌ Failed to load game systems after 5 seconds.');
-        }
-      }, 100);
+    const patchInterval = window.timerManager
+      ? window.timerManager.setInterval(() => {
+          if (areSystemsReady()) {
+            window.timerManager.clearInterval(patchInterval);
+            applyPatches();
+          } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
+            window.timerManager.clearInterval(patchInterval);
+            console.error(
+              '❌ Failed to load game systems after 5 seconds. Required: GameEngine, Renderer, PlayerController'
+            );
+            console.error('Available:', {
+              GameEngine: !!window.GameEngine,
+              Renderer: !!window.Renderer,
+              PlayerController: !!window.PlayerController
+            });
+          }
+        }, 100)
+      : // Fallback si timerManager pas encore chargé
+        (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
+          if (areSystemsReady()) {
+            clearInterval(patchInterval);
+            applyPatches();
+          } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
+            clearInterval(patchInterval);
+            console.error('❌ Failed to load game systems after 5 seconds.');
+          }
+        }, 100);
   }
 
   // Attendre DOMContentLoaded avant d'initialiser
@@ -71,14 +75,14 @@
   }
 
   function applyPatches() {
-    console.log('Patching game systems...');
+    logger.debug('Patching game systems...');
 
     // ===============================================
     // PATCH 1: Améliorer la boucle de jeu via update()
     // ===============================================
     // On patche update() plutôt que gameLoop() pour éviter les animation frame leaks
     const originalUpdate = window.GameEngine.prototype.update;
-    window.GameEngine.prototype.update = function(deltaTime) {
+    window.GameEngine.prototype.update = function (deltaTime) {
       // Appeler l'update original
       if (originalUpdate) {
         originalUpdate.call(this, deltaTime);
@@ -100,7 +104,7 @@
     // PATCH 2: Améliorer le rendu
     // ===============================================
     const originalRender = Renderer.prototype.render;
-    Renderer.prototype.render = function(gameState, playerId) {
+    Renderer.prototype.render = function (gameState, playerId) {
       // Rendu original
       originalRender.call(this, gameState, playerId);
 
@@ -140,7 +144,7 @@
     // PATCH 5: Intercepter le tir pour les effets
     // ===============================================
     const originalShoot = PlayerController.prototype.shoot;
-    PlayerController.prototype.shoot = function(canvasWidth, canvasHeight) {
+    PlayerController.prototype.shoot = function (canvasWidth, canvasHeight) {
       // Appeler la méthode originale
       originalShoot.call(this, canvasWidth, canvasHeight);
 
@@ -165,7 +169,10 @@
           if (window.timerManager) {
             window.timerManager.setTimeout(setupNetworkHooks, 100);
           } else {
-            (window.timerManager ? window.timerManager.setTimeout : setTimeout)(setupNetworkHooks, 100);
+            (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+              setupNetworkHooks,
+              100
+            );
           }
           return;
         }
@@ -173,7 +180,7 @@
         const socket = window.networkManager.socket;
 
         // Hook pour les mises à jour d'état
-        socket.on('gameState', (state) => {
+        socket.on('gameState', state => {
           const oldState = window.gameState ? window.gameState.state : null;
 
           // Détecter les événements
@@ -187,7 +194,9 @@
             if (player) {
               window.updateHealthBar(player.health, player.maxHealth);
               // Utiliser la fonction depuis window si disponible, sinon calculer localement
-              const nextLevelXP = window.getXPForLevel ? window.getXPForLevel(player.level + 1) : getXPForLevel(player.level + 1);
+              const nextLevelXP = window.getXPForLevel
+                ? window.getXPForLevel(player.level + 1)
+                : getXPForLevel(player.level + 1);
               if (window.updateXPBar) {
                 window.updateXPBar(player.xp, nextLevelXP);
               }
@@ -195,7 +204,7 @@
           }
         });
 
-        console.log('Network hooks installed');
+        logger.debug('Network hooks installed');
       };
 
       setupNetworkHooks();
@@ -226,7 +235,11 @@
               y: zombie.y
             });
             if (zombie.isBoss) {
-              dispatchGameEvent('boss_defeated', { bossType: zombie.type, x: zombie.x, y: zombie.y });
+              dispatchGameEvent('boss_defeated', {
+                bossType: zombie.type,
+                x: zombie.x,
+                y: zombie.y
+              });
             }
           }
         });
@@ -239,7 +252,11 @@
             const loot = oldState.loot[lid];
             if (loot.type === 'gold' && window.onGoldCollect) {
               window.onGoldCollect(loot.x, loot.y, loot.amount);
-              dispatchGameEvent('gold_collected', { amount: loot.amount || 0, x: loot.x, y: loot.y });
+              dispatchGameEvent('gold_collected', {
+                amount: loot.amount || 0,
+                x: loot.x,
+                y: loot.y
+              });
             } else if (loot.type === 'xp' && window.onXPGain) {
               window.onXPGain(loot.x, loot.y, loot.amount);
               dispatchGameEvent('xp_gained', { amount: loot.amount || 0, x: loot.x, y: loot.y });
@@ -389,6 +406,6 @@
 
     addAudioControls();
 
-    console.log('✓ All patches applied successfully!');
+    logger.info('All patches applied successfully');
   }
 })();

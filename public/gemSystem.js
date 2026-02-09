@@ -1,6 +1,6 @@
 /**
- * GEM SYSTEM - Système de métamonnaie premium
- * @version 1.0.0
+ * GEM SYSTEM - Systeme de metamonnaie premium
+ * @version 1.1.0
  */
 
 class GemSystem {
@@ -9,47 +9,15 @@ class GemSystem {
     this.gemShop = this.initializeGemShop();
   }
 
-  // ===============================================
-  // SAFE LOCALSTORAGE HELPERS
-  // ===============================================
-  _safeGetItem(key, defaultValue = null) {
-    try {
-      return localStorage.getItem(key);
-    } catch (e) {
-      console.warn(`localStorage.getItem failed for key "${key}":`, e.message);
-      return defaultValue;
-    }
-  }
-
-  _safeSetItem(key, value) {
-    try {
-      localStorage.setItem(key, value);
-      return true;
-    } catch (e) {
-      console.warn(`localStorage.setItem failed for key "${key}":`, e.message);
-      return false;
-    }
-  }
-
-  _safeRemoveItem(key) {
-    try {
-      localStorage.removeItem(key);
-      return true;
-    } catch (e) {
-      console.warn(`localStorage.removeItem failed for key "${key}":`, e.message);
-      return false;
-    }
-  }
-
   // Charger les gems
   loadGems() {
-    const saved = this._safeGetItem('player_gems');
-    return saved ? parseInt(saved) : 0;
+    const saved = storageManager.get('player_gems');
+    return saved !== null ? parseInt(saved) : 0;
   }
 
   // Sauvegarder les gems
   saveGems() {
-    this._safeSetItem('player_gems', this.gems.toString());
+    storageManager.set('player_gems', this.gems.toString());
   }
 
   // Ajouter des gems
@@ -59,11 +27,7 @@ class GemSystem {
 
     // Notifier le joueur
     if (window.toastManager && amount > 0) {
-      window.toastManager.show(
-        `💎 +${amount} Gems!\n${source}`,
-        'gems',
-        3000
-      );
+      window.toastManager.show(`💎 +${amount} Gems!\n${source}`, 'gems', 3000);
     }
 
     this.updateGemDisplay();
@@ -100,7 +64,7 @@ class GemSystem {
       xp_boost: {
         id: 'xp_boost',
         name: '⚡ XP Boost x2',
-        description: 'Double l\'XP pendant 30 minutes',
+        description: "Double l'XP pendant 30 minutes",
         cost: 30,
         duration: 1800000, // 30 min
         icon: '⚡',
@@ -109,7 +73,7 @@ class GemSystem {
       gold_boost: {
         id: 'gold_boost',
         name: '💰 Gold Boost x2',
-        description: 'Double l\'or pendant 30 minutes',
+        description: "Double l'or pendant 30 minutes",
         cost: 30,
         duration: 1800000,
         icon: '💰',
@@ -118,7 +82,7 @@ class GemSystem {
       legendary_reroll: {
         id: 'legendary_reroll',
         name: '🎲 Legendary Reroll',
-        description: 'Reroll un upgrade pour en obtenir un légendaire',
+        description: 'Reroll un upgrade pour en obtenir un legendaire',
         cost: 75,
         icon: '🎲',
         category: 'run'
@@ -126,14 +90,14 @@ class GemSystem {
       instant_shop: {
         id: 'instant_shop',
         name: '🛒 Instant Shop',
-        description: 'Ouvrir le shop immédiatement',
+        description: 'Ouvrir le shop immediatement',
         cost: 25,
         icon: '🛒',
         category: 'run'
       },
       extra_life: {
         id: 'extra_life',
-        name: '❤️ Vie Supplémentaire',
+        name: '❤️ Vie Supplementaire',
         description: '+50 HP pour la run en cours',
         cost: 40,
         icon: '❤️',
@@ -142,7 +106,7 @@ class GemSystem {
       skip_wave: {
         id: 'skip_wave',
         name: '⏭️ Skip Wave',
-        description: 'Passer instantanément à la prochaine vague',
+        description: 'Passer instantanement a la prochaine vague',
         cost: 60,
         icon: '⏭️',
         category: 'run'
@@ -150,15 +114,15 @@ class GemSystem {
       rare_skin: {
         id: 'rare_skin_pack',
         name: '🎨 Skin Pack Rare',
-        description: 'Pack de 3 skins rares aléatoires',
+        description: 'Pack de 3 skins rares aleatoires',
         cost: 100,
         icon: '🎨',
         category: 'cosmetic'
       },
       epic_skin: {
         id: 'epic_skin_pack',
-        name: '👑 Skin Pack Épique',
-        description: 'Pack de 2 skins épiques aléatoires',
+        name: '👑 Skin Pack Epique',
+        description: 'Pack de 2 skins epiques aleatoires',
         cost: 200,
         icon: '👑',
         category: 'cosmetic'
@@ -166,7 +130,7 @@ class GemSystem {
       permanent_gold_boost: {
         id: 'permanent_gold_boost',
         name: '💎 Gold Boost Permanent +10%',
-        description: 'Augmente définitivement l\'or gagné de 10%',
+        description: "Augmente definitivement l'or gagne de 10%",
         cost: 500,
         permanent: true,
         icon: '💎',
@@ -175,7 +139,7 @@ class GemSystem {
       permanent_xp_boost: {
         id: 'permanent_xp_boost',
         name: '⭐ XP Boost Permanent +10%',
-        description: 'Augmente définitivement l\'XP gagnée de 10%',
+        description: "Augmente definitivement l'XP gagnee de 10%",
         cost: 500,
         permanent: true,
         icon: '⭐',
@@ -183,7 +147,7 @@ class GemSystem {
       },
       starter_boost: {
         id: 'starter_boost',
-        name: '🚀 Boost de Départ',
+        name: '🚀 Boost de Depart',
         description: 'Commence chaque run au niveau 5',
         cost: 750,
         permanent: true,
@@ -205,7 +169,7 @@ class GemSystem {
       return { success: false, error: 'Pas assez de gems' };
     }
 
-    // Vérifier les restrictions
+    // Verifier les restrictions
     if (item.maxPerRun) {
       const usedThisRun = this.getUsageThisRun(itemId);
       if (usedThisRun >= item.maxPerRun) {
@@ -213,7 +177,7 @@ class GemSystem {
       }
     }
 
-    // Dépenser les gems
+    // Depenser les gems
     if (!this.spendGems(item.cost)) {
       return { success: false, error: 'Erreur lors du paiement' };
     }
@@ -225,11 +189,7 @@ class GemSystem {
     this.recordPurchase(itemId);
 
     if (window.toastManager) {
-      window.toastManager.show(
-        `✅ ${item.name} acheté!`,
-        'purchase',
-        3000
-      );
+      window.toastManager.show(`✅ ${item.name} achete!`, 'purchase', 3000);
     }
 
     return { success: true, item };
@@ -238,55 +198,55 @@ class GemSystem {
   // Appliquer l'effet d'un item
   applyItemEffect(item) {
     switch (item.id) {
-    case 'revive':
-      this.grantRevive();
-      break;
+      case 'revive':
+        this.grantRevive();
+        break;
 
-    case 'xp_boost':
-      this.activateBoost('xp', 2, item.duration);
-      break;
+      case 'xp_boost':
+        this.activateBoost('xp', 2, item.duration);
+        break;
 
-    case 'gold_boost':
-      this.activateBoost('gold', 2, item.duration);
-      break;
+      case 'gold_boost':
+        this.activateBoost('gold', 2, item.duration);
+        break;
 
-    case 'extra_life':
-      this.grantExtraLife(50);
-      break;
+      case 'extra_life':
+        this.grantExtraLife(50);
+        break;
 
-    case 'instant_shop':
-      this.openInstantShop();
-      break;
+      case 'instant_shop':
+        this.openInstantShop();
+        break;
 
-    case 'permanent_gold_boost':
-      this.applyPermanentBoost('gold', 0.1);
-      break;
+      case 'permanent_gold_boost':
+        this.applyPermanentBoost('gold', 0.1);
+        break;
 
-    case 'permanent_xp_boost':
-      this.applyPermanentBoost('xp', 0.1);
-      break;
+      case 'permanent_xp_boost':
+        this.applyPermanentBoost('xp', 0.1);
+        break;
 
-    case 'starter_boost':
-      this.applyStarterBoost();
-      break;
+      case 'starter_boost':
+        this.applyStarterBoost();
+        break;
 
-      // Les autres items seront gérés par le jeu principal
+      // Les autres items seront geres par le jeu principal
     }
   }
 
   // Accorder un revive
   grantRevive() {
-    this._safeSetItem('gem_revive_available', 'true');
+    storageManager.set('gem_revive_available', 'true');
   }
 
-  // Vérifier si revive disponible
+  // Verifier si revive disponible
   hasRevive() {
-    return this._safeGetItem('gem_revive_available') === 'true';
+    return storageManager.get('gem_revive_available') === 'true';
   }
 
   // Utiliser le revive
   useRevive() {
-    this._safeRemoveItem('gem_revive_available');
+    storageManager.remove('gem_revive_available');
   }
 
   // Activer un boost temporaire
@@ -297,11 +257,11 @@ class GemSystem {
       endTime: Date.now() + duration
     };
 
-    const activeBoosts = JSON.parse(this._safeGetItem('active_boosts') || '[]');
+    const activeBoosts = storageManager.get('active_boosts', []);
     activeBoosts.push(boost);
-    this._safeSetItem('active_boosts', JSON.stringify(activeBoosts));
+    storageManager.set('active_boosts', activeBoosts);
 
-    // Démarrer un timer pour retirer le boost
+    // Demarrer un timer pour retirer le boost
     setTimeout(() => {
       this.removeBoost(boost);
     }, duration);
@@ -309,29 +269,25 @@ class GemSystem {
 
   // Retirer un boost
   removeBoost(boost) {
-    let activeBoosts = JSON.parse(this._safeGetItem('active_boosts') || '[]');
+    let activeBoosts = storageManager.get('active_boosts', []);
     activeBoosts = activeBoosts.filter(b => b.endTime !== boost.endTime);
-    this._safeSetItem('active_boosts', JSON.stringify(activeBoosts));
+    storageManager.set('active_boosts', activeBoosts);
 
     if (window.toastManager) {
-      window.toastManager.show(
-        `⏰ ${boost.type.toUpperCase()} Boost terminé`,
-        'info',
-        3000
-      );
+      window.toastManager.show(`⏰ ${boost.type.toUpperCase()} Boost termine`, 'info', 3000);
     }
   }
 
   // Obtenir les boosts actifs
   getActiveBoosts() {
-    const activeBoosts = JSON.parse(this._safeGetItem('active_boosts') || '[]');
+    const activeBoosts = storageManager.get('active_boosts', []);
     const now = Date.now();
 
-    // Filtrer les boosts expirés
+    // Filtrer les boosts expires
     const validBoosts = activeBoosts.filter(b => b.endTime > now);
 
     if (validBoosts.length !== activeBoosts.length) {
-      this._safeSetItem('active_boosts', JSON.stringify(validBoosts));
+      storageManager.set('active_boosts', validBoosts);
     }
 
     return validBoosts;
@@ -339,51 +295,51 @@ class GemSystem {
 
   // Appliquer un boost permanent
   applyPermanentBoost(type, amount) {
-    const boosts = JSON.parse(this._safeGetItem('permanent_boosts') || '{}');
+    const boosts = storageManager.get('permanent_boosts', {});
     boosts[type] = (boosts[type] || 0) + amount;
-    this._safeSetItem('permanent_boosts', JSON.stringify(boosts));
+    storageManager.set('permanent_boosts', boosts);
   }
 
   // Obtenir les boosts permanents
   getPermanentBoosts() {
-    return JSON.parse(this._safeGetItem('permanent_boosts') || '{}');
+    return storageManager.get('permanent_boosts', {});
   }
 
   // Appliquer le starter boost
   applyStarterBoost() {
-    this._safeSetItem('starter_boost', 'true');
+    storageManager.set('starter_boost', 'true');
   }
 
-  // Vérifier si starter boost actif
+  // Verifier si starter boost actif
   hasStarterBoost() {
-    return this._safeGetItem('starter_boost') === 'true';
+    return storageManager.get('starter_boost') === 'true';
   }
 
-  // Accorder vie supplémentaire
+  // Accorder vie supplementaire
   grantExtraLife(amount) {
-    const extraLife = parseInt(this._safeGetItem('gem_extra_life') || '0');
-    this._safeSetItem('gem_extra_life', (extraLife + amount).toString());
+    const extraLife = parseInt(storageManager.get('gem_extra_life', '0'));
+    storageManager.set('gem_extra_life', (extraLife + amount).toString());
   }
 
-  // Obtenir vie supplémentaire
+  // Obtenir vie supplementaire
   getExtraLife() {
-    return parseInt(this._safeGetItem('gem_extra_life') || '0');
+    return parseInt(storageManager.get('gem_extra_life', '0'));
   }
 
-  // Consommer vie supplémentaire
+  // Consommer vie supplementaire
   consumeExtraLife() {
-    this._safeRemoveItem('gem_extra_life');
+    storageManager.remove('gem_extra_life');
   }
 
-  // Ouvrir le shop instantanément
+  // Ouvrir le shop instantanement
   openInstantShop() {
-    // Sera géré par le jeu principal
+    // Sera gere par le jeu principal
     window.dispatchEvent(new CustomEvent('instant_shop_requested'));
   }
 
   // Enregistrer un achat
   recordPurchase(itemId) {
-    const purchases = JSON.parse(this._safeGetItem('gem_purchases') || '{}');
+    const purchases = storageManager.get('gem_purchases', {});
     const runId = this.getCurrentRunId();
 
     if (!purchases[runId]) {
@@ -395,12 +351,12 @@ class GemSystem {
       timestamp: Date.now()
     });
 
-    this._safeSetItem('gem_purchases', JSON.stringify(purchases));
+    storageManager.set('gem_purchases', purchases);
   }
 
   // Obtenir l'usage dans la run actuelle
   getUsageThisRun(itemId) {
-    const purchases = JSON.parse(this._safeGetItem('gem_purchases') || '{}');
+    const purchases = storageManager.get('gem_purchases', {});
     const runId = this.getCurrentRunId();
 
     if (!purchases[runId]) {
@@ -412,16 +368,16 @@ class GemSystem {
 
   // Obtenir l'ID de la run actuelle
   getCurrentRunId() {
-    return this._safeGetItem('current_run_id') || 'no_run';
+    return storageManager.get('current_run_id', 'no_run');
   }
 
   // Nouvelle run (reset les achats par run)
   startNewRun() {
     const runId = 'run_' + Date.now();
-    this._safeSetItem('current_run_id', runId);
+    storageManager.set('current_run_id', runId);
   }
 
-  // Mettre à jour l'affichage des gems
+  // Mettre a jour l'affichage des gems
   updateGemDisplay() {
     const displays = document.querySelectorAll('.gem-balance, #gem-count');
     displays.forEach(display => {
@@ -429,7 +385,7 @@ class GemSystem {
     });
   }
 
-  // Créer l'UI du shop de gems
+  // Creer l'UI du shop de gems
   createGemShopUI() {
     const container = document.createElement('div');
     container.id = 'gem-shop-panel';
@@ -439,8 +395,8 @@ class GemSystem {
     const categories = {
       run: 'Items de Run',
       boost: 'Boosts Temporaires',
-      permanent: 'Améliorations Permanentes',
-      cosmetic: 'Cosmétiques'
+      permanent: 'Ameliorations Permanentes',
+      cosmetic: 'Cosmetiques'
     };
 
     container.innerHTML = `
@@ -449,17 +405,21 @@ class GemSystem {
         <div class="gem-balance-display">
           Gems: <span id="gem-count">${this.gems}</span> 💎
         </div>
-        <button class="gem-shop-close-btn">×</button>
+        <button class="gem-shop-close-btn">x</button>
       </div>
       <div class="gem-shop-content">
-        ${Object.entries(categories).map(([cat, name]) => `
+        ${Object.entries(categories)
+          .map(
+            ([cat, name]) => `
           <div class="gem-shop-section">
             <h3>${name}</h3>
             <div class="gem-shop-items">
               ${this.renderGemShopItems(cat)}
             </div>
           </div>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
     `;
 
@@ -472,7 +432,7 @@ class GemSystem {
 
     // Ajouter listeners pour les boutons d'achat
     container.querySelectorAll('.gem-shop-buy-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', e => {
         const itemId = e.target.dataset.itemId;
         this.handlePurchase(itemId);
       });
@@ -485,12 +445,13 @@ class GemSystem {
   renderGemShopItems(category) {
     const items = Object.values(this.gemShop).filter(item => item.category === category);
 
-    return items.map(item => {
-      const canAfford = this.gems >= item.cost;
-      const isPermanent = item.permanent || false;
-      const isOwned = isPermanent && this.isPermanentOwned(item.id);
+    return items
+      .map(item => {
+        const canAfford = this.gems >= item.cost;
+        const isPermanent = item.permanent || false;
+        const isOwned = isPermanent && this.isPermanentOwned(item.id);
 
-      return `
+        return `
         <div class="gem-shop-item ${!canAfford ? 'cannot-afford' : ''} ${isOwned ? 'owned' : ''}">
           <div class="gem-shop-item-icon">${item.icon}</div>
           <div class="gem-shop-item-content">
@@ -501,34 +462,35 @@ class GemSystem {
             </div>
           </div>
           <button class="gem-shop-buy-btn" data-item-id="${item.id}" ${!canAfford || isOwned ? 'disabled' : ''}>
-            ${isOwned ? 'Possédé' : 'Acheter'}
+            ${isOwned ? 'Possede' : 'Acheter'}
           </button>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
   }
 
-  // Vérifier si un permanent est possédé
+  // Verifier si un permanent est possede
   isPermanentOwned(itemId) {
-    const owned = JSON.parse(this._safeGetItem('permanent_items_owned') || '[]');
+    const owned = storageManager.get('permanent_items_owned', []);
     return owned.includes(itemId);
   }
 
-  // Marquer un permanent comme possédé
+  // Marquer un permanent comme possede
   markPermanentOwned(itemId) {
-    const owned = JSON.parse(this._safeGetItem('permanent_items_owned') || '[]');
+    const owned = storageManager.get('permanent_items_owned', []);
     if (!owned.includes(itemId)) {
       owned.push(itemId);
-      this._safeSetItem('permanent_items_owned', JSON.stringify(owned));
+      storageManager.set('permanent_items_owned', owned);
     }
   }
 
-  // Gérer un achat
+  // Gerer un achat
   handlePurchase(itemId) {
     const result = this.purchaseItem(itemId);
 
     if (result.success) {
-      // Rafraîchir l'UI
+      // Rafraichir l'UI
       const panel = document.getElementById('gem-shop-panel');
       if (panel) {
         const content = panel.querySelector('.gem-shop-content');
@@ -536,22 +498,26 @@ class GemSystem {
           const categories = {
             run: 'Items de Run',
             boost: 'Boosts Temporaires',
-            permanent: 'Améliorations Permanentes',
-            cosmetic: 'Cosmétiques'
+            permanent: 'Ameliorations Permanentes',
+            cosmetic: 'Cosmetiques'
           };
 
-          content.innerHTML = Object.entries(categories).map(([cat, name]) => `
+          content.innerHTML = Object.entries(categories)
+            .map(
+              ([cat, name]) => `
             <div class="gem-shop-section">
               <h3>${name}</h3>
               <div class="gem-shop-items">
                 ${this.renderGemShopItems(cat)}
               </div>
             </div>
-          `).join('');
+          `
+            )
+            .join('');
 
-          // Ré-attacher les event listeners
+          // Re-attacher les event listeners
           content.querySelectorAll('.gem-shop-buy-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', e => {
               const itemId = e.target.dataset.itemId;
               this.handlePurchase(itemId);
             });
@@ -559,17 +525,13 @@ class GemSystem {
         }
       }
 
-      // Marquer comme possédé si permanent
+      // Marquer comme possede si permanent
       if (result.item.permanent) {
         this.markPermanentOwned(itemId);
       }
     } else {
       if (window.toastManager) {
-        window.toastManager.show(
-          `❌ ${result.error}`,
-          'error',
-          3000
-        );
+        window.toastManager.show(`❌ ${result.error}`, 'error', 3000);
       }
     }
   }
@@ -584,5 +546,5 @@ class GemSystem {
   }
 }
 
-// Initialiser le système global
+// Initialiser le systeme global
 window.gemSystem = new GemSystem();

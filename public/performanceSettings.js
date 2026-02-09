@@ -50,7 +50,7 @@ class PerformanceSettingsManager {
         this.applySettings();
       }
     } catch (e) {
-      console.warn('Failed to load performance settings:', e);
+      logger.warn('Failed to load performance settings:', e);
     }
   }
 
@@ -61,7 +61,7 @@ class PerformanceSettingsManager {
     try {
       localStorage.setItem('zombieGamePerformanceSettings', JSON.stringify(this.settings));
     } catch (e) {
-      console.warn('Failed to save performance settings:', e);
+      logger.warn('Failed to save performance settings:', e);
     }
   }
 
@@ -316,18 +316,18 @@ class PerformanceSettingsManager {
     });
 
     // Real-time resolution slider update
-    document.getElementById('resolution-slider').addEventListener('input', (e) => {
+    document.getElementById('resolution-slider').addEventListener('input', e => {
       document.getElementById('resolution-value').textContent = e.target.value + '%';
     });
 
     // Real-time minimap opacity slider update
-    document.getElementById('minimap-opacity-slider').addEventListener('input', (e) => {
+    document.getElementById('minimap-opacity-slider').addEventListener('input', e => {
       document.getElementById('minimap-opacity-value').textContent = e.target.value + '%';
     });
 
     // Performance mode presets
     document.querySelectorAll('input[name="perfMode"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
+      radio.addEventListener('change', e => {
         if (e.target.value === 'performance') {
           document.getElementById('resolution-slider').value = 75;
           document.getElementById('resolution-value').textContent = '75%';
@@ -375,7 +375,9 @@ class PerformanceSettingsManager {
    * Create immersive mode toggle button (mobile)
    */
   createImmersiveModeButton() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
     if (!isMobile) {
       return;
     }
@@ -405,8 +407,9 @@ class PerformanceSettingsManager {
       this.applyImmersiveMode();
       this.saveSettings();
 
-      btn.style.background = this.settings.immersiveMode ?
-        'rgba(0, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.8)';
+      btn.style.background = this.settings.immersiveMode
+        ? 'rgba(0, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.8)';
       btn.style.borderColor = this.settings.immersiveMode ? '#00ffff' : '#00ffff';
     });
 
@@ -608,7 +611,8 @@ class PerformanceSettingsManager {
       panel.style.display = 'block';
       // Update FPS display
       document.getElementById('current-fps').textContent = Math.round(this.currentFPS);
-      const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / Math.max(this.fpsHistory.length, 1);
+      const avgFPS =
+        this.fpsHistory.reduce((a, b) => a + b, 0) / Math.max(this.fpsHistory.length, 1);
       document.getElementById('avg-fps').textContent = Math.round(avgFPS);
     } else {
       panel.style.display = 'none';
@@ -676,7 +680,7 @@ class PerformanceSettingsManager {
       window.gameEngine.onPerformanceSettingsChanged(this.settings);
     }
 
-    console.log('Performance settings applied:', this.settings);
+    logger.debug('Performance settings applied:', this.settings);
   }
 
   /**
@@ -703,7 +707,9 @@ class PerformanceSettingsManager {
     canvas.width = window.innerWidth * adjustedPixelRatio;
     canvas.height = window.innerHeight * adjustedPixelRatio;
 
-    console.log(`Resolution scale applied: ${this.settings.resolutionScale}x (${Math.round(adjustedPixelRatio * 100)}% of native)`);
+    logger.debug(
+      `Resolution scale applied: ${this.settings.resolutionScale}x (${Math.round(adjustedPixelRatio * 100)}% of native)`
+    );
   }
 
   /**
@@ -716,7 +722,9 @@ class PerformanceSettingsManager {
     if (this.settings.immersiveMode) {
       // Hide non-essential UI in landscape mode on mobile
       const isLandscape = window.innerWidth > window.innerHeight;
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
 
       if (isLandscape && isMobile) {
         if (stats) {
@@ -771,9 +779,9 @@ class PerformanceSettingsManager {
     const isMobile = this.isMobile();
     if (isMobile) {
       const sizeMap = {
-        'small': '50px',
-        'medium': '80px',
-        'large': '120px'
+        small: '50px',
+        medium: '80px',
+        large: '120px'
       };
       const size = sizeMap[this.settings.minimapSize] || '80px';
       minimap.style.width = size;
@@ -813,15 +821,17 @@ class PerformanceSettingsManager {
     if (!document.fullscreenElement) {
       if (elem.requestFullscreen) {
         elem.requestFullscreen().catch(err => {
-          console.warn('Failed to enter fullscreen:', err);
+          logger.warn('Failed to enter fullscreen:', err);
           this.settings.fullscreenEnabled = false;
         });
-      } else if (elem.webkitRequestFullscreen) { // Safari
+      } else if (elem.webkitRequestFullscreen) {
+        // Safari
         elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) { // IE11
+      } else if (elem.msRequestFullscreen) {
+        // IE11
         elem.msRequestFullscreen();
       } else {
-        console.warn('Fullscreen API not supported');
+        logger.warn('Fullscreen API not supported');
         this.settings.fullscreenEnabled = false;
       }
     }
@@ -834,9 +844,11 @@ class PerformanceSettingsManager {
     if (document.fullscreenElement) {
       if (document.exitFullscreen) {
         document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) { // Safari
+      } else if (document.webkitExitFullscreen) {
+        // Safari
         document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) { // IE11
+      } else if (document.msExitFullscreen) {
+        // IE11
         document.msExitFullscreen();
       }
     }
@@ -861,7 +873,9 @@ class PerformanceSettingsManager {
    * Check if device is mobile
    */
   isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
   }
 
   /**
@@ -902,7 +916,7 @@ class PerformanceSettingsManager {
    */
   destroy() {
     this.stopFPSMonitoring();
-    console.log('PerformanceSettingsManager destroyed');
+    logger.debug('PerformanceSettingsManager destroyed');
   }
 
   /**
@@ -948,7 +962,7 @@ class PerformanceSettingsManager {
    * Auto-adjust performance
    */
   autoAdjustPerformance() {
-    console.warn(`Low FPS detected (${this.currentFPS} FPS), auto-adjusting performance...`);
+    logger.warn(`Low FPS detected (${this.currentFPS} FPS), auto-adjusting performance...`);
 
     let adjusted = false;
 
@@ -957,18 +971,20 @@ class PerformanceSettingsManager {
       // Step 1: Disable particles first (least visual impact)
       this.settings.particlesEnabled = false;
       adjusted = true;
-      console.log('→ Disabled particles');
+      logger.debug('Auto-adjust: Disabled particles');
     } else if (this.settings.gridEnabled) {
       // Step 2: Disable grid
       this.settings.gridEnabled = false;
       adjusted = true;
-      console.log('→ Disabled grid');
+      logger.debug('Auto-adjust: Disabled grid');
     } else if (this.settings.resolutionScale > 0.5) {
       // Step 3: Reduce resolution gradually
       this.settings.resolutionScale = Math.max(0.5, this.settings.resolutionScale - 0.1);
       this.applyResolutionScale();
       adjusted = true;
-      console.log(`→ Reduced resolution to ${Math.round(this.settings.resolutionScale * 100)}%`);
+      logger.debug(
+        `Auto-adjust: Reduced resolution to ${Math.round(this.settings.resolutionScale * 100)}%`
+      );
     }
     // Step 4: DISABLED - Keep 60 FPS always for smooth gameplay
     // else if (this.settings.targetFPS > 30) {
@@ -983,9 +999,9 @@ class PerformanceSettingsManager {
       if (window.gameEngine) {
         window.gameEngine.onPerformanceSettingsChanged(this.settings);
       }
-      console.log('Performance auto-adjusted successfully');
+      logger.debug('Performance auto-adjusted successfully');
     } else {
-      console.log('All performance settings already at minimum');
+      logger.debug('All performance settings already at minimum');
     }
   }
 

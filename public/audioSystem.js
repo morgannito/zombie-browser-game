@@ -63,7 +63,9 @@ class MusicGenerator {
       try {
         oldest.stop();
         oldest.disconnect();
-      } catch (e) { /* already stopped */ }
+      } catch (e) {
+        /* already stopped */
+      }
     }
 
     const oscillator = this.context.createOscillator();
@@ -97,7 +99,9 @@ class MusicGenerator {
       try {
         oscillator.disconnect();
         gainNode.disconnect();
-      } catch (e) { /* already disconnected */ }
+      } catch (e) {
+        /* already disconnected */
+      }
     }, cleanupTime);
   }
 
@@ -125,8 +129,8 @@ class MusicGenerator {
     const progression = [
       [220, 261.63, 329.63], // Am
       [174.61, 220, 261.63], // F
-      [130.81, 164.81, 196],  // C
-      [196, 246.94, 293.66]   // G
+      [130.81, 164.81, 196], // C
+      [196, 246.94, 293.66] // G
     ];
 
     let currentChord = 0;
@@ -139,7 +143,10 @@ class MusicGenerator {
       this.playChord(progression[currentChord], beatDuration * 4, 0.15);
       currentChord = (currentChord + 1) % progression.length;
 
-      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(playLoop, beatDuration * 4 * 1000);
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(
+        playLoop,
+        beatDuration * 4 * 1000
+      );
     };
 
     playLoop();
@@ -176,7 +183,10 @@ class MusicGenerator {
         }, beatDuration * 500);
       }
 
-      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(playLoop, beatDuration * 1000);
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(
+        playLoop,
+        beatDuration * 1000
+      );
     };
 
     playLoop();
@@ -214,7 +224,10 @@ class MusicGenerator {
       }
 
       noteIndex = (noteIndex + 1) % bassLine.length;
-      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(playLoop, beatDuration * 1000);
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(
+        playLoop,
+        beatDuration * 1000
+      );
     };
 
     playLoop();
@@ -231,15 +244,15 @@ class MusicGenerator {
     this.isPlaying = true;
 
     switch (theme) {
-    case 'menu':
-      this.playMenuTheme();
-      break;
-    case 'combat':
-      this.playCombatTheme();
-      break;
-    case 'boss':
-      this.playBossTheme();
-      break;
+      case 'menu':
+        this.playMenuTheme();
+        break;
+      case 'combat':
+        this.playCombatTheme();
+        break;
+      case 'boss':
+        this.playBossTheme();
+        break;
     }
   }
 
@@ -305,7 +318,7 @@ class EnhancedSoundEffects {
     this.optimizedSounds = null;
     if (typeof OptimizedSoundEffects !== 'undefined') {
       this.optimizedSounds = new OptimizedSoundEffects();
-      console.log('[EnhancedSoundEffects] Using OptimizedSoundEffects');
+      logger.debug('[EnhancedSoundEffects] Using OptimizedSoundEffects');
     }
 
     // Fallback: Intégration du système d'armes avancé
@@ -329,22 +342,22 @@ class EnhancedSoundEffects {
     // Fallback: Utiliser le système d'armes si disponible
     if (this.weaponAudio) {
       switch (weaponType) {
-      case 'pistol':
-        this.weaponAudio.playPistol(distance, true);
-        break;
-      case 'shotgun':
-        this.weaponAudio.playShotgun(distance, true);
-        break;
-      case 'machinegun':
-      case 'minigun':
-        this.weaponAudio.playMachinegun(distance, true);
-        break;
-      case 'rifle':
-      case 'sniper':
-        this.weaponAudio.playRifle(distance, true);
-        break;
-      default:
-        this.weaponAudio.playPistol(distance, true);
+        case 'pistol':
+          this.weaponAudio.playPistol(distance, true);
+          break;
+        case 'shotgun':
+          this.weaponAudio.playShotgun(distance, true);
+          break;
+        case 'machinegun':
+        case 'minigun':
+          this.weaponAudio.playMachinegun(distance, true);
+          break;
+        case 'rifle':
+        case 'sniper':
+          this.weaponAudio.playRifle(distance, true);
+          break;
+        default:
+          this.weaponAudio.playPistol(distance, true);
       }
       return;
     }
@@ -360,26 +373,26 @@ class EnhancedSoundEffects {
     const filter = this.context.createBiquadFilter();
 
     switch (weaponType) {
-    case 'pistol':
-      oscillator.frequency.value = 300;
-      filter.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.3, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      break;
+      case 'pistol':
+        oscillator.frequency.value = 300;
+        filter.frequency.value = 800;
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        break;
 
-    case 'shotgun':
-      oscillator.frequency.value = 150;
-      filter.frequency.value = 400;
-      gainNode.gain.setValueAtTime(0.5, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-      break;
+      case 'shotgun':
+        oscillator.frequency.value = 150;
+        filter.frequency.value = 400;
+        gainNode.gain.setValueAtTime(0.5, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        break;
 
-    case 'machinegun':
-      oscillator.frequency.value = 400;
-      filter.frequency.value = 1000;
-      gainNode.gain.setValueAtTime(0.2, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-      break;
+      case 'machinegun':
+        oscillator.frequency.value = 400;
+        filter.frequency.value = 1000;
+        gainNode.gain.setValueAtTime(0.2, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        break;
     }
 
     oscillator.type = 'square';
@@ -582,7 +595,7 @@ class EnhancedSoundEffects {
     }
 
     const now = this.context.currentTime;
-    const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C (octave)
+    const frequencies = [523.25, 659.25, 783.99, 1046.5]; // C, E, G, C (octave)
 
     frequencies.forEach((freq, i) => {
       const oscillator = this.context.createOscillator();
@@ -772,11 +785,11 @@ class AdvancedAudioManager {
       if (window.getAudioCore) {
         this.core = window.getAudioCore();
         this.context = this.core.audioContext;
-        console.log('[AdvancedAudioManager] Using shared OptimizedAudioCore');
+        logger.debug('[AdvancedAudioManager] Using shared OptimizedAudioCore');
       } else {
         // Fallback: create own context
         this.context = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('[AdvancedAudioManager] Using standalone AudioContext');
+        logger.debug('[AdvancedAudioManager] Using standalone AudioContext');
       }
 
       this.music = new MusicGenerator(this.context);
@@ -790,7 +803,7 @@ class AdvancedAudioManager {
         this.core.setMasterVolume(this.masterVolume);
       }
     } catch (e) {
-      console.warn('Web Audio API not supported', e);
+      logger.error('Web Audio API not supported', e);
       this.enabled = false;
     }
   }
@@ -856,36 +869,36 @@ class AdvancedAudioManager {
     this.resume();
 
     switch (soundType) {
-    case 'shoot':
-      this.sounds.playShoot(...args);
-      break;
-    case 'hit':
-      this.sounds.playHit(...args);
-      break;
-    case 'zombieDeath':
-      this.sounds.playZombieDeath();
-      break;
-    case 'explosion':
-      this.sounds.playExplosion();
-      break;
-    case 'collect':
-      this.sounds.playCollect(...args);
-      break;
-    case 'levelup':
-      this.sounds.playLevelUp();
-      break;
-    case 'playerDamage':
-      this.sounds.playPlayerDamage();
-      break;
-    case 'heal':
-      this.sounds.playHeal();
-      break;
-    case 'bossSpawn':
-      this.sounds.playBossSpawn();
-      break;
-    case 'ui':
-      this.sounds.playUISound(...args);
-      break;
+      case 'shoot':
+        this.sounds.playShoot(...args);
+        break;
+      case 'hit':
+        this.sounds.playHit(...args);
+        break;
+      case 'zombieDeath':
+        this.sounds.playZombieDeath();
+        break;
+      case 'explosion':
+        this.sounds.playExplosion();
+        break;
+      case 'collect':
+        this.sounds.playCollect(...args);
+        break;
+      case 'levelup':
+        this.sounds.playLevelUp();
+        break;
+      case 'playerDamage':
+        this.sounds.playPlayerDamage();
+        break;
+      case 'heal':
+        this.sounds.playHeal();
+        break;
+      case 'bossSpawn':
+        this.sounds.playBossSpawn();
+        break;
+      case 'ui':
+        this.sounds.playUISound(...args);
+        break;
     }
   }
 
@@ -895,11 +908,11 @@ class AdvancedAudioManager {
   play(soundType) {
     // Map old sound types to new system
     const soundMap = {
-      'click': 'ui',
-      'doubleClick': 'ui',
-      'longPress': 'ui',
-      'swipe': 'ui',
-      'shoot': 'shoot'
+      click: 'ui',
+      doubleClick: 'ui',
+      longPress: 'ui',
+      swipe: 'ui',
+      shoot: 'shoot'
     };
 
     const mappedSound = soundMap[soundType] || soundType;

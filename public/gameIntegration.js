@@ -18,40 +18,44 @@ window.enhancedUI = null;
  * Initialise tous les nouveaux systèmes
  */
 function initializeEnhancedSystems() {
-  console.log('Initializing enhanced systems...');
+  logger.debug('Initializing enhanced systems...');
 
   // Système d'effets visuels
   if (typeof AdvancedEffectsManager !== 'undefined') {
     window.enhancedEffects = new AdvancedEffectsManager();
-    console.log('✓ Visual effects system loaded');
+    logger.debug('Visual effects system loaded');
   }
 
   // Système audio
   if (typeof AdvancedAudioManager !== 'undefined') {
     window.advancedAudio = new AdvancedAudioManager();
-    console.log('✓ Audio system loaded');
+    logger.debug('Audio system loaded');
 
     // Démarrer la musique du menu après interaction utilisateur
-    document.addEventListener('click', () => {
-      if (window.advancedAudio && !window.advancedAudio.music.isPlaying) {
-        window.advancedAudio.startMusic('menu');
-      }
-    }, { once: true });
+    document.addEventListener(
+      'click',
+      () => {
+        if (window.advancedAudio && !window.advancedAudio.music.isPlaying) {
+          window.advancedAudio.startMusic('menu');
+        }
+      },
+      { once: true }
+    );
   }
 
   // Système de skins
   if (typeof SkinManager !== 'undefined') {
     window.skinManager = new SkinManager();
-    console.log('✓ Skin system loaded');
+    logger.debug('Skin system loaded');
   }
 
   // Système UI amélioré
   if (typeof EnhancedUIManager !== 'undefined') {
     window.enhancedUI = new EnhancedUIManager();
-    console.log('✓ Enhanced UI loaded');
+    logger.debug('Enhanced UI loaded');
   }
 
-  console.log('All enhanced systems initialized!');
+  logger.info('All enhanced systems initialized');
 }
 
 /* ============================================
@@ -61,7 +65,7 @@ function initializeEnhancedSystems() {
 /**
  * Hook appelé lors d'un tir
  */
-window.onPlayerShoot = function(x, y, angle, weaponType) {
+window.onPlayerShoot = function (x, y, angle, weaponType) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onPlayerShoot(x, y, angle, weaponType);
   }
@@ -76,7 +80,7 @@ window.onPlayerShoot = function(x, y, angle, weaponType) {
 /**
  * Hook appelé lors d'un impact sur zombie
  */
-window.onZombieHit = function(x, y, angle, damage, isCritical, zombieColor) {
+window.onZombieHit = function (x, y, angle, damage, isCritical, zombieColor) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onZombieHit(x, y, angle, damage, isCritical, zombieColor);
   }
@@ -91,7 +95,7 @@ window.onZombieHit = function(x, y, angle, damage, isCritical, zombieColor) {
 /**
  * Hook appelé lors de la mort d'un zombie
  */
-window.onZombieDeath = function(x, y, zombieColor) {
+window.onZombieDeath = function (x, y, zombieColor) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onZombieDeath(x, y, zombieColor);
   }
@@ -103,7 +107,7 @@ window.onZombieDeath = function(x, y, zombieColor) {
 /**
  * Hook appelé lors d'une explosion
  */
-window.onExplosion = function(x, y, radius) {
+window.onExplosion = function (x, y, radius) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onExplosion(x, y, radius);
   }
@@ -115,7 +119,7 @@ window.onExplosion = function(x, y, radius) {
 /**
  * Hook appelé lors de la collecte d'or
  */
-window.onGoldCollect = function(x, y, amount) {
+window.onGoldCollect = function (x, y, amount) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onGoldCollect(x, y, amount);
   }
@@ -130,7 +134,7 @@ window.onGoldCollect = function(x, y, amount) {
 /**
  * Hook appelé lors du gain d'XP
  */
-window.onXPGain = function(x, y, amount) {
+window.onXPGain = function (x, y, amount) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onXPGain(x, y, amount);
   }
@@ -139,7 +143,7 @@ window.onXPGain = function(x, y, amount) {
 /**
  * Hook appelé lors d'un level up
  */
-window.onLevelUp = function(x, y, level) {
+window.onLevelUp = function (x, y, level) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onLevelUp(x, y);
   }
@@ -154,7 +158,7 @@ window.onLevelUp = function(x, y, level) {
 /**
  * Hook appelé lors d'un heal
  */
-window.onPlayerHeal = function(x, y, amount) {
+window.onPlayerHeal = function (x, y, amount) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onHeal(x, y, amount);
   }
@@ -169,7 +173,7 @@ window.onPlayerHeal = function(x, y, amount) {
 /**
  * Hook appelé lors de dégâts au joueur
  */
-window.onPlayerDamage = function(x, y, damage) {
+window.onPlayerDamage = function (x, y, damage) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onPlayerDamage(x, y, damage);
   }
@@ -184,7 +188,7 @@ window.onPlayerDamage = function(x, y, damage) {
 /**
  * Hook appelé lors de l'apparition d'un boss
  */
-window.onBossSpawn = function(x, y) {
+window.onBossSpawn = function (x, y) {
   if (window.enhancedEffects) {
     window.enhancedEffects.onBossSpawn(x, y);
   }
@@ -201,7 +205,7 @@ window.onBossSpawn = function(x, y) {
 /**
  * Hook appelé lors du début du combat
  */
-window.onCombatStart = function() {
+window.onCombatStart = function () {
   if (window.advancedAudio) {
     window.advancedAudio.changeMusic('combat');
   }
@@ -210,7 +214,7 @@ window.onCombatStart = function() {
 /**
  * Hook appelé lors du retour au menu
  */
-window.onMenuReturn = function() {
+window.onMenuReturn = function () {
   if (window.advancedAudio) {
     window.advancedAudio.changeMusic('menu');
   }
@@ -219,7 +223,7 @@ window.onMenuReturn = function() {
 /**
  * Hook appelé pour mettre à jour la barre de vie
  */
-window.updateHealthBar = function(health, maxHealth) {
+window.updateHealthBar = function (health, maxHealth) {
   if (window.enhancedUI) {
     window.enhancedUI.updateProgressBar('health', health, maxHealth);
   }
@@ -228,7 +232,7 @@ window.updateHealthBar = function(health, maxHealth) {
 /**
  * Hook appelé pour mettre à jour la barre d'XP
  */
-window.updateXPBar = function(xp, maxXP) {
+window.updateXPBar = function (xp, maxXP) {
   if (window.enhancedUI) {
     window.enhancedUI.updateProgressBar('xp', xp, maxXP);
   }
@@ -237,7 +241,7 @@ window.updateXPBar = function(xp, maxXP) {
 /**
  * Hook pour le rendu personnalisé du joueur
  */
-window.renderPlayer = function(ctx, x, y, radius) {
+window.renderPlayer = function (ctx, x, y, radius) {
   if (window.skinManager) {
     window.skinManager.drawPlayer(ctx, x, y, radius);
   }
@@ -246,7 +250,7 @@ window.renderPlayer = function(ctx, x, y, radius) {
 /**
  * Hook pour le rendu personnalisé des balles
  */
-window.renderBullet = function(ctx, x, y, radius) {
+window.renderBullet = function (ctx, x, y, radius) {
   if (window.skinManager) {
     window.skinManager.drawBullet(ctx, x, y, radius);
   }

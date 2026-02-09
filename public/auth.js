@@ -1,12 +1,12 @@
 /**
  * AUTH MANAGER - JWT Authentication
- * Gère l'authentification JWT avant la connexion au jeu
+ * Gere l'authentification JWT avant la connexion au jeu
  */
 
 class AuthManager {
   constructor() {
-    this.token = localStorage.getItem('authToken');
-    this.player = JSON.parse(localStorage.getItem('player') || 'null');
+    this.token = storageManager.get('authToken');
+    this.player = storageManager.get('player', null);
   }
 
   async login(username) {
@@ -27,8 +27,8 @@ class AuthManager {
       this.token = data.token;
       this.player = data.player;
 
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('player', JSON.stringify(data.player));
+      storageManager.set('authToken', data.token);
+      storageManager.set('player', data.player);
 
       console.log('[Auth] Login successful:', data.player.username);
       return data;
@@ -41,8 +41,8 @@ class AuthManager {
   logout() {
     this.token = null;
     this.player = null;
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('player');
+    storageManager.remove('authToken');
+    storageManager.remove('player');
   }
 
   isAuthenticated() {

@@ -11,14 +11,7 @@ module.exports = [
 
   // Global ignores
   {
-    ignores: [
-      'node_modules/**',
-      'data/**',
-      'uploads/**',
-      'public/lib/**',
-      'dist/**',
-      '**/*.min.js'
-    ]
+    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', '**/*.min.js']
   },
 
   // Server-side JavaScript (Node.js)
@@ -42,21 +35,21 @@ module.exports = [
       }
     },
     rules: {
-      'indent': ['error', 2],
+      indent: ['error', 2],
       'linebreak-style': ['error', 'unix'],
-      'quotes': ['error', 'single', { 'avoidEscape': true }],
-      'semi': ['error', 'always'],
-      'no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_' }],
+      quotes: ['error', 'single', { avoidEscape: true }],
+      semi: ['error', 'always'],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'off',
       'no-var': 'error',
       'prefer-const': 'warn',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
       'brace-style': ['error', '1tbs'],
       'comma-dangle': ['error', 'never'],
       'no-trailing-spaces': 'error',
-      'max-len': ['warn', { 'code': 220, 'ignoreComments': true }],
-      'no-multiple-empty-lines': ['error', { 'max': 2 }],
+      'max-len': ['warn', { code: 220, ignoreComments: true }],
+      'no-multiple-empty-lines': ['error', { max: 2 }],
       'space-before-blocks': 'error',
       'keyword-spacing': 'error',
       'arrow-spacing': 'error'
@@ -126,7 +119,9 @@ module.exports = [
         NicknameManager: 'readonly',
         initInstructionsToggle: 'readonly',
         initMinimapToggle: 'readonly',
-        initCameraRecenter: 'readonly'
+        initCameraRecenter: 'readonly',
+        logger: 'readonly',
+        storageManager: 'readonly'
       }
     },
     rules: {

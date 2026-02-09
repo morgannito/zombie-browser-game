@@ -229,7 +229,7 @@ class SkinRenderer {
     // Particules autour (pour skin gold par exemple)
     if (skin.particles) {
       for (let i = 0; i < 5; i++) {
-        const angle = (Date.now() / 1000 + i * (Math.PI * 2 / 5)) % (Math.PI * 2);
+        const angle = (Date.now() / 1000 + i * ((Math.PI * 2) / 5)) % (Math.PI * 2);
         const px = x + Math.cos(angle) * (radius + 5);
         const py = y + Math.sin(angle) * (radius + 5);
 
@@ -351,15 +351,13 @@ class SkinManager {
   }
 
   /**
-   * Charge les skins débloqués depuis localStorage
+   * Charge les skins debloques depuis storageManager
    */
   loadFromLocalStorage() {
     try {
-      const saved = localStorage.getItem('zombie_skins');
-      if (saved) {
-        const data = JSON.parse(saved);
-
-        // Débloquer les skins sauvegardés
+      const data = storageManager.get('zombie_skins');
+      if (data) {
+        // Debloquer les skins sauvegardes
         if (data.unlockedPlayerSkins) {
           data.unlockedPlayerSkins.forEach(skinId => {
             if (this.playerSkins[skinId]) {
@@ -376,7 +374,7 @@ class SkinManager {
           });
         }
 
-        // Charger les skins équipés
+        // Charger les skins equipes
         if (data.currentPlayerSkin && this.playerSkins[data.currentPlayerSkin]) {
           this.currentPlayerSkin = data.currentPlayerSkin;
         }
@@ -391,15 +389,17 @@ class SkinManager {
   }
 
   /**
-   * Sauvegarde les skins dans localStorage
+   * Sauvegarde les skins via storageManager
    */
   saveToLocalStorage() {
     try {
-      const unlockedPlayerSkins = Object.keys(this.playerSkins)
-        .filter(id => this.playerSkins[id].unlocked);
+      const unlockedPlayerSkins = Object.keys(this.playerSkins).filter(
+        id => this.playerSkins[id].unlocked
+      );
 
-      const unlockedWeaponSkins = Object.keys(this.weaponSkins)
-        .filter(id => this.weaponSkins[id].unlocked);
+      const unlockedWeaponSkins = Object.keys(this.weaponSkins).filter(
+        id => this.weaponSkins[id].unlocked
+      );
 
       const data = {
         unlockedPlayerSkins,
@@ -408,7 +408,7 @@ class SkinManager {
         currentWeaponSkin: this.currentWeaponSkin
       };
 
-      localStorage.setItem('zombie_skins', JSON.stringify(data));
+      storageManager.set('zombie_skins', data);
     } catch (e) {
       console.error('Error saving skins:', e);
     }

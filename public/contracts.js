@@ -1,9 +1,9 @@
 /**
  * WEEKLY CONTRACTS - Long-form multi-stage goals.
- * @version 1.0.0
+ * @version 1.1.0
  */
 
-(function() {
+(function () {
   'use strict';
 
   class ContractsSystem {
@@ -41,7 +41,7 @@
       safeAdd(document, 'zombie_killed', () => this.updateProgress('kills', 1));
       safeAdd(document, 'wave_changed', () => this.updateProgress('waves', 1));
       safeAdd(document, 'boss_defeated', () => this.updateProgress('boss', 1));
-      safeAdd(document, 'gold_collected', (e) => this.updateProgress('gold', e.detail?.amount || 0));
+      safeAdd(document, 'gold_collected', e => this.updateProgress('gold', e.detail?.amount || 0));
       safeAdd(document, 'game_over', () => this.updateProgress('runs', 1));
     }
 
@@ -61,28 +61,28 @@
       const templates = [
         {
           id: 'elite_hunt',
-          name: 'Contrat: Escouade d\'élite',
-          description: 'Prouvez que vous êtes l\'arme absolue.',
+          name: "Contrat: Escouade d'elite",
+          description: "Prouvez que vous etes l'arme absolue.",
           stages: [
             { type: 'kills', target: 200, reward: { gems: 10, gold: 150 } },
             { type: 'waves', target: 20, reward: { gems: 14, gold: 200 } },
-            { type: 'boss', target: 3, reward: { gems: 20, title: 'Chasseur d\'élite' } }
+            { type: 'boss', target: 3, reward: { gems: 20, title: "Chasseur d'elite" } }
           ]
         },
         {
           id: 'gold_route',
-          name: 'Contrat: Route de l\'or',
-          description: 'Accumulez de l\'or sur toute la semaine.',
+          name: "Contrat: Route de l'or",
+          description: "Accumulez de l'or sur toute la semaine.",
           stages: [
             { type: 'gold', target: 3000, reward: { gems: 8, gold: 200 } },
             { type: 'gold', target: 7000, reward: { gems: 12, gold: 300 } },
-            { type: 'gold', target: 12000, reward: { gems: 20, title: 'Baron de l\'or' } }
+            { type: 'gold', target: 12000, reward: { gems: 20, title: "Baron de l'or" } }
           ]
         },
         {
           id: 'endurance',
           name: 'Contrat: Endurance',
-          description: 'Tenez la distance avec régularité.',
+          description: 'Tenez la distance avec regularite.',
           stages: [
             { type: 'runs', target: 3, reward: { gems: 10, gold: 150 } },
             { type: 'runs', target: 6, reward: { gems: 14, gold: 200 } },
@@ -120,7 +120,11 @@
         stage.progress = stage.target;
         stage.completed = true;
         if (window.toastManager) {
-          window.toastManager.show(`🎯 Contrat terminé: Étape ${this.contract.currentStage + 1}`, 'success', 3000);
+          window.toastManager.show(
+            `🎯 Contrat termine: Etape ${this.contract.currentStage + 1}`,
+            'success',
+            3000
+          );
         }
         this.playSound('reward');
       }
@@ -140,16 +144,19 @@
       }
 
       stage.claimed = true;
-      this.applyReward(stage.reward, `${this.contract.name} - Étape ${this.contract.currentStage + 1}`);
+      this.applyReward(
+        stage.reward,
+        `${this.contract.name} - Etape ${this.contract.currentStage + 1}`
+      );
       this.playSound('reward');
 
       if (this.contract.currentStage < this.contract.stages.length - 1) {
         this.contract.currentStage += 1;
         if (window.toastManager) {
-          window.toastManager.show('📜 Nouvelle étape débloquée!', 'info', 2500);
+          window.toastManager.show('📜 Nouvelle etape debloquee!', 'info', 2500);
         }
       } else if (window.toastManager) {
-        window.toastManager.show('🏁 Contrat complété!', 'success', 3500);
+        window.toastManager.show('🏁 Contrat complete!', 'success', 3500);
       }
 
       this.safeSave();
@@ -200,7 +207,7 @@
       content.appendChild(section);
       this.panelSection = section;
 
-      section.addEventListener('click', (event) => {
+      section.addEventListener('click', event => {
         const target = event.target;
         if (target && target.classList.contains('contract-claim-btn')) {
           this.claimStage();
@@ -226,16 +233,20 @@
         <div class="contract-card">
           <div class="challenge-card-name">${this.contract.name}</div>
           <div class="challenge-card-desc">${this.contract.description}</div>
-          ${this.contract.stages.map((s, index) => `
+          ${this.contract.stages
+            .map(
+              (s, index) => `
             <div class="contract-stage ${s.completed ? 'completed' : ''}">
-              <span>Étape ${index + 1}: ${this.describeStage(s)}</span>
+              <span>Etape ${index + 1}: ${this.describeStage(s)}</span>
               <span>${Math.min(s.progress, s.target)}/${s.target}</span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
           <div class="contract-progress-bar">
             <div class="contract-progress-fill" style="width: ${Math.min(100, progress)}%"></div>
           </div>
-          ${claimable ? '<button class="contract-claim-btn">Réclamer la récompense</button>' : ''}
+          ${claimable ? '<button class="contract-claim-btn">Reclamer la recompense</button>' : ''}
         </div>
       `;
     }
@@ -245,31 +256,22 @@
         kills: 'Tuer des zombies',
         waves: 'Atteindre des vagues',
         boss: 'Vaincre des boss',
-        gold: 'Collecter de l\'or',
+        gold: "Collecter de l'or",
         runs: 'Terminer des runs'
       };
       return labels[stage.type] || stage.type;
     }
 
     safeLoad() {
-      try {
-        const raw = localStorage.getItem(this.storageKey);
-        return raw ? JSON.parse(raw) : null;
-      } catch (error) {
-        console.warn('Contract load failed', error);
-        return null;
-      }
+      const raw = storageManager.get(this.storageKey);
+      return raw || null;
     }
 
     safeSave() {
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify({
-          weekStart: this.getWeekStart(new Date()).toISOString(),
-          contract: this.contract
-        }));
-      } catch (error) {
-        console.warn('Contract save failed', error);
-      }
+      storageManager.set(this.storageKey, {
+        weekStart: this.getWeekStart(new Date()).toISOString(),
+        contract: this.contract
+      });
     }
 
     isSameWeek(date1, date2) {

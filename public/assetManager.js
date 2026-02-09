@@ -73,8 +73,8 @@ class AssetManager {
   }
 
   /**
-     * Charge une image de manière asynchrone
-     */
+   * Charge une image de manière asynchrone
+   */
   loadImage(path, key) {
     return new Promise((resolve, _reject) => {
       const img = new Image();
@@ -83,12 +83,12 @@ class AssetManager {
         this.images.set(key, img);
         this.loadedAssets++;
         this.updateProgress();
-        console.log(`✓ Image chargée: ${key}`);
+        logger.debug(`Image chargee: ${key}`);
         resolve(img);
       };
 
       img.onerror = () => {
-        console.warn(`⚠ Image non disponible: ${path} (utilisation du rendu procédural)`);
+        logger.warn(`Image non disponible: ${path} (utilisation du rendu procedural)`);
         this.loadedAssets++;
         this.updateProgress();
         resolve(null);
@@ -99,8 +99,8 @@ class AssetManager {
   }
 
   /**
-     * Charge un fichier audio de manière asynchrone
-     */
+   * Charge un fichier audio de manière asynchrone
+   */
   loadSound(path, key) {
     return new Promise((resolve, _reject) => {
       const audio = new Audio();
@@ -109,12 +109,12 @@ class AssetManager {
         this.sounds.set(key, audio);
         this.loadedAssets++;
         this.updateProgress();
-        console.log(`✓ Son chargé: ${key}`);
+        logger.debug(`Son charge: ${key}`);
         resolve(audio);
       };
 
       audio.onerror = () => {
-        console.warn(`⚠ Son non disponible: ${path} (utilisation du son procédural)`);
+        logger.warn(`Son non disponible: ${path} (utilisation du son procedural)`);
         this.loadedAssets++;
         this.updateProgress();
         resolve(null);
@@ -125,44 +125,44 @@ class AssetManager {
   }
 
   /**
-     * Met à jour la progression du chargement
-     */
+   * Met à jour la progression du chargement
+   */
   updateProgress() {
     this.loadProgress = (this.loadedAssets / this.totalAssets) * 100;
   }
 
   /**
-     * Charge le manifest des assets disponibles
-     */
+   * Charge le manifest des assets disponibles
+   */
   async loadManifest() {
     try {
       const response = await fetch('assets/manifest.json');
       if (!response.ok) {
-        console.log('ℹ️ Aucun manifest d\'assets trouvé - utilisation du rendu procédural uniquement');
+        logger.debug("Aucun manifest d'assets trouve - utilisation du rendu procedural uniquement");
         return null;
       }
       const manifest = await response.json();
       if (!manifest.enabled) {
-        console.log('ℹ️ Assets désactivés dans le manifest - utilisation du rendu procédural');
+        logger.debug('Assets desactives dans le manifest - utilisation du rendu procedural');
         return null;
       }
       return manifest;
     } catch (err) {
-      console.log('ℹ️ Erreur lors du chargement du manifest - utilisation du rendu procédural');
+      logger.debug('Erreur lors du chargement du manifest - utilisation du rendu procedural');
       return null;
     }
   }
 
   /**
-     * Charge tous les assets du jeu
-     */
+   * Charge tous les assets du jeu
+   */
   async loadAllAssets() {
-    console.log('🎮 Chargement des assets...');
+    logger.debug('Chargement des assets...');
 
     // Charger d'abord le manifest pour savoir quels assets sont disponibles
     const manifest = await this.loadManifest();
     if (!manifest || !manifest.assets) {
-      console.log('✅ Mode rendu procédural activé (aucun asset externe)');
+      logger.debug('Mode rendu procedural active (aucun asset externe)');
       this.loaded = true;
       return true;
     }
@@ -180,90 +180,73 @@ class AssetManager {
 
     // Charger les sprites du joueur
     Object.entries(this.assetConfig.player).forEach(([key, filename]) => {
-      const promise = this.loadImage(
-        `assets/images/sprites/player/${filename}`,
-        `player_${key}`
-      );
+      const promise = this.loadImage(`assets/images/sprites/player/${filename}`, `player_${key}`);
       this.loadingPromises.push(promise);
     });
 
     // Charger les sprites des zombies
     Object.entries(this.assetConfig.zombies).forEach(([type, filename]) => {
-      const promise = this.loadImage(
-        `assets/images/sprites/zombies/${filename}`,
-        `zombie_${type}`
-      );
+      const promise = this.loadImage(`assets/images/sprites/zombies/${filename}`, `zombie_${type}`);
       this.loadingPromises.push(promise);
     });
 
     // Charger les sprites des items
     Object.entries(this.assetConfig.items).forEach(([key, filename]) => {
-      const promise = this.loadImage(
-        `assets/images/sprites/items/${filename}`,
-        `item_${key}`
-      );
+      const promise = this.loadImage(`assets/images/sprites/items/${filename}`, `item_${key}`);
       this.loadingPromises.push(promise);
     });
 
     // Charger les effets
     Object.entries(this.assetConfig.effects).forEach(([key, filename]) => {
-      const promise = this.loadImage(
-        `assets/images/sprites/effects/${filename}`,
-        `effect_${key}`
-      );
+      const promise = this.loadImage(`assets/images/sprites/effects/${filename}`, `effect_${key}`);
       this.loadingPromises.push(promise);
     });
 
     // Charger la musique
     Object.entries(this.assetConfig.sounds.music).forEach(([key, filename]) => {
-      const promise = this.loadSound(
-        `assets/audio/music/${filename}`,
-        `music_${key}`
-      );
+      const promise = this.loadSound(`assets/audio/music/${filename}`, `music_${key}`);
       this.loadingPromises.push(promise);
     });
 
     // Charger les effets sonores
     Object.entries(this.assetConfig.sounds.sfx).forEach(([key, filename]) => {
-      const promise = this.loadSound(
-        `assets/audio/sfx/${filename}`,
-        `sfx_${key}`
-      );
+      const promise = this.loadSound(`assets/audio/sfx/${filename}`, `sfx_${key}`);
       this.loadingPromises.push(promise);
     });
 
     this.totalAssets = this.loadingPromises.length;
-    console.log(`📦 ${this.totalAssets} assets à charger...`);
+    logger.debug(`${this.totalAssets} assets a charger...`);
 
     // Attendre que tous les assets soient chargés (ou échouent gracieusement)
     await Promise.all(this.loadingPromises);
 
     this.loaded = true;
-    const successCount = Array.from(this.images.values()).filter(img => img !== null).length +
-                           Array.from(this.sounds.values()).filter(snd => snd !== null).length;
+    const successCount =
+      Array.from(this.images.values()).filter(img => img !== null).length +
+      Array.from(this.sounds.values()).filter(snd => snd !== null).length;
 
-    console.log(`✅ Chargement terminé: ${successCount}/${this.totalAssets} assets disponibles`);
+    logger.info(`Chargement termine: ${successCount}/${this.totalAssets} assets disponibles`);
 
     return this.loaded;
   }
 
   /**
-     * Récupère une image par sa clé
-     */
+   * Récupère une image par sa clé
+   */
   getImage(key) {
     return this.images.get(key) || null;
   }
 
   /**
-     * Récupère un son par sa clé
-     */
+   * Récupère un son par sa clé
+   */
   getSound(key) {
     return this.sounds.get(key) || null;
   }
 
   /**
-     * Récupère un background aléatoire
-     */
+   * Récupère un background aléatoire
+   */
   getRandomBackground() {
     const backgrounds = Array.from(this.images.keys())
       .filter(key => key.startsWith('background_'))
@@ -277,8 +260,8 @@ class AssetManager {
   }
 
   /**
-     * Récupère un background spécifique par index (pour les vagues)
-     */
+   * Récupère un background spécifique par index (pour les vagues)
+   */
   getBackgroundByWave(waveNumber) {
     // Cycle à travers les backgrounds disponibles
     const backgroundKeys = Array.from(this.images.keys())
@@ -294,8 +277,8 @@ class AssetManager {
   }
 
   /**
-     * Joue un son
-     */
+   * Joue un son
+   */
   playSound(key, volume = 1.0, loop = false) {
     const sound = this.sounds.get(key);
     if (!sound) {
@@ -308,15 +291,15 @@ class AssetManager {
     soundClone.loop = loop;
 
     soundClone.play().catch(err => {
-      console.warn(`Erreur lecture son ${key}:`, err);
+      logger.warn(`Erreur lecture son ${key}:`, err);
     });
 
     return soundClone;
   }
 
   /**
-     * Arrête tous les sons
-     */
+   * Arrête tous les sons
+   */
   stopAllSounds() {
     this.sounds.forEach((sound, _key) => {
       if (sound) {
@@ -327,17 +310,19 @@ class AssetManager {
   }
 
   /**
-     * Vérifie si un asset spécifique est disponible
-     */
+   * Vérifie si un asset spécifique est disponible
+   */
   hasAsset(type, key) {
     const fullKey = `${type}_${key}`;
-    return (this.images.has(fullKey) && this.images.get(fullKey) !== null) ||
-               (this.sounds.has(fullKey) && this.sounds.get(fullKey) !== null);
+    return (
+      (this.images.has(fullKey) && this.images.get(fullKey) !== null) ||
+      (this.sounds.has(fullKey) && this.sounds.get(fullKey) !== null)
+    );
   }
 
   /**
-     * Génère un rapport sur les assets chargés
-     */
+   * Génère un rapport sur les assets chargés
+   */
   getLoadReport() {
     const report = {
       total: this.totalAssets,

@@ -1,6 +1,6 @@
 /**
- * LIFETIME STATS SYSTEM - Statistiques détaillées permanentes
- * @version 1.0.0
+ * LIFETIME STATS SYSTEM - Statistiques detaillees permanentes
+ * @version 1.1.0
  */
 
 class LifetimeStatsSystem {
@@ -12,9 +12,9 @@ class LifetimeStatsSystem {
 
   // Initialiser les statistiques
   loadStats() {
-    const saved = localStorage.getItem('lifetime_stats');
+    const saved = storageManager.get('lifetime_stats');
     if (saved) {
-      return JSON.parse(saved);
+      return saved;
     }
 
     return {
@@ -46,7 +46,7 @@ class LifetimeStatsSystem {
       totalWavesSurvived: 0,
       totalLevelsGained: 0,
 
-      // Or et économie
+      // Or et economie
       totalGoldEarned: 0,
       totalGoldSpent: 0,
       totalGemsEarned: 0,
@@ -76,9 +76,9 @@ class LifetimeStatsSystem {
       fastestBossKill: null, // en secondes
       noDamageBossKills: 0,
 
-      // Runs spéciales
+      // Runs speciales
       pistolOnlyRuns: 0,
-      flawlessRuns: 0, // sans prendre de dégâts
+      flawlessRuns: 0, // sans prendre de degats
       speedruns: 0, // runs en moins de X temps
 
       // Temps
@@ -122,10 +122,10 @@ class LifetimeStatsSystem {
 
   // Sauvegarder les stats
   saveStats() {
-    localStorage.setItem('lifetime_stats', JSON.stringify(this.stats));
+    storageManager.set('lifetime_stats', this.stats);
   }
 
-  // Mettre à jour une stat
+  // Mettre a jour une stat
   updateStat(statName, value) {
     if (typeof this.stats[statName] === 'number') {
       this.stats[statName] += value;
@@ -146,7 +146,8 @@ class LifetimeStatsSystem {
   // Enregistrer un kill de zombie
   recordZombieKill(zombieType, weaponUsed) {
     this.stats.totalZombiesKilled++;
-    this.stats.zombiesKilledByType[zombieType] = (this.stats.zombiesKilledByType[zombieType] || 0) + 1;
+    this.stats.zombiesKilledByType[zombieType] =
+      (this.stats.zombiesKilledByType[zombieType] || 0) + 1;
 
     if (weaponUsed) {
       this.stats.killsByWeapon[weaponUsed] = (this.stats.killsByWeapon[weaponUsed] || 0) + 1;
@@ -155,20 +156,20 @@ class LifetimeStatsSystem {
     this.sessionStats.zombiesKilled++;
     this.saveStats();
 
-    // Mettre à jour achievements
+    // Mettre a jour achievements
     if (window.achievementSystem) {
       window.achievementSystem.updateStat('totalZombiesKilled', 1);
       window.achievementSystem.updateStat('zombiesKilledByType', { [zombieType]: 1 });
     }
 
-    // Mettre à jour défis
+    // Mettre a jour defis
     if (window.dailyChallengeSystem) {
       window.dailyChallengeSystem.updateProgress('zombies_killed', 1);
       window.dailyChallengeSystem.updateProgress('zombies_killed_type', 1, { zombieType });
     }
   }
 
-  // Enregistrer un boss défait
+  // Enregistrer un boss defait
   recordBossDefeated(timeTaken, damageTaken) {
     this.stats.totalBossesDefeated++;
 
@@ -182,7 +183,7 @@ class LifetimeStatsSystem {
 
     this.saveStats();
 
-    // Mettre à jour achievements
+    // Mettre a jour achievements
     if (window.achievementSystem) {
       window.achievementSystem.updateStat('bossesDefeated', 1);
       if (damageTaken === 0) {
@@ -190,7 +191,7 @@ class LifetimeStatsSystem {
       }
     }
 
-    // Mettre à jour défis
+    // Mettre a jour defis
     if (window.dailyChallengeSystem) {
       window.dailyChallengeSystem.updateProgress('bosses_defeated', 1);
     }
@@ -203,12 +204,12 @@ class LifetimeStatsSystem {
     if (newLevel > this.stats.highestLevel) {
       this.stats.highestLevel = newLevel;
 
-      // Mettre à jour achievements
+      // Mettre a jour achievements
       if (window.achievementSystem) {
         window.achievementSystem.updateStat('highestLevel', newLevel);
       }
 
-      // Mettre à jour défis
+      // Mettre a jour defis
       if (window.dailyChallengeSystem) {
         window.dailyChallengeSystem.updateProgress('reach_level', 1);
       }
@@ -224,12 +225,12 @@ class LifetimeStatsSystem {
     if (waveNumber > this.stats.highestWave) {
       this.stats.highestWave = waveNumber;
 
-      // Mettre à jour achievements
+      // Mettre a jour achievements
       if (window.achievementSystem) {
         window.achievementSystem.updateStat('highestWave', waveNumber);
       }
 
-      // Mettre à jour défis
+      // Mettre a jour defis
       if (window.dailyChallengeSystem) {
         window.dailyChallengeSystem.updateProgress('waves_survived', 1);
       }
@@ -238,18 +239,18 @@ class LifetimeStatsSystem {
     this.saveStats();
   }
 
-  // Enregistrer or gagné
+  // Enregistrer or gagne
   recordGoldEarned(amount) {
     this.stats.totalGoldEarned += amount;
     this.sessionStats.goldEarned += amount;
     this.saveStats();
 
-    // Mettre à jour achievements
+    // Mettre a jour achievements
     if (window.achievementSystem) {
       window.achievementSystem.updateStat('totalGoldEarned', amount);
     }
 
-    // Mettre à jour défis
+    // Mettre a jour defis
     if (window.dailyChallengeSystem) {
       window.dailyChallengeSystem.updateProgress('gold_earned', amount);
     }
@@ -261,12 +262,12 @@ class LifetimeStatsSystem {
     this.sessionStats.critsThisSession++;
     this.saveStats();
 
-    // Mettre à jour achievements
+    // Mettre a jour achievements
     if (window.achievementSystem) {
       window.achievementSystem.updateStat('totalCriticalHits', 1);
     }
 
-    // Mettre à jour défis
+    // Mettre a jour defis
     if (window.dailyChallengeSystem) {
       window.dailyChallengeSystem.updateProgress('critical_hits', 1);
     }
@@ -278,7 +279,7 @@ class LifetimeStatsSystem {
     this.sessionStats.dodgesThisSession++;
     this.saveStats();
 
-    // Mettre à jour achievements
+    // Mettre a jour achievements
     if (window.achievementSystem) {
       window.achievementSystem.updateStat('totalDodges', 1);
     }
@@ -291,7 +292,7 @@ class LifetimeStatsSystem {
     if (!this.stats.upgradesObtained.includes(upgradeId)) {
       this.stats.upgradesObtained.push(upgradeId);
 
-      // Mettre à jour achievements
+      // Mettre a jour achievements
       if (window.achievementSystem) {
         window.achievementSystem.updateStat('upgradesObtained', upgradeId);
       }
@@ -306,7 +307,7 @@ class LifetimeStatsSystem {
     this.saveStats();
   }
 
-  // Démarrer une nouvelle run
+  // Demarrer une nouvelle run
   startRun() {
     this.sessionStats.currentRunStartTime = Date.now();
     this.stats.totalRuns++;
@@ -342,12 +343,12 @@ class LifetimeStatsSystem {
         this.stats.fastestRunCompletion = runDuration;
       }
 
-      // Mettre à jour achievements
+      // Mettre a jour achievements
       if (window.achievementSystem) {
         window.achievementSystem.updateStat('totalRunsCompleted', 1);
       }
 
-      // Mettre à jour défis
+      // Mettre a jour defis
       if (window.dailyChallengeSystem) {
         window.dailyChallengeSystem.updateProgress('runs_completed', 1);
       }
@@ -355,7 +356,8 @@ class LifetimeStatsSystem {
       this.stats.totalDeaths++;
 
       if (stats.killedBy) {
-        this.stats.deathsByZombieType[stats.killedBy] = (this.stats.deathsByZombieType[stats.killedBy] || 0) + 1;
+        this.stats.deathsByZombieType[stats.killedBy] =
+          (this.stats.deathsByZombieType[stats.killedBy] || 0) + 1;
       }
     }
 
@@ -367,10 +369,12 @@ class LifetimeStatsSystem {
       this.stats.bestScore = score;
     }
 
-    // Moyenne durée
-    this.stats.averageRunDuration = ((this.stats.averageRunDuration * (this.stats.totalRuns - 1)) + runDuration) / this.stats.totalRuns;
+    // Moyenne duree
+    this.stats.averageRunDuration =
+      (this.stats.averageRunDuration * (this.stats.totalRuns - 1) + runDuration) /
+      this.stats.totalRuns;
 
-    // Runs spéciales
+    // Runs speciales
     if (stats.pistolOnly) {
       this.stats.pistolOnlyRuns++;
     }
@@ -389,13 +393,15 @@ class LifetimeStatsSystem {
 
   // Calculer le score
   calculateScore(stats) {
-    return (stats.wave || 0) * 100 +
-           (stats.level || 0) * 50 +
-           (stats.zombiesKilled || 0) * 10 +
-           (stats.goldEarned || 0);
+    return (
+      (stats.wave || 0) * 100 +
+      (stats.level || 0) * 50 +
+      (stats.zombiesKilled || 0) * 10 +
+      (stats.goldEarned || 0)
+    );
   }
 
-  // Mettre à jour le temps de jeu
+  // Mettre a jour le temps de jeu
   updatePlayTime() {
     const sessionTime = (Date.now() - this.sessionStartTime) / 1000;
     this.stats.totalPlayTime += sessionTime;
@@ -403,7 +409,7 @@ class LifetimeStatsSystem {
     this.saveStats();
   }
 
-  // Mettre à jour les dates de connexion
+  // Mettre a jour les dates de connexion
   updateLoginDate() {
     const today = new Date().toDateString();
 
@@ -431,12 +437,15 @@ class LifetimeStatsSystem {
     }
   }
 
-  // Obtenir un résumé des statistiques
+  // Obtenir un resume des statistiques
   getSummary() {
     return {
       totalPlayTime: this.formatTime(this.stats.totalPlayTime),
       totalRuns: this.stats.totalRuns,
-      completionRate: this.stats.totalRuns > 0 ? Math.floor((this.stats.totalRunsCompleted / this.stats.totalRuns) * 100) : 0,
+      completionRate:
+        this.stats.totalRuns > 0
+          ? Math.floor((this.stats.totalRunsCompleted / this.stats.totalRuns) * 100)
+          : 0,
       totalZombiesKilled: this.stats.totalZombiesKilled.toLocaleString(),
       highestWave: this.stats.highestWave,
       highestLevel: this.stats.highestLevel,
@@ -461,7 +470,7 @@ class LifetimeStatsSystem {
     return favorite;
   }
 
-  // Créer l'UI des statistiques
+  // Creer l'UI des statistiques
   createStatsUI() {
     const summary = this.getSummary();
 
@@ -473,7 +482,7 @@ class LifetimeStatsSystem {
     container.innerHTML = `
       <div class="lifetime-stats-header">
         <h2>📊 STATISTIQUES GLOBALES</h2>
-        <button class="lifetime-stats-close-btn">×</button>
+        <button class="lifetime-stats-close-btn">x</button>
       </div>
       <div class="lifetime-stats-content">
         <div class="stats-grid">
@@ -490,12 +499,12 @@ class LifetimeStatsSystem {
           <div class="stat-card">
             <div class="stat-icon">✅</div>
             <div class="stat-value">${summary.completionRate}%</div>
-            <div class="stat-label">Taux de réussite</div>
+            <div class="stat-label">Taux de reussite</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">🧟</div>
             <div class="stat-value">${summary.totalZombiesKilled}</div>
-            <div class="stat-label">Zombies tués</div>
+            <div class="stat-label">Zombies tues</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">🌊</div>
@@ -530,7 +539,7 @@ class LifetimeStatsSystem {
           <div class="stat-card">
             <div class="stat-icon">💰</div>
             <div class="stat-value">${this.stats.totalGoldEarned.toLocaleString()}</div>
-            <div class="stat-label">Or total gagné</div>
+            <div class="stat-label">Or total gagne</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">👹</div>
@@ -540,14 +549,18 @@ class LifetimeStatsSystem {
         </div>
 
         <div class="stats-section">
-          <h3>🧟 Zombies tués par type</h3>
+          <h3>🧟 Zombies tues par type</h3>
           <div class="zombie-stats">
-            ${Object.entries(this.stats.zombiesKilledByType).map(([type, count]) => `
+            ${Object.entries(this.stats.zombiesKilledByType)
+              .map(
+                ([type, count]) => `
               <div class="zombie-stat-row">
                 <span class="zombie-type">${type}</span>
                 <span class="zombie-count">${count}</span>
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
 
@@ -594,5 +607,5 @@ class LifetimeStatsSystem {
   }
 }
 
-// Initialiser le système global
+// Initialiser le systeme global
 window.lifetimeStatsSystem = new LifetimeStatsSystem();
