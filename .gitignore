@@ -33,6 +33,9 @@ Thumbs.db
 dist/
 build/
 
+# Coverage
+coverage/
+
 # Temp
 tmp/
 temp/
