@@ -343,5 +343,5 @@ CMD ["node", "server.js"]
 
 ---
 
-**Documentation mise à jour:** 2025-11-18
-**Docker support:** Production-ready ✅
+**Documentation mise a jour:** 2026-02-09
+**Docker support:** Production-ready

@@ -1,372 +1,264 @@
-# 🧟 Zombie Multiplayer Game - Production Ready
+# Zombie Multiplayer Game
 
-**Version:** 2.0.0
-**Architecture:** Clean Architecture + SOLID
-**Production Readiness:** **90/100** ⭐
+Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression permanente.
 
-> **Note:** Pour la documentation du gameplay, voir [README.GAMEPLAY.md](./README.GAMEPLAY.md)
+**Stack:** Node.js, Express, Socket.IO, SQLite, Clean Architecture
 
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Configure environment
 cp .env.example .env
-
-# Start development server
 npm start
-
-# Server runs on http://localhost:3000
+# http://localhost:3000
 ```
 
-**First time:** Database and schema created automatically.
+La base de donnees et le schema sont crees automatiquement au premier lancement.
 
----
-
-## 📊 Production Readiness: 90/100
-
-### ✅ Completed (90 points)
-
-| Phase | Score | Features |
-|-------|-------|----------|
-| **Phase 1** | 25 | SQLite WAL + Logger + Health check + Memory fixes |
-| **Phase 2** | 30 | Clean Architecture (Domain/App/Infra) + Repositories |
-| **Phase 3** | 30 | REST API + Use Cases + Integration |
-| **Phase 4** | 5 | Security hardening (Helmet + Rate limiting + CORS) |
-| **Total** | **90** | **Production Ready** |
-
-### ⚠️ Critical To-Do (10 points)
-
-- [ ] JWT Authentication (+5 pts) - **CRITICAL for production**
-- [ ] Input Validation (express-validator) (+3 pts)
-- [ ] Unit Tests (Jest/Mocha) (+2 pts)
-
----
-
-## 🏗️ Clean Architecture
+## Architecture
 
 ```
-lib/
-├── domain/              # 🎯 Business logic (0 dependencies)
-│   ├── entities/        # Player, GameSession, LeaderboardEntry, PermanentUpgrades
-│   └── repositories/    # Interface contracts (IPlayerRepository, etc.)
-│
-├── application/         # 🔄 Orchestration
-│   ├── Container.js     # Dependency injection
-│   └── use-cases/       # 9 use cases (CreatePlayer, SubmitScore, etc.)
-│
-├── infrastructure/      # 🔧 Technical implementations
-│   ├── Logger.js        # Winston structured logging
-│   └── repositories/    # SQLite concrete implementations
-│
-└── server/              # 🎮 Game-specific logic
-    └── ...              # EntityManager, CollisionManager, etc.
+zombie-browser-game/
+├── server.js                # Point d'entree Express + Socket.IO
+├── config/
+│   └── constants.js         # Variables d'environnement, rate limits
+├── middleware/
+│   ├── security.js          # Helmet, rate limiting, body parser
+│   ├── cors.js              # Config CORS Socket.IO
+│   └── errorHandlers.js     # 404/500, async handler, AppError
+├── routes/
+│   ├── auth.js              # POST /api/auth/login (JWT)
+│   ├── health.js            # GET /health (metriques serveur)
+│   ├── metrics.js           # GET /api/metrics (Prometheus)
+│   ├── leaderboard.js       # GET/POST /api/leaderboard
+│   ├── players.js           # CRUD joueurs
+│   ├── progression.js       # XP, niveaux, prestige
+│   └── achievements.js      # Succes
+├── sockets/
+│   ├── socketHandlers.js    # Events WebSocket (move, shoot, etc.)
+│   └── progressionHandlers.js # XP on death, skill bonuses
+├── lib/
+│   ├── domain/              # Zero dependances externes
+│   │   ├── entities/        # Player, GameSession, Achievement, etc.
+│   │   ├── repositories/    # Interfaces (IPlayerRepository, etc.)
+│   │   └── errors/          # DomainErrors
+│   ├── application/         # Orchestration
+│   │   ├── Container.js     # Injection de dependances (singleton)
+│   │   ├── use-cases/       # 10 use cases
+│   │   ├── AccountProgressionService.js
+│   │   └── AchievementService.js
+│   ├── infrastructure/      # Implementations techniques
+│   │   ├── Logger.js        # Winston (fichiers en prod, console en dev)
+│   │   ├── MetricsCollector.js
+│   │   ├── auth/JwtService.js
+│   │   ├── repositories/    # 6 repos SQLite
+│   │   └── validation/      # Schemas Joi
+│   ├── database/
+│   │   └── DatabaseManager.js # Connexion, migrations, backup, WAL
+│   └── server/              # Managers de jeu
+│       ├── ConfigManager.js       # Armes, zombies, powerups, shop
+│       ├── EntityManager.js       # Object pooling (bullets, particles)
+│       ├── CollisionManager.js    # Broad-phase + narrow-phase
+│       ├── NetworkManager.js      # Delta compression, batching
+│       ├── PlayerManager.js       # Etat joueurs
+│       ├── RoomManager.js         # Generation procedurale de salles
+│       ├── ZombieManager.js       # Spawn, difficulte, elites
+│       ├── RunMutatorManager.js   # Modificateurs de run
+│       ├── SkillEffectsApplicator.js
+│       ├── PerformanceConfig.js
+│       ├── PerformanceIntegration.js
+│       ├── BinaryProtocolManager.js
+│       ├── ZombieTypes Extended.js # 100+ types de zombies
+│       ├── MathUtils.js, ObjectPool.js, Quadtree.js
+│       └── QuadtreeWorker.js
+├── game/                    # Logique de jeu serveur
+│   ├── gameLoop.js          # Boucle principale
+│   ├── gameState.js         # Etat global (players, zombies, bullets...)
+│   ├── gameConstants.js     # Constantes gameplay
+│   ├── roomFunctions.js     # Gestion des salles
+│   ├── playerUtils.js       # Utilitaires joueur
+│   ├── lootFunctions.js     # Systeme de loot
+│   ├── validationFunctions.js
+│   ├── utilityFunctions.js
+│   ├── particleEffects.js
+│   └── modules/             # Sous-systemes modulaires
+│       ├── zombie/          # ZombieUpdater, BossUpdater, SpawnManager
+│       ├── bullet/          # BulletUpdater, Collision, Effects
+│       ├── loot/            # LootUpdater, PowerupUpdater
+│       ├── wave/            # WaveManager
+│       ├── player/          # PlayerProgression, PlayerEffects
+│       ├── hazards/         # HazardManager
+│       └── admin/           # AdminCommands
+├── public/                  # Client (73 fichiers JS, 2 CSS)
+│   ├── index.html           # 81 scripts charges en ordre
+│   ├── style.css            # 3585 lignes, CSS variables, responsive
+│   ├── modules/             # Architecture modulaire client
+│   │   ├── core/            # GameEngine, Constants, SessionManager
+│   │   ├── managers/        # GameState, Input, UI, Camera, Audio, Mobile
+│   │   ├── systems/         # Network, Combo, Leaderboard, Toast
+│   │   ├── game/            # Renderer (3649 lignes), PlayerController
+│   │   ├── environment/     # Weather, DayNight, Lighting, Parallax
+│   │   ├── entities/        # DestructibleObstacles, Props
+│   │   ├── audio/           # OptimizedAudioCore, SoundEffects, Ambient
+│   │   ├── rendering/       # FrustumCuller
+│   │   └── utils/           # initHelpers
+│   ├── lib/                 # MathUtils, PerformanceUtils
+│   ├── EventListenerManager.js  # Prevention memory leaks
+│   ├── TimerManager.js          # Timers manages
+│   ├── achievementSystem.js     # 25+ succes
+│   ├── dailyChallenges.js       # Defis quotidiens
+│   ├── gemSystem.js             # Monnaie premium
+│   ├── contracts.js             # Contrats hebdomadaires
+│   ├── missionSystem.js         # Missions long terme
+│   ├── lifetimeStats.js         # Stats lifetime
+│   ├── metaProgression.js       # Arbre de competences
+│   ├── retentionHooks.js        # Streaks, login bonus
+│   └── ...                      # +20 autres systemes
+├── database/
+│   ├── DatabaseManager.js   # Connexion + schema + migrations
+│   ├── schema.sql           # 7 tables
+│   ├── seed.sql
+│   ├── repositories/        # Queries SQL
+│   ├── migrations/          # 001-003
+│   └── scripts/             # init-database.js
+├── __tests__/               # Tests Jest
+├── deploy-server.js         # Webhook GitHub CI/CD
+├── downloadAssets.js        # Telechargement assets
+├── setup-deploy.sh          # Setup macOS deploy
+├── Dockerfile               # Node 20-alpine + better-sqlite3
+├── docker-compose.yml
+├── fly.toml                 # Fly.io (CDG, 256MB)
+├── railway.json             # Railway
+└── render.yaml              # Render
 ```
 
-**Principles:** SOLID, Repository Pattern, Dependency Inversion
+## API REST
 
----
+| Methode | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/api/auth/login` | Authentification JWT |
+| GET | `/health` | Health check + metriques systeme |
+| GET | `/api/metrics` | Metriques Prometheus |
+| GET | `/api/leaderboard` | Classement (query: limit, playerId) |
+| POST | `/api/leaderboard` | Soumettre un score |
+| POST | `/api/players` | Creer un joueur |
+| GET | `/api/players/:id` | Stats joueur |
+| GET | `/api/players/:id/upgrades` | Ameliorations |
+| POST | `/api/players/:id/upgrades` | Acheter amelioration |
+| GET | `/api/progression/*` | Endpoints progression |
+| GET | `/api/achievements/*` | Endpoints succes |
 
-## 🔒 Security (Grade: B+)
+Rate limit: 100 req/15min par IP. Events socket rate-limited individuellement.
 
-### ✅ Implemented
-- ✅ **Helmet.js** - Security headers (CSP, XSS, clickjacking)
-- ✅ **Rate Limiting** - 100 req/15min per IP
-- ✅ **CORS Whitelist** - Environment-configurable origins
-- ✅ **Body Limits** - 10KB max request size
-- ✅ **Prepared Statements** - Zero SQL injection risk
-- ✅ **Security Headers** - X-Frame-Options, nosniff, XSS-Protection
+## WebSocket Events
 
-### ⚠️ To Implement
-- ⚠️ **JWT Authentication** - CRITICAL (no auth currently)
-- ⚠️ **Input Validation** - express-validator needed
-- ⚠️ **Error Handling** - Try-catch in repositories
+**Client -> Serveur:** `playerMove`, `shoot`, `setNickname`, `selectUpgrade`, `buyItem`, `heartbeat`
 
-**Security Review:** See `docs/code-review/SECURITY_REVIEW.md`
+**Serveur -> Client:** `gameState` (delta-compressed), `playerDied`, `waveStart`, `bossSpawn`, `achievementUnlocked`
 
----
+Session recovery: 5min apres deconnexion. Rate limiting par event par socket.
 
-## 📡 REST API
+## Base de Donnees
 
-| Method | Endpoint | Description | Use Case |
-|--------|----------|-------------|----------|
-| GET | `/health` | Health check + metrics | - |
-| GET | `/api/leaderboard?limit=10` | Top scores | GetLeaderboard |
-| POST | `/api/leaderboard` | Submit score | SubmitScore |
-| POST | `/api/players` | Create player | CreatePlayer |
-| GET | `/api/players/:id` | Player stats | - |
-| GET | `/api/players/:id/upgrades` | Get upgrades | GetUpgrades |
-| POST | `/api/players/:id/upgrades` | Buy upgrade | BuyUpgrade |
+SQLite avec WAL mode, prepared statements, 10MB cache.
 
-**Rate Limited:** 100 requests/15min per IP
+**Tables:** `players`, `player_stats`, `player_unlocks`, `sessions`, `leaderboard`, `account_progression`, `achievements`
 
----
+Migrations automatiques au demarrage. Backup/vacuum/analyze via DatabaseManager.
 
-## 💾 Database (SQLite + WAL)
+## Optimisations Performance
 
-### Performance
-- **Concurrency:** 100x better (WAL mode vs default)
-- **Query Speed:** 10x faster (prepared statements)
-- **Cache:** 64MB, optimized pragmas
+| Optimisation | Impact |
+|-------------|--------|
+| Object Pooling (bullets, particles) | -50-60% GC |
+| Delta Compression reseau | -80-90% bande passante |
+| Frustum Culling client | -60-80% entites rendues |
+| Quadtree collision | O(n log n) vs O(n^2) |
+| SQLite WAL + prepared statements | 100x concurrence, 10x queries |
+| Adaptive FPS serveur | Scale selon charge |
 
-### Schema (4 Tables)
-```sql
-players            -- Persistent accounts (K/D, high scores)
-sessions           -- Session recovery (5min timeout)
-leaderboard        -- High scores + rankings
-permanent_upgrades -- Shop purchases
-```
+## Securite
 
-**Auto-migration:** Tables created on first start. See `lib/database/DatabaseManager.js:61`
+- Helmet.js (CSP, XSS, clickjacking)
+- Rate limiting par IP et par event socket
+- CORS configurable par environnement
+- JWT authentification
+- Body size limit 10KB
+- Prepared statements (zero SQL injection)
+- Sanitization des donnees joueur avant broadcast
 
----
-
-## 📝 Logging (Winston)
-
-```javascript
-// Structured logging with metadata
-logger.info('Player created', { id, username });
-logger.error('Database error', { error: err.message, query });
-logger.debug('Cache hit', { key, ttl });
-```
-
-**Levels:** error → warn → info → debug
-
-**Production:** Logs to `logs/error.log` + `logs/combined.log` (5MB rotation)
-
-**Development:** Console output with colors
-
----
-
-## 🧪 Testing
+## Scripts NPM
 
 ```bash
-# Basic architecture
-node test-architecture.js
-
-# Complete features (leaderboard, upgrades, etc.)
-node test-complete-architecture.js
+npm start              # Production
+npm run dev            # Dev avec nodemon
+npm test               # Tests Jest + coverage
+npm run lint           # ESLint
+npm run lint:fix       # Auto-fix lint
+npm run format         # Prettier
+npm run deploy:server  # Serveur webhook CI/CD
 ```
 
-**Coverage:**
-- ✅ CRUD operations (Player, Session, Leaderboard, Upgrades)
-- ✅ Use case execution
-- ✅ Repository layer
-- ✅ Domain entity business logic
+## Deploiement
 
----
+### Docker
 
-## ⚙️ Configuration
-
-### Environment (.env)
 ```bash
-# Server
-PORT=3000
-NODE_ENV=production
-
-# Security
-ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-
-# Database
-DB_PATH=./data/game.db
-
-# Logging
-LOG_LEVEL=info
-LOG_DIR=./logs
+docker-compose up -d
+# Health check: http://localhost:3000/health
 ```
 
-See `.env.example` for full configuration.
+Voir [DOCKER.md](./DOCKER.md) pour la configuration complete.
 
----
+### Plateformes supportees
 
-## 📚 Documentation
+- **Docker** - Dockerfile + docker-compose inclus
+- **Fly.io** - `fly.toml` (region CDG Paris)
+- **Railway** - `railway.json`
+- **Render** - `render.yaml`
 
-| File | Description |
-|------|-------------|
-| `ARCHITECTURE.md` | Clean Architecture guide with diagrams |
-| `docs/code-review/SECURITY_REVIEW.md` | Security audit (Grade B) |
-| `docs/MIGRATION_GUIDE.md` | v1.x → v2.0 migration |
-| `README.GAMEPLAY.md` | Game features & mechanics |
+### CI/CD
 
----
+GitHub Actions build et push l'image Docker vers ghcr.io sur push main.
+Webhook GitHub pour auto-deploy sur serveur dedie.
 
-## 🚀 Deployment
+## Configuration
 
-### Development
 ```bash
-npm start
+cp .env.example .env
 ```
 
-### Production (PM2)
-```bash
-pm2 start server.js --name zombie-game
-pm2 monit
-pm2 logs zombie-game
-```
+Variables principales:
 
-### Production Checklist
-- [ ] `NODE_ENV=production`
-- [ ] Configure `ALLOWED_ORIGINS`
-- [ ] Set up monitoring (PM2)
-- [ ] **CRITICAL:** Implement JWT auth
-- [ ] Add input validation
-- [ ] Write comprehensive tests
-- [ ] Enable log rotation
-- [ ] Set up automated backups
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3000 | Port serveur |
+| `NODE_ENV` | development | Environnement |
+| `ALLOWED_ORIGINS` | localhost | CORS whitelist |
+| `JWT_SECRET` | - | Secret JWT (obligatoire en prod) |
+| `DB_PATH` | ./data/game.db | Chemin base de donnees |
+| `LOG_LEVEL` | debug | error/warn/info/debug |
+| `PERFORMANCE_MODE` | balanced | high/balanced/low-memory/minimal |
 
-### Auto-Deploy (Mac mini CI/CD) ✅
+## Gameplay
 
-**Status:** ✅ Production-ready (validated 2025-11-19)
+Jeu de survie top-down multijoueur avec:
 
-```
-git push origin main → Auto-deploy in 5 seconds
-```
+- 12+ armes (pistolet, shotgun, sniper, lance-roquettes, tesla, plasma...)
+- 100+ types de zombies dont 5 boss et 10 elites
+- Systeme de vagues avec difficulte progressive (cap wave 130)
+- Generation procedurale de salles rogue-like
+- Systeme de loot et powerups (15+ types)
+- Arbre de competences permanent
+- Systeme de prestige
+- Succes, defis quotidiens, contrats hebdomadaires, missions
+- Systeme de synergies armes/upgrades
+- Biomes, meteo dynamique, cycle jour/nuit
+- Skins et cosmetiques
+- Leaderboards
 
-**Architecture:**
-```
-GitHub Push
-    ↓
-https://zombie.lonewolf.fr/webhook (HTTPS SSL)
-    ↓
-nginx reverse proxy (192.168.50.38:443)
-    ↓
-Mac mini deploy server (192.168.50.68:9000)
-    ↓
-Auto: git pull + npm install + restart
-    ↓
-Game server updated (port 3001)
-```
+Documentation complete: [README.GAMEPLAY.md](./README.GAMEPLAY.md)
 
-**Features:**
-- ✅ **HTTPS/TLS** - Let's Encrypt SSL certificate
-- ✅ **HMAC-SHA256** - Webhook signature verification
-- ✅ **Auto-restart** - LaunchAgent KeepAlive
-- ✅ **Zero-downtime** - 5 second deployment
-- ✅ **Production logs** - Structured deployment logging
-
-**Documentation:**
-- `AUTO_DEPLOY_VALIDATED.md` - System validation report
-- `DEPLOYMENT_COMPLETE.md` - Setup guide & troubleshooting
-- `NGINX_REVERSE_PROXY.md` - nginx configuration details
-
-**Quick commands:**
-```bash
-# Monitor deployments
-ssh mac-mini 'tail -f ~/zombie-browser-game/deploy.log'
-
-# Health check
-curl https://zombie.lonewolf.fr/health
-
-# Restart services
-ssh mac-mini 'launchctl restart com.zombiegame.deploy'
-```
-
----
-
-## 📈 Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| API Response Time | <10ms |
-| WebSocket Latency | <50ms |
-| DB Query Time | <1ms |
-| Memory Usage | ~65MB RSS |
-| Concurrent Players | 50+ |
-
----
-
-## 🐛 Troubleshooting
-
-### Server won't start
-```bash
-lsof -i :3000  # Check port
-tail -f logs/combined.log  # Check logs
-```
-
-### Database errors
-```bash
-file data/game.db  # Verify file
-echo "PRAGMA journal_mode;" | sqlite3 data/game.db  # Check WAL
-```
-
-### CORS errors
-```bash
-echo $ALLOWED_ORIGINS  # Check config
-curl -I http://localhost:3000/health  # Test headers
-```
-
----
-
-## 🎯 Roadmap
-
-### v2.1 (Next - Critical)
-- [ ] JWT Authentication system
-- [ ] Input validation (express-validator)
-- [ ] Error handling in repositories
-- [ ] Unit tests (Jest)
-- [ ] API docs (Swagger)
-
-### v3.0 (Future)
-- [ ] Redis caching
-- [ ] PostgreSQL support
-- [ ] Horizontal scaling
-- [ ] Admin dashboard
-- [ ] Tournament mode
-
----
-
-## 📦 Project Structure
-
-```
-├── server.js              # Main server + API endpoints + Security middleware
-├── public/                # Client-side game (game.js 4700+ lines)
-├── lib/                   # Clean Architecture
-│   ├── domain/            # Entities + Repository interfaces
-│   ├── application/       # Use cases + DI Container
-│   ├── infrastructure/    # Logger + SQLite repositories
-│   ├── database/          # DatabaseManager + Schema
-│   └── server/            # Game managers (Entity, Collision, Network, etc.)
-├── data/                  # SQLite database (auto-created)
-├── logs/                  # Winston logs (production only)
-├── docs/                  # Architecture + Security docs
-├── legacy/                # Archived old code
-└── tests/                 # test-architecture.js, test-complete-architecture.js
-```
-
----
-
-## 🛠️ Technologies
-
-**Backend:** Node.js, Express, Socket.IO
-**Database:** SQLite (better-sqlite3) + WAL mode
-**Logging:** Winston
-**Security:** Helmet, express-rate-limit
-**Architecture:** Clean Architecture, SOLID, Repository Pattern, DDD
-
----
-
-## 📄 License
+## Licence
 
 MIT
-
----
-
-## 🤝 Contributing
-
-1. Read `ARCHITECTURE.md`
-2. Follow Clean Architecture principles
-3. Add tests for new features
-4. Run `node test-complete-architecture.js`
-5. Update documentation
-
----
-
-**Built with Clean Architecture + SOLID + TDD principles**
-**Production Readiness: 90/100** (see `SECURITY_REVIEW.md` for missing 10 pts)
-
-For gameplay documentation, see `README.GAMEPLAY.md`.
-# Test auto-deploy Wed Nov 19 09:48:47 CET 2025

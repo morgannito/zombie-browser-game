@@ -1,271 +1,317 @@
-# Clean Architecture - Zombie Game
+# Architecture - Zombie Multiplayer Game
 
-## Architecture Overview
+Clean Architecture + DDD avec separation stricte des couches.
 
-Ce projet implémente une **Clean Architecture** stricte avec séparation claire des responsabilités.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Presentation Layer                    │
-│                     (server.js)                          │
-│  - Express routes                                        │
-│  - Socket.IO handlers                                    │
-│  - HTTP endpoints                                        │
-└────────────────────┬─────────────────────────────────────┘
-                     │ calls
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│                  Application Layer                       │
-│                 (lib/application/)                       │
-│  - Use Cases (business logic orchestration)              │
-│  - Container (Dependency Injection)                      │
-│  - No framework dependencies                             │
-└────────────────────┬─────────────────────────────────────┘
-                     │ uses
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│                    Domain Layer                          │
-│                  (lib/domain/)                           │
-│  - Entities (Player, GameSession)                        │
-│  - Repository Interfaces                                 │
-│  - Pure business logic                                   │
-│  - Zero external dependencies                            │
-└────────────────────┬─────────────────────────────────────┘
-                     │ implemented by
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│                 Infrastructure Layer                     │
-│               (lib/infrastructure/)                      │
-│  - SQLite Repository implementations                     │
-│  - Logger (Winston)                                      │
-│  - Database Manager                                      │
-│  - External dependencies                                 │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Directory Structure
+## Vue d'ensemble
 
 ```
-lib/
-├── domain/                    # Core business logic
-│   ├── entities/             # Business entities
-│   │   ├── Player.js        # Player entity with business methods
-│   │   └── GameSession.js   # Session entity with state management
-│   └── repositories/         # Repository interfaces (contracts)
-│       ├── IPlayerRepository.js
-│       └── ISessionRepository.js
-│
-├── application/              # Use cases & orchestration
-│   ├── Container.js         # Dependency injection container
-│   └── use-cases/           # Application business logic
-│       ├── CreatePlayerUseCase.js
-│       ├── UpdatePlayerStatsUseCase.js
-│       ├── SaveSessionUseCase.js
-│       ├── RecoverSessionUseCase.js
-│       └── DisconnectSessionUseCase.js
-│
-├── infrastructure/           # External concerns
-│   ├── Logger.js            # Winston logger
-│   └── repositories/        # Concrete repository implementations
-│       ├── SQLitePlayerRepository.js
-│       └── SQLiteSessionRepository.js
-│
-├── database/                 # Database management
-│   └── DatabaseManager.js   # SQLite connection & schema
-│
-└── server/                   # Game-specific managers (legacy)
-    ├── ConfigManager.js
-    ├── EntityManager.js
-    ├── CollisionManager.js
-    ├── NetworkManager.js
-    ├── PlayerManager.js
-    ├── RoomManager.js
-    └── ZombieManager.js
+┌──────────────────────────────────────────────────────────┐
+│                   Presentation Layer                      │
+│              server.js + routes/ + sockets/               │
+│  Express HTTP, Socket.IO WebSocket, middleware            │
+└──────────────────┬───────────────────────────────────────┘
+                   │
+┌──────────────────▼───────────────────────────────────────┐
+│                  Application Layer                        │
+│                 lib/application/                          │
+│  Container (DI), 10 Use Cases, 2 Services                │
+│  Pas de dependance framework                             │
+└──────────────────┬───────────────────────────────────────┘
+                   │
+┌──────────────────▼───────────────────────────────────────┐
+│                    Domain Layer                           │
+│                   lib/domain/                             │
+│  6 Entities, 4 Repository Interfaces, DomainErrors       │
+│  Zero dependance externe                                 │
+└──────────────────┬───────────────────────────────────────┘
+                   │ implemente par
+┌──────────────────▼───────────────────────────────────────┐
+│                 Infrastructure Layer                      │
+│                lib/infrastructure/                        │
+│  6 SQLite Repositories, Logger, MetricsCollector, JWT    │
+│  Validation Joi, DatabaseManager                         │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│                   Server Layer                           │
+│                   lib/server/                             │
+│  Game Managers (Entity, Collision, Network, Zombie, etc.) │
+│  Object Pooling, Quadtree, Performance tuning            │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│                    Game Layer                             │
+│                  game/ + game/modules/                    │
+│  Game Loop, State, Modules (zombie, bullet, wave, loot)  │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Key Principles
+## Domain Layer (`lib/domain/`)
 
-### 1. Dependency Inversion
-- Domain layer defines **interfaces** (IPlayerRepository, ISessionRepository)
-- Infrastructure layer provides **implementations** (SQLitePlayerRepository)
-- Application layer depends on **abstractions**, not concrete implementations
+Coeur metier, zero dependances.
 
-### 2. Separation of Concerns
-- **Domain**: Pure business logic, no frameworks
-- **Application**: Orchestrates domain logic via use cases
-- **Infrastructure**: Technical details (database, logging, etc.)
+### Entities
 
-### 3. Testability
-- Domain entities are easily testable (no dependencies)
-- Use cases can be tested with mock repositories
-- Infrastructure can be swapped (SQLite → PostgreSQL)
+| Entity | Fichier | Responsabilite |
+|--------|---------|----------------|
+| Player | `entities/Player.js` | K/D ratio, score, records, stats |
+| GameSession | `entities/GameSession.js` | Lifecycle session, recovery, timeout |
+| Achievement | `entities/Achievement.js` | Donnees succes |
+| AccountProgression | `entities/AccountProgression.js` | XP, niveau, competences |
+| LeaderboardEntry | `entities/LeaderboardEntry.js` | Score classement |
+| PermanentUpgrades | `entities/PermanentUpgrades.js` | Ameliorations permanentes |
 
-### 4. Single Responsibility
-- Entities: Business data + behavior
-- Use Cases: One business operation per class
-- Repositories: Data persistence abstraction
+### Repository Interfaces
 
-## Usage Example
+| Interface | Methodes |
+|-----------|----------|
+| IPlayerRepository | findById, findByUsername, create, update |
+| ISessionRepository | save, findByPlayerId, disconnect, cleanup |
+| ILeaderboardRepository | submit, getTop, findByPlayerId |
+| IUpgradesRepository | get, buy, getAll |
+
+### Errors
+
+`DomainErrors.js` - Erreurs metier typees (PlayerNotFound, InvalidInput, etc.)
+
+## Application Layer (`lib/application/`)
+
+### Container (DI)
+
+Singleton qui wire toutes les dependances au demarrage:
 
 ```javascript
-// Initialize container
 const container = Container.getInstance();
-container.initialize();
-
-// Use Case 1: Create Player
+container.initialize(); // Wire 6 repos + 2 services + 10 use cases
 const createPlayer = container.get('createPlayer');
-const player = await createPlayer.execute({
-  id: 'player-123',
-  username: 'JohnDoe'
-});
-
-// Use Case 2: Update Stats
-const updateStats = container.get('updatePlayerStats');
-await updateStats.execute({
-  playerId: 'player-123',
-  kills: 50,
-  deaths: 2,
-  wave: 10,
-  level: 15,
-  playtime: 1200,
-  goldEarned: 5000
-});
-
-// Use Case 3: Save Session
-const saveSession = container.get('saveSession');
-await saveSession.execute({
-  sessionId: 'session-456',
-  playerId: 'player-123',
-  socketId: 'socket-789',
-  state: { wave: 10, health: 80 }
-});
 ```
 
-## Domain Entities
+### Use Cases
 
-### Player Entity
-- **Business Logic**: K/D ratio calculation, score calculation, record tracking
-- **Methods**: `updateStats()`, `isNewRecord()`, `calculateScore()`, `getKDRatio()`
-- **Persistence**: Via `IPlayerRepository`
+| Use Case | Action |
+|----------|--------|
+| CreatePlayerUseCase | Creation joueur + validation |
+| UpdatePlayerStatsUseCase | MAJ stats + detection records |
+| SaveSessionUseCase | Persistance session |
+| RecoverSessionUseCase | Reprise apres deconnexion |
+| DisconnectSessionUseCase | Marquage deconnexion + fenetre recovery |
+| AddAccountXPUseCase | Attribution XP compte |
+| GetLeaderboardUseCase | Recuperation classement |
+| SubmitScoreUseCase | Soumission score |
+| BuyUpgradeUseCase | Achat amelioration permanente |
+| GetUpgradesUseCase | Liste ameliorations |
 
-### GameSession Entity
-- **Business Logic**: Session lifecycle, reconnection, recovery timeout
-- **Methods**: `disconnect()`, `reconnect()`, `isRecoverable()`, `isActive()`
-- **Persistence**: Via `ISessionRepository`
+### Services
 
-## Use Cases (Application Layer)
+| Service | Responsabilite |
+|---------|----------------|
+| AccountProgressionService | XP, niveaux, competences, prestige |
+| AchievementService | Detection et deblocage succes |
 
-### CreatePlayerUseCase
-- Validates input (username length, uniqueness)
-- Creates Player entity
-- Persists via PlayerRepository
+## Infrastructure Layer (`lib/infrastructure/`)
 
-### UpdatePlayerStatsUseCase
-- Fetches player from repository
-- Updates stats via domain logic (`player.updateStats()`)
-- Detects personal records
-- Persists updated player
+### Repositories SQLite (6)
 
-### SaveSessionUseCase
-- Creates or updates session
-- Saves state for recovery
-- Handles disconnect/reconnect
+Chaque repo implemente une interface Domain avec prepared statements.
 
-### RecoverSessionUseCase
-- Validates session is recoverable (timeout check)
-- Reconnects with new socket
-- Cleans up expired sessions
+- SQLitePlayerRepository
+- SQLiteSessionRepository
+- SQLiteLeaderboardRepository
+- SQLiteUpgradesRepository
+- SQLiteProgressionRepository
+- SQLiteAchievementRepository
 
-### DisconnectSessionUseCase
-- Marks session as disconnected
-- Enables recovery window
-- Periodic cleanup of expired sessions
+### Logger (Winston)
 
-## Repository Pattern
+- Production: fichiers rotatifs (5MB, 5 fichiers) `logs/error.log` + `logs/combined.log`
+- Dev: console coloree
+- Guard `isDebugEnabled()` pour eviter operations couteuses
 
-### Interface (Domain)
+### MetricsCollector
+
+Metriques temps reel: joueurs, zombies, FPS, frame time, reseau.
+Sampling fixe (60 frames) pour efficacite.
+
+### JwtService
+
+Generation et validation JWT. Middleware Socket.IO integre.
+
+### DatabaseManager
+
+- SQLite WAL mode (concurrence)
+- PRAGMA optimises (10MB cache, sync NORMAL, temp memory)
+- Auto-migration au demarrage
+- Methodes: connect, initializeSchema, runMigrations, backup, vacuum, analyze
+
+## Server Layer (`lib/server/`)
+
+Managers specifiques au jeu:
+
+| Manager | Lignes | Responsabilite |
+|---------|--------|----------------|
+| ConfigManager | 1027 | Config armes, zombies, powerups, shop, constantes |
+| EntityManager | 730 | Object pooling (bullets, particles, loot) |
+| CollisionManager | 756 | Detection collision broad-phase + narrow-phase |
+| NetworkManager | 581 | Delta compression, broadcast, event batching, RTT |
+| PlayerManager | 394 | Etat et gestion joueurs |
+| RoomManager | 396 | Generation procedurale, portes, murs |
+| ZombieManager | 783 | Spawn, difficulte progressive, types, elites |
+| SkillEffectsApplicator | 281 | Application effets competences |
+| RunMutatorManager | 163 | Modificateurs de run |
+| PerformanceIntegration | 115 | FPS adaptatif, mode performance |
+| BinaryProtocolManager | 113 | Serialisation binaire (msgpack) |
+| ZombieTypes Extended | 1378 | 100+ definitions de zombies |
+
+Utilitaires: MathUtils, ObjectPool, Quadtree, QuadtreeWorker.
+
+## Game Layer (`game/`)
+
+### Boucle principale (`gameLoop.js`)
+
+1. Update zombies (mouvement, AI, effets)
+2. Update bullets (physique, collision)
+3. Update powerups (lifetime, collection)
+4. Update loot (lifetime, collection)
+5. Handle hazards
+6. Emit game state (delta-compressed)
+
+Protection: flag `gameLoopRunning`, detection stuck, error handling.
+
+### State (`gameState.js`)
+
 ```javascript
-class IPlayerRepository {
-  async findById(id) { throw new Error('Not implemented'); }
-  async findByUsername(username) { throw new Error('Not implemented'); }
-  async create(player) { throw new Error('Not implemented'); }
-  async update(player) { throw new Error('Not implemented'); }
+{
+  players: {},
+  zombies: {},
+  bullets: {},
+  powerups: {},
+  particles: {},
+  poisonTrails: {},
+  loot: {},
+  explosions: {},
+  walls: [],
+  rooms: [],
+  wave: 1,
+  bossSpawned: false,
+  mutatorEffects: {},
+  permanentUpgrades: {},
+  getNextId(counterName) // Safe ID generator avec overflow protection
 }
 ```
 
-### Implementation (Infrastructure)
-```javascript
-class SQLitePlayerRepository extends IPlayerRepository {
-  constructor(db) {
-    this.db = db;
-    this.prepareStatements(); // Prepared statements for performance
-  }
+### Modules (`game/modules/`)
 
-  async findById(id) {
-    const row = this.stmts.findById.get(id);
-    return row ? Player.fromDB(row) : null;
-  }
-  // ...
-}
+| Module | Fichiers | Responsabilite |
+|--------|----------|----------------|
+| zombie/ | ZombieUpdater, BossUpdater, SpecialZombieUpdater, SpawnManager, Effects | IA, mouvement, boss, elites |
+| bullet/ | BulletUpdater, CollisionHandler, BulletEffects | Physique, collision, effets speciaux |
+| wave/ | WaveManager | Progression vagues, difficulte |
+| loot/ | LootUpdater, PowerupUpdater | Gestion loot et powerups |
+| player/ | PlayerProgression, PlayerEffects | XP, level up, effets joueur |
+| hazards/ | HazardManager | Zones de danger environnementales |
+| admin/ | AdminCommands | Commandes admin serveur |
+
+## Client (`public/`)
+
+### Architecture modulaire
+
+81 scripts charges en ordre specifique dans `index.html`.
+
+**Prevention memory leaks** (charges en premier):
+- EventListenerManager - listeners manages avec tracking
+- TimerManager - setTimeout/setInterval manages
+
+**Core:**
+- GameEngine - boucle RAF, init managers
+- GameStateManager - etat global, interpolation
+- InputManager - clavier/souris, polling RAF
+- NetworkManager - Socket.IO, reconnexion
+
+**Rendering:**
+- Renderer (3649 lignes) - rendu complet canvas 2D
+- FrustumCuller - culling entites hors camera
+- CameraManager - suivi joueur, bounds
+
+**Environnement:**
+- WeatherSystem, DayNightCycle, LightingSystem, ParallaxBackground, EnvironmentalParticles
+
+**Audio:**
+- OptimizedAudioCore (Web Audio API)
+- OptimizedSoundEffects, WeaponAudioSystem, AmbientAudioSystem
+
+**Systemes de retention:**
+- Achievements, DailyChallenges, Contracts, Missions
+- GemSystem, UnlockSystem, SynergySystem
+- MetaProgression, LifetimeStats, RetentionHooks
+- Telemetry, RiskReward, RunMutators, Biomes, Skins
+
+### Globals (`window.*`)
+
+23 singletons exposes sur window (GameEngine, Renderer, achievementSystem, gemSystem, etc.)
+Pattern: chaque systeme s'enregistre sur window au chargement.
+
+## Principes
+
+### SOLID
+
+- **S** - Un use case = une operation. Un manager = une responsabilite.
+- **O** - Extensible via nouveaux use cases/modules sans modifier l'existant.
+- **L** - Tous les repos SQLite substituables via les interfaces Domain.
+- **I** - Interfaces Repository specifiques (pas de god-interface).
+- **D** - Application depend des abstractions Domain, pas des implementations SQLite.
+
+### Patterns
+
+| Pattern | Usage |
+|---------|-------|
+| Repository | Abstraction persistance (Domain interfaces -> SQLite impls) |
+| Dependency Injection | Container singleton, wire au boot |
+| Object Pool | EntityManager (bullets, particles, loot) |
+| Delta Compression | NetworkManager (envoi uniquement des changements) |
+| Observer | Events Socket.IO, systeme d'events client |
+| Singleton | Container, Managers client, systemes de retention |
+| Strategy | PerformanceConfig (modes high/balanced/low-memory/minimal) |
+| Quadtree | Partitionnement spatial pour collisions |
+
+## Flux de donnees
+
+```
+Client Input
+    │
+    ▼
+Socket.IO Event (rate-limited)
+    │
+    ▼
+socketHandlers.js (validation + sanitization)
+    │
+    ▼
+Game Loop (gameLoop.js)
+    ├── ZombieUpdater / BulletUpdater / WaveManager
+    ├── CollisionManager (Quadtree)
+    ├── EntityManager (Object Pool)
+    └── PlayerProgression (Use Cases -> DB)
+    │
+    ▼
+NetworkManager (delta compress)
+    │
+    ▼
+Socket.IO Broadcast
+    │
+    ▼
+Client GameStateManager (interpolation)
+    │
+    ▼
+Renderer (frustum culling -> canvas 2D)
 ```
 
-## Benefits
+## Scaling
 
-✅ **Testable**: Domain logic is pure, easily tested
-✅ **Maintainable**: Clear separation of concerns
-✅ **Flexible**: Swap database/logger without touching business logic
-✅ **Scalable**: Add features via new use cases
-✅ **Professional**: Industry-standard architecture
-
-## Migration Path
-
-### Phase 1 ✅ (Completed)
-- SQLite database with WAL mode
-- Winston production logger
-- Health check endpoint
-- Memory leak fixes
-
-### Phase 2 ✅ (Completed)
-- Clean Architecture structure
-- Domain entities (Player, GameSession)
-- Repository pattern with SQLite implementation
-- Use cases for core operations
-- Dependency injection container
-
-### Phase 3 (Next)
-- Migrate game logic to use cases
-- Add leaderboard use cases
-- Implement permanent upgrades use cases
-- Create API endpoints using use cases
-- Add integration tests
-
-## Testing
-
-Run architecture validation test:
-```bash
-node test-architecture.js
-```
-
-Tests cover:
-1. Player creation
-2. Stats update
-3. Session save/disconnect/recovery
-4. Top players query
-5. Repository operations
-6. Domain entity business logic
-
-## Performance
-
-- **Prepared Statements**: All queries use prepared statements (10x faster)
-- **WAL Mode**: SQLite Write-Ahead Logging (100x better concurrency)
-- **Cached Queries**: Statement preparation at repository initialization
-- **Optimized Pragmas**: 64MB cache, NORMAL sync, memory temp store
-
-## Next Steps
-
-1. **Migrate Existing Code**: Refactor server.js to use use cases
-2. **Add Leaderboard**: `GetLeaderboardUseCase`, `SubmitScoreUseCase`
-3. **Permanent Upgrades**: `BuyUpgradeUseCase`, `GetUpgradesUseCase`
-4. **API Endpoints**: REST API using Express routes + use cases
-5. **Integration Tests**: Test full stack with real database
-6. **Documentation**: API docs with Swagger/OpenAPI
+| Metrique | Valeur actuelle |
+|----------|-----------------|
+| Joueurs simultanes | 50+ |
+| Latence API | <10ms |
+| Latence WebSocket | <50ms |
+| Queries DB | <1ms |
+| Memoire | ~65MB RSS |
+| Types de zombies | 100+ |
+| Armes | 12+ |
