@@ -1,11 +1,10 @@
 -- ================================================================================================
--- ROLLBACK 003: Achievements Data
--- Removes all seeded achievement rows inserted by 003_achievements_data.sql
--- Does NOT drop the achievements table (created by 001_initial_schema)
+-- ROLLBACK 003: Achievements Seed Data
+-- Removes rows inserted by 003_achievements_data.sql.
 -- ================================================================================================
 
-DELETE FROM achievements WHERE id IN (
-  -- Combat
+DELETE FROM achievements
+WHERE achievement_id IN (
   'first_blood',
   'zombie_slayer',
   'zombie_hunter',
@@ -15,7 +14,6 @@ DELETE FROM achievements WHERE id IN (
   'boss_master',
   'combo_starter',
   'combo_master',
-  -- Survival
   'survivor',
   'veteran',
   'legend',
@@ -25,7 +23,6 @@ DELETE FROM achievements WHERE id IN (
   'max_level',
   'marathon_runner',
   'iron_man',
-  -- Collection
   'dedicated',
   'addicted',
   'no_life',

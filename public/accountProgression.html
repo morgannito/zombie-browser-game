@@ -279,17 +279,35 @@
     let playerData = null;
     let skillTreeData = null;
 
+    function getAuthHeaders(includeJson = false) {
+      const headers = {};
+      if (includeJson) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const token =
+        localStorage.getItem('authToken') ||
+        localStorage.getItem('token');
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      return headers;
+    }
+
     async function loadProgression() {
       try {
         // Get player ID from localStorage or URL
         const playerId = localStorage.getItem('playerId') || 'test-player';
+        const headers = getAuthHeaders();
 
         // Fetch progression
-        const progressionRes = await fetch(`/api/progression/${playerId}`);
+        const progressionRes = await fetch(`/api/progression/${playerId}`, { headers });
         const progressionData = await progressionRes.json();
 
         // Fetch skill tree
-        const skillsRes = await fetch('/api/progression/skills/all');
+        const skillsRes = await fetch('/api/progression/skills/all', { headers });
         const skillsData = await skillsRes.json();
 
         if (progressionData.success && skillsData.success) {
@@ -395,7 +413,7 @@
 
         const res = await fetch(`/api/progression/${playerId}/unlock-skill`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(true),
           body: JSON.stringify({ skillId })
         });
 
@@ -423,7 +441,8 @@
         const playerId = localStorage.getItem('playerId') || 'test-player';
 
         const res = await fetch(`/api/progression/${playerId}/prestige`, {
-          method: 'POST'
+          method: 'POST',
+          headers: getAuthHeaders()
         });
 
         const data = await res.json();

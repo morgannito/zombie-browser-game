@@ -12,21 +12,49 @@ const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 // LATENCY OPTIMIZATION: Cache boss/special updaters to avoid repeated requires
 const {
-  updateTeleporterZombie, updateSummonerZombie, updateBerserkerZombie,
-  updateNecromancerZombie, updateBruteZombie, updateMimicZombie
+  updateTeleporterZombie,
+  updateSummonerZombie,
+  updateBerserkerZombie,
+  updateNecromancerZombie,
+  updateBruteZombie,
+  updateMimicZombie
 } = require('./SpecialZombieUpdater');
 
 const {
-  updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega,
-  updateBossInfernal, updateBossCryos, updateBossVortex, updateBossNexus, updateBossApocalypse
+  updateBossCharnier,
+  updateBossInfect,
+  updateBossColosse,
+  updateBossRoi,
+  updateBossOmega,
+  updateBossInfernal,
+  updateBossCryos,
+  updateBossVortex,
+  updateBossNexus,
+  updateBossApocalypse
 } = require('./BossUpdater');
+
+function clampToRoomBounds(zombie, x, y) {
+  const margin = Math.max(1, (zombie.size || 0) + 1);
+  return {
+    finalX: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
+    finalY: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
+  };
+}
 
 /**
  * Main zombie update function
  * LATENCY OPTIMIZATION: Fast-path guards to skip boss/special updates for regular zombies
  * CRITICAL FIX: Use snapshot of zombie IDs to safely iterate while zombies may be deleted
  */
-function updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
+function updateZombies(
+  gameState,
+  now,
+  io,
+  collisionManager,
+  entityManager,
+  zombieManager,
+  perfIntegration
+) {
   const zombies = gameState.zombies;
   // CRITICAL FIX: Create snapshot with .slice() to prevent iteration issues
   // when zombies are deleted by other systems (tesla kill, poison, etc.)
@@ -87,28 +115,103 @@ function updateZombies(gameState, now, io, collisionManager, entityManager, zomb
       updateBossColosse(zombie, zombieId, now, io, entityManager);
     }
     if (zombieType === 'bossRoi') {
-      updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+      updateBossRoi(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState,
+        collisionManager
+      );
     }
     if (zombieType === 'bossOmega') {
-      updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+      updateBossOmega(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState,
+        collisionManager
+      );
     }
     if (zombieType === 'bossInfernal') {
-      updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+      updateBossInfernal(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState
+      );
     }
     if (zombieType === 'bossCryos') {
-      updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState);
+      updateBossCryos(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState
+      );
     }
     if (zombieType === 'bossVortex') {
       updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
     }
     if (zombieType === 'bossNexus') {
-      updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+      updateBossNexus(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState,
+        collisionManager
+      );
     }
     if (zombieType === 'bossApocalypse') {
-      updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager);
+      updateBossApocalypse(
+        zombie,
+        zombieId,
+        now,
+        io,
+        zombieManager,
+        perfIntegration,
+        entityManager,
+        gameState,
+        collisionManager
+      );
     }
 
     moveZombie(zombie, zombieId, collisionManager, gameState);
+
+    // Track stuck zombies: if position barely changed, increment counter
+    const movedDist =
+      Math.abs(zombie.x - (zombie._prevX || 0)) + Math.abs(zombie.y - (zombie._prevY || 0));
+    zombie._prevX = zombie.x;
+    zombie._prevY = zombie.y;
+
+    if (movedDist < 0.5) {
+      zombie._stuckFrames = (zombie._stuckFrames || 0) + 1;
+    } else {
+      zombie._stuckFrames = 0;
+    }
+
+    // Despawn zombies stuck for ~10 seconds (600 frames at 60fps)
+    if (zombie._stuckFrames > 600) {
+      delete zombies[zombieId];
+    }
   }
 }
 
@@ -125,7 +228,10 @@ function processHealerAbility(zombie, zombieId, now, collisionManager, entityMan
     zombie.lastHeal = now;
 
     const nearbyZombies = collisionManager.findZombiesInRadius(
-      zombie.x, zombie.y, healerType.healRadius, zombieId
+      zombie.x,
+      zombie.y,
+      healerType.healRadius,
+      zombieId
     );
 
     for (const other of nearbyZombies) {
@@ -147,7 +253,9 @@ function processSlowerAbility(zombie, now, collisionManager) {
 
   const slowerType = ZOMBIE_TYPES.slower;
   const nearbyPlayers = collisionManager.findPlayersInRadius(
-    zombie.x, zombie.y, slowerType.slowRadius
+    zombie.x,
+    zombie.y,
+    slowerType.slowRadius
   );
 
   for (const player of nearbyPlayers) {
@@ -169,7 +277,10 @@ function processShooterAbility(zombie, zombieId, now, collisionManager, entityMa
   if (!zombie.lastShot || now - zombie.lastShot >= shooterType.shootCooldown) {
     // SSSS OPTIMIZATION: Use cached pathfinding for shooter targeting
     const targetPlayer = collisionManager.findClosestPlayerCached(
-      zombieId, zombie.x, zombie.y, shooterType.shootRange,
+      zombieId,
+      zombie.x,
+      zombie.y,
+      shooterType.shootRange,
       { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
 
@@ -241,7 +352,10 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
 function moveZombie(zombie, zombieId, collisionManager, gameState) {
   // SSSS OPTIMIZATION: Use cached pathfinding for movement (called every frame for all zombies)
   const closestPlayer = collisionManager.findClosestPlayerCached(
-    zombieId, zombie.x, zombie.y, Infinity,
+    zombieId,
+    zombie.x,
+    zombie.y,
+    Infinity,
     { ignoreSpawnProtection: true, ignoreInvisible: false }
   );
 
@@ -258,7 +372,16 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
   applyZombieSeparation(zombie, zombieId, collisionManager);
 
   if (closestPlayer) {
-    moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now, deltaTime);
+    moveTowardsPlayer(
+      zombie,
+      zombieId,
+      closestPlayer,
+      roomManager,
+      collisionManager,
+      gameState,
+      now,
+      deltaTime
+    );
   } else {
     moveRandomly(zombie, now, roomManager, deltaTime);
   }
@@ -270,7 +393,12 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
  */
 function applyZombieSeparation(zombie, zombieId, collisionManager) {
   const separationRadius = zombie.size * 2;
-  const nearbyZombies = collisionManager.findZombiesInRadius(zombie.x, zombie.y, separationRadius, zombieId);
+  const nearbyZombies = collisionManager.findZombiesInRadius(
+    zombie.x,
+    zombie.y,
+    separationRadius,
+    zombieId
+  );
 
   if (nearbyZombies.length === 0) {
     return;
@@ -300,16 +428,45 @@ function applyZombieSeparation(zombie, zombieId, collisionManager) {
     }
   }
 
-  // Apply separation (will be bounded by wall collision later)
-  zombie.x += separationX;
-  zombie.y += separationY;
+  // Apply separation WITH wall collision check
+  if (separationX !== 0 || separationY !== 0) {
+    const roomManager = collisionManager.gameState?.roomManager;
+    const candidateX = zombie.x + separationX;
+    const candidateY = zombie.y + separationY;
+
+    if (roomManager && roomManager.checkWallCollision(candidateX, candidateY, zombie.size)) {
+      // Try axes separately
+      if (!roomManager.checkWallCollision(candidateX, zombie.y, zombie.size)) {
+        zombie.x = candidateX;
+      }
+      if (!roomManager.checkWallCollision(zombie.x, candidateY, zombie.size)) {
+        zombie.y = candidateY;
+      }
+    } else {
+      zombie.x = candidateX;
+      zombie.y = candidateY;
+    }
+
+    const clamped = clampToRoomBounds(zombie, zombie.x, zombie.y);
+    zombie.x = clamped.finalX;
+    zombie.y = clamped.finalY;
+  }
 }
 
 /**
  * Move zombie towards closest player
  * FIX: Added deltaTime parameter for frame-rate independent movement
  */
-function moveTowardsPlayer(zombie, zombieId, closestPlayer, roomManager, collisionManager, gameState, now, deltaTime) {
+function moveTowardsPlayer(
+  zombie,
+  zombieId,
+  closestPlayer,
+  roomManager,
+  collisionManager,
+  gameState,
+  now,
+  deltaTime
+) {
   const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
 
   if (zombie.type === 'shielded') {
@@ -387,19 +544,12 @@ function calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime = 1) {
 function resolveWallCollisions(zombie, newX, newY, roomManager) {
   // Fallback boundary check when roomManager is null
   if (!roomManager) {
-    const margin = zombie.size + CONFIG.WALL_THICKNESS;
-    const maxX = CONFIG.ROOM_WIDTH - margin;
-    const maxY = CONFIG.ROOM_HEIGHT - margin;
-
-    return {
-      finalX: Math.max(margin, Math.min(newX, maxX)),
-      finalY: Math.max(margin, Math.min(newY, maxY))
-    };
+    return clampToRoomBounds(zombie, newX, newY);
   }
 
   // Check if new position is clear - fast path
   if (!roomManager.checkWallCollision(newX, newY, zombie.size)) {
-    return { finalX: newX, finalY: newY };
+    return clampToRoomBounds(zombie, newX, newY);
   }
 
   // Get detailed collision info for the new position
@@ -439,7 +589,9 @@ function resolveWallCollisions(zombie, newX, newY, roomManager) {
       const pushMagnitude = Math.min(collisionInfo.penetration * repulsionStrength, zombie.speed);
 
       // Normalize push vector
-      const pushLen = Math.sqrt(collisionInfo.pushX * collisionInfo.pushX + collisionInfo.pushY * collisionInfo.pushY);
+      const pushLen = Math.sqrt(
+        collisionInfo.pushX * collisionInfo.pushX + collisionInfo.pushY * collisionInfo.pushY
+      );
       if (pushLen > 0.001) {
         const pushDirX = collisionInfo.pushX / pushLen;
         const pushDirY = collisionInfo.pushY / pushLen;
@@ -467,7 +619,7 @@ function resolveWallCollisions(zombie, newX, newY, roomManager) {
   // Strategy 3: Unstuck mechanism - zombie is trapped inside a wall
   // Check if zombie is CURRENTLY stuck (not just blocked)
   const currentCollision = roomManager.getWallCollisionInfo(finalX, finalY, zombie.size);
-  if (currentCollision.colliding && currentCollision.penetration > zombie.size * 0.5) {
+  if (currentCollision.colliding && currentCollision.penetration > 1) {
     // Severely stuck - emergency push toward room center
     const roomCenterX = CONFIG.ROOM_WIDTH / 2;
     const roomCenterY = CONFIG.ROOM_HEIGHT / 2;
@@ -483,11 +635,7 @@ function resolveWallCollisions(zombie, newX, newY, roomManager) {
   }
 
   // Final boundary clamp to prevent going outside room
-  const margin = zombie.size + 1;
-  finalX = Math.max(margin, Math.min(finalX, CONFIG.ROOM_WIDTH - margin));
-  finalY = Math.max(margin, Math.min(finalY, CONFIG.ROOM_HEIGHT - margin));
-
-  return { finalX, finalY };
+  return clampToRoomBounds(zombie, finalX, finalY);
 }
 
 /**
@@ -589,11 +737,11 @@ function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
     if (Math.abs(actualMoveX) < Math.abs(intendedMoveX) * 0.5) {
       // X was blocked - move more in Y direction
       zombie.randomAngle = actualMoveY >= 0 ? Math.PI / 2 : -Math.PI / 2;
-      zombie.randomAngle += (Math.random() - 0.5) * Math.PI / 2; // Add some variance
+      zombie.randomAngle += ((Math.random() - 0.5) * Math.PI) / 2; // Add some variance
     } else if (Math.abs(actualMoveY) < Math.abs(intendedMovY) * 0.5) {
       // Y was blocked - move more in X direction
       zombie.randomAngle = actualMoveX >= 0 ? 0 : Math.PI;
-      zombie.randomAngle += (Math.random() - 0.5) * Math.PI / 2; // Add some variance
+      zombie.randomAngle += ((Math.random() - 0.5) * Math.PI) / 2; // Add some variance
     } else {
       // Both blocked (corner) - pick random new direction
       zombie.randomAngle = Math.random() * Math.PI * 2;

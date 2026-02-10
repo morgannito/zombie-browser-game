@@ -4,7 +4,7 @@
  * @version 1.0.0
  */
 
-(function() {
+(function () {
   'use strict';
 
   // ===============================================
@@ -37,11 +37,14 @@
    */
   function throttle(func, limit) {
     let inThrottle;
-    return function(...args) {
+    return function (...args) {
       if (!inThrottle) {
         func.apply(this, args);
         inThrottle = true;
-        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => inThrottle = false, limit);
+        (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+          () => (inThrottle = false),
+          limit
+        );
       }
     };
   }
@@ -73,7 +76,9 @@
    */
   function renderBulletsBatched(ctx, bullets, config) {
     const bulletsArray = Object.values(bullets);
-    if (bulletsArray.length === 0) return;
+    if (bulletsArray.length === 0) {
+      return;
+    }
 
     // Grouper par couleur
     const bulletsByColor = groupBy(bulletsArray, 'color');
@@ -163,8 +168,8 @@
       p.x += p.vx * deltaTime;
       p.y += p.vy * deltaTime;
       p.vy += (p.gravity || 0) * deltaTime;
-      p.vx *= (p.friction || 0.98);
-      p.vy *= (p.friction || 0.98);
+      p.vx *= p.friction || 0.98;
+      p.vy *= p.friction || 0.98;
       p.life -= (p.decay || 0.016) * deltaTime;
 
       // Garder seulement les vivantes
@@ -227,5 +232,4 @@
     updateParticlesOptimized,
     FPSMeter
   };
-
 })();

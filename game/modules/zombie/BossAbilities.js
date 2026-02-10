@@ -7,12 +7,40 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { createParticles } = require('../../lootFunctions');
 const { distance } = require('../../utilityFunctions');
 
-const { ZOMBIE_TYPES } = ConfigManager;
+const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+
+function clampToRoomBounds(zombie, x, y) {
+  const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
+  return {
+    x: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
+    y: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
+  };
+}
+
+function moveZombieSafely(zombie, targetX, targetY, gameState) {
+  const clamped = clampToRoomBounds(zombie, targetX, targetY);
+  const roomManager = gameState?.roomManager;
+  if (roomManager && roomManager.checkWallCollision(clamped.x, clamped.y, zombie.size)) {
+    return false;
+  }
+  zombie.x = clamped.x;
+  zombie.y = clamped.y;
+  return true;
+}
 
 /**
  * Update Boss Infernal (wave 115)
  */
-function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
+function updateBossInfernal(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState
+) {
   if (zombie.type !== 'bossInfernal') {
     return;
   }
@@ -34,7 +62,8 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
       }
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
-      if (dist < 120) { // Fire aura radius
+      if (dist < 120) {
+        // Fire aura radius
         player.health -= 8;
         createParticles(player.x, player.y, '#ff4500', 6, entityManager);
 
@@ -97,7 +126,16 @@ function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegr
 /**
  * Update Boss Cryos (wave 140)
  */
-function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
+function updateBossCryos(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState
+) {
   if (zombie.type !== 'bossCryos') {
     return;
   }
@@ -159,7 +197,8 @@ function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegrati
         }
 
         const dist = distance(zombie.x, zombie.y, player.x, player.y);
-        if (dist < 150) { // Freeze aura radius
+        if (dist < 150) {
+          // Freeze aura radius
           player.slowedUntil = now + 2000;
           player.slowAmount = 0.5; // 50% slow
           createParticles(player.x, player.y, '#aaddff', 4, entityManager);
@@ -294,7 +333,17 @@ function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
 /**
  * Update Boss Nexus (wave 180)
  */
-function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
+function updateBossNexus(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState,
+  collisionManager
+) {
   if (zombie.type !== 'bossNexus') {
     return;
   }
@@ -317,10 +366,10 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
   if (!zombie.lastTeleport || now - zombie.lastTeleport >= 6000) {
     zombie.lastTeleport = now;
 
-    const closestPlayer = collisionManager?.findClosestPlayer(
-      zombie.x, zombie.y, Infinity,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
+    const closestPlayer = collisionManager?.findClosestPlayer(zombie.x, zombie.y, Infinity, {
+      ignoreSpawnProtection: true,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
@@ -328,11 +377,10 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
       const newX = closestPlayer.x - Math.cos(angle) * teleportDistance;
       const newY = closestPlayer.y - Math.sin(angle) * teleportDistance;
 
-      const roomManager = gameState.roomManager;
-      if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-        createParticles(zombie.x, zombie.y, '#9400d3', 30, entityManager);
-        zombie.x = newX;
-        zombie.y = newY;
+      const oldX = zombie.x;
+      const oldY = zombie.y;
+      if (moveZombieSafely(zombie, newX, newY, gameState)) {
+        createParticles(oldX, oldY, '#9400d3', 30, entityManager);
         createParticles(zombie.x, zombie.y, '#9400d3', 30, entityManager);
       }
     }
@@ -387,7 +435,17 @@ function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegrati
 /**
  * Update Boss Apocalypse (wave 200 - Final Boss)
  */
-function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
+function updateBossApocalypse(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState,
+  collisionManager
+) {
   if (zombie.type !== 'bossApocalypse') {
     return;
   }
@@ -434,14 +492,17 @@ function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfInte
   }
 
   // Chain lightning (Phase 3+)
-  if (healthPercent <= 0.50 && (!zombie.lastChainLightning || now - zombie.lastChainLightning >= 8000)) {
+  if (
+    healthPercent <= 0.5 &&
+    (!zombie.lastChainLightning || now - zombie.lastChainLightning >= 8000)
+  ) {
     zombie.lastChainLightning = now;
 
     // Find closest player
-    const closestPlayer = collisionManager?.findClosestPlayer(
-      zombie.x, zombie.y, 600,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
+    const closestPlayer = collisionManager?.findClosestPlayer(zombie.x, zombie.y, 600, {
+      ignoreSpawnProtection: true,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       // Chain lightning logic (similar to chainLightning weapon)

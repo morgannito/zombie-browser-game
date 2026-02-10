@@ -21,7 +21,7 @@ class StorageManager {
       localStorage.setItem(test, test);
       localStorage.removeItem(test);
       return true;
-    } catch (_e) {
+    } catch {
       return false;
     }
   }
@@ -41,7 +41,7 @@ class StorageManager {
         return defaultValue;
       }
       return JSON.parse(value);
-    } catch (_e) {
+    } catch {
       return defaultValue;
     }
   }
@@ -56,7 +56,7 @@ class StorageManager {
       }
       localStorage.setItem(prefixedKey, serialized);
       return true;
-    } catch (_e) {
+    } catch {
       this.memoryFallback.set(this.prefix + key, JSON.stringify(value));
       console.warn('[StorageManager] localStorage quota exceeded, using memory fallback');
       return false;
@@ -69,7 +69,7 @@ class StorageManager {
     if (this.available) {
       try {
         localStorage.removeItem(prefixedKey);
-      } catch (_e) {
+      } catch {
         // silently ignore
       }
     }

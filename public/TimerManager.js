@@ -10,6 +10,12 @@ class TimerManager {
     this.intervals = new Map();
     this.timerCounter = 0;
     this.intervalCounter = 0;
+
+    // Keep methods bound so detached references still work.
+    this.setTimeout = this.setTimeout.bind(this);
+    this.setInterval = this.setInterval.bind(this);
+    this.clearTimeout = this.clearTimeout.bind(this);
+    this.clearInterval = this.clearInterval.bind(this);
   }
 
   /**
@@ -290,7 +296,7 @@ class TimerManager {
     }
 
     // Les timeouts avec des délais très longs (>1min) sont suspects
-    for (const [id, timer] of this.timers.values()) {
+    for (const [id, timer] of this.timers.entries()) {
       if (timer.delay > 60000) {
         suspects.longRunningTimeouts.push({
           id,

@@ -14,6 +14,7 @@ const crypto = require('crypto');
  */
 function requestIdMiddleware(req, res, next) {
   req.id = req.headers['x-request-id'] || crypto.randomUUID();
+  res.locals.requestId = req.id;
   res.setHeader('X-Request-Id', req.id);
   next();
 }

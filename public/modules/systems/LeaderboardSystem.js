@@ -8,8 +8,14 @@
 
 class LeaderboardSystem {
   constructor() {
+    this.socket = null;
     this.leaderboard = this.loadLeaderboard();
     this.createUI();
+  }
+
+  // Compatibility with legacy leaderboard integration.
+  initialize(socket) {
+    this.socket = socket || null;
   }
 
   loadLeaderboard() {
@@ -32,7 +38,9 @@ class LeaderboardSystem {
 
   addEntry(player) {
     if (player && player.alive === false) {
-      const survivalTime = player.survivalTime ? Math.floor((Date.now() - player.survivalTime) / 1000) : 0;
+      const survivalTime = player.survivalTime
+        ? Math.floor((Date.now() - player.survivalTime) / 1000)
+        : 0;
 
       const entry = {
         nickname: player.nickname || 'Anonyme',
@@ -68,6 +76,59 @@ class LeaderboardSystem {
       this.saveLeaderboard();
       this.updateUI();
     }
+  }
+
+  // Legacy API used by retention/lifetime systems.
+  calculateScore(stats = {}) {
+    return Math.floor(
+      (stats.wave || 0) * 100 +
+        (stats.level || 0) * 50 +
+        (stats.zombiesKilled || 0) * 10 +
+        (stats.goldEarned || stats.gold || 0)
+    );
+  }
+
+  // Legacy API used by lifetime stats.
+  submitScore(playerName, stats = {}) {
+    const entry = {
+      alive: false,
+      nickname: playerName || 'Anonyme',
+      totalScore: this.calculateScore(stats),
+      score: this.calculateScore(stats),
+      zombiesKilled: stats.zombiesKilled || 0,
+      kills: stats.zombiesKilled || 0,
+      gold: stats.goldEarned || stats.gold || 0,
+      survivalTime: Date.now() - (stats.runDuration || 0) * 1000
+    };
+
+    this.addEntry(entry);
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('submit_score', {
+        playerName: entry.nickname,
+        score: entry.score,
+        wave: stats.wave || 0,
+        level: stats.level || 0,
+        zombiesKilled: entry.zombiesKilled,
+        goldEarned: entry.gold
+      });
+    }
+  }
+
+  getTopScores(limit = 10) {
+    return this.leaderboard.entries.slice(0, limit).map(e => ({
+      playerName: e.nickname,
+      score: e.score,
+      wave: e.wave || 0,
+      level: e.level || 0,
+      zombiesKilled: e.kills || 0,
+      goldEarned: e.gold || 0
+    }));
+  }
+
+  getPlayerPosition(playerName) {
+    const idx = this.leaderboard.entries.findIndex(e => e.nickname === playerName);
+    return idx >= 0 ? idx + 1 : null;
   }
 
   createUI() {
@@ -135,14 +196,36 @@ class LeaderboardSystem {
     this.updateUI();
   }
 
+  createLeaderboardUI() {
+    const existing = document.getElementById('leaderboard-panel');
+    if (existing) {
+      return existing;
+    }
+    this.createUI();
+    return document.getElementById('leaderboard-panel');
+  }
+
   toggleLeaderboard() {
     const panel = document.getElementById('leaderboard-panel');
+    if (!panel) {
+      return;
+    }
     if (panel.style.display === 'none') {
       panel.style.display = 'block';
       this.updateUI();
     } else {
       panel.style.display = 'none';
     }
+  }
+
+  openPanel() {
+    const panel = document.getElementById('leaderboard-panel');
+    if (!panel) {
+      this.createLeaderboardUI();
+      return this.openPanel();
+    }
+    panel.style.display = 'block';
+    this.updateUI();
   }
 
   updateUI() {
@@ -193,8 +276,9 @@ class LeaderboardSystem {
     `;
 
     this.leaderboard.entries.forEach((entry, index) => {
-      const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
-      const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1);
+      const rankColor =
+        index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
+      const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1;
 
       html += `
         <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
@@ -215,6 +299,39 @@ class LeaderboardSystem {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  createLeaderboardWidget() {
+    const widget = document.createElement('div');
+    widget.className = 'leaderboard-widget';
+    const topScores = this.getTopScores(5);
+
+    widget.innerHTML = `
+      <div class="leaderboard-widget-header">
+        <h3>🏆 Top 5</h3>
+        <button class="leaderboard-widget-expand">Voir tout →</button>
+      </div>
+      <div class="leaderboard-widget-list">
+        ${topScores
+          .map(
+            (entry, index) => `
+          <div class="leaderboard-widget-entry">
+            <span class="rank">#${index + 1}</span>
+            <span class="player">${entry.playerName}</span>
+            <span class="score">${entry.score.toLocaleString()}</span>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    `;
+
+    const expandBtn = widget.querySelector('.leaderboard-widget-expand');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', () => this.openPanel());
+    }
+
+    return widget;
   }
 }
 

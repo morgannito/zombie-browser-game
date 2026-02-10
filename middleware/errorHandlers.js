@@ -9,6 +9,7 @@
 
 const logger = require('../lib/infrastructure/Logger');
 const { AppError } = require('../lib/domain/errors/DomainErrors');
+const { buildHttpContext } = require('./httpContext');
 
 /**
  * 404 Not Found handler
@@ -55,7 +56,14 @@ function notFoundHandler(req, res, _next) {
  * @param {Function} next - Next middleware
  */
 function serverErrorHandler(err, req, res, _next) {
-  logger.error('Server error', { status: err.status || 500, stack: err.stack });
+  logger.error(
+    'Server error',
+    buildHttpContext(req, {
+      status: err.status || 500,
+      error: err.message,
+      stack: err.stack
+    })
+  );
   res.status(err.status || 500).send(`
     <!DOCTYPE html>
     <html lang="fr">
@@ -96,8 +104,8 @@ function serverErrorHandler(err, req, res, _next) {
  * @param {Function} next - Next middleware
  */
 function apiErrorHandler(err, req, res, next) {
-  // Check if this is an API route (starts with /api/ or expects JSON)
-  const isApiRoute = req.path.startsWith('/api/') || req.accepts('json');
+  // Handle only explicit API-style routes to avoid hijacking static asset errors.
+  const isApiRoute = req.path.startsWith('/api/') || req.path === '/health';
 
   if (!isApiRoute) {
     return next(err); // Pass to HTML error handler
@@ -124,13 +132,20 @@ function apiErrorHandler(err, req, res, next) {
       errorDetails.identifier = err.identifier;
     }
   } else {
+    if (typeof err.status === 'number' || typeof err.statusCode === 'number') {
+      statusCode = err.status || err.statusCode;
+      message = err.message || (statusCode === 404 ? 'Not found' : 'Request failed');
+    }
+
     // For non-operational errors, log the full error
-    logger.error('Unexpected API error', {
-      path: req.path,
-      method: req.method,
-      error: err.message,
-      stack: err.stack
-    });
+    logger.error(
+      'Unexpected API error',
+      buildHttpContext(req, {
+        statusCode,
+        error: err.message,
+        stack: err.stack
+      })
+    );
   }
 
   // Build error response
@@ -139,6 +154,7 @@ function apiErrorHandler(err, req, res, next) {
     error: {
       message,
       statusCode,
+      requestId: req.id || null,
       ...errorDetails
     }
   };

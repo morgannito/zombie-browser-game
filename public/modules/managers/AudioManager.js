@@ -16,7 +16,7 @@ class AudioManager {
   initAudioContext() {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (e) {
+    } catch {
       console.warn('Web Audio API not supported');
       this.enabled = false;
     }
@@ -40,23 +40,23 @@ class AudioManager {
     const now = this.audioContext.currentTime;
 
     switch (soundType) {
-    case 'shoot':
-      this.playShoot(now);
-      break;
-    case 'doubleClick':
-      this.playDoubleClick(now);
-      break;
-    case 'longPress':
-      this.playLongPress(now);
-      break;
-    case 'swipe':
-      this.playSwipe(now);
-      break;
-    case 'click':
-      this.playClick(now);
-      break;
-    default:
-      break;
+      case 'shoot':
+        this.playShoot(now);
+        break;
+      case 'doubleClick':
+        this.playDoubleClick(now);
+        break;
+      case 'longPress':
+        this.playLongPress(now);
+        break;
+      case 'swipe':
+        this.playSwipe(now);
+        break;
+      case 'click':
+        this.playClick(now);
+        break;
+      default:
+        break;
     }
   }
 

@@ -7,7 +7,33 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
 
-const { ZOMBIE_TYPES } = ConfigManager;
+const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+
+function clampToRoomBounds(zombie, x, y) {
+  const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
+  return {
+    x: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
+    y: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
+  };
+}
+
+function canPlaceZombieAt(zombie, x, y, gameState) {
+  const roomManager = gameState?.roomManager;
+  if (!roomManager) {
+    return true;
+  }
+  return !roomManager.checkWallCollision(x, y, zombie.size);
+}
+
+function moveZombieSafely(zombie, targetX, targetY, gameState) {
+  const clamped = clampToRoomBounds(zombie, targetX, targetY);
+  if (!canPlaceZombieAt(zombie, clamped.x, clamped.y, gameState)) {
+    return false;
+  }
+  zombie.x = clamped.x;
+  zombie.y = clamped.y;
+  return true;
+}
 let handlePlayerDeathProgressionRef = null;
 function getHandlePlayerDeathProgression() {
   if (!handlePlayerDeathProgressionRef) {
@@ -131,11 +157,20 @@ function updateBossColosse(zombie, zombieId, now, io, entityManager) {
   }
 }
 
-
 /**
  * Update Boss Roi
  */
-function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
+function updateBossRoi(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState,
+  collisionManager
+) {
   if (zombie.type !== 'bossRoi') {
     return;
   }
@@ -163,14 +198,17 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
   }
 
   // Téléportation (Phase 2+)
-  if (zombie.phase >= 2 && (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown)) {
+  if (
+    zombie.phase >= 2 &&
+    (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown)
+  ) {
     zombie.lastTeleport = now;
 
     // Trouver le joueur le plus proche
-    const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, Infinity,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
+    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, {
+      ignoreSpawnProtection: true,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       // Angle vers le joueur
@@ -183,18 +221,21 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
       const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
       const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
 
-      const roomManager = gameState.roomManager;
-      if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-        createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
-        zombie.x = newX;
-        zombie.y = newY;
+      const oldX = zombie.x;
+      const oldY = zombie.y;
+      if (moveZombieSafely(zombie, newX, newY, gameState)) {
+        createParticles(oldX, oldY, bossType.color, 30, entityManager);
         createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
       }
     }
   }
 
   // Invocation (Phase 3) - SEULEMENT le vrai boss, pas les clones
-  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
+  if (
+    !zombie.isClone &&
+    zombie.phase >= 3 &&
+    (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)
+  ) {
     zombie.lastSummon = now;
 
     // Invoquer 5 zombies normaux (avec limite performance)
@@ -208,22 +249,31 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
   }
 
   // Clones (Phase 3) - SEULEMENT le vrai boss, pas les clones (FIX LAG)
-  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)) {
+  if (
+    !zombie.isClone &&
+    zombie.phase >= 3 &&
+    (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)
+  ) {
     zombie.lastClone = now;
 
     // Créer 2 clones autour du boss
     for (let i = 0; i < bossType.cloneCount; i++) {
       const angle = (Math.PI * 2 * i) / bossType.cloneCount; // Répartition circulaire
       const spawnDistance = 150; // Distance de spawn autour du boss
-      const cloneX = zombie.x + Math.cos(angle) * spawnDistance;
-      const cloneY = zombie.y + Math.sin(angle) * spawnDistance;
+      const cloneSize = bossType.size * 0.7;
+      const targetCloneX = zombie.x + Math.cos(angle) * spawnDistance;
+      const targetCloneY = zombie.y + Math.sin(angle) * spawnDistance;
+      const clampedClonePos = clampToRoomBounds({ size: cloneSize }, targetCloneX, targetCloneY);
+      if (!canPlaceZombieAt({ size: cloneSize }, clampedClonePos.x, clampedClonePos.y, gameState)) {
+        continue;
+      }
 
       const cloneId = gameState.nextZombieId++;
       gameState.zombies[cloneId] = {
         id: cloneId,
-        x: cloneX,
-        y: cloneY,
-        size: bossType.size * 0.7, // Clones plus petits (70%)
+        x: clampedClonePos.x,
+        y: clampedClonePos.y,
+        size: cloneSize, // Clones plus petits (70%)
         color: '#ff69b4', // Rose pour différencier des vrais boss
         type: 'bossRoi',
         health: bossType.cloneHealth,
@@ -240,7 +290,7 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
       };
 
       // Effet visuel de spawn
-      createParticles(cloneX, cloneY, '#ff69b4', 30, entityManager);
+      createParticles(clampedClonePos.x, clampedClonePos.y, '#ff69b4', 30, entityManager);
     }
 
     // Effet visuel massif au boss principal
@@ -263,7 +313,17 @@ function updateBossRoi(zombie, zombieId, now, io, zombieManager, perfIntegration
 /**
  * Update Boss Omega
  */
-function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
+function updateBossOmega(
+  zombie,
+  zombieId,
+  now,
+  io,
+  zombieManager,
+  perfIntegration,
+  entityManager,
+  gameState,
+  collisionManager
+) {
   if (zombie.type !== 'bossOmega') {
     return;
   }
@@ -297,10 +357,10 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
     zombie.lastTeleport = now;
 
     // Trouver le joueur le plus proche
-    const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, Infinity,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
+    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, {
+      ignoreSpawnProtection: true,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       // Angle vers le joueur
@@ -313,18 +373,20 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
       const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
       const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
 
-      const roomManager = gameState.roomManager;
-      if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-        createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
-        zombie.x = newX;
-        zombie.y = newY;
+      const oldX = zombie.x;
+      const oldY = zombie.y;
+      if (moveZombieSafely(zombie, newX, newY, gameState)) {
+        createParticles(oldX, oldY, bossType.color, 40, entityManager);
         createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
       }
     }
   }
 
   // Flaques toxiques (Phase 2+)
-  if (zombie.phase >= 2 && (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown)) {
+  if (
+    zombie.phase >= 2 &&
+    (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown)
+  ) {
     zombie.lastToxicPool = now;
     gameState.toxicPools = gameState.toxicPools || [];
     gameState.toxicPools.push({
@@ -340,7 +402,10 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
   }
 
   // Invocation (Phase 3+)
-  if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
+  if (
+    zombie.phase >= 3 &&
+    (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)
+  ) {
     zombie.lastSummon = now;
     for (let i = 0; i < 8; i++) {
       const zombieCount = Object.keys(gameState.zombies).length;
@@ -352,12 +417,17 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
   }
 
   // Laser (Phase 4)
-  if (zombie.phase >= 4 && (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)) {
+  if (
+    zombie.phase >= 4 &&
+    (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)
+  ) {
     zombie.lastLaser = now;
 
     // Trouver le joueur le plus proche pour cibler le laser
     const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, bossType.laserRange,
+      zombie.x,
+      zombie.y,
+      bossType.laserRange,
       { ignoreSpawnProtection: true, ignoreInvisible: false }
     );
 
@@ -388,7 +458,10 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
         const distToZombie = distance(zombie.x, zombie.y, player.x, player.y);
 
         // Si dans la largeur du laser et dans la portée
-        if (angleDiff < (bossType.laserWidth / 2) / distToZombie && distToZombie < bossType.laserRange) {
+        if (
+          angleDiff < bossType.laserWidth / 2 / distToZombie &&
+          distToZombie < bossType.laserRange
+        ) {
           player.health -= bossType.laserDamage;
 
           // Particules d'impact
@@ -421,5 +494,10 @@ function updateBossOmega(zombie, zombieId, now, io, zombieManager, perfIntegrati
  * Move zombie towards player or randomly
  */
 
-
-module.exports = { updateBossCharnier, updateBossInfect, updateBossColosse, updateBossRoi, updateBossOmega };
+module.exports = {
+  updateBossCharnier,
+  updateBossInfect,
+  updateBossColosse,
+  updateBossRoi,
+  updateBossOmega
+};

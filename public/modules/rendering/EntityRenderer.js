@@ -633,7 +633,7 @@ class EntityRenderer {
     ctx.stroke();
   }
 
-  _renderShieldedDetails(ctx, zombie, baseSize, scale, headRadius) {
+  _renderShieldedDetails(ctx, zombie, baseSize, scale, _headRadius) {
     ctx.save();
 
     const shieldAngle = zombie.facingAngle || 0;

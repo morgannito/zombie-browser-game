@@ -113,30 +113,37 @@
             <p>Préparez-vous!</p>
         </div>
 
+        <!-- RESIDENT EVIL STYLE DEATH SCREEN -->
         <div id="game-over" style="display: none;">
-            <div class="game-over-header">
-                <h1>💀 GAME OVER 💀</h1>
-                <p class="game-over-subtitle">Vous êtes mort...</p>
+            <div class="re-death-overlay"></div>
+            <div class="re-death-content">
+                <div class="re-blood-drip"></div>
+                <div class="re-death-title">
+                    <span class="re-you">YOU</span>
+                    <span class="re-died">DIED</span>
+                </div>
+                <div class="re-death-subtitle">Les morts ne pardonnent pas...</div>
+                <div class="re-death-line"></div>
+                <div class="game-over-stats">
+                    <div class="stat-row main-stat">
+                        <span class="stat-label">Score Final</span>
+                        <span class="stat-value" id="final-score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Vague</span>
+                        <span class="stat-value" id="final-wave">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Niveau</span>
+                        <span class="stat-value" id="final-level">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Or</span>
+                        <span class="stat-value" id="final-gold">0</span>
+                    </div>
+                </div>
+                <button id="respawn-btn">CONTINUER ?</button>
             </div>
-            <div class="game-over-stats">
-                <div class="stat-row main-stat">
-                    <span class="stat-label">🏆 Score Final</span>
-                    <span class="stat-value" id="final-score">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">📊 Vague atteinte</span>
-                    <span class="stat-value" id="final-wave">1</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">⬆️ Niveau atteint</span>
-                    <span class="stat-value" id="final-level">1</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">💰 Or gagné</span>
-                    <span class="stat-value" id="final-gold">0</span>
-                </div>
-            </div>
-            <button id="respawn-btn">🔄 Recommencer</button>
         </div>
 
         <div id="shop" style="display: none;">

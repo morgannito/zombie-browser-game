@@ -136,7 +136,7 @@ class AssetManager {
    */
   async loadManifest() {
     try {
-      const response = await fetch('assets/manifest.json');
+      const response = await fetch('/assets/manifest.json');
       if (!response.ok) {
         logger.debug("Aucun manifest d'assets trouve - utilisation du rendu procedural uniquement");
         return null;
@@ -147,7 +147,7 @@ class AssetManager {
         return null;
       }
       return manifest;
-    } catch (err) {
+    } catch {
       logger.debug('Erreur lors du chargement du manifest - utilisation du rendu procedural');
       return null;
     }
@@ -159,7 +159,6 @@ class AssetManager {
   async loadAllAssets() {
     logger.debug('Chargement des assets...');
 
-    // Charger d'abord le manifest pour savoir quels assets sont disponibles
     const manifest = await this.loadManifest();
     if (!manifest || !manifest.assets) {
       logger.debug('Mode rendu procedural active (aucun asset externe)');
@@ -168,63 +167,41 @@ class AssetManager {
     }
 
     this.loadingPromises = [];
+    const a = manifest.assets;
 
-    // Charger les backgrounds
-    this.assetConfig.backgrounds.forEach((filename, index) => {
-      const promise = this.loadImage(
-        `assets/images/backgrounds/${filename}`,
-        `background_${index + 1}`
-      );
-      this.loadingPromises.push(promise);
-    });
+    // Charger les assets depuis le manifest (chemins absolus)
+    const imageGroups = [
+      { section: a.backgrounds, prefix: 'bg' },
+      { section: a.tiles, prefix: 'tile' },
+      { section: a.zombies, prefix: 'zombie' },
+      { section: a.players, prefix: 'player' },
+      { section: a.items, prefix: 'item' },
+      { section: a.effects, prefix: 'effect' }
+    ];
 
-    // Charger les sprites du joueur
-    Object.entries(this.assetConfig.player).forEach(([key, filename]) => {
-      const promise = this.loadImage(`assets/images/sprites/player/${filename}`, `player_${key}`);
-      this.loadingPromises.push(promise);
-    });
+    for (const { section, prefix } of imageGroups) {
+      if (!section) {
+        continue;
+      }
+      for (const [key, path] of Object.entries(section)) {
+        this.loadingPromises.push(this.loadImage(path, `${prefix}_${key}`));
+      }
+    }
 
-    // Charger les sprites des zombies
-    Object.entries(this.assetConfig.zombies).forEach(([type, filename]) => {
-      const promise = this.loadImage(`assets/images/sprites/zombies/${filename}`, `zombie_${type}`);
-      this.loadingPromises.push(promise);
-    });
-
-    // Charger les sprites des items
-    Object.entries(this.assetConfig.items).forEach(([key, filename]) => {
-      const promise = this.loadImage(`assets/images/sprites/items/${filename}`, `item_${key}`);
-      this.loadingPromises.push(promise);
-    });
-
-    // Charger les effets
-    Object.entries(this.assetConfig.effects).forEach(([key, filename]) => {
-      const promise = this.loadImage(`assets/images/sprites/effects/${filename}`, `effect_${key}`);
-      this.loadingPromises.push(promise);
-    });
-
-    // Charger la musique
-    Object.entries(this.assetConfig.sounds.music).forEach(([key, filename]) => {
-      const promise = this.loadSound(`assets/audio/music/${filename}`, `music_${key}`);
-      this.loadingPromises.push(promise);
-    });
-
-    // Charger les effets sonores
-    Object.entries(this.assetConfig.sounds.sfx).forEach(([key, filename]) => {
-      const promise = this.loadSound(`assets/audio/sfx/${filename}`, `sfx_${key}`);
-      this.loadingPromises.push(promise);
-    });
+    // Charger les icônes SVG comme images
+    if (a.icons) {
+      for (const [key, path] of Object.entries(a.icons)) {
+        this.loadingPromises.push(this.loadImage(path, `icon_${key}`));
+      }
+    }
 
     this.totalAssets = this.loadingPromises.length;
     logger.debug(`${this.totalAssets} assets a charger...`);
 
-    // Attendre que tous les assets soient chargés (ou échouent gracieusement)
     await Promise.all(this.loadingPromises);
 
     this.loaded = true;
-    const successCount =
-      Array.from(this.images.values()).filter(img => img !== null).length +
-      Array.from(this.sounds.values()).filter(snd => snd !== null).length;
-
+    const successCount = Array.from(this.images.values()).filter(Boolean).length;
     logger.info(`Chargement termine: ${successCount}/${this.totalAssets} assets disponibles`);
 
     return this.loaded;
@@ -249,7 +226,7 @@ class AssetManager {
    */
   getRandomBackground() {
     const backgrounds = Array.from(this.images.keys())
-      .filter(key => key.startsWith('background_'))
+      .filter(key => key.startsWith('bg_'))
       .map(key => this.images.get(key))
       .filter(img => img !== null);
 
@@ -265,7 +242,7 @@ class AssetManager {
   getBackgroundByWave(waveNumber) {
     // Cycle à travers les backgrounds disponibles
     const backgroundKeys = Array.from(this.images.keys())
-      .filter(key => key.startsWith('background_'))
+      .filter(key => key.startsWith('bg_'))
       .sort();
 
     if (backgroundKeys.length === 0) {

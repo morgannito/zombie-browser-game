@@ -20,134 +20,41 @@ const {
   validateUpgradeData,
   validateBuyItemData
 } = require('../game/validationFunctions');
+const { createPlayerState } = require('./playerStateFactory');
+const {
+  disconnectedPlayers,
+  startSessionCleanupInterval,
+  stopSessionCleanupInterval,
+  normalizeSessionId,
+  sanitizePlayersState,
+  createRecoverablePlayerState,
+  restoreRecoverablePlayerState
+} = require('./sessionRecovery');
+const { checkRateLimit, cleanupRateLimits } = require('./rateLimitStore');
+const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
 
 const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS, LEVEL_UP_UPGRADES } =
   ConfigManager;
-const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
-
-/**
- * Map to store disconnected player states for recovery
- * Key: sessionId, Value: { playerState, disconnectedAt, previousSocketId, accountId }
- * States are kept for 5 minutes after disconnection
- */
-const disconnectedPlayers = new Map();
-
-/**
- * MEMORY LEAK FIX: Track the session cleanup interval for proper shutdown
- * @type {NodeJS.Timeout|null}
- */
-let sessionCleanupInterval = null;
-
-/**
- * Start the session cleanup interval
- * MEMORY LEAK FIX: Now properly tracked for cleanup
- */
-function startSessionCleanupInterval() {
-  // Clear any existing interval first
-  stopSessionCleanupInterval();
-
-  sessionCleanupInterval = setInterval(() => {
-    const now = Date.now();
-    let cleanedCount = 0;
-
-    for (const [sessionId, data] of disconnectedPlayers.entries()) {
-      if (now - data.disconnectedAt > SESSION_RECOVERY_TIMEOUT) {
-        disconnectedPlayers.delete(sessionId);
-        cleanedCount++;
-      }
-    }
-
-    if (cleanedCount > 0) {
-      logger.info('Session recovery cleanup', { cleanedCount, expiredSessions: cleanedCount });
-    }
-  }, 60000); // Check every minute
-}
-
-/**
- * Stop the session cleanup interval
- * MEMORY LEAK FIX: Cleanup function for graceful shutdown
- */
-function stopSessionCleanupInterval() {
-  if (sessionCleanupInterval) {
-    clearInterval(sessionCleanupInterval);
-    sessionCleanupInterval = null;
-  }
-}
 
 // MEMORY LEAK FIX: Auto-start the interval when module loads
-startSessionCleanupInterval();
+startSessionCleanupInterval(logger);
 
-/**
- * Rate limiting system
- */
-const rateLimits = new Map();
-
-const { RATE_LIMIT_CONFIG } = require('../config/constants');
-
-const SESSION_ID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function normalizeSessionId(sessionId) {
-  if (typeof sessionId !== 'string') {
-    return null;
+function stringifyArgPreview(value, maxLength = 200) {
+  if (typeof value === 'undefined') {
+    return 'undefined';
   }
-  const trimmed = sessionId.trim();
-  return SESSION_ID_REGEX.test(trimmed) ? trimmed : null;
-}
-
-function sanitizePlayerState(player) {
-  if (!player || typeof player !== 'object') {
-    return player;
+  if (typeof value === 'string') {
+    return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
   }
-  const sanitized = Object.assign(Object.create(null), player);
-  delete sanitized.sessionId;
-  delete sanitized.socketId;
-  delete sanitized.accountId;
-  return sanitized;
-}
-
-function sanitizePlayersState(players) {
-  const sanitized = {};
-  for (const id in players) {
-    sanitized[id] = sanitizePlayerState(players[id]);
+  try {
+    const stringified = JSON.stringify(value);
+    if (!stringified) {
+      return String(value);
+    }
+    return stringified.length > maxLength ? `${stringified.slice(0, maxLength)}...` : stringified;
+  } catch {
+    return '[unserializable-arg]';
   }
-  return sanitized;
-}
-
-function checkRateLimit(socketId, eventName) {
-  const config = RATE_LIMIT_CONFIG[eventName];
-  if (!config) {
-    return true;
-  }
-
-  const now = Date.now();
-
-  if (!rateLimits.has(socketId)) {
-    rateLimits.set(socketId, {});
-  }
-
-  const socketLimits = rateLimits.get(socketId);
-
-  if (!socketLimits[eventName] || now > socketLimits[eventName].resetTime) {
-    socketLimits[eventName] = {
-      count: 1,
-      resetTime: now + config.windowMs
-    };
-    return true;
-  }
-
-  socketLimits[eventName].count++;
-
-  if (socketLimits[eventName].count > config.maxRequests) {
-    logger.warn('Rate limit exceeded', { socketId, event: eventName, limit: config.maxRequests });
-    return false;
-  }
-
-  return true;
-}
-
-function cleanupRateLimits(socketId) {
-  rateLimits.delete(socketId);
 }
 
 /**
@@ -175,7 +82,8 @@ function safeHandler(handlerName, handler, _options = {}) {
             handler: handlerName,
             socketId: this.id,
             error: error.message,
-            stack: error.stack
+            stack: error.stack,
+            argPreview: stringifyArgPreview(args[0])
           });
           this.emit(SOCKET_EVENTS.SERVER.ERROR, {
             message: 'Une erreur est survenue sur le serveur',
@@ -191,7 +99,7 @@ function safeHandler(handlerName, handler, _options = {}) {
         socketId: this.id,
         error: error.message,
         stack: error.stack,
-        args: args.length > 0 ? JSON.stringify(args[0]).substring(0, 200) : 'no args'
+        argPreview: args.length > 0 ? stringifyArgPreview(args[0]) : 'no args'
       });
 
       // Notify client of error
@@ -254,14 +162,12 @@ function initSocketHandlers(
 
         // Restore player state with new socket ID
         const restoredAccountId = accountId || savedData.accountId || null;
-        const restoredPlayer = {
-          ...savedData.playerState,
-          id: socket.id, // Update to new socket ID
-          socketId: socket.id,
-          sessionId: sessionId, // Ensure sessionId is set
-          accountId: restoredAccountId,
-          lastActivityTime: Date.now() // Reset activity timer
-        };
+        const restoredPlayer = restoreRecoverablePlayerState(
+          savedData.playerState,
+          socket.id,
+          sessionId,
+          restoredAccountId
+        );
 
         gameState.players[socket.id] = restoredPlayer;
         disconnectedPlayers.delete(sessionId);
@@ -297,79 +203,12 @@ function initSocketHandlers(
         return;
       }
 
-      // Créer un nouveau joueur (Rogue-like)
-      // Add random spawn offset to prevent players spawning on top of each other
-      // Safe spawn zone: wallThickness + playerSize as minimum margin from walls
-      const wallThickness = CONFIG.WALL_THICKNESS || 40;
-      const playerSize = CONFIG.PLAYER_SIZE || 20;
-      const safeMargin = wallThickness + playerSize + 20; // Extra 20px safety buffer
-
-      const spawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
-      const spawnOffsetY = Math.random() * 40; // 0-40px variation (always towards center)
-
-      // Spawn Y: safeMargin from bottom wall, not too close to center
-      const spawnY = CONFIG.ROOM_HEIGHT - safeMargin - 50 - spawnOffsetY;
-
-      gameState.players[socket.id] = {
-        id: socket.id,
-        socketId: socket.id,
-        sessionId: sessionId || null, // Store sessionId for recovery tracking
-        accountId: accountId,
-        nickname: null, // Pseudo non défini au départ
-        hasNickname: false, // Le joueur n'a pas encore choisi de pseudo
-        spawnProtection: false, // Protection de spawn inactive
-        spawnProtectionEndTime: 0, // Fin de la protection
-        invisible: false, // Invisibilité après upgrade ou lors du level up
-        invisibleEndTime: 0, // Fin de l'invisibilité
-        lastActivityTime: Date.now(), // Pour détecter l'inactivité
-        x: CONFIG.ROOM_WIDTH / 2 + spawnOffsetX,
-        y: spawnY,
-        health: CONFIG.PLAYER_MAX_HEALTH,
-        maxHealth: CONFIG.PLAYER_MAX_HEALTH,
-        level: 1,
-        xp: 0,
-        gold: 0,
-        score: 0,
-        alive: true,
-        angle: 0,
-        weapon: 'pistol',
-        lastShot: 0,
-        speedBoost: null,
-        weaponTimer: null,
-        // Système de combos et score
-        kills: 0,
-        zombiesKilled: 0,
-        combo: 0,
-        comboTimer: 0,
-        highestCombo: 0,
-        totalScore: 0,
-        survivalTime: Date.now(),
-        // Upgrades permanents (shop)
-        upgrades: {
-          maxHealth: 0,
-          damage: 0,
-          speed: 0,
-          fireRate: 0
-        },
-        damageMultiplier: 1,
-        speedMultiplier: 1,
-        fireRateMultiplier: 1,
-        // Stats des upgrades de level-up
-        regeneration: 0,
-        bulletPiercing: 0,
-        lifeSteal: 0,
-        criticalChance: 0,
-        goldMagnetRadius: 0,
-        dodgeChance: 0,
-        explosiveRounds: 0,
-        explosionRadius: 0,
-        explosionDamagePercent: 0,
-        extraBullets: 0,
-        thorns: 0,
-        lastRegenTick: Date.now(),
-        autoTurrets: 0,
-        lastAutoShot: Date.now()
-      };
+      gameState.players[socket.id] = createPlayerState(
+        CONFIG,
+        socket.id,
+        sessionId || null,
+        accountId
+      );
     }
 
     // Apply skill bonuses from account progression (if player has account ID)
@@ -923,7 +762,11 @@ function registerBuyItemHandler(socket, gameState) {
   socket.on(
     SOCKET_EVENTS.CLIENT.BUY_ITEM,
     safeHandler('buyItem', function (data) {
-      console.log('[Shop Server] Buy item request received:', data, 'from socket:', socket.id);
+      logger.debug('Shop purchase request', {
+        socketId: socket.id,
+        itemId: data?.itemId,
+        category: data?.category
+      });
 
       // VALIDATION: Vérifier et sanitize les données d'entrée
       const validatedData = validateBuyItemData(data);
@@ -938,21 +781,20 @@ function registerBuyItemHandler(socket, gameState) {
 
       // Rate limiting
       if (!checkRateLimit(socket.id, 'buyItem')) {
-        console.log('[Shop Server] Rate limit exceeded for socket:', socket.id);
+        logger.warn('Shop purchase rate limited', { socketId: socket.id });
         return;
       }
 
       const player = gameState.players[socket.id];
       if (!player || !player.alive || !player.hasNickname) {
-        console.log('[Shop Server] Player not valid:', {
+        logger.debug('Shop purchase ignored - invalid player state', {
+          socketId: socket.id,
           exists: !!player,
           alive: player?.alive,
           hasNickname: player?.hasNickname
         });
         return;
       }
-
-      console.log('[Shop Server] Player gold before purchase:', player.gold);
 
       player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
@@ -998,14 +840,13 @@ function registerBuyItemHandler(socket, gameState) {
         // Appliquer l'effet
         item.effect(player);
 
-        console.log(
-          '[Shop Server] Permanent item purchased successfully:',
+        logger.info('Shop purchase completed', {
+          socketId: socket.id,
+          category,
           itemId,
-          'New level:',
-          player.upgrades[itemId],
-          'Gold remaining:',
-          player.gold
-        );
+          newLevel: player.upgrades[itemId],
+          remainingGold: player.gold
+        });
         socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
       } else if (category === 'temporary') {
         const item = SHOP_ITEMS.temporary[itemId];
@@ -1030,12 +871,12 @@ function registerBuyItemHandler(socket, gameState) {
         // Appliquer l'effet
         item.effect(player);
 
-        console.log(
-          '[Shop Server] Temporary item purchased successfully:',
+        logger.info('Shop purchase completed', {
+          socketId: socket.id,
+          category,
           itemId,
-          'Gold remaining:',
-          player.gold
-        );
+          remainingGold: player.gold
+        });
         socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
       }
     })
@@ -1231,57 +1072,7 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId, 
       if (sessionId && accountId && player) {
         // Only save state if player has actually started playing (has nickname)
         if (player.hasNickname && player.alive) {
-          // Create a safe copy of player state (avoiding circular references)
-          const playerStateCopy = {
-            id: player.id,
-            accountId: accountId,
-            nickname: player.nickname,
-            hasNickname: player.hasNickname,
-            spawnProtection: player.spawnProtection,
-            spawnProtectionEndTime: player.spawnProtectionEndTime,
-            invisible: player.invisible,
-            invisibleEndTime: player.invisibleEndTime,
-            lastActivityTime: player.lastActivityTime,
-            x: player.x,
-            y: player.y,
-            health: player.health,
-            maxHealth: player.maxHealth,
-            level: player.level,
-            xp: player.xp,
-            gold: player.gold,
-            score: player.score,
-            alive: player.alive,
-            angle: player.angle,
-            weapon: player.weapon,
-            lastShot: player.lastShot,
-            speedBoost: player.speedBoost,
-            weaponTimer: player.weaponTimer,
-            kills: player.kills,
-            zombiesKilled: player.zombiesKilled,
-            combo: player.combo,
-            comboTimer: player.comboTimer,
-            highestCombo: player.highestCombo,
-            totalScore: player.totalScore,
-            survivalTime: player.survivalTime,
-            upgrades: { ...player.upgrades },
-            damageMultiplier: player.damageMultiplier,
-            speedMultiplier: player.speedMultiplier,
-            fireRateMultiplier: player.fireRateMultiplier,
-            regeneration: player.regeneration,
-            bulletPiercing: player.bulletPiercing,
-            lifeSteal: player.lifeSteal,
-            criticalChance: player.criticalChance,
-            goldMagnetRadius: player.goldMagnetRadius,
-            dodgeChance: player.dodgeChance,
-            explosiveRounds: player.explosiveRounds,
-            explosionRadius: player.explosionRadius,
-            explosionDamagePercent: player.explosionDamagePercent,
-            extraBullets: player.extraBullets,
-            thorns: player.thorns,
-            lastRegenTick: player.lastRegenTick,
-            autoTurrets: player.autoTurrets,
-            lastAutoShot: player.lastAutoShot
-          };
+          const playerStateCopy = createRecoverablePlayerState(player);
 
           disconnectedPlayers.set(sessionId, {
             playerState: playerStateCopy,

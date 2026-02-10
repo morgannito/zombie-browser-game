@@ -217,7 +217,7 @@ async function deploy() {
     try {
       await runCommand('lsof -i:3000');
       log('Server is running on port 3000');
-    } catch (err) {
+    } catch {
       log('Warning: Could not verify server is running');
     }
 

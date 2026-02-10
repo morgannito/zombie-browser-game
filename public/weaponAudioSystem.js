@@ -68,7 +68,9 @@ class WeaponAudioSystem {
       if (oldest) {
         try {
           oldest.stop();
-        } catch (e) { /* already stopped */ }
+        } catch {
+          /* already stopped */
+        }
         this.activeNodes.delete(oldest);
       }
     }
@@ -132,7 +134,7 @@ class WeaponAudioSystem {
     if (distance >= maxDistance) {
       return 0;
     }
-    return Math.max(0, 1 - (distance / maxDistance));
+    return Math.max(0, 1 - distance / maxDistance);
   }
 
   /**
@@ -192,9 +194,12 @@ class WeaponAudioSystem {
     }, 10);
 
     // Shell casing
-    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
-      this.playShellCasing(attenuation * 0.5);
-    }, 200 + Math.random() * 100);
+    (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(
+      () => {
+        this.playShellCasing(attenuation * 0.5);
+      },
+      200 + Math.random() * 100
+    );
 
     this.cleanupNode(blast, 0.15);
   }
@@ -318,10 +323,14 @@ class WeaponAudioSystem {
     blast.stop(now + 0.05);
 
     // Shell casing plus discret
-    if (Math.random() > 0.7) { // Pas à chaque coup
-      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(() => {
-        this.playShellCasing(attenuation * 0.3, 'rifle');
-      }, 50 + Math.random() * 50);
+    if (Math.random() > 0.7) {
+      // Pas à chaque coup
+      (window.setManagedTimeout ? window.setManagedTimeout : setTimeout)(
+        () => {
+          this.playShellCasing(attenuation * 0.3, 'rifle');
+        },
+        50 + Math.random() * 50
+      );
     }
 
     this.cleanupNode(blast, 0.08);
@@ -631,7 +640,7 @@ class WeaponAudioSystem {
     this.activeNodes.forEach(node => {
       try {
         node.stop();
-      } catch (e) {
+      } catch {
         // Already stopped
       }
     });

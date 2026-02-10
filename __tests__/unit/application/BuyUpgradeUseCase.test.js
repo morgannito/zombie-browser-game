@@ -154,7 +154,7 @@ describe('BuyUpgradeUseCase', () => {
           upgradeName: 'invalid',
           cost: 100
         });
-      } catch (_) {
+      } catch {
         // expected
       }
 
@@ -209,7 +209,7 @@ describe('BuyUpgradeUseCase', () => {
           upgradeName: 'maxHealth',
           cost: 999
         });
-      } catch (_) {
+      } catch {
         // expected
       }
 

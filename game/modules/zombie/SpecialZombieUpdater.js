@@ -7,7 +7,33 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
 
-const { ZOMBIE_TYPES } = ConfigManager;
+const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+
+function clampToRoomBounds(zombie, x, y) {
+  const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
+  return {
+    x: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
+    y: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
+  };
+}
+
+function canPlaceZombieAt(zombie, x, y, gameState) {
+  const roomManager = gameState?.roomManager;
+  if (!roomManager) {
+    return true;
+  }
+  return !roomManager.checkWallCollision(x, y, zombie.size);
+}
+
+function moveZombieSafely(zombie, targetX, targetY, gameState) {
+  const clamped = clampToRoomBounds(zombie, targetX, targetY);
+  if (!canPlaceZombieAt(zombie, clamped.x, clamped.y, gameState)) {
+    return false;
+  }
+  zombie.x = clamped.x;
+  zombie.y = clamped.y;
+  return true;
+}
 
 /**
  * Update teleporter zombie
@@ -19,10 +45,10 @@ function updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityM
 
   const teleporterType = ZOMBIE_TYPES.teleporter;
   if (!zombie.lastTeleport || now - zombie.lastTeleport >= teleporterType.teleportCooldown) {
-    const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, Infinity,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
+    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, {
+      ignoreSpawnProtection: true,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       const distToPlayer = distance(zombie.x, zombie.y, closestPlayer.x, closestPlayer.y);
@@ -41,17 +67,17 @@ function executeTeleport(zombie, closestPlayer, teleporterType, now, gameState, 
   zombie.lastTeleport = now;
 
   const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
-  const teleportDistance = teleporterType.teleportMinRange +
+  const teleportDistance =
+    teleporterType.teleportMinRange +
     Math.random() * (teleporterType.teleportRange - teleporterType.teleportMinRange);
 
   const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
   const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
 
-  const roomManager = gameState.roomManager;
-  if (roomManager && !roomManager.checkWallCollision(newX, newY, zombie.size)) {
-    createParticles(zombie.x, zombie.y, teleporterType.color, 15, entityManager);
-    zombie.x = newX;
-    zombie.y = newY;
+  const oldX = zombie.x;
+  const oldY = zombie.y;
+  if (moveZombieSafely(zombie, newX, newY, gameState)) {
+    createParticles(oldX, oldY, teleporterType.color, 15, entityManager);
     createParticles(zombie.x, zombie.y, teleporterType.color, 15, entityManager);
   }
 }
@@ -90,14 +116,24 @@ function countMinions(zombie, zombieId, gameState) {
  * Check if summoner should spawn minions
  */
 function shouldSpawnMinions(zombie, currentMinions, summonerType, now) {
-  return currentMinions < summonerType.maxMinions &&
-    (!zombie.lastSummon || now - zombie.lastSummon >= summonerType.summonCooldown);
+  return (
+    currentMinions < summonerType.maxMinions &&
+    (!zombie.lastSummon || now - zombie.lastSummon >= summonerType.summonCooldown)
+  );
 }
 
 /**
  * Spawn minions for summoner
  */
-function spawnMinions(zombie, zombieId, currentMinions, summonerType, zombieManager, entityManager, now) {
+function spawnMinions(
+  zombie,
+  zombieId,
+  currentMinions,
+  summonerType,
+  zombieManager,
+  entityManager,
+  now
+) {
   zombie.lastSummon = now;
 
   const minionsToSpawn = Math.min(
@@ -187,11 +223,14 @@ function updateDashAbility(zombie, now, berserkerType, collisionManager, entityM
     zombie.isDashing = false;
   }
 
-  if (!zombie.isDashing && (!zombie.lastDash || now - zombie.lastDash >= berserkerType.dashCooldown)) {
-    const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, 400,
-      { ignoreSpawnProtection: false, ignoreInvisible: false }
-    );
+  if (
+    !zombie.isDashing &&
+    (!zombie.lastDash || now - zombie.lastDash >= berserkerType.dashCooldown)
+  ) {
+    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, 400, {
+      ignoreSpawnProtection: false,
+      ignoreInvisible: false
+    });
 
     if (closestPlayer) {
       startDash(zombie, closestPlayer, now, berserkerType, entityManager);
@@ -251,11 +290,18 @@ function reviveNearbyZombies(zombie, necroType, gameState, entityManager) {
     const corpse = gameState.deadZombies[corpseId];
 
     const revivedId = gameState.nextZombieId++;
+    const revivedSize = corpse.size * 0.8;
+    const revivedProbe = { size: revivedSize };
+    const revivedPos = clampToRoomBounds(revivedProbe, corpse.x, corpse.y);
+    if (!canPlaceZombieAt(revivedProbe, revivedPos.x, revivedPos.y, gameState)) {
+      continue;
+    }
+
     gameState.zombies[revivedId] = {
       id: revivedId,
-      x: corpse.x,
-      y: corpse.y,
-      size: corpse.size * 0.8,
+      x: revivedPos.x,
+      y: revivedPos.y,
+      size: revivedSize,
       color: '#44ff44',
       type: 'revivedMinion',
       health: corpse.maxHealth * necroType.reviveHealthPercent,
@@ -286,7 +332,9 @@ function updateBruteZombie(zombie, zombieId, now, collisionManager, entityManage
 
   if (!zombie.lastGroundSlam || now - zombie.lastGroundSlam >= bruteType.slamCooldown) {
     const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x, zombie.y, bruteType.slamRange,
+      zombie.x,
+      zombie.y,
+      bruteType.slamRange,
       { ignoreSpawnProtection: false, ignoreInvisible: false }
     );
 

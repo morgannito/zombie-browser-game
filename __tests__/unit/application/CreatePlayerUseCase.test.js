@@ -113,7 +113,7 @@ describe('CreatePlayerUseCase', () => {
     it('should not call repository when validation fails', async () => {
       try {
         await useCase.execute({ id: null, username: null });
-      } catch (_) {
+      } catch {
         // expected
       }
 
@@ -158,7 +158,7 @@ describe('CreatePlayerUseCase', () => {
 
       try {
         await useCase.execute({ id: 'p-1', username: 'Taken' });
-      } catch (_) {
+      } catch {
         // expected
       }
 

@@ -1,20 +1,16 @@
 -- ================================================================================================
--- ROLLBACK 002: Account Progression
--- Drops account_progression, skill_tree, related trigger, view, and indexes
+-- ROLLBACK 002: Account Progression + Skill Tree + Achievement Tables
+-- Drops tables/indexes created by 002 migration.
 -- ================================================================================================
 
--- Drop view first (depends on tables)
-DROP VIEW IF EXISTS v_player_with_progression;
+DROP INDEX IF EXISTS idx_achievement_unlocked;
+DROP INDEX IF EXISTS idx_player_achievements;
+DROP INDEX IF EXISTS idx_skill_tier;
+DROP INDEX IF EXISTS idx_skill_category;
+DROP INDEX IF EXISTS idx_progression_prestige;
+DROP INDEX IF EXISTS idx_progression_level;
 
--- Drop trigger
-DROP TRIGGER IF EXISTS tr_init_account_progression;
-
--- Drop indexes (explicit drop for non-IF-NOT-EXISTS indexes)
-DROP INDEX IF EXISTS idx_account_progression_level;
-DROP INDEX IF EXISTS idx_account_progression_prestige;
-DROP INDEX IF EXISTS idx_skill_tree_category;
-DROP INDEX IF EXISTS idx_skill_tree_tier;
-
--- Drop tables
+DROP TABLE IF EXISTS player_achievements;
+DROP TABLE IF EXISTS achievements;
 DROP TABLE IF EXISTS skill_tree;
 DROP TABLE IF EXISTS account_progression;

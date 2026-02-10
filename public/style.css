@@ -444,32 +444,153 @@ body {
 /* ============================================
    GAME OVER SCREEN
    ============================================ */
+/* === RESIDENT EVIL DEATH SCREEN === */
+@keyframes re-fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes re-titleReveal {
+  0% { opacity: 0; letter-spacing: 30px; filter: blur(10px); }
+  50% { opacity: 0.7; letter-spacing: 15px; filter: blur(3px); }
+  100% { opacity: 1; letter-spacing: 8px; filter: blur(0); }
+}
+
+@keyframes re-bloodDrip {
+  0% { transform: scaleY(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0.8; }
+}
+
+@keyframes re-lineSweep {
+  0% { width: 0; opacity: 0; }
+  100% { width: 80%; opacity: 1; }
+}
+
+@keyframes re-statsSlide {
+  0% { transform: translateY(30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes re-bloodPulse {
+  0%, 100% { box-shadow: inset 0 0 100px rgba(120, 0, 0, 0.4); }
+  50% { box-shadow: inset 0 0 150px rgba(120, 0, 0, 0.6); }
+}
+
+@keyframes re-vignette {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 #game-over {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: auto;
+  animation: re-fadeIn 0.8s ease-out forwards;
+}
+
+.re-death-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center,
+    rgba(30, 0, 0, 0.85) 0%,
+    rgba(10, 0, 0, 0.95) 60%,
+    rgba(0, 0, 0, 0.98) 100%
+  );
+  animation: re-bloodPulse 3s ease-in-out infinite, re-vignette 1.5s ease-out forwards;
+}
+
+.re-death-content {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  /* Fallback for browsers that don't support backdrop-filter */
-  background: linear-gradient(135deg, rgba(20, 0, 0, 0.98) 0%, rgba(40, 0, 0, 0.95) 100%);
-  padding: var(--space-2xl);
-  border-radius: var(--radius-xl);
-  border: 3px solid var(--color-danger);
-  pointer-events: auto;
-  z-index: 9999; /* Au-dessus de tous les widgets addiction */
-  -webkit-backdrop-filter: blur(15px);
-  backdrop-filter: blur(15px);
-  min-width: 350px;
+  width: 90%;
   max-width: 500px;
-  box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
 }
 
-.game-over-header h1 {
-  color: var(--color-danger);
-  font-size: var(--font-4xl);
-  margin-bottom: var(--space-sm);
-  text-shadow: 0 0 20px var(--color-danger), 0 0 40px rgba(255, 0, 0, 0.5);
-  animation: pulse 2s ease-in-out infinite;
+.re-blood-drip {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 100px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(139, 0, 0, 0.8) 30%,
+    rgba(120, 0, 0, 0.6) 100%
+  );
+  transform-origin: top;
+  animation: re-bloodDrip 1.2s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+.re-death-title {
+  margin-bottom: 8px;
+  user-select: none;
+}
+
+.re-you {
+  display: block;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 8px;
+  color: #8b8b8b;
+  text-transform: uppercase;
+  animation: re-titleReveal 1.5s ease-out 0.5s both;
+}
+
+.re-died {
+  display: block;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: #8b0000;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 20px rgba(139, 0, 0, 0.8),
+    0 0 40px rgba(139, 0, 0, 0.4),
+    0 0 80px rgba(139, 0, 0, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.8);
+  animation: re-titleReveal 2s ease-out 0.8s both;
+}
+
+.re-death-subtitle {
+  font-family: 'Georgia', serif;
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+  letter-spacing: 3px;
+  margin-bottom: 20px;
+  animation: re-fadeIn 1s ease-out 2s both;
+}
+
+.re-death-line {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(139, 0, 0, 0.6) 20%,
+    rgba(139, 0, 0, 0.8) 50%,
+    rgba(139, 0, 0, 0.6) 80%,
+    transparent 100%
+  );
+  margin: 0 auto 25px;
+  animation: re-lineSweep 1.5s ease-out 2.2s both;
+}
+
+#game-over .game-over-stats {
+  animation: re-statsSlide 0.8s ease-out 2.5s both;
 }
 
 .game-over-subtitle {
@@ -480,11 +601,12 @@ body {
 }
 
 .game-over-stats {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  margin-bottom: var(--space-xl);
-  border: 1px solid rgba(255, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 0;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(139, 0, 0, 0.3);
+  border-left: 3px solid rgba(139, 0, 0, 0.6);
 }
 
 .stat-row {
@@ -508,15 +630,17 @@ body {
 }
 
 .stat-row.main-stat {
-  background: rgba(255, 215, 0, 0.1);
-  border: 2px solid rgba(255, 215, 0, 0.4);
+  background: rgba(139, 0, 0, 0.15);
+  border: 1px solid rgba(139, 0, 0, 0.4);
+  border-left: 3px solid #8b0000;
   padding: var(--space-md);
 }
 
 .stat-row.main-stat .stat-value {
   font-size: var(--font-2xl);
-  color: var(--color-accent);
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  color: #cc3333;
+  text-shadow: 0 0 10px rgba(139, 0, 0, 0.6);
+  font-family: 'Georgia', serif;
 }
 
 .stat-label {
@@ -532,28 +656,36 @@ body {
 }
 
 #respawn-btn {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  color: #000;
-  border: none;
-  padding: var(--space-md) var(--space-2xl);
-  font-size: var(--font-xl);
-  font-weight: bold;
-  border-radius: var(--radius-lg);
+  background: transparent;
+  color: #8b0000;
+  border: 2px solid #8b0000;
+  padding: 14px 50px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  border-radius: 0;
   cursor: pointer;
-  transition: all var(--transition-base);
-  transform: translateZ(0);
-  width: 100%;
-  box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+  transition: all 0.4s ease;
+  width: auto;
+  margin-top: 10px;
+  animation: re-fadeIn 0.8s ease-out 3s both;
+  box-shadow: none;
 }
 
 #respawn-btn:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-darker) 100%);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0, 255, 0, 0.6);
+  background: rgba(139, 0, 0, 0.2);
+  color: #cc0000;
+  border-color: #cc0000;
+  letter-spacing: 8px;
+  box-shadow: 0 0 30px rgba(139, 0, 0, 0.3);
+  transform: none;
 }
 
 #respawn-btn:active {
-  transform: translateY(-1px);
+  background: rgba(139, 0, 0, 0.4);
+  transform: scale(0.98);
 }
 
 /* ============================================

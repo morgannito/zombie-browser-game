@@ -68,8 +68,8 @@ class AssetDownloader {
   }
 
   /**
-     * Crée les dossiers nécessaires
-     */
+   * Crée les dossiers nécessaires
+   */
   async createDirectories() {
     const dirs = [
       this.tempDir,
@@ -92,8 +92,8 @@ class AssetDownloader {
   }
 
   /**
-     * Télécharge un fichier depuis une URL
-     */
+   * Télécharge un fichier depuis une URL
+   */
   downloadFile(url, destPath) {
     return new Promise((resolve, reject) => {
       const protocol = url.startsWith('https') ? https : http;
@@ -109,15 +109,13 @@ class AssetDownloader {
 
       const file = fs.createWriteStream(destPath);
 
-      const request = protocol.get(url, (response) => {
+      const request = protocol.get(url, response => {
         // Gérer les redirections
         if (response.statusCode === 301 || response.statusCode === 302) {
           console.log(`   Redirection vers: ${response.headers.location}`);
           file.close();
           fs.unlinkSync(destPath);
-          this.downloadFile(response.headers.location, destPath)
-            .then(resolve)
-            .catch(reject);
+          this.downloadFile(response.headers.location, destPath).then(resolve).catch(reject);
           return;
         }
 
@@ -137,7 +135,7 @@ class AssetDownloader {
         });
       });
 
-      request.on('error', (err) => {
+      request.on('error', err => {
         file.close();
         if (fs.existsSync(destPath)) {
           fs.unlinkSync(destPath);
@@ -145,7 +143,7 @@ class AssetDownloader {
         reject(err);
       });
 
-      file.on('error', (err) => {
+      file.on('error', err => {
         file.close();
         if (fs.existsSync(destPath)) {
           fs.unlinkSync(destPath);
@@ -156,20 +154,20 @@ class AssetDownloader {
   }
 
   /**
-     * Vérifie si unzip est disponible
-     */
+   * Vérifie si unzip est disponible
+   */
   async checkUnzipAvailable() {
     try {
       await execAsync('which unzip');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
   /**
-     * Extrait un fichier ZIP
-     */
+   * Extrait un fichier ZIP
+   */
   async extractZip(zipPath, destDir) {
     const hasUnzip = await this.checkUnzipAvailable();
 
@@ -191,8 +189,8 @@ class AssetDownloader {
   }
 
   /**
-     * Organise les fichiers Kenney dans la structure correcte
-     */
+   * Organise les fichiers Kenney dans la structure correcte
+   */
   async organizeKenneyAssets() {
     const tempExtracted = path.join(this.tempDir, 'extracted');
 
@@ -238,22 +236,34 @@ class AssetDownloader {
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'zombies', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Zombie: ${destName}`);
-      } else if (fileName.includes('soldier') || fileName.includes('player') ||
-                 fileName.includes('man') || fileName.includes('character')) {
+      } else if (
+        fileName.includes('soldier') ||
+        fileName.includes('player') ||
+        fileName.includes('man') ||
+        fileName.includes('character')
+      ) {
         // Player/Soldier/Character
         const destName = `player_kenney_${++playerCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'player', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Player: ${destName}`);
-      } else if (fileName.includes('coin') || fileName.includes('health') ||
-                 fileName.includes('heart') || fileName.includes('item')) {
+      } else if (
+        fileName.includes('coin') ||
+        fileName.includes('health') ||
+        fileName.includes('heart') ||
+        fileName.includes('item')
+      ) {
         // Items (coins, health, etc)
         const destName = `item_kenney_${++itemCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'sprites', 'items', destName);
         fs.copyFileSync(filePath, destPath);
         console.log(`   ✓ Item: ${destName}`);
-      } else if (fileName.includes('tile') || fileName.includes('floor') ||
-                 fileName.includes('ground') || fileName.includes('background')) {
+      } else if (
+        fileName.includes('tile') ||
+        fileName.includes('floor') ||
+        fileName.includes('ground') ||
+        fileName.includes('background')
+      ) {
         // Backgrounds/Tiles
         const destName = `bg_kenney_${++bgCount}.png`;
         const destPath = path.join(this.assetsDir, 'images', 'backgrounds', destName);
@@ -262,12 +272,14 @@ class AssetDownloader {
       }
     });
 
-    console.log(`✅ Assets organisés: ${zombieCount} zombies, ${playerCount} joueurs, ${bgCount} backgrounds, ${itemCount} items`);
+    console.log(
+      `✅ Assets organisés: ${zombieCount} zombies, ${playerCount} joueurs, ${bgCount} backgrounds, ${itemCount} items`
+    );
   }
 
   /**
-     * Télécharge tous les assets Kenney
-     */
+   * Télécharge tous les assets Kenney
+   */
   async downloadKenneyAssets() {
     console.log('\n🎨 Téléchargement des assets Kenney.nl...');
 
@@ -297,8 +309,8 @@ class AssetDownloader {
   }
 
   /**
-     * Télécharge les assets directs
-     */
+   * Télécharge les assets directs
+   */
   async downloadDirectAssets() {
     console.log('\n🖼️  Téléchargement des assets directs...');
 
@@ -317,8 +329,8 @@ class AssetDownloader {
   }
 
   /**
-     * Renomme les assets Kenney pour correspondre aux types de zombies
-     */
+   * Renomme les assets Kenney pour correspondre aux types de zombies
+   */
   async mapZombiesToTypes() {
     console.log('\n🧟 Mapping des zombies aux types du jeu...');
 
@@ -330,7 +342,17 @@ class AssetDownloader {
       return;
     }
 
-    const zombieTypes = ['normal', 'fast', 'tank', 'explosive', 'healer', 'slower', 'poison', 'shooter', 'boss'];
+    const zombieTypes = [
+      'normal',
+      'fast',
+      'tank',
+      'explosive',
+      'healer',
+      'slower',
+      'poison',
+      'shooter',
+      'boss'
+    ];
 
     // Mapper les fichiers aux types
     zombieTypes.forEach((type, index) => {
@@ -349,8 +371,8 @@ class AssetDownloader {
   }
 
   /**
-     * Crée des backgrounds par tuiles si on a des tiles
-     */
+   * Crée des backgrounds par tuiles si on a des tiles
+   */
   async createTiledBackgrounds() {
     console.log('\n🎨 Création de backgrounds à partir des tuiles...');
 
@@ -374,8 +396,8 @@ class AssetDownloader {
   }
 
   /**
-     * Sélectionne le meilleur sprite de joueur
-     */
+   * Sélectionne le meilleur sprite de joueur
+   */
   async selectPlayerSprite() {
     console.log('\n👤 Sélection du sprite joueur...');
 
@@ -399,8 +421,8 @@ class AssetDownloader {
   }
 
   /**
-     * Nettoie les fichiers temporaires
-     */
+   * Nettoie les fichiers temporaires
+   */
   async cleanup() {
     console.log('\n🧹 Nettoyage des fichiers temporaires...');
 
@@ -411,8 +433,8 @@ class AssetDownloader {
   }
 
   /**
-     * Génère un rapport
-     */
+   * Génère un rapport
+   */
   generateReport() {
     console.log('\n📊 RAPPORT DE TÉLÉCHARGEMENT');
     console.log('═══════════════════════════════════════');
@@ -431,12 +453,15 @@ class AssetDownloader {
     const playerDir = path.join(this.assetsDir, 'images', 'sprites', 'player');
     const bgDir = path.join(this.assetsDir, 'images', 'backgrounds');
 
-    const zombieCount = fs.existsSync(zombieDir) ?
-      fs.readdirSync(zombieDir).filter(f => f.startsWith('zombie_') && f.endsWith('.png')).length : 0;
-    const playerCount = fs.existsSync(playerDir) ?
-      fs.readdirSync(playerDir).filter(f => f.startsWith('player_') && f.endsWith('.png')).length : 0;
-    const bgCount = fs.existsSync(bgDir) ?
-      fs.readdirSync(bgDir).filter(f => f.startsWith('background_') && f.endsWith('.png')).length : 0;
+    const zombieCount = fs.existsSync(zombieDir)
+      ? fs.readdirSync(zombieDir).filter(f => f.startsWith('zombie_') && f.endsWith('.png')).length
+      : 0;
+    const playerCount = fs.existsSync(playerDir)
+      ? fs.readdirSync(playerDir).filter(f => f.startsWith('player_') && f.endsWith('.png')).length
+      : 0;
+    const bgCount = fs.existsSync(bgDir)
+      ? fs.readdirSync(bgDir).filter(f => f.startsWith('background_') && f.endsWith('.png')).length
+      : 0;
 
     console.log('\nAssets disponibles:');
     console.log(`   🧟 Zombies: ${zombieCount}/9 types`);
@@ -450,14 +475,14 @@ class AssetDownloader {
       console.log('\n💡 Lancez le serveur pour voir les nouveaux assets:');
       console.log('   node server.js');
     } else {
-      console.log('⚠️  Aucun asset n\'a pu être téléchargé');
+      console.log("⚠️  Aucun asset n'a pu être téléchargé");
       console.log('\n💡 Vérifiez votre connexion internet et réessayez');
     }
   }
 
   /**
-     * Exécute le téléchargement complet
-     */
+   * Exécute le téléchargement complet
+   */
   async run() {
     console.log('🚀 TÉLÉCHARGEMENT AUTOMATIQUE DES ASSETS');
     console.log('═══════════════════════════════════════\n');
@@ -482,7 +507,6 @@ class AssetDownloader {
 
       // Rapport final
       this.generateReport();
-
     } catch (error) {
       console.error('\n❌ ERREUR CRITIQUE:', error);
       process.exit(1);

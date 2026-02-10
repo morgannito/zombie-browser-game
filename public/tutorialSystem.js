@@ -35,7 +35,7 @@ class TutorialSystem {
       },
       {
         title: 'Expérience',
-        text: 'Tuez des zombies pour gagner de l\'XP et monter de niveau',
+        text: "Tuez des zombies pour gagner de l'XP et monter de niveau",
         highlight: '#xp-container',
         condition: () => this.checkLevel(),
         skipDelay: 5000
@@ -122,14 +122,19 @@ class TutorialSystem {
     }
 
     // Listen for game events
-    document.addEventListener('keydown', (e) => {
-      if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(e.key.toLowerCase())) {
+    document.addEventListener('keydown', e => {
+      if (
+        ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
+          e.key.toLowerCase()
+        )
+      ) {
         this.movementDetected = true;
       }
     });
 
-    document.addEventListener('mousedown', (e) => {
-      if (e.button === 0) { // Left click
+    document.addEventListener('mousedown', e => {
+      if (e.button === 0) {
+        // Left click
         this.shootingDetected = true;
       }
     });
@@ -493,7 +498,7 @@ class TutorialSystem {
   checkCompletion() {
     try {
       return localStorage.getItem(this.storageKey) === 'true';
-    } catch (err) {
+    } catch {
       return false;
     }
   }

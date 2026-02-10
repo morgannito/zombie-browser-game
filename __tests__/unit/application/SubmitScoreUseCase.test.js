@@ -184,7 +184,7 @@ describe('SubmitScoreUseCase', () => {
           kills: -1,
           survivalTime: -1
         });
-      } catch (_) {
+      } catch {
         // expected
       }
 
@@ -219,7 +219,7 @@ describe('SubmitScoreUseCase', () => {
           kills: 1,
           survivalTime: 10
         });
-      } catch (_) {
+      } catch {
         // expected
       }
 

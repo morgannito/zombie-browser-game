@@ -29,13 +29,13 @@ class OptimizedAudioCore {
     // Sound throttling - prevents sound spam
     this.lastPlayTime = new Map(); // soundType -> timestamp
     this.throttleConfig = {
-      shoot: 40,           // 25 shots/sec max
-      hit: 30,             // 33 hits/sec max
-      machinegun: 25,      // Rapid fire
-      zombieDeath: 80,     // ~12/sec
-      explosion: 200,      // 5/sec
-      collect: 100,        // 10/sec
-      ui: 50,              // 20/sec
+      shoot: 40, // 25 shots/sec max
+      hit: 30, // 33 hits/sec max
+      machinegun: 25, // Rapid fire
+      zombieDeath: 80, // ~12/sec
+      explosion: 200, // 5/sec
+      collect: 100, // 10/sec
+      ui: 50, // 20/sec
       default: 50
     };
 
@@ -195,7 +195,9 @@ class OptimizedAudioCore {
       node._inUse = false;
       try {
         node.disconnect();
-      } catch (e) { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -284,7 +286,7 @@ class OptimizedAudioCore {
     this.soundsPerType.set(type, typeCount + 1);
 
     // Schedule automatic cleanup
-    const cleanupTime = (duration * 1000) + 100;
+    const cleanupTime = duration * 1000 + 100;
     (window.setManagedTimeout || setTimeout)(() => {
       this.unregisterSound(id);
     }, cleanupTime);
@@ -330,7 +332,9 @@ class OptimizedAudioCore {
     if (sound.nodes && sound.nodes.oscillator) {
       try {
         sound.nodes.oscillator.stop();
-      } catch (e) { /* already stopped */ }
+      } catch {
+        /* already stopped */
+      }
     }
 
     this.unregisterSound(id);
@@ -432,11 +436,15 @@ class OptimizedAudioCore {
     oscillator.stop(now + duration + 0.01);
 
     // Register for tracking
-    const soundId = this.registerSound(type, {
-      oscillator,
-      gain: gainNode,
-      filter: filterNode
-    }, duration);
+    const soundId = this.registerSound(
+      type,
+      {
+        oscillator,
+        gain: gainNode,
+        filter: filterNode
+      },
+      duration
+    );
 
     return soundId;
   }

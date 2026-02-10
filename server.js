@@ -44,6 +44,7 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // IMPORTS - Middleware
 // ============================================
 const { requestIdMiddleware } = require('./middleware/requestId');
+const { accessLogMiddleware } = require('./middleware/accessLog');
 const { getSocketIOCorsConfig } = require('./middleware/cors');
 const {
   configureHelmet,
@@ -166,6 +167,7 @@ memoryMonitor.start();
 
 // Request ID (before all other middleware for tracing)
 app.use(requestIdMiddleware);
+app.use(accessLogMiddleware);
 
 // HTTP compression (before all routes and static files)
 app.use(compression());
@@ -181,6 +183,17 @@ app.use('/shared', express.static('shared'));
 
 // Static files with cache headers
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Game assets (sprites, tiles, icons, backgrounds)
+app.use(
+  '/assets',
+  express.static('assets', {
+    maxAge: isProduction ? '7d' : 0,
+    etag: true,
+    immutable: isProduction,
+    fallthrough: false
+  })
+);
 app.use(
   express.static('public', {
     maxAge: isProduction ? '1d' : 0,
@@ -244,6 +257,7 @@ async function startServer() {
 
   // Initialize JWT service
   const jwtService = new JwtService(logger);
+  const requireAuth = jwtService.expressMiddleware();
 
   // ============================================
   // API ROUTES - Versioned (v1) + Legacy (backward compat)
@@ -254,10 +268,10 @@ async function startServer() {
   app.use('/api/auth', authRoutes);
 
   if (dbAvailable) {
-    const leaderboardRoutes = initLeaderboardRoutes(container);
-    const playerRoutes = initPlayersRoutes(container);
-    const progressionRoutes = require('./routes/progression')(container);
-    const achievementRoutes = require('./routes/achievements')(container);
+    const leaderboardRoutes = initLeaderboardRoutes(container, { requireAuth });
+    const playerRoutes = initPlayersRoutes(container, { requireAuth });
+    const progressionRoutes = require('./routes/progression')(container, { requireAuth });
+    const achievementRoutes = require('./routes/achievements')(container, { requireAuth });
 
     // Versioned API (v1)
     app.use('/api/v1/leaderboard', leaderboardRoutes);

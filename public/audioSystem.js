@@ -63,7 +63,7 @@ class MusicGenerator {
       try {
         oldest.stop();
         oldest.disconnect();
-      } catch (e) {
+      } catch {
         /* already stopped */
       }
     }
@@ -99,7 +99,7 @@ class MusicGenerator {
       try {
         oscillator.disconnect();
         gainNode.disconnect();
-      } catch (e) {
+      } catch {
         /* already disconnected */
       }
     }, cleanupTime);
@@ -264,7 +264,7 @@ class MusicGenerator {
     this.oscillators.forEach(osc => {
       try {
         osc.stop();
-      } catch (e) {
+      } catch {
         // Déjà arrêté
       }
     });

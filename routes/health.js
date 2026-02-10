@@ -6,6 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { getDisconnectedSessionCount } = require('../sockets/sessionRecovery');
 
 /**
  * Initialize health check route
@@ -26,6 +27,7 @@ function initHealthRoute(dbManager, metricsCollector, perfIntegration, memoryMon
     const healthStatus = {
       status: dbStatus === 'healthy' ? 'healthy' : 'unhealthy',
       timestamp: Date.now(),
+      requestId: req.id || null,
       uptime: metrics.system.uptime,
       performanceMode: perfIntegration.perfConfig.mode,
 
@@ -40,7 +42,8 @@ function initHealthRoute(dbManager, metricsCollector, perfIntegration, memoryMon
           killed: metrics.zombies.killed
         },
         wave: metrics.game.currentWave,
-        activeSessions: metrics.game.activeGames
+        activeSessions: metrics.game.activeGames,
+        recoverableSessions: getDisconnectedSessionCount()
       },
 
       // Performance
