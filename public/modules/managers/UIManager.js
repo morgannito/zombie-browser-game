@@ -19,6 +19,28 @@ class UIManager {
     };
 
     this.shopCloseBtn = document.getElementById('shop-close-btn');
+
+    // Cache DOM refs queried every frame in update()
+    this.els = {
+      healthBar: document.getElementById('health-bar'),
+      healthFill: document.getElementById('health-fill'),
+      healthText: document.getElementById('health-text'),
+      xpBar: document.getElementById('xp-bar'),
+      xpFill: document.getElementById('xp-fill'),
+      levelText: document.getElementById('level-text'),
+      xpText: document.getElementById('xp-text'),
+      scoreValue: document.getElementById('score-value'),
+      waveValue: document.getElementById('wave-value'),
+      goldValue: document.getElementById('gold-value'),
+      gameOver: document.getElementById('game-over'),
+      finalScore: document.getElementById('final-score'),
+      finalWave: document.getElementById('final-wave'),
+      finalLevel: document.getElementById('final-level'),
+      finalGold: document.getElementById('final-gold'),
+      playersCount: document.getElementById('players-count'),
+      zombiesCount: document.getElementById('zombies-count')
+    };
+
     this.setupEventListeners();
   }
 
@@ -45,7 +67,7 @@ class UIManager {
 
       // Show feedback that request was sent
       if (window.toastManager) {
-        window.toastManager.show('⏳ Traitement de l\'achat...', 'info', 1000);
+        window.toastManager.show("⏳ Traitement de l'achat...", 'info', 1000);
       }
     };
 
@@ -78,46 +100,45 @@ class UIManager {
 
     // Health bar
     const healthPercent = (player.health / player.maxHealth) * 100;
-    const healthBar = document.getElementById('health-bar');
-    document.getElementById('health-fill').style.width = healthPercent + '%';
-    document.getElementById('health-text').textContent = Math.max(0, Math.round(player.health));
+    const { els } = this;
+    els.healthFill.style.width = healthPercent + '%';
+    els.healthText.textContent = Math.max(0, Math.round(player.health));
 
     // Low health warning (< 30%)
     if (healthPercent < 30) {
-      healthBar.classList.add('low-health');
+      els.healthBar.classList.add('low-health');
     } else {
-      healthBar.classList.remove('low-health');
+      els.healthBar.classList.remove('low-health');
     }
 
     // XP and level
     if (player.level && player.xp !== undefined) {
       const xpNeeded = this.getXPForLevel(player.level);
       const xpPercent = (player.xp / xpNeeded) * 100;
-      const xpBar = document.getElementById('xp-bar');
-      document.getElementById('xp-fill').style.width = xpPercent + '%';
-      document.getElementById('level-text').textContent = player.level;
-      document.getElementById('xp-text').textContent = `${Math.floor(player.xp)}/${xpNeeded}`;
+      els.xpFill.style.width = xpPercent + '%';
+      els.levelText.textContent = player.level;
+      els.xpText.textContent = `${Math.floor(player.xp)}/${xpNeeded}`;
 
       // Near level up indicator (> 85%)
       if (xpPercent > 85) {
-        xpBar.classList.add('near-levelup');
+        els.xpBar.classList.add('near-levelup');
       } else {
-        xpBar.classList.remove('near-levelup');
+        els.xpBar.classList.remove('near-levelup');
       }
     }
 
     // Stats
-    document.getElementById('score-value').textContent = player.score;
-    document.getElementById('wave-value').textContent = `${this.gameState.state.wave || 1}`;
-    document.getElementById('gold-value').textContent = player.gold || 0;
+    els.scoreValue.textContent = player.score;
+    els.waveValue.textContent = `${this.gameState.state.wave || 1}`;
+    els.goldValue.textContent = player.gold || 0;
 
     // Game over
     if (!player.alive) {
-      document.getElementById('game-over').style.display = 'block';
-      document.getElementById('final-score').textContent = (player.totalScore || player.score || 0).toLocaleString();
-      document.getElementById('final-wave').textContent = `${this.gameState.state.wave || 1}`;
-      document.getElementById('final-level').textContent = player.level || 1;
-      document.getElementById('final-gold').textContent = (player.gold || 0).toLocaleString();
+      els.gameOver.style.display = 'block';
+      els.finalScore.textContent = (player.totalScore || player.score || 0).toLocaleString();
+      els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
+      els.finalLevel.textContent = player.level || 1;
+      els.finalGold.textContent = (player.gold || 0).toLocaleString();
 
       // Sauvegarder dans le leaderboard (une seule fois)
       if (!this.deathRecorded && window.leaderboardSystem) {
@@ -145,9 +166,11 @@ class UIManager {
     }
 
     // Player count - only count players with nicknames (actually playing)
-    const activePlayers = Object.values(this.gameState.state.players).filter(p => p.hasNickname).length;
-    document.getElementById('players-count').textContent = activePlayers;
-    document.getElementById('zombies-count').textContent = Object.keys(this.gameState.state.zombies).length;
+    const activePlayers = Object.values(this.gameState.state.players).filter(
+      p => p.hasNickname
+    ).length;
+    els.playersCount.textContent = activePlayers;
+    els.zombiesCount.textContent = Object.keys(this.gameState.state.zombies).length;
   }
 
   getXPForLevel(level) {
@@ -192,7 +215,8 @@ class UIManager {
     const announcement = document.getElementById('wave-announcement');
     announcement.querySelector('h1').innerHTML = `${bonus.icon} ${bonus.title}`;
     announcement.querySelector('p').textContent = bonus.description;
-    announcement.style.background = 'linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 140, 0, 0.95) 100%)';
+    announcement.style.background =
+      'linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 140, 0, 0.95) 100%)';
     announcement.style.border = '4px solid #FFD700';
     announcement.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.8)';
     announcement.style.display = 'block';
@@ -235,9 +259,11 @@ class UIManager {
         if (window.networkManager) {
           window.networkManager.selectUpgrade(upgrade.id);
         }
-        document.dispatchEvent(new CustomEvent('upgrade_obtained', {
-          detail: { upgradeId: upgrade.id, rarity: upgrade.rarity }
-        }));
+        document.dispatchEvent(
+          new CustomEvent('upgrade_obtained', {
+            detail: { upgradeId: upgrade.id, rarity: upgrade.rarity }
+          })
+        );
         levelUpScreen.style.display = 'none';
       });
 
@@ -318,7 +344,7 @@ class UIManager {
     for (const key in this.gameState.shopItems.permanent) {
       const item = this.gameState.shopItems.permanent[key];
       const currentLevel = player.upgrades[key] || 0;
-      const cost = item.baseCost + (currentLevel * item.costIncrease);
+      const cost = item.baseCost + currentLevel * item.costIncrease;
       const isMaxed = currentLevel >= item.maxLevel;
       const canAfford = player.gold >= cost;
 
@@ -343,7 +369,7 @@ class UIManager {
 
       // Add event listener to the button
       const btn = itemDiv.querySelector('.shop-buy-btn');
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -369,7 +395,7 @@ class UIManager {
         window.buyItem(itemId, category);
       });
 
-      console.log('[Shop] Created button for:', key, 'disabled:', (isMaxed || !canAfford));
+      console.log('[Shop] Created button for:', key, 'disabled:', isMaxed || !canAfford);
     }
 
     // Populate temporary items
@@ -410,7 +436,7 @@ class UIManager {
 
       // Add event listener to the button
       const btn = itemDiv.querySelector('.shop-buy-btn');
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -496,16 +522,46 @@ class UIManager {
     let html = '';
 
     const upgrades = [
-      { condition: player.regeneration > 0, html: `<div class="stat-item rare"><span class="stat-name">💚 Régénération</span><span class="stat-value">+${player.regeneration} PV/sec</span></div>` },
-      { condition: player.bulletPiercing > 0, html: `<div class="stat-item rare"><span class="stat-name">🎯 Balles Perforantes</span><span class="stat-value">+${player.bulletPiercing} ennemis</span></div>` },
-      { condition: player.lifeSteal > 0, html: `<div class="stat-item rare"><span class="stat-name">🩸 Vol de Vie</span><span class="stat-value">${(player.lifeSteal * 100).toFixed(0)}%</span></div>` },
-      { condition: player.criticalChance > 0, html: `<div class="stat-item rare"><span class="stat-name">💥 Chance Critique</span><span class="stat-value">${(player.criticalChance * 100).toFixed(0)}%</span></div>` },
-      { condition: player.goldMagnetRadius > 0, html: `<div class="stat-item"><span class="stat-name">💰 Aimant à Or</span><span class="stat-value">+${player.goldMagnetRadius}px</span></div>` },
-      { condition: player.dodgeChance > 0, html: `<div class="stat-item rare"><span class="stat-name">🌀 Esquive</span><span class="stat-value">${(player.dodgeChance * 100).toFixed(0)}%</span></div>` },
-      { condition: player.explosiveRounds, html: `<div class="stat-item legendary"><span class="stat-name">💣 Munitions Explosives</span><span class="stat-value">Rayon ${player.explosionRadius}px</span></div>` },
-      { condition: player.extraBullets > 0, html: `<div class="stat-item legendary"><span class="stat-name">🎆 Balles Supplémentaires</span><span class="stat-value">+${player.extraBullets}</span></div>` },
-      { condition: player.thorns > 0, html: `<div class="stat-item rare"><span class="stat-name">🛡️ Épines</span><span class="stat-value">${(player.thorns * 100).toFixed(0)}%</span></div>` },
-      { condition: player.autoTurrets > 0, html: `<div class="stat-item legendary"><span class="stat-name">🎯 Tourelles Automatiques</span><span class="stat-value">x${player.autoTurrets}</span></div>` }
+      {
+        condition: player.regeneration > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">💚 Régénération</span><span class="stat-value">+${player.regeneration} PV/sec</span></div>`
+      },
+      {
+        condition: player.bulletPiercing > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">🎯 Balles Perforantes</span><span class="stat-value">+${player.bulletPiercing} ennemis</span></div>`
+      },
+      {
+        condition: player.lifeSteal > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">🩸 Vol de Vie</span><span class="stat-value">${(player.lifeSteal * 100).toFixed(0)}%</span></div>`
+      },
+      {
+        condition: player.criticalChance > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">💥 Chance Critique</span><span class="stat-value">${(player.criticalChance * 100).toFixed(0)}%</span></div>`
+      },
+      {
+        condition: player.goldMagnetRadius > 0,
+        html: `<div class="stat-item"><span class="stat-name">💰 Aimant à Or</span><span class="stat-value">+${player.goldMagnetRadius}px</span></div>`
+      },
+      {
+        condition: player.dodgeChance > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">🌀 Esquive</span><span class="stat-value">${(player.dodgeChance * 100).toFixed(0)}%</span></div>`
+      },
+      {
+        condition: player.explosiveRounds,
+        html: `<div class="stat-item legendary"><span class="stat-name">💣 Munitions Explosives</span><span class="stat-value">Rayon ${player.explosionRadius}px</span></div>`
+      },
+      {
+        condition: player.extraBullets > 0,
+        html: `<div class="stat-item legendary"><span class="stat-name">🎆 Balles Supplémentaires</span><span class="stat-value">+${player.extraBullets}</span></div>`
+      },
+      {
+        condition: player.thorns > 0,
+        html: `<div class="stat-item rare"><span class="stat-name">🛡️ Épines</span><span class="stat-value">${(player.thorns * 100).toFixed(0)}%</span></div>`
+      },
+      {
+        condition: player.autoTurrets > 0,
+        html: `<div class="stat-item legendary"><span class="stat-name">🎯 Tourelles Automatiques</span><span class="stat-value">x${player.autoTurrets}</span></div>`
+      }
     ];
 
     upgrades.forEach(upgrade => {
@@ -515,7 +571,9 @@ class UIManager {
       }
     });
 
-    container.innerHTML = hasUpgrades ? html : '<div class="no-upgrades">Aucune amélioration active</div>';
+    container.innerHTML = hasUpgrades
+      ? html
+      : '<div class="no-upgrades">Aucune amélioration active</div>';
   }
 
   updateShopUpgrades(player) {
@@ -543,7 +601,9 @@ class UIManager {
       html += `<div class="stat-item"><span class="stat-name">🔫 Cadence de Tir</span><span class="stat-value">Niveau ${player.upgrades.fireRate}/5</span></div>`;
     }
 
-    container.innerHTML = hasUpgrades ? html : '<div class="no-upgrades">Aucun upgrade permanent acheté</div>';
+    container.innerHTML = hasUpgrades
+      ? html
+      : '<div class="no-upgrades">Aucun upgrade permanent acheté</div>';
   }
 }
 
