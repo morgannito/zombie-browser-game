@@ -18,7 +18,7 @@ class AdminCommands {
    * Register admin command handlers
    */
   registerCommands(socket) {
-    socket.on('adminCommand', (data) => {
+    socket.on('adminCommand', data => {
       this.handleCommand(socket, data);
     });
   }
@@ -31,7 +31,7 @@ class AdminCommands {
 
     // Simple auth - check if socket.playerId is in adminUsers
     // In production, use proper auth
-    if (!this.isAdmin(socket.playerId)) {
+    if (!this.isAdmin(socket.userId)) {
       socket.emit('adminResponse', {
         success: false,
         message: 'Not authorized'
@@ -40,29 +40,29 @@ class AdminCommands {
     }
 
     switch (command) {
-    case 'spawn':
-      this.handleSpawn(socket, args);
-      break;
-    case 'wave':
-      this.handleWave(socket, args);
-      break;
-    case 'boss':
-      this.handleBoss(socket, args);
-      break;
-    case 'list':
-      this.handleList(socket, args);
-      break;
-    case 'clear':
-      this.handleClear(socket);
-      break;
-    case 'fps':
-      this.handleFPS(socket);
-      break;
-    default:
-      socket.emit('adminResponse', {
-        success: false,
-        message: `Unknown command: ${command}`
-      });
+      case 'spawn':
+        this.handleSpawn(socket, args);
+        break;
+      case 'wave':
+        this.handleWave(socket, args);
+        break;
+      case 'boss':
+        this.handleBoss(socket, args);
+        break;
+      case 'list':
+        this.handleList(socket, args);
+        break;
+      case 'clear':
+        this.handleClear(socket);
+        break;
+      case 'fps':
+        this.handleFPS(socket);
+        break;
+      default:
+        socket.emit('adminResponse', {
+          success: false,
+          message: `Unknown command: ${command}`
+        });
     }
   }
 
@@ -85,7 +85,7 @@ class AdminCommands {
     let spawned = 0;
     for (let i = 0; i < Math.min(count, 50); i++) {
       // Spawn at player position
-      const player = this.gameState.players[socket.playerId];
+      const player = this.gameState.players[socket.userId] || this.gameState.players[socket.id];
       if (!player) {
         break;
       }
@@ -163,8 +163,19 @@ class AdminCommands {
   handleBoss(socket, args) {
     const [bossType] = args || ['boss'];
 
-    const validBosses = ['boss', 'bossCharnier', 'bossInfect', 'bossColosse', 'bossRoi', 'bossOmega',
-      'bossInfernal', 'bossCryos', 'bossVortex', 'bossNexus', 'bossApocalypse'];
+    const validBosses = [
+      'boss',
+      'bossCharnier',
+      'bossInfect',
+      'bossColosse',
+      'bossRoi',
+      'bossOmega',
+      'bossInfernal',
+      'bossCryos',
+      'bossVortex',
+      'bossNexus',
+      'bossApocalypse'
+    ];
 
     if (!validBosses.includes(bossType)) {
       socket.emit('adminResponse', {
@@ -265,12 +276,20 @@ class AdminCommands {
   }
 
   /**
-   * Check if user is admin (simple implementation)
+   * Check if user is admin.
+   * Requires ADMIN_USER_IDS env var (comma-separated UUIDs).
+   * No admin access without explicit configuration.
    */
-  isAdmin(_playerId) {
-    // In production, check against database or config
-    // For now, all users are admin in debug mode
-    return process.env.NODE_ENV !== 'production';
+  isAdmin(userId) {
+    if (!userId) {
+      return false;
+    }
+    const adminIds = process.env.ADMIN_USER_IDS
+      ? process.env.ADMIN_USER_IDS.split(',')
+          .map(id => id.trim())
+          .filter(Boolean)
+      : [];
+    return adminIds.includes(userId);
   }
 
   /**
