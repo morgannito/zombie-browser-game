@@ -9,6 +9,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { LEVEL_UP_UPGRADES } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
 
 /**
  * Fonction utilitaire pour calculer la distance
@@ -73,17 +74,17 @@ function generateUpgradeChoices() {
     const rand = Math.random();
     let targetRarity;
 
-    if (rand < 0.60) {
+    if (rand < 0.6) {
       targetRarity = 'common';
-    } else if (rand < 0.90) {
+    } else if (rand < 0.9) {
       targetRarity = 'rare';
     } else {
       targetRarity = 'legendary';
     }
 
     // Trouver un upgrade de cette rareté qui n'a pas déjà été sélectionné
-    const availableUpgrades = upgradeKeys.filter(key =>
-      LEVEL_UP_UPGRADES[key].rarity === targetRarity && !selectedKeys.has(key)
+    const availableUpgrades = upgradeKeys.filter(
+      key => LEVEL_UP_UPGRADES[key].rarity === targetRarity && !selectedKeys.has(key)
     );
 
     if (availableUpgrades.length > 0) {
@@ -117,7 +118,10 @@ function generateUpgradeChoices() {
 
   // CORRECTION: Log warning si on n'a pas pu générer 3 choix
   if (choices.length < 3) {
-    console.warn('[UPGRADE] Could only generate', choices.length, 'upgrade choices out of 3 (total available:', upgradeKeys.length, ')');
+    logger.warn('[UPGRADE] Could only generate upgrade choices', {
+      generated: choices.length,
+      available: upgradeKeys.length
+    });
   }
 
   return choices;

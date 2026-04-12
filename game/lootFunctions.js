@@ -9,6 +9,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
 
 /**
  * Spawn des power-ups
@@ -21,12 +22,12 @@ const { CONFIG, POWERUP_TYPES } = ConfigManager;
 function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector) {
   // BUG FIX: Validate required parameters
   if (!gameState || !roomManager || !perfIntegration || !metricsCollector) {
-    console.error('[POWERUP] Missing required parameters for spawnPowerup');
+    logger.error('[POWERUP] Missing required parameters for spawnPowerup');
     return;
   }
 
   if (typeof roomManager.checkWallCollision !== 'function') {
-    console.error('[POWERUP] roomManager.checkWallCollision is not a function');
+    logger.error('[POWERUP] roomManager.checkWallCollision is not a function');
     return;
   }
 
@@ -38,7 +39,7 @@ function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector)
 
   const types = Object.keys(POWERUP_TYPES);
   if (types.length === 0) {
-    console.error('[POWERUP] No powerup types defined');
+    logger.error('[POWERUP] No powerup types defined');
     return;
   }
 
@@ -151,7 +152,10 @@ function createParticles(x, y, color, count = 10, entityManager) {
 function createExplosion(x, y, radius, isRocket = false, entityManager) {
   // Utiliser EntityManager avec Object Pool
   entityManager.createExplosion({
-    x, y, radius, isRocket,
+    x,
+    y,
+    radius,
+    isRocket,
     createdAt: Date.now(),
     duration: 400
   });

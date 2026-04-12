@@ -3,6 +3,7 @@
  */
 
 const { GAMEPLAY_CONSTANTS } = require('../../../lib/server/ConfigManager');
+const logger = require('../../../lib/infrastructure/Logger');
 
 const RETRY_INTERVAL_MS = 30000;
 const MAX_RETRIES = 3;
@@ -95,17 +96,13 @@ function _buildSessionStats(player, gameState, now, isBoss) {
  * Handle failed death save: log and enqueue for retry
  */
 function _onDeathSaveFailed(err, player, playerId, sessionStats, now, gameState, logger) {
-  if (logger) {
-    logger.error('CRITICAL: Failed to handle player death', {
-      error: err.message,
-      stack: err.stack,
-      playerId: player.id || playerId,
-      accountId: player.accountId,
-      stats: sessionStats
-    });
-  } else {
-    console.error('CRITICAL: Failed to handle player death:', err);
-  }
+  logger.error('CRITICAL: Failed to handle player death', {
+    error: err.message,
+    stack: err.stack,
+    playerId: player.id || playerId,
+    accountId: player.accountId,
+    stats: sessionStats
+  });
 
   if (!gameState.failedDeathQueue) {
     gameState.failedDeathQueue = [];

@@ -8,6 +8,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
 
 /**
  * Génération procédurale de salle (Rogue-like)
@@ -96,7 +97,7 @@ function loadRoom(roomIndex, roomManager) {
   if (roomManager && roomManager.loadRoom) {
     roomManager.loadRoom(roomIndex);
   } else {
-    console.error('[ROOM] roomManager.loadRoom is not available');
+    logger.error('[ROOM] roomManager.loadRoom is not available');
   }
 }
 
