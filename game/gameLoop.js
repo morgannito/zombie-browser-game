@@ -14,7 +14,11 @@ const { CONFIG, GAMEPLAY_CONSTANTS } = ConfigManager;
 
 // Module imports
 const { updateZombies } = require('./modules/zombie/ZombieUpdater');
-const { updatePoisonTrails, updatePoisonedZombies, updateFrozenSlowedZombies } = require('./modules/zombie/ZombieEffects');
+const {
+  updatePoisonTrails,
+  updatePoisonedZombies,
+  updateFrozenSlowedZombies
+} = require('./modules/zombie/ZombieEffects');
 const { updateBullets } = require('./modules/bullet/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');
@@ -80,6 +84,11 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
     return false;
   }
 
+  if (!player.alive) {
+    player.health = 0;
+    return false;
+  }
+
   player.health = 0;
   const revived = gameState.progressionIntegration?.checkSecondChance(player);
 
@@ -89,7 +98,9 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
     if (gameState.progressionIntegration && player.accountId) {
       player.wave = gameState.wave;
       player.maxCombo = player.highestCombo || player.combo || 0;
-      player.survivalTime = Math.floor((now - player.survivalTime) / GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER);
+      player.survivalTime = Math.floor(
+        (now - player.survivalTime) / GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER
+      );
       player.bossKills = isBoss ? 1 : 0;
 
       const sessionStats = {
@@ -102,7 +113,8 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
       };
 
       // CRITICAL FIX: Comprehensive error handling + retry queue
-      gameState.progressionIntegration.handlePlayerDeath(player, player.accountId, sessionStats)
+      gameState.progressionIntegration
+        .handlePlayerDeath(player, player.accountId, sessionStats)
         .catch(err => {
           if (logger) {
             logger.error('❌ CRITICAL: Failed to handle player death', {
@@ -194,7 +206,16 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
  *     gameLoop(gameState, io, metrics, perf, collision, entities, zombies, logger);
  *   }, 16.67);
  */
-function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionManager, entityManager, zombieManager, logger) {
+function gameLoop(
+  gameState,
+  io,
+  metricsCollector,
+  perfIntegration,
+  collisionManager,
+  entityManager,
+  zombieManager,
+  logger
+) {
   perfIntegration.incrementTick();
   const now = Date.now();
 
@@ -284,8 +305,24 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     // 3. Then do collision detection
 
     // Update positions first
-    updatePlayers(gameState, now, io, collisionManager, entityManager, deltaMultiplier, zombieManager);
-    updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration);
+    updatePlayers(
+      gameState,
+      now,
+      io,
+      collisionManager,
+      entityManager,
+      deltaMultiplier,
+      zombieManager
+    );
+    updateZombies(
+      gameState,
+      now,
+      io,
+      collisionManager,
+      entityManager,
+      zombieManager,
+      perfIntegration
+    );
 
     // CRITICAL FIX: Rebuild quadtree AFTER position updates for accurate collision detection
     collisionManager.rebuildQuadtree();
@@ -295,7 +332,15 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
     updatePoisonTrails(gameState, now, collisionManager, entityManager);
     updatePoisonedZombies(gameState, now, entityManager, io, zombieManager);
     updateFrozenSlowedZombies(gameState, now);
-    updateBullets(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration);
+    updateBullets(
+      gameState,
+      now,
+      io,
+      collisionManager,
+      entityManager,
+      zombieManager,
+      perfIntegration
+    );
     updateParticles(gameState, deltaMultiplier);
 
     entityManager.cleanupExpiredEntities(now);
@@ -309,7 +354,6 @@ function gameLoop(gameState, io, metricsCollector, perfIntegration, collisionMan
       gameState._lastDeathQueueProcess = now;
       processFailedDeathQueue(gameState, logger);
     }
-
   } catch (error) {
     logger.error('❌ Game loop error', {
       error: error.message,
@@ -351,7 +395,15 @@ function updateMetrics(gameState, metricsCollector) {
  * CRITICAL FIX: Added deltaMultiplier parameter for frame-rate independent updates
  * BUG FIX: Added zombieManager for boss kill handling in Tesla Coil
  */
-function updatePlayers(gameState, now, io, collisionManager, entityManager, deltaMultiplier = 1, zombieManager = null) {
+function updatePlayers(
+  gameState,
+  now,
+  io,
+  collisionManager,
+  entityManager,
+  deltaMultiplier = 1,
+  zombieManager = null
+) {
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
     if (!player.alive) {
@@ -361,7 +413,16 @@ function updatePlayers(gameState, now, io, collisionManager, entityManager, delt
     updatePlayerTimers(player, now, io, playerId);
     updatePlayerRegeneration(player, now, deltaMultiplier);
     updateAutoTurrets(player, playerId, now, collisionManager, entityManager, gameState);
-    updateTeslaCoil(player, playerId, now, collisionManager, entityManager, gameState, io, zombieManager);
+    updateTeslaCoil(
+      player,
+      playerId,
+      now,
+      collisionManager,
+      entityManager,
+      gameState,
+      io,
+      zombieManager
+    );
   }
 }
 
@@ -422,7 +483,9 @@ function updatePlayerRegeneration(player, now, _deltaMultiplier = 1) {
     const timeSinceLastRegen = now - player.lastRegenTick;
     if (timeSinceLastRegen >= GAMEPLAY_CONSTANTS.REGENERATION_TICK_INTERVAL) {
       // Calculate how many regen ticks were missed (for lag compensation)
-      const missedTicks = Math.floor(timeSinceLastRegen / GAMEPLAY_CONSTANTS.REGENERATION_TICK_INTERVAL);
+      const missedTicks = Math.floor(
+        timeSinceLastRegen / GAMEPLAY_CONSTANTS.REGENERATION_TICK_INTERVAL
+      );
       // Cap at 3 ticks max to prevent huge healing after reconnect
       const ticksToApply = Math.min(missedTicks, 3);
       const healAmount = player.regeneration * ticksToApply;
@@ -441,7 +504,11 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
     const autoFireCooldown = GAMEPLAY_CONSTANTS.AUTO_TURRET_BASE_COOLDOWN / player.autoTurrets;
 
     if (now - player.lastAutoShot >= autoFireCooldown) {
-      const closestZombie = collisionManager.findClosestZombie(player.x, player.y, GAMEPLAY_CONSTANTS.AUTO_TURRET_RANGE);
+      const closestZombie = collisionManager.findClosestZombie(
+        player.x,
+        player.y,
+        GAMEPLAY_CONSTANTS.AUTO_TURRET_RANGE
+      );
 
       if (closestZombie) {
         fireAutoTurret(player, playerId, closestZombie, now, entityManager, gameState);
@@ -482,7 +549,16 @@ function fireAutoTurret(player, playerId, closestZombie, now, entityManager, gam
  * Update Tesla Coil weapon
  * BUG FIX: Added io and zombieManager for boss kill handling
  */
-function updateTeslaCoil(player, playerId, now, collisionManager, entityManager, gameState, io = null, zombieManager = null) {
+function updateTeslaCoil(
+  player,
+  playerId,
+  now,
+  collisionManager,
+  entityManager,
+  gameState,
+  io = null,
+  zombieManager = null
+) {
   if (player.weapon !== 'teslaCoil' || !player.hasNickname || player.spawnProtection) {
     return;
   }
@@ -492,11 +568,22 @@ function updateTeslaCoil(player, playerId, now, collisionManager, entityManager,
   }
 
   const teslaWeapon = ConfigManager.WEAPONS.teslaCoil;
-  const fireRateCooldownMultiplier = gameState.mutatorEffects?.playerFireRateCooldownMultiplier || 1;
-  const teslaCooldown = teslaWeapon.fireRate * (player.fireRateMultiplier || 1) * fireRateCooldownMultiplier;
+  const fireRateCooldownMultiplier =
+    gameState.mutatorEffects?.playerFireRateCooldownMultiplier || 1;
+  const teslaCooldown =
+    teslaWeapon.fireRate * (player.fireRateMultiplier || 1) * fireRateCooldownMultiplier;
 
   if (now - player.lastTeslaShot >= teslaCooldown) {
-    fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager, gameState, io, zombieManager);
+    fireTeslaCoil(
+      player,
+      teslaWeapon,
+      now,
+      collisionManager,
+      entityManager,
+      gameState,
+      io,
+      zombieManager
+    );
   }
 }
 
@@ -504,8 +591,21 @@ function updateTeslaCoil(player, playerId, now, collisionManager, entityManager,
  * Fire Tesla Coil
  * BUG FIX: Added io and zombieManager for boss kill handling
  */
-function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager, gameState, io = null, zombieManager = null) {
-  const zombiesInRange = collisionManager.findZombiesInRadius(player.x, player.y, teslaWeapon.teslaRange);
+function fireTeslaCoil(
+  player,
+  teslaWeapon,
+  now,
+  collisionManager,
+  entityManager,
+  gameState,
+  io = null,
+  zombieManager = null
+) {
+  const zombiesInRange = collisionManager.findZombiesInRadius(
+    player.x,
+    player.y,
+    teslaWeapon.teslaRange
+  );
   const targets = zombiesInRange.slice(0, teslaWeapon.teslaMaxTargets);
 
   if (targets.length > 0) {
@@ -513,7 +613,17 @@ function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager
     const damage = teslaWeapon.damage * (player.damageMultiplier || 1) * mutatorDamageMultiplier;
 
     for (const zombie of targets) {
-      applyTeslaDamage(zombie, damage, player, teslaWeapon, entityManager, gameState, now, io, zombieManager);
+      applyTeslaDamage(
+        zombie,
+        damage,
+        player,
+        teslaWeapon,
+        entityManager,
+        gameState,
+        now,
+        io,
+        zombieManager
+      );
     }
 
     player.lastTeslaShot = now;
@@ -525,7 +635,17 @@ function fireTeslaCoil(player, teslaWeapon, now, collisionManager, entityManager
  * HIGH FIX: Comprehensive validation
  * BUG FIX: Added io and zombieManager for boss kill handling
  */
-function applyTeslaDamage(zombie, damage, player, teslaWeapon, entityManager, gameState, now, io = null, zombieManager = null) {
+function applyTeslaDamage(
+  zombie,
+  damage,
+  player,
+  teslaWeapon,
+  entityManager,
+  gameState,
+  now,
+  io = null,
+  zombieManager = null
+) {
   // HIGH FIX: Validate zombie object
   if (!zombie || typeof zombie !== 'object') {
     return; // Silent fail - zombie may have been removed
@@ -587,7 +707,15 @@ function createTeslaVisuals(player, zombie, teslaWeapon, entityManager) {
  *
  * BUG FIX: Handle boss kills to trigger new wave
  */
-function handleTeslaKill(zombie, player, gameState, entityManager, now, io = null, zombieManager = null) {
+function handleTeslaKill(
+  zombie,
+  player,
+  gameState,
+  entityManager,
+  now,
+  io = null,
+  zombieManager = null
+) {
   createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
 
   if (player) {
@@ -730,7 +858,8 @@ function processFailedDeathQueue(gameState, logger) {
       entry.retryCount++;
       entry.lastRetry = now;
 
-      gameState.progressionIntegration.handlePlayerDeath(entry.player, entry.accountId, entry.stats)
+      gameState.progressionIntegration
+        .handlePlayerDeath(entry.player, entry.accountId, entry.stats)
         .then(() => {
           // Success - remove from queue
           const idx = gameState.failedDeathQueue.indexOf(entry);
