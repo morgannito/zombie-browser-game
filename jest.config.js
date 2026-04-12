@@ -9,6 +9,7 @@ const config = {
     '!**/node_modules/**'
   ],
   testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
+  testPathIgnorePatterns: ['/node_modules/', '__tests__/integration/testServerFactory\\.js'],
   verbose: true
 };
 
