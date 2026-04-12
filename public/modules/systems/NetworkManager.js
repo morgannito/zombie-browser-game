@@ -40,7 +40,10 @@ class NetworkManager {
     this.listeners = [];
 
     // Clear ping interval
-    if (this.pingInterval) {
+    if (this.pingIntervalId && window.timerManager) {
+      window.timerManager.clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
+    } else if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
@@ -68,15 +71,28 @@ class NetworkManager {
     this.listeners.push({ event: 'pong', handler: pongHandler });
 
     // Manual ping every 2 seconds for more accurate measurements
-    this.pingInterval = setInterval(() => {
-      if (this.socket.connected) {
-        const start = Date.now();
-        this.socket.emit('ping', start, (_ack) => {
-          const latency = Date.now() - start;
-          this.updateLatency(latency);
-        });
-      }
-    }, 2000);
+    const timerMgr = window.timerManager;
+    if (timerMgr) {
+      this.pingIntervalId = timerMgr.setInterval(() => {
+        if (this.socket.connected) {
+          const start = Date.now();
+          this.socket.emit('ping', start, _ack => {
+            const latency = Date.now() - start;
+            this.updateLatency(latency);
+          });
+        }
+      }, 2000);
+    } else {
+      this.pingInterval = setInterval(() => {
+        if (this.socket.connected) {
+          const start = Date.now();
+          this.socket.emit('ping', start, _ack => {
+            const latency = Date.now() - start;
+            this.updateLatency(latency);
+          });
+        }
+      }, 2000);
+    }
   }
 
   updateLatency(latency) {
@@ -152,21 +168,21 @@ class NetworkManager {
       }
     });
 
-    this.on('connect_error', (error) => {
+    this.on('connect_error', error => {
       console.error('[Socket.IO] Connection error:', error);
       if (window.toastManager) {
         window.toastManager.show('⚠️ Connection error. Retrying...', 'warning');
       }
     });
 
-    this.on('disconnect', (reason) => {
+    this.on('disconnect', reason => {
       console.log('[Socket.IO] Disconnected:', reason);
       if (window.toastManager) {
         window.toastManager.show('🔌 Disconnected from server', 'error');
       }
     });
 
-    this.on('reconnect', (attemptNumber) => {
+    this.on('reconnect', attemptNumber => {
       console.log('[Socket.IO] Reconnected after', attemptNumber, 'attempts');
       // Set flag to disable client prediction temporarily
       this.justReconnected = true;
@@ -175,11 +191,11 @@ class NetworkManager {
       }
     });
 
-    this.on('reconnect_attempt', (attemptNumber) => {
+    this.on('reconnect_attempt', attemptNumber => {
       console.log('[Socket.IO] Reconnection attempt', attemptNumber);
     });
 
-    this.on('reconnect_error', (error) => {
+    this.on('reconnect_error', error => {
       console.error('[Socket.IO] Reconnection error:', error);
     });
 
@@ -191,21 +207,21 @@ class NetworkManager {
     });
 
     // Game event handlers
-    this.on('init', (data) => this.handleInit(data));
-    this.on('gameState', (state) => this.handleGameState(state));
-    this.on('gameStateDelta', (delta) => this.handleGameStateDelta(delta));
-    this.on('positionCorrection', (data) => this.handlePositionCorrection(data));
-    this.on('bossSpawned', (data) => this.handleBossSpawned(data));
-    this.on('newWave', (data) => this.handleNewWave(data));
-    this.on('levelUp', (data) => this.handleLevelUp(data));
-    this.on('roomChanged', (data) => this.handleRoomChanged(data));
-    this.on('runCompleted', (data) => this.handleRunCompleted(data));
-    this.on('upgradeSelected', (data) => this.handleUpgradeSelected(data));
-    this.on('shopUpdate', (data) => this.handleShopUpdate(data));
-    this.on('comboUpdate', (data) => this.handleComboUpdate(data));
+    this.on('init', data => this.handleInit(data));
+    this.on('gameState', state => this.handleGameState(state));
+    this.on('gameStateDelta', delta => this.handleGameStateDelta(delta));
+    this.on('positionCorrection', data => this.handlePositionCorrection(data));
+    this.on('bossSpawned', data => this.handleBossSpawned(data));
+    this.on('newWave', data => this.handleNewWave(data));
+    this.on('levelUp', data => this.handleLevelUp(data));
+    this.on('roomChanged', data => this.handleRoomChanged(data));
+    this.on('runCompleted', data => this.handleRunCompleted(data));
+    this.on('upgradeSelected', data => this.handleUpgradeSelected(data));
+    this.on('shopUpdate', data => this.handleShopUpdate(data));
+    this.on('comboUpdate', data => this.handleComboUpdate(data));
     this.on('comboReset', () => this.handleComboReset());
-    this.on('sessionTimeout', (data) => this.handleSessionTimeout(data));
-    this.on('mutatorsUpdated', (data) => this.handleMutatorsUpdated(data));
+    this.on('sessionTimeout', data => this.handleSessionTimeout(data));
+    this.on('mutatorsUpdated', data => this.handleMutatorsUpdated(data));
   }
 
   handleInit(data) {
@@ -220,7 +236,10 @@ class NetworkManager {
 
     // Show notification if session was recovered
     if (data.recovered && window.toastManager) {
-      window.toastManager.show('🔄 Session restaurée ! Votre progression a été récupérée.', 'success');
+      window.toastManager.show(
+        '🔄 Session restaurée ! Votre progression a été récupérée.',
+        'success'
+      );
       console.log('[Session] State successfully recovered');
     }
   }
@@ -242,7 +261,12 @@ class NetworkManager {
   handleGameState(state) {
     // ALWAYS save local player position for client prediction (except right after reconnect)
     let localPlayerState = null;
-    if (!this.justReconnected && window.gameState.state && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
+    if (
+      !this.justReconnected &&
+      window.gameState.state &&
+      window.gameState.state.players &&
+      window.gameState.state.players[window.gameState.playerId]
+    ) {
       const localPlayer = window.gameState.state.players[window.gameState.playerId];
       localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
     }
@@ -261,7 +285,11 @@ class NetworkManager {
     }
 
     // Client prediction: restore local position unless server differs significantly
-    if (localPlayerState && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
+    if (
+      localPlayerState &&
+      window.gameState.state.players &&
+      window.gameState.state.players[window.gameState.playerId]
+    ) {
       const serverPlayer = window.gameState.state.players[window.gameState.playerId];
       const dx = localPlayerState.x - serverPlayer.x;
       const dy = localPlayerState.y - serverPlayer.y;
@@ -270,7 +298,11 @@ class NetworkManager {
       // Large difference (> 500px) = trust server (anti-cheat or major desync)
       // Increased threshold to allow more client prediction freedom
       if (distance > 500) {
-        console.log('[Socket.IO] Large position difference in full state, accepting server position:', distance.toFixed(1), 'px');
+        console.log(
+          '[Socket.IO] Large position difference in full state, accepting server position:',
+          distance.toFixed(1),
+          'px'
+        );
         // Server position is already applied, no change needed
       } else {
         // Small/medium difference (< 500px) = ALWAYS trust client prediction for fluid movement
@@ -299,7 +331,12 @@ class NetworkManager {
 
     // ALWAYS save local player position for client prediction (except right after reconnect)
     let localPlayerState = null;
-    if (!this.justReconnected && window.gameState.state && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
+    if (
+      !this.justReconnected &&
+      window.gameState.state &&
+      window.gameState.state.players &&
+      window.gameState.state.players[window.gameState.playerId]
+    ) {
       const localPlayer = window.gameState.state.players[window.gameState.playerId];
       localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
       prevHealth = localPlayer.health;
@@ -322,7 +359,11 @@ class NetworkManager {
           // Position is handled by client prediction
           if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
             // Preserve local position/angle but update other attributes
-            const currentPos = { x: localPlayerState.x, y: localPlayerState.y, angle: localPlayerState.angle };
+            const currentPos = {
+              x: localPlayerState.x,
+              y: localPlayerState.y,
+              angle: localPlayerState.angle
+            };
             window.gameState.state[type][id] = entity;
             window.gameState.state[type][id].x = currentPos.x;
             window.gameState.state[type][id].y = currentPos.y;
@@ -370,7 +411,12 @@ class NetworkManager {
 
     // Server reconciliation: check if server position differs significantly
     // Increased tolerance to 200px to reduce rubber banding
-    if (localPlayerState && delta.updated && delta.updated.players && delta.updated.players[window.gameState.playerId]) {
+    if (
+      localPlayerState &&
+      delta.updated &&
+      delta.updated.players &&
+      delta.updated.players[window.gameState.playerId]
+    ) {
       const serverPlayer = delta.updated.players[window.gameState.playerId];
       const dx = localPlayerState.x - serverPlayer.x;
       const dy = localPlayerState.y - serverPlayer.y;
@@ -379,7 +425,11 @@ class NetworkManager {
       // Large difference (> 500px) = trust server (anti-cheat or major desync)
       // Increased threshold to allow more client prediction freedom
       if (distance > 500) {
-        console.log('[Socket.IO] Large position difference detected, accepting server position:', distance.toFixed(1), 'px');
+        console.log(
+          '[Socket.IO] Large position difference detected, accepting server position:',
+          distance.toFixed(1),
+          'px'
+        );
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
@@ -395,7 +445,12 @@ class NetworkManager {
     }
 
     // Detect damage to player and trigger screen flash (SCREEN EFFECTS)
-    if (prevHealth !== null && prevMaxHealth !== null && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
+    if (
+      prevHealth !== null &&
+      prevMaxHealth !== null &&
+      window.gameState.state.players &&
+      window.gameState.state.players[window.gameState.playerId]
+    ) {
       const updatedPlayer = window.gameState.state.players[window.gameState.playerId];
       if (updatedPlayer.health < prevHealth && updatedPlayer.alive) {
         const damageAmount = prevHealth - updatedPlayer.health;
@@ -417,7 +472,12 @@ class NetworkManager {
     }
 
     // Detect boss death via bossSpawned flag change
-    if (delta.meta && delta.meta.bossSpawned === false && window.gameState.state.bossSpawned === true && window.screenEffects) {
+    if (
+      delta.meta &&
+      delta.meta.bossSpawned === false &&
+      window.gameState.state.bossSpawned === true &&
+      window.screenEffects
+    ) {
       window.screenEffects.onBossDeath();
     }
 
@@ -431,7 +491,11 @@ class NetworkManager {
     console.log('[Socket.IO] Position corrected by server:', data);
 
     // Apply correction to player position (this overrides client prediction)
-    if (window.gameState.state && window.gameState.state.players && window.gameState.state.players[window.gameState.playerId]) {
+    if (
+      window.gameState.state &&
+      window.gameState.state.players &&
+      window.gameState.state.players[window.gameState.playerId]
+    ) {
       const player = window.gameState.state.players[window.gameState.playerId];
       const oldX = player.x;
       const oldY = player.y;
@@ -449,12 +513,20 @@ class NetworkManager {
         const interpolationFactor = 0.5;
         player.x += dx * interpolationFactor;
         player.y += dy * interpolationFactor;
-        console.log('[Socket.IO] Small correction interpolated. Distance:', correctionDistance.toFixed(1), 'px');
+        console.log(
+          '[Socket.IO] Small correction interpolated. Distance:',
+          correctionDistance.toFixed(1),
+          'px'
+        );
       } else {
         // Immediate correction for large differences (anti-cheat, desync)
         player.x = data.x;
         player.y = data.y;
-        console.log('[Socket.IO] Large correction applied immediately. Distance:', correctionDistance.toFixed(1), 'px');
+        console.log(
+          '[Socket.IO] Large correction applied immediately. Distance:',
+          correctionDistance.toFixed(1),
+          'px'
+        );
       }
 
       if (window.toastManager && correctionDistance > 50) {
@@ -551,7 +623,10 @@ class NetworkManager {
 
     // Show error message to user
     if (window.toastManager) {
-      window.toastManager.show('⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'), 'error');
+      window.toastManager.show(
+        '⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'),
+        'error'
+      );
     }
 
     // Show alert with option to reload
@@ -577,7 +652,7 @@ class NetworkManager {
         cleanup();
         resolve();
       };
-      const onError = (error) => {
+      const onError = error => {
         cleanup();
         reject(error);
       };
