@@ -6,7 +6,16 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { createParticles, createLoot } = require('../../lootFunctions');
 
 /**
- * Update tesla coil for a player: check cooldown and fire if ready
+ * Update tesla coil for a player: check cooldown and fire if ready.
+ * @param {Object} player - Player state object
+ * @param {string} playerId - Socket ID of the player
+ * @param {number} now - Current timestamp (ms)
+ * @param {Object} collisionManager - CollisionManager instance
+ * @param {Object} entityManager - EntityManager instance
+ * @param {Object} gameState - Global game state
+ * @param {Object|null} io - Socket.IO server instance
+ * @param {Object|null} zombieManager - ZombieManager instance
+ * @returns {void}
  */
 function updateTeslaCoil(
   player,

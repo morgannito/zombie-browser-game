@@ -61,7 +61,7 @@ zombie-multiplayer-game/
 │       ├── bullet/          # BulletUpdater, CollisionHandler, BulletEffects
 │       ├── wave/            # WaveManager
 │       ├── loot/            # LootUpdater, PowerupUpdater
-│       ├── player/          # PlayerProgression, PlayerEffects
+│       ├── player/          # PlayerUpdater, PlayerProgression, PlayerEffects, AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler
 │       ├── hazards/         # HazardManager
 │       └── admin/           # AdminCommands
 ├── public/                  # Client (Canvas HTML5)

@@ -8,8 +8,14 @@ const RETRY_INTERVAL_MS = 30000;
 const MAX_RETRIES = 3;
 
 /**
- * Handle player death with progression integration and retry mechanism
- * Returns true if player was revived by second chance
+ * Handle player death with progression integration and retry mechanism.
+ * @param {Object} player - Player state object
+ * @param {string} playerId - Socket ID of the player
+ * @param {Object} gameState - Global game state
+ * @param {number} now - Current timestamp (ms)
+ * @param {boolean} [isBoss=false] - Whether death was caused by a boss
+ * @param {Object} [logger] - Logger instance
+ * @returns {boolean} True if player was revived by second chance
  */
 function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss = false, logger) {
   if (!player || typeof player !== 'object') {
@@ -131,7 +137,10 @@ function _onDeathSaveFailed(err, player, playerId, sessionStats, now, gameState,
 }
 
 /**
- * Process failed death queue with retry mechanism (max 3 retries, 30s interval)
+ * Process failed death queue with retry mechanism (max 3 retries, 30s interval).
+ * @param {Object} gameState - Global game state containing failedDeathQueue
+ * @param {Object} [logger] - Logger instance
+ * @returns {void}
  */
 function processFailedDeathQueue(gameState, logger) {
   if (!gameState.failedDeathQueue || gameState.failedDeathQueue.length === 0) {
@@ -201,8 +210,11 @@ function _processQueueEntry(entry, index, gameState, now, logger) {
 }
 
 /**
- * Cleanup orphaned tracking data to prevent memory leaks
- * Runs at most once per second
+ * Cleanup orphaned tracking data to prevent memory leaks.
+ * Runs at most once per second.
+ * @param {Object} gameState - Global game state
+ * @param {number} now - Current timestamp (ms)
+ * @returns {void}
  */
 function cleanupOrphanedTrackingData(gameState, now) {
   if (!gameState._lastTrackingCleanup) {

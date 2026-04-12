@@ -7,7 +7,14 @@ const MathUtils = require('../../../lib/MathUtils');
 const { createParticles } = require('../../lootFunctions');
 
 /**
- * Update auto-turret for a player: find closest zombie and fire if cooldown elapsed
+ * Update auto-turret for a player: find closest zombie and fire if cooldown elapsed.
+ * @param {Object} player - Player state object
+ * @param {string} playerId - Socket ID of the player
+ * @param {number} now - Current timestamp (ms)
+ * @param {Object} collisionManager - CollisionManager instance
+ * @param {Object} entityManager - EntityManager instance
+ * @param {Object} gameState - Global game state
+ * @returns {void}
  */
 function updateAutoTurrets(player, playerId, now, collisionManager, entityManager, gameState) {
   if (!player.autoTurrets || player.autoTurrets <= 0) {
@@ -35,7 +42,14 @@ function updateAutoTurrets(player, playerId, now, collisionManager, entityManage
 }
 
 /**
- * Fire a single auto-turret bullet toward the target zombie
+ * Fire a single auto-turret bullet toward the target zombie.
+ * @param {Object} player - Player state object
+ * @param {string} playerId - Socket ID of the player
+ * @param {Object} closestZombie - Closest zombie target {x, y}
+ * @param {number} now - Current timestamp (ms)
+ * @param {Object} entityManager - EntityManager instance
+ * @param {Object} gameState - Global game state
+ * @returns {void}
  */
 function fireAutoTurret(player, playerId, closestZombie, now, entityManager, gameState) {
   const angle = Math.atan2(closestZombie.y - player.y, closestZombie.x - player.x);
