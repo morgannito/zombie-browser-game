@@ -73,6 +73,7 @@ module.exports = [
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
         fetch: 'readonly',
+        AbortController: 'readonly',
         alert: 'readonly',
         confirm: 'readonly',
         prompt: 'readonly',

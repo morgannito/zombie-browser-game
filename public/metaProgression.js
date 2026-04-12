@@ -3,7 +3,7 @@
  * @version 1.0.0
  */
 
-(function() {
+(function () {
   'use strict';
 
   class MetaProgressionSystem {
@@ -63,7 +63,7 @@
         closeBtn.addEventListener('click', () => this.closePanel());
       }
 
-      container.addEventListener('click', (event) => {
+      container.addEventListener('click', event => {
         const target = event.target;
         if (target && target.classList.contains('meta-skill-btn')) {
           const skillId = target.getAttribute('data-skill');
@@ -107,10 +107,14 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const fetchOpts = { headers, signal: controller.signal };
         const [progressionRes, skillsRes] = await Promise.all([
-          fetch(`/api/progression/${this.playerId}`, { headers }),
-          fetch('/api/progression/skills/all', { headers })
+          fetch(`/api/progression/${this.playerId}`, fetchOpts),
+          fetch('/api/progression/skills/all', fetchOpts)
         ]);
+        clearTimeout(timeoutId);
 
         const progressionData = await progressionRes.json();
         const skillsData = await skillsRes.json();
@@ -168,7 +172,7 @@
           return a.category.localeCompare(b.category);
         });
 
-        grid.innerHTML = skills.map((skill) => this.renderSkillCard(skill, stats)).join('');
+        grid.innerHTML = skills.map(skill => this.renderSkillCard(skill, stats)).join('');
       }
     }
 
@@ -207,7 +211,11 @@
       const unlocked = this.progression.unlockedSkills || [];
       const prerequisites = skill.prerequisites || [];
       const hasPrereqs = prerequisites.every(req => unlocked.includes(req));
-      return (stats.skillPoints || 0) >= (skill.cost || 1) && hasPrereqs && !unlocked.includes(skill.skillId);
+      return (
+        (stats.skillPoints || 0) >= (skill.cost || 1) &&
+        hasPrereqs &&
+        !unlocked.includes(skill.skillId)
+      );
     }
 
     async unlockSkill(skillId) {
