@@ -406,9 +406,8 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           distance: Math.round(distance),
           budget: Math.round(player.moveBudget)
         });
-        // DISABLE ANTI-CHEAT FOR NOW: Always accept movement to prevent rollback issues for laggy clients
-        // socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-        // return;
+        socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+        return;
       }
 
       // Deduct cost from budget
