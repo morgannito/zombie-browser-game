@@ -1,10 +1,5 @@
 /**
  * @fileoverview Security middleware configuration
- * @description Provides security middleware including:
- * - Helmet.js for security headers
- * - Rate limiting for API endpoints
- * - Body parser with size limits
- * - Additional security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
  */
 
 const helmet = require('helmet');
@@ -14,6 +9,8 @@ const { API_LIMITER_CONFIG } = require('../config/constants');
 
 /**
  * Configure Helmet security headers
+ * Note: 'unsafe-inline' removed from scriptSrc — use nonces or hashes if inline
+ * scripts are needed. styleSrc keeps 'unsafe-inline' as canvas games rely on it.
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
@@ -21,10 +18,13 @@ function configureHelmet() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'ws:', 'wss:']
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"]
       }
     }
   });
@@ -43,10 +43,7 @@ function configureApiLimiter() {
  * @returns {Array} Array of body parser middlewares
  */
 function configureBodyParser() {
-  return [
-    express.json({ limit: '10kb' }),
-    express.urlencoded({ extended: true, limit: '10kb' })
-  ];
+  return [express.json({ limit: '10kb' }), express.urlencoded({ extended: true, limit: '10kb' })];
 }
 
 /**
