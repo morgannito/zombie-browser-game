@@ -114,7 +114,7 @@ function gameLoop(
     const stuckDuration = now - gameLoopStuckSince;
 
     if (stuckDuration > GAMEPLAY_CONSTANTS.GAME_LOOP_TIMEOUT) {
-      logger.error('❌ CRITICAL: Game loop stuck, forcing reset', {
+      logger.error('CRITICAL: Game loop stuck, forcing reset', {
         stuckDuration,
         timestamp: now,
         gameState: {
@@ -133,7 +133,7 @@ function gameLoop(
         metricsCollector.incrementError('game_loop_stuck_reset');
       }
     } else {
-      logger.warn('⚠️  Race condition detected - game loop already running, skipping frame', {
+      logger.warn('Race condition detected - game loop already running, skipping frame', {
         stuckDuration
       });
       return;
@@ -146,16 +146,16 @@ function gameLoop(
   // HIGH FIX: Validate entityManager before HazardManager init
   if (!gameState.hazardManager) {
     if (!entityManager) {
-      logger.error('❌ CRITICAL: entityManager not initialized, cannot create HazardManager');
+      logger.error('CRITICAL: entityManager not initialized, cannot create HazardManager');
       throw new Error('EntityManager required for HazardManager initialization');
     }
 
     try {
       gameState.hazardManager = new HazardManager(gameState, entityManager);
       gameState.hazardManager.initialize();
-      logger.info('✅ HazardManager initialized successfully');
+      logger.info('HazardManager initialized successfully');
     } catch (err) {
-      logger.error('❌ Failed to initialize HazardManager', {
+      logger.error('Failed to initialize HazardManager', {
         error: err.message,
         stack: err.stack
       });
@@ -230,7 +230,7 @@ function gameLoop(
       processFailedDeathQueue(gameState, logger);
     }
   } catch (error) {
-    logger.error('❌ Game loop error', {
+    logger.error('Game loop error', {
       error: error.message,
       stack: error.stack,
       timestamp: frameStart
@@ -246,7 +246,7 @@ function gameLoop(
 
     // Warn if frame time excessive
     if (frameTime > GAMEPLAY_CONSTANTS.SLOW_FRAME_WARNING_THRESHOLD) {
-      logger.warn('⚠️  Slow game loop frame detected', {
+      logger.warn('Slow game loop frame detected', {
         frameTime,
         targetFrameTime: perfIntegration.getTickInterval()
       });

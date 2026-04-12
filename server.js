@@ -225,7 +225,11 @@ function startGameLoop(perfIntegration, tickFn) {
 
     const now = perf.now();
 
-    tickFn();
+    try {
+      tickFn();
+    } catch (err) {
+      logger.error('Game loop tick error', { error: err.message, stack: err.stack });
+    }
 
     // Compensate for drift: subtract execution time from next delay
     const elapsed = perf.now() - now;
@@ -619,15 +623,28 @@ function cleanupServer() {
 process.on('SIGTERM', cleanupServer);
 process.on('SIGINT', cleanupServer);
 
-// Handle uncaught errors
+// Handle uncaught errors — do NOT kill the server for non-fatal errors.
+// Active sessions must survive async bugs; we only shut down on true OS-level failures.
+const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
+
 process.on('uncaughtException', err => {
-  logger.error('💥 Uncaught Exception:', err);
-  cleanupServer();
+  logger.error('Uncaught exception', {
+    error: err && err.message,
+    code: err && err.code,
+    stack: err && err.stack
+  });
+  if (err && FATAL_OS_CODES.has(err.code)) {
+    cleanupServer();
+  }
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  cleanupServer();
+process.on('unhandledRejection', reason => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error('Unhandled promise rejection', {
+    error: err.message,
+    stack: err.stack
+  });
+  // Do not exit — keep active game sessions alive.
 });
 
 // Export for testing
