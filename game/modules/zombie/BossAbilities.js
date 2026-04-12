@@ -81,10 +81,25 @@ function updateBossInfernal(
   if (!zombie.lastMeteor || now - zombie.lastMeteor >= 8000) {
     zombie.lastMeteor = now;
 
-    // Target random player
-    const players = Object.values(gameState.players).filter(p => p.alive);
-    if (players.length > 0) {
-      const target = players[Math.floor(Math.random() * players.length)];
+    // Target random player (avoid Object.values/filter allocations)
+    let aliveCount = 0;
+    for (const id in gameState.players) {
+      if (gameState.players[id].alive) {
+        aliveCount++;
+      }
+    }
+    if (aliveCount > 0) {
+      let pick = Math.floor(Math.random() * aliveCount);
+      let target = null;
+      for (const id in gameState.players) {
+        if (gameState.players[id].alive && pick-- === 0) {
+          target = gameState.players[id];
+          break;
+        }
+      }
+      if (!target) {
+        return;
+      }
 
       // Create meteor using HazardManager
       if (gameState.hazardManager) {

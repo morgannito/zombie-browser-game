@@ -17,8 +17,7 @@ const { cleanupPlayerBullets } = require('../game/utilityFunctions');
 const {
   validateMovementData,
   validateShootData,
-  validateUpgradeData,
-  validateBuyItemData
+  validateUpgradeData
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
 const {
@@ -32,85 +31,14 @@ const {
 } = require('./sessionRecovery');
 const { checkRateLimit, cleanupRateLimits } = require('./rateLimitStore');
 const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
+const { safeHandler } = require('./socketUtils');
+const { registerBuyItemHandler, registerShopHandlers } = require('./shopEvents');
 
-const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS, LEVEL_UP_UPGRADES } =
+const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, LEVEL_UP_UPGRADES, SHOP_ITEMS } =
   ConfigManager;
 
 // MEMORY LEAK FIX: Auto-start the interval when module loads
 startSessionCleanupInterval(logger);
-
-function stringifyArgPreview(value, maxLength = 200) {
-  if (typeof value === 'undefined') {
-    return 'undefined';
-  }
-  if (typeof value === 'string') {
-    return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-  }
-  try {
-    const stringified = JSON.stringify(value);
-    if (!stringified) {
-      return String(value);
-    }
-    return stringified.length > maxLength ? `${stringified.slice(0, maxLength)}...` : stringified;
-  } catch {
-    return '[unserializable-arg]';
-  }
-}
-
-/**
- * Safe socket handler wrapper - Enhanced error handling
- * @param {string} handlerName - Handler name for logging
- * @param {Function} handler - Handler function to wrap
- * @param {Object} options - Optional configuration
- * @param {boolean} options.skipRateLimit - Skip rate limiting for this handler
- * @returns {Function} Wrapped handler with error handling
- */
-function safeHandler(handlerName, handler, _options = {}) {
-  return function (...args) {
-    try {
-      // Apply rate limiting unless explicitly skipped (some handlers already check manually)
-      // Note: Most handlers in this file already call checkRateLimit manually,
-      // so we skip it here to avoid double-checking
-
-      // Execute the handler
-      const result = handler.apply(this, args);
-
-      // Handle async handlers
-      if (result instanceof Promise) {
-        result.catch(error => {
-          logger.error('Async socket handler error', {
-            handler: handlerName,
-            socketId: this.id,
-            error: error.message,
-            stack: error.stack,
-            argPreview: stringifyArgPreview(args[0])
-          });
-          this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-            message: 'Une erreur est survenue sur le serveur',
-            code: 'INTERNAL_ERROR'
-          });
-        });
-      }
-
-      return result;
-    } catch (error) {
-      logger.error('Socket handler error', {
-        handler: handlerName,
-        socketId: this.id,
-        error: error.message,
-        stack: error.stack,
-        argPreview: args.length > 0 ? stringifyArgPreview(args[0]) : 'no args'
-      });
-
-      // Notify client of error
-      this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-        message: 'Une erreur est survenue sur le serveur',
-        code: 'INTERNAL_ERROR',
-        ...(process.env.NODE_ENV === 'development' && { details: error.message })
-      });
-    }
-  };
-}
 
 /**
  * Initialize Socket.IO connection handlers
@@ -755,134 +683,6 @@ function registerSelectUpgradeHandler(socket, gameState) {
 }
 
 /**
- * Register buyItem handler
- */
-function registerBuyItemHandler(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.BUY_ITEM,
-    safeHandler('buyItem', function (data) {
-      logger.debug('Shop purchase request', {
-        socketId: socket.id,
-        itemId: data?.itemId,
-        category: data?.category
-      });
-
-      // VALIDATION: Vérifier et sanitize les données d'entrée
-      const validatedData = validateBuyItemData(data);
-      if (!validatedData) {
-        logger.warn('Invalid buy item data received', { socketId: socket.id, data });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-          success: false,
-          message: 'Item invalide'
-        });
-        return;
-      }
-
-      // Rate limiting
-      if (!checkRateLimit(socket.id, 'buyItem')) {
-        logger.warn('Shop purchase rate limited', { socketId: socket.id });
-        return;
-      }
-
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        logger.debug('Shop purchase ignored - invalid player state', {
-          socketId: socket.id,
-          exists: !!player,
-          alive: player?.alive,
-          hasNickname: player?.hasNickname
-        });
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      const { itemId, category } = validatedData;
-
-      if (category === 'permanent') {
-        const item = SHOP_ITEMS.permanent[itemId];
-        // Double vérification (déjà fait dans validateBuyItemData, mais par sécurité)
-        if (!item) {
-          logger.error('Item validation failed', { itemId, category });
-          return;
-        }
-
-        const currentLevel = player.upgrades[itemId] || 0;
-
-        // Vérifier si déjà au max
-        if (currentLevel >= item.maxLevel) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Niveau maximum atteint'
-          });
-          return;
-        }
-
-        // Calculer le coût
-        const cost = item.baseCost + currentLevel * item.costIncrease;
-
-        // Vérifier si le joueur a assez d'or
-        if (player.gold < cost) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Or insuffisant'
-          });
-          return;
-        }
-
-        // Déduire l'or
-        player.gold -= cost;
-
-        // Augmenter le niveau de l'upgrade
-        player.upgrades[itemId] = currentLevel + 1;
-
-        // Appliquer l'effet
-        item.effect(player);
-
-        logger.info('Shop purchase completed', {
-          socketId: socket.id,
-          category,
-          itemId,
-          newLevel: player.upgrades[itemId],
-          remainingGold: player.gold
-        });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
-      } else if (category === 'temporary') {
-        const item = SHOP_ITEMS.temporary[itemId];
-        // Double vérification (déjà fait dans validateBuyItemData, mais par sécurité)
-        if (!item) {
-          logger.error('Temporary item validation failed', { itemId, category });
-          return;
-        }
-
-        // Vérifier si le joueur a assez d'or
-        if (player.gold < item.cost) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Or insuffisant'
-          });
-          return;
-        }
-
-        // Déduire l'or
-        player.gold -= item.cost;
-
-        // Appliquer l'effet
-        item.effect(player);
-
-        logger.info('Shop purchase completed', {
-          socketId: socket.id,
-          category,
-          itemId,
-          remainingGold: player.gold
-        });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
-      }
-    })
-  );
-}
-
-/**
  * Register setNickname handler
  */
 function registerSetNicknameHandler(socket, gameState, io, container) {
@@ -996,43 +796,6 @@ function registerSpawnProtectionHandlers(socket, gameState) {
 
       player.spawnProtection = false;
       logger.info('Spawn protection ended', { player: player.nickname || socket.id });
-    })
-  );
-}
-
-/**
- * Register shop handlers
- */
-function registerShopHandlers(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.SHOP_OPENED,
-    safeHandler('shopOpened', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.invisible = true;
-      player.invisibleEndTime = Infinity; // Invisibilité sans limite de temps
-      logger.info('Player invisible - shop opened', { player: player.nickname || socket.id });
-    })
-  );
-
-  socket.on(
-    SOCKET_EVENTS.CLIENT.SHOP_CLOSED,
-    safeHandler('shopClosed', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.invisible = false;
-      player.invisibleEndTime = 0;
-      logger.info('Player visible - shop closed', { player: player.nickname || socket.id });
     })
   );
 }
