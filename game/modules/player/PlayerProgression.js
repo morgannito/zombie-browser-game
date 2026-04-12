@@ -71,9 +71,11 @@ function calculateComboMultiplier(combo) {
  */
 function calculateBonuses(zombie, comboMultiplier) {
   // BUG FIX: Validate zombie drop values
-  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const goldDrop =
+    typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
   const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
-  const multiplier = typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
+  const multiplier =
+    typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
 
   return {
     goldBonus: Math.floor(goldDrop * multiplier),
@@ -85,9 +87,11 @@ function calculateBonuses(zombie, comboMultiplier) {
  * Update player score
  */
 function updatePlayerScore(shooter, zombie, comboMultiplier) {
-  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const goldDrop =
+    typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
   const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
-  const multiplier = typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
+  const multiplier =
+    typeof comboMultiplier === 'number' && isFinite(comboMultiplier) ? comboMultiplier : 1;
   const baseScore = goldDrop + xpDrop;
   const comboScore = baseScore * (multiplier - 1);
   shooter.totalScore += baseScore + comboScore;
@@ -97,7 +101,8 @@ function updatePlayerScore(shooter, zombie, comboMultiplier) {
  * Emit combo update event
  */
 function emitComboUpdate(shooter, playerId, comboMultiplier, goldBonus, xpBonus, zombie, io) {
-  const goldDrop = typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
+  const goldDrop =
+    typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
   const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
   io.to(playerId).emit('comboUpdate', {
     combo: shooter.combo,
@@ -139,6 +144,12 @@ function handlePlayerLevelUp(player, playerId, io) {
 
     const milestoneBonus = checkMilestoneBonus(player);
     const upgradeChoices = generateUpgradeChoices();
+
+    // ANTI-CHEAT: Store valid choices server-side so selectUpgrade can verify
+    if (!Array.isArray(player.pendingUpgradeChoices)) {
+      player.pendingUpgradeChoices = [];
+    }
+    player.pendingUpgradeChoices.push(...upgradeChoices.map(u => u.id));
 
     setInvisibilityForUpgrade(player);
     emitLevelUpEvent(player, playerId, upgradeChoices, milestoneBonus, io);

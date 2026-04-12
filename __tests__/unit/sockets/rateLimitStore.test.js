@@ -20,7 +20,7 @@ describe('rateLimitStore', () => {
   test('blocks requests after configured limit and logs warning', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1000);
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       expect(checkRateLimit('socket-1', 'shoot')).toBe(true);
     }
 
@@ -30,7 +30,7 @@ describe('rateLimitStore', () => {
       expect.objectContaining({
         socketId: 'socket-1',
         event: 'shoot',
-        limit: 50
+        limit: 20
       })
     );
   });
@@ -39,7 +39,7 @@ describe('rateLimitStore', () => {
     let now = 1000;
     jest.spyOn(Date, 'now').mockImplementation(() => now);
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       expect(checkRateLimit('socket-2', 'shoot')).toBe(true);
     }
     expect(checkRateLimit('socket-2', 'shoot')).toBe(false);
@@ -51,7 +51,7 @@ describe('rateLimitStore', () => {
   test('cleanup removes socket counters', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1000);
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       expect(checkRateLimit('socket-1', 'shoot')).toBe(true);
     }
     expect(checkRateLimit('socket-1', 'shoot')).toBe(false);

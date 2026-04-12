@@ -667,6 +667,20 @@ function registerSelectUpgradeHandler(socket, gameState) {
         return;
       }
 
+      // ANTI-CHEAT: Vérifier que le choix était parmi ceux proposés par le serveur
+      const pending = player.pendingUpgradeChoices || [];
+      const choiceIndex = pending.indexOf(validatedData.upgradeId);
+      if (choiceIndex === -1) {
+        logger.warn('Anti-cheat: selectUpgrade not in pending choices', {
+          player: player.nickname || socket.id,
+          upgradeId: validatedData.upgradeId,
+          pending
+        });
+        return;
+      }
+      // Consommer le choix (retirer toutes les entrées de ce batch)
+      player.pendingUpgradeChoices = [];
+
       // Appliquer l'effet de l'upgrade
       upgrade.effect(player);
 

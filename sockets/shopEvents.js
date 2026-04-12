@@ -45,7 +45,16 @@ function applyPermanentPurchase(socket, player, itemId) {
     return;
   }
 
+  // ANTI-CHEAT: Atomic deduction — re-check after subtracting to prevent race on concurrent events
   player.gold -= cost;
+  if (player.gold < 0) {
+    player.gold += cost; // rollback
+    socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
+      success: false,
+      message: 'Or insuffisant'
+    });
+    return;
+  }
   player.upgrades[itemId] = currentLevel + 1;
   item.effect(player);
 
@@ -84,7 +93,16 @@ function applyTemporaryPurchase(socket, player, itemId) {
     return;
   }
 
+  // ANTI-CHEAT: Atomic deduction — rollback if negative
   player.gold -= item.cost;
+  if (player.gold < 0) {
+    player.gold += item.cost; // rollback
+    socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
+      success: false,
+      message: 'Or insuffisant'
+    });
+    return;
+  }
   item.effect(player);
 
   logger.info('Shop purchase completed', {
@@ -163,6 +181,11 @@ function registerShopHandlers(socket, gameState) {
   socket.on(
     SOCKET_EVENTS.CLIENT.SHOP_OPENED,
     safeHandler('shopOpened', function () {
+      // ANTI-CHEAT: Rate limit to prevent infinite-invisible spam
+      if (!checkRateLimit(socket.id, 'shopOpened')) {
+        return;
+      }
+
       const player = gameState.players[socket.id];
       if (!player || !player.alive || !player.hasNickname) {
         return;
@@ -170,7 +193,9 @@ function registerShopHandlers(socket, gameState) {
 
       player.lastActivityTime = Date.now();
       player.invisible = true;
-      player.invisibleEndTime = Infinity;
+      // ANTI-CHEAT: Cap invisibility at 60s max — prevents Infinity abuse
+      const MAX_SHOP_INVISIBLE_MS = 60_000;
+      player.invisibleEndTime = Date.now() + MAX_SHOP_INVISIBLE_MS;
       logger.info('Player invisible - shop opened', { player: player.nickname || socket.id });
     })
   );

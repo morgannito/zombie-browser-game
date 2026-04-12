@@ -16,11 +16,11 @@ const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').filter(o => o.length > 0)
   : [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://zombie.lonewolf.fr',
-    'http://zombie.lonewolf.fr'
-  ];
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://zombie.lonewolf.fr',
+      'http://zombie.lonewolf.fr'
+    ];
 
 // CORS strict validation in production
 if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
@@ -30,11 +30,12 @@ if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
 
 // Rate limiting configuration
 const RATE_LIMIT_CONFIG = {
-  'shoot': { maxRequests: 50, windowMs: 1000 },
-  'playerMove': { maxRequests: 100, windowMs: 1000 }, // Balanced for 60 FPS server with 30 FPS client updates
-  'setNickname': { maxRequests: 3, windowMs: 10000 },
-  'selectUpgrade': { maxRequests: 10, windowMs: 5000 },
-  'buyItem': { maxRequests: 20, windowMs: 5000 }
+  shoot: { maxRequests: 20, windowMs: 1000 }, // Hard ceiling: fastest weapon ~20 rps
+  playerMove: { maxRequests: 100, windowMs: 1000 }, // Balanced for 60 FPS server with 30 FPS client updates
+  setNickname: { maxRequests: 3, windowMs: 10000 },
+  selectUpgrade: { maxRequests: 10, windowMs: 5000 },
+  buyItem: { maxRequests: 20, windowMs: 5000 },
+  shopOpened: { maxRequests: 5, windowMs: 10000 } // Prevent invisible-spam abuse
 };
 
 // API Rate limiter configuration
