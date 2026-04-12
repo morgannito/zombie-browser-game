@@ -50,7 +50,7 @@ function initAuthRoutes(container, jwtService) {
         }
       }
 
-      logger.info('Player authenticated', { userId: playerId, username: rawUsername });
+      logger.info('Player authenticated', { userId: playerId });
 
       return res.json({
         token,

@@ -760,7 +760,7 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
       player.spawnProtection = true;
       player.spawnProtectionEndTime = Date.now() + 3000; // 3 secondes de protection
 
-      logger.info('Player chose nickname', { socketId: socket.id, nickname });
+      logger.info('Player chose nickname', { socketId: socket.id });
 
       const accountId = player.accountId || socket.userId || null;
       if (container && accountId) {
@@ -773,13 +773,12 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
               id: accountId,
               username: nickname
             });
-            logger.info('Player created in database', { accountId, username: nickname });
+            logger.info('Player created in database', { accountId });
           }
         } catch (error) {
           // Log but don't block gameplay - player creation is optional for progression features
           logger.warn('Failed to ensure player exists in database', {
             accountId,
-            username: nickname,
             error: error.message
           });
         }
