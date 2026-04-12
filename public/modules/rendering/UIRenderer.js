@@ -347,13 +347,19 @@ class UIRenderer {
       item.classList.add('boss');
     }
 
-    item.innerHTML = `
-      <div class="kill-feed-text">
-        <span class="kill-feed-killer">${killer}</span>
-        <span>\u2620</span>
-        <span class="kill-feed-victim ${type}">${victim}</span>
-      </div>
-    `;
+    const safeType = String(type).replace(/[^a-zA-Z0-9_-]/g, '');
+    const wrap = document.createElement('div');
+    wrap.className = 'kill-feed-text';
+    const k = document.createElement('span');
+    k.className = 'kill-feed-killer';
+    k.textContent = String(killer);
+    const sk = document.createElement('span');
+    sk.textContent = '\u2620';
+    const v = document.createElement('span');
+    v.className = `kill-feed-victim ${safeType}`;
+    v.textContent = String(victim);
+    wrap.append(k, sk, v);
+    item.replaceChildren(wrap);
 
     feedEl.prepend(item);
 
