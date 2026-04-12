@@ -495,7 +495,8 @@ async function startServer() {
     roomManager,
     metricsCollector,
     perfIntegration,
-    dbAvailable ? container : null
+    dbAvailable ? container : null,
+    networkManager
   );
   io.on('connection', socketHandler);
 

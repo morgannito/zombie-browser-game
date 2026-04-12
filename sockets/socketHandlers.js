@@ -21,6 +21,11 @@ const {
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
 const {
+  savePlayerProgressionSnapshot,
+  resetPlayerRunState,
+  restorePlayerProgression
+} = require('../game/modules/player/RespawnHelpers');
+const {
   disconnectedPlayers,
   startSessionCleanupInterval,
   stopSessionCleanupInterval,
@@ -58,7 +63,8 @@ function initSocketHandlers(
   roomManager,
   metricsCollector,
   perfIntegration,
-  container = null
+  container = null,
+  networkManager = null
 ) {
   return socket => {
     const sessionId = normalizeSessionId(socket.handshake.auth?.sessionId);
@@ -213,7 +219,14 @@ function initSocketHandlers(
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
-    registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId);
+    registerDisconnectHandler(
+      socket,
+      gameState,
+      entityManager,
+      sessionId,
+      accountId,
+      networkManager
+    );
 
     // Register admin commands handlers
     if (gameState.adminCommands) {
@@ -831,7 +844,14 @@ function registerPingHandler(socket) {
 /**
  * Register disconnect handler
  */
-function registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId) {
+function registerDisconnectHandler(
+  socket,
+  gameState,
+  entityManager,
+  sessionId,
+  accountId,
+  networkManager = null
+) {
   socket.on(
     SOCKET_EVENTS.SYSTEM.DISCONNECT,
     safeHandler('disconnect', function () {
@@ -874,6 +894,11 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId, 
 
       // Nettoyer les rate limits
       cleanupRateLimits(socket.id);
+
+      // Nettoyer les queues NetworkManager (memory leak fix)
+      if (networkManager) {
+        networkManager.cleanupPlayer(socket.id);
+      }
     })
   );
 }
