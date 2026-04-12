@@ -1,13 +1,13 @@
 /**
  * @fileoverview Authentication routes
  * @description Handles JWT authentication for players
- * - POST /api/auth/login - Login endpoint with JWT token generation
- * - Validates username format and length
- * - Creates or retrieves player from database
+ * - POST /api/auth/login - Creates a new anonymous session with unique UUID
+ * - Username is display-only; each login creates a fresh identity
  */
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
 
 /**
@@ -18,17 +18,16 @@ const logger = require('../lib/infrastructure/Logger');
  */
 function initAuthRoutes(container, jwtService) {
   /**
-   * POST /api/auth/login - Authentification JWT
+   * POST /api/auth/login
+   * Always creates a new anonymous identity — username is display-only.
+   * Never reuses an existing account by username to prevent account takeover.
    */
   router.post('/login', async (req, res) => {
     try {
       const rawUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
 
-      // Validation
       if (!rawUsername || rawUsername.length < 2 || rawUsername.length > 15) {
-        return res.status(400).json({
-          error: 'Invalid username (2-15 characters required)'
-        });
+        return res.status(400).json({ error: 'Invalid username (2-15 characters required)' });
       }
 
       if (!/^[a-zA-Z0-9 _-]+$/.test(rawUsername)) {
@@ -37,61 +36,25 @@ function initAuthRoutes(container, jwtService) {
         });
       }
 
-      const playerId = require('crypto').randomUUID();
+      const playerId = crypto.randomUUID();
 
-      if (!container || typeof container.get !== 'function') {
-        const token = jwtService.generateToken({
-          userId: playerId,
-          username: rawUsername
-        });
+      const token = jwtService.generateToken({ userId: playerId, username: rawUsername });
 
-        logger.warn('Player authenticated without database', {
-          userId: playerId,
-          username: rawUsername
-        });
-
-        return res.json({
-          token,
-          player: {
-            id: playerId,
-            username: rawUsername,
-            highScore: 0,
-            totalKills: 0,
-            gamesPlayed: 0
-          }
-        });
-      }
-
-      // Créer ou récupérer le joueur
-      const playerRepository = container.get('playerRepository');
-      let player = await playerRepository.findByUsername(rawUsername);
-
-      if (!player) {
-        // Créer un nouveau joueur
-        const createPlayerUseCase = container.get('createPlayerUseCase');
-        player = await createPlayerUseCase.execute({ id: playerId, username: rawUsername });
-      }
-
-      // Générer JWT
-      const token = jwtService.generateToken({
-        userId: player.id,
-        username: player.username
-      });
-
-      logger.info('Player authenticated', {
-        userId: player.id,
-        username: player.username
-      });
-
-      res.json({
-        token,
-        player: {
-          id: player.id,
-          username: player.username,
-          highScore: player.highScore || 0,
-          totalKills: player.totalKills || 0,
-          gamesPlayed: player.gamesPlayed || 0
+      if (container && typeof container.get === 'function') {
+        try {
+          const createPlayerUseCase = container.get('createPlayerUseCase');
+          await createPlayerUseCase.execute({ id: playerId, username: rawUsername });
+        } catch (dbErr) {
+          logger.warn('Failed to persist new player', { error: dbErr.message });
+          // Non-blocking: game session proceeds without DB record
         }
+      }
+
+      logger.info('Player authenticated', { userId: playerId, username: rawUsername });
+
+      return res.json({
+        token,
+        player: { id: playerId, username: rawUsername, highScore: 0, totalKills: 0, gamesPlayed: 0 }
       });
     } catch (error) {
       logger.error('Login failed', { error: error.message });
