@@ -29,14 +29,14 @@
         <!-- Menu de navigation -->
         <div id="game-menu" style="display: none;">
             <div class="menu-buttons">
-                <button id="menu-btn-achievements" class="menu-btn" title="Achievements">🏆</button>
-                <button id="menu-btn-challenges" class="menu-btn" title="Défis">🎯</button>
-                <button id="menu-btn-leaderboard" class="menu-btn" title="Leaderboard">📊</button>
-                <button id="menu-btn-unlocks" class="menu-btn" title="Armes">🔓</button>
-                <button id="menu-btn-synergies" class="menu-btn" title="Synergies">⚡</button>
-                <button id="menu-btn-lifetime-stats" class="menu-btn" title="Statistiques">📈</button>
-                <button id="menu-btn-gem-shop" class="menu-btn" title="Gem Shop">💎</button>
-                <button id="menu-btn-progression" class="menu-btn" title="Progression">🧬</button>
+                <button id="menu-btn-achievements" class="menu-btn" title="Achievements" aria-label="Achievements">🏆</button>
+                <button id="menu-btn-challenges" class="menu-btn" title="Défis" aria-label="Défis quotidiens">🎯</button>
+                <button id="menu-btn-leaderboard" class="menu-btn" title="Leaderboard" aria-label="Classement">📊</button>
+                <button id="menu-btn-unlocks" class="menu-btn" title="Armes" aria-label="Armes débloquées">🔓</button>
+                <button id="menu-btn-synergies" class="menu-btn" title="Synergies" aria-label="Synergies">⚡</button>
+                <button id="menu-btn-lifetime-stats" class="menu-btn" title="Statistiques" aria-label="Statistiques globales">📈</button>
+                <button id="menu-btn-gem-shop" class="menu-btn" title="Gem Shop" aria-label="Boutique de gemmes">💎</button>
+                <button id="menu-btn-progression" class="menu-btn" title="Progression" aria-label="Progression">🧬</button>
             </div>
         </div>
 
@@ -142,15 +142,15 @@
                         <span class="stat-value" id="final-gold">0</span>
                     </div>
                 </div>
-                <button id="respawn-btn">CONTINUER ?</button>
+                <button id="respawn-btn" aria-label="Respawn et continuer la partie">CONTINUER ?</button>
             </div>
         </div>
 
-        <div id="shop" style="display: none;">
+        <div id="shop" style="display: none;" role="dialog" aria-modal="true" aria-label="Shop — acheter des upgrades">
             <div class="shop-header">
                 <h1>🛒 SHOP</h1>
                 <p>Or disponible: <span id="shop-gold">0</span> 💰</p>
-                <button id="shop-close-btn">Continuer →</button>
+                <button id="shop-close-btn" aria-label="Fermer le shop et continuer la partie">Continuer →</button>
             </div>
 
             <div class="shop-content">
