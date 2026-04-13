@@ -3647,6 +3647,24 @@ body {
   }
 }
 
+/* Boss danger indicator: fast red alarm pulse */
+@keyframes boss-danger-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), 0 0 40px rgba(255, 0, 0, 0.4);
+    border-color: var(--color-danger);
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 35px rgba(255, 0, 0, 1), 0 0 70px rgba(255, 0, 0, 0.7);
+    border-color: #ff6666;
+  }
+}
+
+.boss-indicator {
+  animation: boss-danger-pulse 0.65s ease-in-out infinite !important;
+}
+
 /* Distance display on indicators */
 .indicator-distance {
   position: absolute;
