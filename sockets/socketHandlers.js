@@ -795,41 +795,12 @@ function registerPingHandler(socket) {
  * @returns {Function} cleanup — call on disconnect to stop the timer
  */
 function startZombieHeartbeat(socket) {
-  const ZOMBIE_PING_INTERVAL = 15000; // send ping every 15 s
-  const ZOMBIE_PONG_TIMEOUT = 10000; // wait up to 10 s for pong
-
-  let pongTimer = null;
-
-  const intervalId = setInterval(() => {
-    if (!socket.connected) {
-      cleanup();
-      return;
-    }
-
-    // Await a pong acknowledgement from the client
-    pongTimer = setTimeout(() => {
-      logger.warn('Zombie client detected — no pong received', { socketId: socket.id });
-      socket.disconnect(true);
-    }, ZOMBIE_PONG_TIMEOUT);
-
-    socket.emit('serverPing', { sentAt: Date.now() }, () => {
-      // Client responded: clear the disconnect timer
-      if (pongTimer) {
-        clearTimeout(pongTimer);
-        pongTimer = null;
-      }
-    });
-  }, ZOMBIE_PING_INTERVAL);
-
-  function cleanup() {
-    clearInterval(intervalId);
-    if (pongTimer) {
-      clearTimeout(pongTimer);
-      pongTimer = null;
-    }
-  }
-
-  return cleanup;
+  // No-op: socket.io has its own ping/pong (pingInterval/pingTimeout in server config).
+  // The previous custom implementation expected client ack callbacks that don't exist
+  // and silently kicked every legitimate client after 10s.
+  // Returns a no-op cleanup so callers don't crash.
+  void socket;
+  return function noop() {};
 }
 
 /**
