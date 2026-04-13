@@ -158,7 +158,8 @@ class PauseMenu {
   show() {
     const pauseMenu = document.getElementById('pause-menu');
     if (pauseMenu) {
-      pauseMenu.style.display = 'block';
+      pauseMenu.style.display = 'flex';
+      pauseMenu.classList.add('is-open');
     }
   }
 
@@ -166,6 +167,7 @@ class PauseMenu {
     const pauseMenu = document.getElementById('pause-menu');
     if (pauseMenu) {
       pauseMenu.style.display = 'none';
+      pauseMenu.classList.remove('is-open');
     }
   }
 
