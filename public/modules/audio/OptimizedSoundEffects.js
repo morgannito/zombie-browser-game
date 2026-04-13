@@ -28,22 +28,22 @@ class OptimizedSoundEffects {
     } // Too far, don't play
 
     switch (weaponType) {
-    case 'pistol':
-      this.playPistolShot(attenuation);
-      break;
-    case 'shotgun':
-      this.playShotgunShot(attenuation);
-      break;
-    case 'machinegun':
-    case 'minigun':
-      this.playMachinegunShot(attenuation);
-      break;
-    case 'rifle':
-    case 'sniper':
-      this.playRifleShot(attenuation);
-      break;
-    default:
-      this.playPistolShot(attenuation);
+      case 'pistol':
+        this.playPistolShot(attenuation);
+        break;
+      case 'shotgun':
+        this.playShotgunShot(attenuation);
+        break;
+      case 'machinegun':
+      case 'minigun':
+        this.playMachinegunShot(attenuation);
+        break;
+      case 'rifle':
+      case 'sniper':
+        this.playRifleShot(attenuation);
+        break;
+      default:
+        this.playPistolShot(attenuation);
     }
   }
 
@@ -230,25 +230,45 @@ class OptimizedSoundEffects {
   }
 
   /**
-   * LEVEL UP - Arpeggio
+   * LEVEL UP - Distinct fanfare: rising arpeggio + triumphant accent chord
    */
   playLevelUp() {
     if (!this.core) {
       return;
     }
 
-    const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C
-    frequencies.forEach((freq, i) => {
-      (window.setManagedTimeout || setTimeout)(() => {
+    const scheduleNote = window.setManagedTimeout || setTimeout;
+
+    // Rising arpeggio (sine) — same as before but slightly louder
+    const arpeggio = [523.25, 659.25, 783.99, 1046.5]; // C E G C8va
+    arpeggio.forEach((freq, i) => {
+      scheduleNote(() => {
         this.core.playTone({
           type: 'levelup',
           frequency: freq,
-          duration: 0.25,
-          volume: 0.25,
+          duration: 0.22,
+          volume: 0.3,
           waveType: 'sine'
         });
-      }, i * 100);
+      }, i * 90);
     });
+
+    // Triumphant accent chord at the peak (triangle wave, delayed to land after arpeggio)
+    const accent = [1046.5, 1318.51, 1567.98]; // C8va E8va G8va
+    scheduleNote(
+      () => {
+        accent.forEach(freq => {
+          this.core.playTone({
+            type: 'levelup',
+            frequency: freq,
+            duration: 0.45,
+            volume: 0.18,
+            waveType: 'triangle'
+          });
+        });
+      },
+      arpeggio.length * 90 + 20
+    );
   }
 
   /**
@@ -416,7 +436,7 @@ class OptimizedSoundEffects {
     if (distance >= maxDistance) {
       return 0;
     }
-    return Math.max(0, 1 - (distance / maxDistance));
+    return Math.max(0, 1 - distance / maxDistance);
   }
 
   /**
