@@ -205,7 +205,7 @@ describe('SubmitScoreUseCase', () => {
           kills: 50,
           survivalTime: 120
         })
-      ).rejects.toThrow('Player nonexistent not found');
+      ).rejects.toThrow("Player with identifier 'nonexistent' not found");
     });
 
     it('should not submit to leaderboard when player not found', async () => {
