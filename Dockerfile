@@ -6,7 +6,8 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --production && npm rebuild better-sqlite3
+# HUSKY=0 skips the `prepare` git hook install (husky is devDep, not present with --production)
+RUN HUSKY=0 npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
 
 # Stage 2: runtime — image finale sans les outils de build
 FROM node:20-alpine AS runtime
