@@ -42,6 +42,7 @@ class UIManager {
       finalWave: document.getElementById('final-wave'),
       finalLevel: document.getElementById('final-level'),
       finalGold: document.getElementById('final-gold'),
+      finalKills: document.getElementById('final-kills'),
       playersCount: document.getElementById('players-count'),
       zombiesCount: document.getElementById('zombies-count')
     };
@@ -148,6 +149,9 @@ class UIManager {
       els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
       els.finalLevel.textContent = player.level || 1;
       els.finalGold.textContent = (player.gold || 0).toLocaleString();
+      if (els.finalKills) {
+        els.finalKills.textContent = (player.zombiesKilled || player.kills || 0).toLocaleString();
+      }
 
       // Sauvegarder dans le leaderboard (une seule fois)
       if (!this.deathRecorded && window.leaderboardSystem) {
