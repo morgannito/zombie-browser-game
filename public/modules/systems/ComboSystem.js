@@ -133,7 +133,7 @@ class ComboSystem {
 
       // Adapter l'opacité selon mobile ou desktop
       const opacity = this.isMobile ? 0.6 : 0.9;
-      this.comboElement.style.background = `rgba(${parseInt(color.slice(1,3), 16)}, ${parseInt(color.slice(3,5), 16)}, ${parseInt(color.slice(5,7), 16)}, ${opacity})`;
+      this.comboElement.style.background = `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, ${opacity})`;
 
       const shadowSize = this.isMobile ? 15 : 30;
       this.comboElement.style.boxShadow = `0 0 ${shadowSize}px ${color}`;
@@ -147,25 +147,31 @@ class ComboSystem {
 
       this.comboElement.innerHTML = comboText;
 
-      // Animation de pulsation (réduite sur mobile)
-      const scaleAmount = this.isMobile ? 1.1 : 1.2;
-      this.comboElement.style.transform = `scale(${scaleAmount})`;
+      // Scale-up pop animation — bigger punch per multiplier tier
+      const tier =
+        this.multiplier >= 10 ? 3 : this.multiplier >= 5 ? 2 : this.multiplier >= 3 ? 1 : 0;
+      const peakScale = this.isMobile ? [1.15, 1.25, 1.35, 1.5][tier] : [1.3, 1.5, 1.7, 2.0][tier];
+      this.comboElement.style.transition = 'transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      this.comboElement.style.transform = `scale(${peakScale})`;
       setTimeout(() => {
         if (this.comboElement) {
+          this.comboElement.style.transition = 'transform 0.15s ease-out';
           this.comboElement.style.transform = 'scale(1)';
         }
-      }, 200);
+      }, 100);
 
-      // Animation bonus pour les gros combos (tous les 10 kills)
+      // Milestone flash every 10 kills
       if (this.combo % 10 === 0) {
         const bigFontSize = this.isMobile ? '20px' : '40px';
         const normalFontSize = this.isMobile ? '16px' : '32px';
         this.comboElement.style.fontSize = bigFontSize;
+        this.comboElement.style.textShadow = '0 0 20px #fff, 0 0 40px #ff6400';
         setTimeout(() => {
           if (this.comboElement) {
             this.comboElement.style.fontSize = normalFontSize;
+            this.comboElement.style.textShadow = '';
           }
-        }, 300);
+        }, 400);
       }
     }
 
