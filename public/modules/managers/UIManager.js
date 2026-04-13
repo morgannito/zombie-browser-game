@@ -15,7 +15,12 @@ class UIManager {
 
     // Store handler references for cleanup
     this.handlers = {
-      shopClose: () => this.hideShop()
+      shopClose: () => this.hideShop(),
+      keydown: e => {
+        if (e.key === 'Escape' && this.shopOpen) {
+          this.hideShop();
+        }
+      }
     };
 
     this.shopCloseBtn = document.getElementById('shop-close-btn');
@@ -50,6 +55,9 @@ class UIManager {
       this.shopCloseBtn.addEventListener('click', this.handlers.shopClose);
     }
 
+    // Esc key closes shop (keyboard accessibility)
+    document.addEventListener('keydown', this.handlers.keydown);
+
     // Make buyItem global for onclick handlers
     window.buyItem = (itemId, category) => {
       console.log('[Shop] buyItem called:', itemId, category);
@@ -79,6 +87,7 @@ class UIManager {
     if (this.shopCloseBtn) {
       this.shopCloseBtn.removeEventListener('click', this.handlers.shopClose);
     }
+    document.removeEventListener('keydown', this.handlers.keydown);
   }
 
   update() {
