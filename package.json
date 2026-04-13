@@ -22,6 +22,7 @@
     "db:migrate": "node database/scripts/migrate.js up",
     "db:rollback": "node database/scripts/migrate.js down",
     "db:status": "node database/scripts/migrate.js status",
+    "db:backup": "node scripts/backup.js",
     "health": "curl -sf http://localhost:${PORT:-3000}/health | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log('status:',d.status);process.exit(d.status==='ok'?0:1)\"",
     "prepare": "husky"
   },
