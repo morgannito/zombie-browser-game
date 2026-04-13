@@ -418,7 +418,30 @@ class GameEngine {
 
   start() {
     console.log('🎮 Zombie Survival - Game Engine Started');
+    this.isPausedByUser = false;
     this.gameLoop();
+  }
+
+  pause() {
+    if (this.isPausedByUser) {
+      return;
+    }
+    this.isPausedByUser = true;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  resume() {
+    if (!this.isPausedByUser) {
+      return;
+    }
+    this.isPausedByUser = false;
+    this.lastFrameTime = 0;
+    if (this.animationFrameId === null && !this.manualStepping) {
+      this.gameLoop();
+    }
   }
 
   /**
