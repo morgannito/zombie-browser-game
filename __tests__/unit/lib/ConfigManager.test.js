@@ -40,16 +40,16 @@ describe('ConfigManager', () => {
       });
     });
 
-    test.skip('each weapon should have required properties', () => {
+    test('each weapon should have required properties', () => {
       Object.values(ConfigManager.WEAPONS).forEach(weapon => {
         expect(weapon.name).toBeDefined();
         expect(weapon.damage).toBeGreaterThan(0);
         expect(weapon.fireRate).toBeGreaterThan(0);
 
-        // LATENCY OPTIMIZATION: Tesla Coil is passive (bulletSpeed: 0, bulletCount: 0)
+        // Tesla Coil is passive: bulletSpeed is 0 but still fires (bulletCount >= 1)
         if (weapon.isTeslaCoil) {
           expect(weapon.bulletSpeed).toBe(0);
-          expect(weapon.bulletCount).toBe(0);
+          expect(weapon.bulletCount).toBeGreaterThanOrEqual(1);
         } else {
           expect(weapon.bulletSpeed).toBeGreaterThan(0);
           expect(weapon.bulletCount).toBeGreaterThan(0);
