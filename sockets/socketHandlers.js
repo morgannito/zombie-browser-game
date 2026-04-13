@@ -11,6 +11,7 @@
  */
 
 const logger = require('../lib/infrastructure/Logger');
+const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
 const { SOCKET_EVENTS } = require('../shared/socketEvents');
 const ConfigManager = require('../lib/server/ConfigManager');
 const { cleanupPlayerBullets } = require('../game/utilityFunctions');
@@ -282,6 +283,13 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           player: player.nickname || socket.id,
           speedMultiplier: player.speedMultiplier
         });
+        MetricsCollector.getInstance().recordCheatAttempt('speed_multiplier');
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
         player.speedMultiplier = 1;
       }
 
@@ -347,6 +355,14 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           distance: Math.round(distance),
           budget: Math.round(player.moveBudget)
         });
+        MetricsCollector.getInstance().recordCheatAttempt('movement_budget');
+        MetricsCollector.getInstance().recordMovementCorrection();
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
         socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
         return;
       }
@@ -391,6 +407,7 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
             Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
           );
           if (clientDistance > 10) {
+            MetricsCollector.getInstance().recordMovementCorrection();
             socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
           }
         }
@@ -466,6 +483,13 @@ function registerShootHandler(socket, gameState, entityManager) {
           bulletCount: totalBullets,
           maxAllowed: MAX_TOTAL_BULLETS
         });
+        MetricsCollector.getInstance().recordCheatAttempt('bullet_count');
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
       }
       const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
@@ -772,6 +796,7 @@ function registerDisconnectHandler(
         sessionId: sessionId || 'none',
         accountId: accountId || 'none'
       });
+      MetricsCollector.getInstance().clearViolations(socket.id);
 
       // SESSION RECOVERY: Save player state for recovery if session exists
       if (sessionId && accountId && player) {

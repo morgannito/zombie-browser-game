@@ -4,6 +4,7 @@
  */
 
 const logger = require('../lib/infrastructure/Logger');
+const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
 const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 const rateLimits = new Map();
@@ -34,6 +35,7 @@ function checkRateLimit(socketId, eventName) {
 
   if (socketLimits[eventName].count > config.maxRequests) {
     logger.warn('Rate limit exceeded', { socketId, event: eventName, limit: config.maxRequests });
+    MetricsCollector.getInstance().recordRateLimitBlock(eventName);
     return false;
   }
 
