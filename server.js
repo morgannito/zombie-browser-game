@@ -25,10 +25,10 @@ const compression = require('compression');
 const { PORT, ALLOWED_ORIGINS } = require('./config/constants');
 
 // ============================================
-// BOOT VALIDATION - Environment variables
+// BOOT VALIDATION - Environment + game configs (fail-fast)
 // ============================================
-const { validateEnv } = require('./lib/infrastructure/EnvValidator');
-validateEnv();
+const { validateAllConfigs } = require('./lib/infrastructure/ConfigValidator');
+validateAllConfigs();
 
 // ============================================
 // IMPORTS - Infrastructure
