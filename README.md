@@ -6,14 +6,38 @@ Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression
 
 ## Quick Start
 
+**Prerequisites:** Node.js 18+
+
 ```bash
+# 1. Install dependencies
 npm install
+
+# 2. Configure environment
 cp .env.example .env
+# Edit .env — at minimum set JWT_SECRET (see comments inside)
+
+# 3. Start the server
 npm start
-# http://localhost:3000
 ```
 
-La base de donnees et le schema sont crees automatiquement au premier lancement.
+| Service | URL |
+|---------|-----|
+| Game (HTTP) | http://localhost:3000 |
+| Health check | http://localhost:3000/health |
+| Metrics API | http://localhost:3000/api/v1/metrics |
+
+The SQLite database and schema are created automatically on first launch.
+
+```bash
+# Development (auto-reload)
+npm run dev
+
+# Run tests
+npm test
+
+# Check server health
+npm run health
+```
 
 ## Architecture
 
