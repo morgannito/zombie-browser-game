@@ -10,7 +10,7 @@ const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../c
 /**
  * Configure Helmet security headers
  * Note: 'unsafe-inline' removed from scriptSrc — use nonces or hashes if inline
- * scripts are needed. styleSrc keeps 'unsafe-inline' as canvas games rely on it.
+ * scripts are needed. styleSrc no longer uses 'unsafe-inline' — external stylesheets only.
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
