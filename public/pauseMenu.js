@@ -54,7 +54,7 @@ class PauseMenu {
     }
 
     // ESC key to toggle pause
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         // Don't toggle pause if other menus are open
         const settingsOpen = document.getElementById('settings-menu')?.style.display === 'block';
@@ -98,9 +98,13 @@ class PauseMenu {
     this.isPaused = true;
     this.pauseStartTime = Date.now();
 
-    // Pause game engine if available
-    if (window.gameEngine) {
-      window.gameEngine.pause();
+    // Pause game engine if available (method is optional)
+    if (window.gameEngine && typeof window.gameEngine.pause === 'function') {
+      try {
+        window.gameEngine.pause();
+      } catch (e) {
+        console.warn('gameEngine.pause() failed:', e);
+      }
     }
 
     this.updateStats();
@@ -120,12 +124,17 @@ class PauseMenu {
       this.pauseStartTime = null;
     }
 
-    // Resume game engine if available
-    if (window.gameEngine) {
-      window.gameEngine.resume();
-    }
-
+    // Hide overlay FIRST so user can resume even if gameEngine.resume throws
     this.hide();
+
+    // Resume game engine if available (method is optional)
+    if (window.gameEngine && typeof window.gameEngine.resume === 'function') {
+      try {
+        window.gameEngine.resume();
+      } catch (e) {
+        console.warn('gameEngine.resume() failed:', e);
+      }
+    }
   }
 
   quit() {
