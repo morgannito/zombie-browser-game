@@ -284,9 +284,15 @@ function initProgressionRoutes(container, options = {}) {
         });
       } catch (error) {
         logger.error('Error unlocking skill', { error: error.message });
+        // Return a safe generic message; details are in server logs only
+        const isKnownDomainError =
+          error.message &&
+          error.message.length < 120 &&
+          !error.message.includes('SQL') &&
+          !error.message.includes('sqlite');
         res.status(400).json({
           success: false,
-          error: error.message
+          error: isKnownDomainError ? error.message : 'Failed to unlock skill'
         });
       }
     }

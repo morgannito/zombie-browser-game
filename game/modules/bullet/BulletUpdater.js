@@ -9,7 +9,7 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require('../../utilityFunctions');
+
 const { createParticles } = require('../../lootFunctions');
 
 const { CONFIG } = ConfigManager;

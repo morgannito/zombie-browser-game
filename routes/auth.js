@@ -9,6 +9,9 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
+const { configureAuthLimiter } = require('../middleware/security');
+
+const authLimiter = configureAuthLimiter();
 
 /**
  * Initialize auth routes
@@ -22,7 +25,7 @@ function initAuthRoutes(container, jwtService) {
    * Always creates a new anonymous identity — username is display-only.
    * Never reuses an existing account by username to prevent account takeover.
    */
-  router.post('/login', async (req, res) => {
+  router.post('/login', authLimiter, async (req, res) => {
     try {
       const rawUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
 

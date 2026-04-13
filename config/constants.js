@@ -44,8 +44,28 @@ const API_LIMITER_CONFIG = {
   max: 100, // Limit each IP to 100 requests per 15 minutes
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
+
   legacyHeaders: false
 };
+
+// Auth rate limiter — stricter than global API limiter (brute-force protection)
+const AUTH_LIMITER_CONFIG = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 login attempts per IP per 15 minutes
+  message: 'Too many login attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false
+};
+
+// Internal monitoring token — required in production for /metrics and /health
+// Set METRICS_TOKEN env var; in dev, any request is allowed when token is absent
+const METRICS_TOKEN = process.env.METRICS_TOKEN || null;
+if (!METRICS_TOKEN && process.env.NODE_ENV === 'production') {
+  console.error(
+    '[SECURITY] METRICS_TOKEN must be set in production to protect /metrics and /health'
+  );
+  process.exit(1);
+}
 
 // Session recovery timeout (5 minutes)
 const SESSION_RECOVERY_TIMEOUT = 5 * 60 * 1000;
@@ -61,6 +81,8 @@ module.exports = {
   ALLOWED_ORIGINS,
   RATE_LIMIT_CONFIG,
   API_LIMITER_CONFIG,
+  AUTH_LIMITER_CONFIG,
+  METRICS_TOKEN,
   SESSION_RECOVERY_TIMEOUT,
   INACTIVITY_TIMEOUT,
   HEARTBEAT_CHECK_INTERVAL

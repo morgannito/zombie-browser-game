@@ -5,7 +5,7 @@
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const express = require('express');
-const { API_LIMITER_CONFIG } = require('../config/constants');
+const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../config/constants');
 
 /**
  * Configure Helmet security headers
@@ -59,9 +59,36 @@ function additionalSecurityHeaders(req, res, next) {
   next();
 }
 
+/**
+ * Configure Auth rate limiter (stricter than API limiter)
+ * @returns {Function} Rate limiter middleware
+ */
+function configureAuthLimiter() {
+  return rateLimit(AUTH_LIMITER_CONFIG);
+}
+
+/**
+ * Protect monitoring endpoints with a static bearer token.
+ * In development (no METRICS_TOKEN configured), requests pass through.
+ * @returns {Function} Express middleware
+ */
+function requireMetricsToken(req, res, next) {
+  if (!METRICS_TOKEN) {
+    return next(); // dev mode — no token configured
+  }
+  const authHeader = req.headers.authorization || '';
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer' || parts[1] !== METRICS_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return next();
+}
+
 module.exports = {
   configureHelmet,
   configureApiLimiter,
+  configureAuthLimiter,
   configureBodyParser,
-  additionalSecurityHeaders
+  additionalSecurityHeaders,
+  requireMetricsToken
 };

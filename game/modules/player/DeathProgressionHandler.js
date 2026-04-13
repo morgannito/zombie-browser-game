@@ -3,7 +3,6 @@
  */
 
 const { GAMEPLAY_CONSTANTS } = require('../../../lib/server/ConfigManager');
-const logger = require('../../../lib/infrastructure/Logger');
 
 const RETRY_INTERVAL_MS = 30000;
 const MAX_RETRIES = 3;

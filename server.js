@@ -50,7 +50,8 @@ const {
   configureHelmet,
   configureApiLimiter,
   configureBodyParser,
-  additionalSecurityHeaders
+  additionalSecurityHeaders,
+  requireMetricsToken
 } = require('./middleware/security');
 const {
   notFoundHandler,
@@ -296,10 +297,11 @@ async function startServer() {
 
   // Always available routes
   const metricsRoutes = initMetricsRoutes(metricsCollector);
-  app.use('/api/v1/metrics', metricsRoutes);
-  app.use('/api/metrics', metricsRoutes);
+  app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
+  app.use('/api/metrics', requireMetricsToken, metricsRoutes);
   app.use('/api/v1/features', featuresRoutes);
   app.use('/api/features', featuresRoutes);
+  // /health must remain unauthenticated so load balancers / k8s liveness probes can reach it.
   app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
 
   // ============================================

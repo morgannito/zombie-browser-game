@@ -7,10 +7,8 @@
  */
 
 const ConfigManager = require('../lib/server/ConfigManager');
-const MathUtils = require('../lib/MathUtils');
-const { createLoot, createParticles } = require('./lootFunctions');
 
-const { CONFIG, GAMEPLAY_CONSTANTS } = ConfigManager;
+const { GAMEPLAY_CONSTANTS } = ConfigManager;
 
 // Module imports
 const { updateZombies } = require('./modules/zombie/ZombieUpdater');

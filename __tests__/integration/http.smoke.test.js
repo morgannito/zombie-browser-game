@@ -13,6 +13,8 @@ const SERVER_ENTRY = path.resolve(__dirname, '../../server.js');
 const TEST_PORT = 13_337;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 
+const SMOKE_METRICS_TOKEN = 'smoke-test-metrics-token';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -29,19 +31,44 @@ function httpGet(url) {
   });
 }
 
-function waitForServer(url, timeoutMs = 10_000) {
+function httpGetAuth(url, token) {
+  return new Promise((resolve, reject) => {
+    // Strip "http://" prefix, split host:port from path
+    const withoutProto = url.replace(/^https?:\/\//, '');
+    const slashIdx = withoutProto.indexOf('/');
+    const hostPart = slashIdx === -1 ? withoutProto : withoutProto.slice(0, slashIdx);
+    const urlPath = slashIdx === -1 ? '/' : withoutProto.slice(slashIdx);
+    const colonIdx = hostPart.lastIndexOf(':');
+    const hostname = colonIdx === -1 ? hostPart : hostPart.slice(0, colonIdx);
+    const port = colonIdx === -1 ? 80 : Number(hostPart.slice(colonIdx + 1));
+    const options = {
+      hostname,
+      port,
+      path: urlPath,
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    };
+    http
+      .request(options, res => {
+        let body = '';
+        res.on('data', chunk => (body += chunk));
+        res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers }));
+      })
+      .on('error', reject)
+      .end();
+  });
+}
+function waitForServer(url, timeoutMs = 10_000, token = null) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
     function attempt() {
-      httpGet(url)
-        .then(resolve)
-        .catch(() => {
-          if (Date.now() > deadline) {
-            reject(new Error(`Server did not start within ${timeoutMs}ms`));
-          } else {
-            setTimeout(attempt, 200);
-          }
-        });
+      (token ? httpGetAuth(url, token) : httpGet(url)).then(resolve).catch(() => {
+        if (Date.now() > deadline) {
+          reject(new Error(`Server did not start within ${timeoutMs}ms`));
+        } else {
+          setTimeout(attempt, 200);
+        }
+      });
     }
     attempt();
   });
@@ -61,6 +88,7 @@ beforeAll(async () => {
       NODE_ENV: 'production',
       JWT_SECRET: 'smoke-test-secret-at-least-32-chars!!',
       ALLOWED_ORIGINS: `http://127.0.0.1:${TEST_PORT}`,
+      METRICS_TOKEN: 'smoke-test-metrics-token',
       DB_PATH: ':memory:'
     },
     stdio: 'ignore'
@@ -73,7 +101,7 @@ beforeAll(async () => {
     }
   });
 
-  await waitForServer(`${BASE_URL}/health`);
+  await waitForServer(`${BASE_URL}/health`, 10_000, SMOKE_METRICS_TOKEN);
 }, 20_000);
 
 afterAll(() => {
@@ -92,7 +120,7 @@ describe('GET /health', () => {
     const url = `${BASE_URL}/health`;
 
     // Act
-    const { status } = await httpGet(url);
+    const { status } = await httpGetAuth(url, SMOKE_METRICS_TOKEN);
 
     // Assert
     expect(status).toBe(200);
@@ -103,7 +131,7 @@ describe('GET /health', () => {
     const url = `${BASE_URL}/health`;
 
     // Act
-    const { headers } = await httpGet(url);
+    const { headers } = await httpGetAuth(url, SMOKE_METRICS_TOKEN);
 
     // Assert
     expect(headers['content-type']).toMatch(/application\/json/);
@@ -175,7 +203,7 @@ describe('Production safety — no stack traces in responses', () => {
     const url = `${BASE_URL}/health`;
 
     // Act
-    const { body } = await httpGet(url);
+    const { body } = await httpGetAuth(url, SMOKE_METRICS_TOKEN);
 
     // Assert
     expect(body).not.toMatch(/at\s+\w+\s+\(.*:\d+:\d+\)/);
