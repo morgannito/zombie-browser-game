@@ -114,6 +114,9 @@ window.onExplosion = function (x, y, radius) {
   if (window.advancedAudio) {
     window.advancedAudio.playSound('explosion');
   }
+  if (window.screenEffects) {
+    window.screenEffects.onExplosion();
+  }
 };
 
 /**
@@ -182,6 +185,13 @@ window.onPlayerDamage = function (x, y, damage) {
   }
   if (window.enhancedUI) {
     window.enhancedUI.onPlayerDamage();
+  }
+  if (window.screenEffects) {
+    if (damage && damage >= 50) {
+      window.screenEffects.shake.shakeMedium();
+    } else {
+      window.screenEffects.shake.shakeLight();
+    }
   }
 };
 
