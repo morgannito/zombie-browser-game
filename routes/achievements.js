@@ -36,7 +36,7 @@ function initAchievementRoutes(container, options = {}) {
         data: achievements.map(a => a.toObject())
       });
     } catch (error) {
-      logger.error('Error fetching all achievements', { error: error.message });
+      logger.error('Error fetching all achievements', { requestId: req.id, error: error.message });
       res.status(500).json({
         success: false,
         error: 'Failed to fetch achievements'
@@ -68,6 +68,7 @@ function initAchievementRoutes(container, options = {}) {
         });
       } catch (error) {
         logger.error('Error fetching player achievements', {
+          requestId: req.id,
           playerId: req.params.playerId,
           error: error.message
         });
@@ -103,6 +104,7 @@ function initAchievementRoutes(container, options = {}) {
         });
       } catch (error) {
         logger.error('Error fetching achievement progress', {
+          requestId: req.id,
           playerId: req.params.playerId,
           error: error.message
         });
@@ -148,6 +150,7 @@ function initAchievementRoutes(container, options = {}) {
         });
       } catch (error) {
         logger.error('Error checking achievements', {
+          requestId: req.id,
           playerId: req.params.playerId,
           error: error.message
         });

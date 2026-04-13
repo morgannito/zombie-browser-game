@@ -48,19 +48,18 @@ function initAuthRoutes(container, jwtService) {
           const createPlayerUseCase = container.get('createPlayerUseCase');
           await createPlayerUseCase.execute({ id: playerId, username: rawUsername });
         } catch (dbErr) {
-          logger.warn('Failed to persist new player', { error: dbErr.message });
-          // Non-blocking: game session proceeds without DB record
+          logger.warn('Failed to persist new player', { requestId: req.id, error: dbErr.message });
         }
       }
 
-      logger.info('Player authenticated', { userId: playerId });
+      logger.info('Player authenticated', { requestId: req.id, userId: playerId });
 
       return res.json({
         token,
         player: { id: playerId, username: rawUsername, highScore: 0, totalKills: 0, gamesPlayed: 0 }
       });
     } catch (error) {
-      logger.error('Login failed', { error: error.message });
+      logger.error('Login failed', { requestId: req.id, error: error.message });
       res.status(500).json({ error: 'Login failed' });
     }
   });
