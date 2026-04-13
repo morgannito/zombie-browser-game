@@ -5,6 +5,18 @@
  * - Loot (gold/XP) creation
  * - Particle effects
  * - Explosion effects
+ *
+ * LOOT DROP REFERENCE:
+ *   Gold/XP amounts are set by ZombieConfig (type.gold, type.xp) and scaled by waveMultiplier:
+ *     goldDrop = floor(type.gold × waveMultiplier × eliteMultiplier)   [×3 for elites]
+ *     xpDrop   = floor(type.xp   × waveMultiplier × eliteMultiplier)
+ *
+ *   Typical values at wave 1 (waveMultiplier=1.0):
+ *     normal  →  5g / 10xp    fast →   8g / 15xp
+ *     tank    → 20g / 30xp    boss → 200g / 500xp
+ *
+ *   Power-up lifetime: 20 seconds (despawn if not collected)
+ *   Loot lifetime    : 30 seconds (despawn if not collected)
  */
 
 const ConfigManager = require('../lib/server/ConfigManager');
