@@ -114,7 +114,9 @@ const io = require('socket.io')(server, {
   connectTimeout: 45000,
   // Enable compression for better performance
   perMessageDeflate: true,
-  httpCompression: true
+  httpCompression: true,
+  // Limit payload size for polling transport (default 1MB is too large)
+  maxHttpBufferSize: 10240
 });
 
 // HIGH FIX: Async database initialization with error handling
@@ -158,7 +160,12 @@ const metricsCollector = MetricsCollector.getInstance();
 const memoryMonitor = new MemoryMonitor({
   interval: 60000,
   warningThresholdMB: 256,
-  criticalThresholdMB: 512
+  criticalThresholdMB: 512,
+  onCritical: sample => {
+    logger.error('Memory critical — scheduling graceful restart', { rss: sample.rss });
+    // Allow in-flight requests to drain before exiting (PM2/systemd will restart)
+    setTimeout(() => process.exit(1), 5000);
+  }
 });
 memoryMonitor.start();
 
