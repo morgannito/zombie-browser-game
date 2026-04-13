@@ -220,13 +220,15 @@ function initSocketHandlers(
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
+    const stopZombieHeartbeat = startZombieHeartbeat(socket);
     registerDisconnectHandler(
       socket,
       gameState,
       entityManager,
       sessionId,
       accountId,
-      networkManager
+      networkManager,
+      stopZombieHeartbeat
     );
 
     // Register admin commands handlers
@@ -776,6 +778,52 @@ function registerPingHandler(socket) {
 }
 
 /**
+ * Start a per-socket heartbeat to detect zombie clients.
+ * Emits a server-side ping; if no pong arrives within ZOMBIE_PONG_TIMEOUT,
+ * the socket is forcibly disconnected.
+ *
+ * @param {Object} socket - Socket.IO socket
+ * @returns {Function} cleanup — call on disconnect to stop the timer
+ */
+function startZombieHeartbeat(socket) {
+  const ZOMBIE_PING_INTERVAL = 15000; // send ping every 15 s
+  const ZOMBIE_PONG_TIMEOUT = 10000; // wait up to 10 s for pong
+
+  let pongTimer = null;
+
+  const intervalId = setInterval(() => {
+    if (!socket.connected) {
+      cleanup();
+      return;
+    }
+
+    // Await a pong acknowledgement from the client
+    pongTimer = setTimeout(() => {
+      logger.warn('Zombie client detected — no pong received', { socketId: socket.id });
+      socket.disconnect(true);
+    }, ZOMBIE_PONG_TIMEOUT);
+
+    socket.emit('serverPing', { sentAt: Date.now() }, () => {
+      // Client responded: clear the disconnect timer
+      if (pongTimer) {
+        clearTimeout(pongTimer);
+        pongTimer = null;
+      }
+    });
+  }, ZOMBIE_PING_INTERVAL);
+
+  function cleanup() {
+    clearInterval(intervalId);
+    if (pongTimer) {
+      clearTimeout(pongTimer);
+      pongTimer = null;
+    }
+  }
+
+  return cleanup;
+}
+
+/**
  * Register disconnect handler
  */
 function registerDisconnectHandler(
@@ -784,11 +832,17 @@ function registerDisconnectHandler(
   entityManager,
   sessionId,
   accountId,
-  networkManager = null
+  networkManager = null,
+  stopZombieHeartbeat = null
 ) {
   socket.on(
     SOCKET_EVENTS.SYSTEM.DISCONNECT,
     safeHandler('disconnect', function () {
+      // Stop zombie heartbeat timer to prevent dangling timers
+      if (stopZombieHeartbeat) {
+        stopZombieHeartbeat();
+      }
+
       const player = gameState.players[socket.id];
 
       logger.info('Player disconnected', {

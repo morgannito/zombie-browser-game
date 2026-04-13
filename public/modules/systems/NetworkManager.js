@@ -18,8 +18,51 @@ class NetworkManager {
     this.latencyHistory = []; // Keep last 10 measurements
     this.maxLatencyHistory = 10;
 
+    // Exponential backoff reconnect state
+    this._reconnectAttempts = 0;
+    this._reconnectBackoffMs = 1000; // initial delay
+    this._reconnectMaxBackoffMs = 30000;
+    this._reconnectTimer = null;
+
     this.setupSocketListeners();
     this.setupLatencyMonitoring();
+  }
+
+  /**
+   * Schedule a manual reconnect attempt with exponential backoff.
+   * Called when Socket.IO's built-in reconnect is exhausted or on explicit disconnect.
+   * @private
+   */
+  _scheduleReconnect() {
+    if (this._reconnectTimer) {
+      return; // already scheduled
+    }
+
+    const delay = Math.min(
+      this._reconnectBackoffMs * Math.pow(2, this._reconnectAttempts),
+      this._reconnectMaxBackoffMs
+    );
+    this._reconnectAttempts++;
+
+    console.log(
+      `[Network] Scheduling reconnect in ${delay}ms (attempt ${this._reconnectAttempts})`
+    );
+
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
+    }, delay);
+  }
+
+  /** Reset backoff state after successful connection. @private */
+  _resetReconnectBackoff() {
+    this._reconnectAttempts = 0;
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
   }
 
   /**
@@ -47,6 +90,9 @@ class NetworkManager {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
+
+    // Clear pending reconnect timer
+    this._resetReconnectBackoff();
   }
 
   setupLatencyMonitoring() {
@@ -162,6 +208,7 @@ class NetworkManager {
     // Connection event handlers
     this.on('connect', () => {
       console.log('[Socket.IO] Connected successfully');
+      this._resetReconnectBackoff();
       if (window.toastManager) {
         const quality = this.getConnectionQuality();
         window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
@@ -178,7 +225,12 @@ class NetworkManager {
     this.on('disconnect', reason => {
       console.log('[Socket.IO] Disconnected:', reason);
       if (window.toastManager) {
-        window.toastManager.show('🔌 Disconnected from server', 'error');
+        window.toastManager.show('🔌 Connexion perdue. Reconnexion en cours...', 'error');
+      }
+      // Trigger backoff reconnect when socket won't auto-reconnect
+      const noAutoReconnect = ['io server disconnect', 'transport close', 'transport error'];
+      if (noAutoReconnect.includes(reason)) {
+        this._scheduleReconnect();
       }
     });
 
@@ -186,6 +238,7 @@ class NetworkManager {
       console.log('[Socket.IO] Reconnected after', attemptNumber, 'attempts');
       // Set flag to disable client prediction temporarily
       this.justReconnected = true;
+      this._resetReconnectBackoff();
       if (window.toastManager) {
         window.toastManager.show('✅ Reconnected to server', 'success');
       }
@@ -193,6 +246,12 @@ class NetworkManager {
 
     this.on('reconnect_attempt', attemptNumber => {
       console.log('[Socket.IO] Reconnection attempt', attemptNumber);
+      if (window.toastManager) {
+        window.toastManager.show(
+          `🔄 Reconnexion en cours... (tentative ${attemptNumber})`,
+          'warning'
+        );
+      }
     });
 
     this.on('reconnect_error', error => {
@@ -204,6 +263,8 @@ class NetworkManager {
       if (window.toastManager) {
         window.toastManager.show('❌ Failed to reconnect. Please refresh.', 'error');
       }
+      // Fall back to manual exponential backoff
+      this._scheduleReconnect();
     });
 
     // Game event handlers

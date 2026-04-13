@@ -117,13 +117,18 @@ describe('sessionRecovery', () => {
     expect(restored.level).toBe(3);
   });
 
+  test('SESSION_RECOVERY_TIMEOUT is 10 minutes', () => {
+    const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
+    expect(SESSION_RECOVERY_TIMEOUT).toBe(10 * 60 * 1000);
+  });
+
   test('cleanup interval removes expired sessions and reports count', () => {
     jest.useFakeTimers();
     const logger = { info: jest.fn() };
     const now = Date.now();
 
     disconnectedPlayers.set('expired', {
-      disconnectedAt: now - 10 * 60 * 1000,
+      disconnectedAt: now - 11 * 60 * 1000, // 11 min ago > 10 min TTL
       playerState: {}
     });
     disconnectedPlayers.set('fresh', {

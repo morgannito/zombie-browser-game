@@ -209,7 +209,7 @@ class UIManager {
 
   showNewWaveAnnouncement(wave, zombiesCount) {
     const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').innerHTML = `VAGUE ${wave}`;
+    announcement.querySelector('h1').textContent = `VAGUE ${wave}`;
     announcement.querySelector('p').textContent = `${zombiesCount} zombies à éliminer !`;
     announcement.style.background = 'rgba(0, 255, 100, 0.9)';
     announcement.style.display = 'block';
@@ -222,7 +222,7 @@ class UIManager {
 
   showMilestoneBonus(bonus, _level) {
     const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').innerHTML = `${bonus.icon} ${bonus.title}`;
+    announcement.querySelector('h1').textContent = `${bonus.icon} ${bonus.title}`;
     announcement.querySelector('p').textContent = bonus.description;
     announcement.style.background =
       'linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 140, 0, 0.95) 100%)';

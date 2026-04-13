@@ -6,6 +6,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
+const { handlePlayerLevelUp } = require('../player/PlayerProgression');
 
 const { CONFIG } = ConfigManager;
 
@@ -51,9 +52,11 @@ function checkLootCollection(loot, lootId, gameState, io, entityManager) {
  */
 function canCollectLoot(player, loot) {
   const collectRadius = CONFIG.PLAYER_SIZE + CONFIG.LOOT_SIZE + (player.goldMagnetRadius || 0);
-  return player.alive &&
-         player.hasNickname &&
-         distance(loot.x, loot.y, player.x, player.y) < collectRadius;
+  return (
+    player.alive &&
+    player.hasNickname &&
+    distance(loot.x, loot.y, player.x, player.y) < collectRadius
+  );
 }
 
 /**
@@ -71,7 +74,6 @@ function collectLoot(player, playerId, loot, lootId, gameState, io, entityManage
   createParticles(loot.x, loot.y, '#ffff00', 10, entityManager);
   delete gameState.loot[lootId];
 
-  const { handlePlayerLevelUp } = require('../player/PlayerProgression');
   handlePlayerLevelUp(player, playerId, io);
 }
 

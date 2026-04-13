@@ -96,7 +96,7 @@ class AdminCommands {
       const y = player.y + Math.sin(angle) * distance;
 
       const zombieType = ZOMBIE_TYPES[type];
-      const zombieId = this.gameState.nextZombieId++;
+      const zombieId = this.gameState.getNextId('nextZombieId');
 
       this.gameState.zombies[zombieId] = {
         id: zombieId,
@@ -190,7 +190,7 @@ class AdminCommands {
 
     // Spawn boss at center
     const type = ZOMBIE_TYPES[bossType];
-    const zombieId = this.gameState.nextZombieId++;
+    const zombieId = this.gameState.getNextId('nextZombieId');
 
     this.gameState.zombies[zombieId] = {
       id: zombieId,

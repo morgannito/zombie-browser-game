@@ -67,8 +67,8 @@ if (!METRICS_TOKEN && process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-// Session recovery timeout (5 minutes)
-const SESSION_RECOVERY_TIMEOUT = 5 * 60 * 1000;
+// Session recovery timeout (10 minutes — increased for better reconnect resilience)
+const SESSION_RECOVERY_TIMEOUT = 10 * 60 * 1000;
 
 // Inactivity timeout (2 minutes)
 const INACTIVITY_TIMEOUT = 2 * 60 * 1000;
