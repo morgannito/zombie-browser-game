@@ -10,6 +10,7 @@
  * - Rate limiting and input validation
  */
 
+const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
 const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
 const { SOCKET_EVENTS } = require('../shared/socketEvents');
@@ -70,11 +71,18 @@ function initSocketHandlers(
   return socket => {
     const sessionId = normalizeSessionId(socket.handshake.auth?.sessionId);
     const accountId = socket.userId || null;
+    // Propagate trace_id from handshake auth or generate one for this connection
+    const traceId =
+      socket.handshake.auth?.traceId ||
+      socket.handshake.headers?.['x-trace-id'] ||
+      crypto.randomUUID();
+    socket.traceId = traceId;
 
     logger.info('Player connected', {
       socketId: socket.id,
       sessionId: sessionId || 'none',
-      accountId: accountId || 'none'
+      accountId: accountId || 'none',
+      traceId
     });
 
     // RECOVERY: Check if this session has a saved state
@@ -676,7 +684,8 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
       player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
       // VALIDATION STRICTE DU PSEUDO
-      let nickname = data.nickname ? data.nickname.trim() : '';
+      const rawNick = typeof data.nickname === 'string' ? data.nickname.slice(0, 20) : '';
+      let nickname = rawNick.trim();
 
       // Filtrer caractères non autorisés (lettres, chiffres, espaces, tirets, underscores)
       nickname = nickname.replace(/[^a-zA-Z0-9\s\-_]/g, '');

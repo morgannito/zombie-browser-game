@@ -6,6 +6,9 @@
 const logger = require('../lib/infrastructure/Logger');
 const { SOCKET_EVENTS } = require('../shared/socketEvents');
 
+/** Maximum serialized payload size (bytes) accepted from a client socket event. */
+const MAX_SOCKET_PAYLOAD_BYTES = 4096;
+
 /**
  * Truncate a value to a string for logging preview.
  * @param {*} value
@@ -31,13 +34,40 @@ function stringifyArgPreview(value, maxLength = 200) {
 }
 
 /**
- * Wrap a socket handler with error handling and async support.
+ * Return true if the serialized payload exceeds MAX_SOCKET_PAYLOAD_BYTES.
+ * @param {*} data
+ * @returns {boolean}
+ */
+function isPayloadTooLarge(data) {
+  if (data === null || data === undefined) {
+    return false;
+  }
+  try {
+    const size = Buffer.byteLength(JSON.stringify(data), 'utf8');
+    return size > MAX_SOCKET_PAYLOAD_BYTES;
+  } catch {
+    return true; // unserializable — reject
+  }
+}
+
+/**
+ * Wrap a socket handler with error handling, async support, and payload size guard.
  * @param {string} handlerName - Name for logging
  * @param {Function} handler - Handler to wrap
  * @returns {Function} Wrapped handler
  */
 function safeHandler(handlerName, handler) {
   return function (...args) {
+    // Payload size guard: drop oversized payloads before any business logic
+    const data = args[0];
+    if (isPayloadTooLarge(data)) {
+      logger.warn('Socket payload rejected: too large', {
+        handler: handlerName,
+        socketId: this.id
+      });
+      return;
+    }
+
     try {
       const result = handler.apply(this, args);
 
@@ -76,4 +106,4 @@ function safeHandler(handlerName, handler) {
   };
 }
 
-module.exports = { safeHandler, stringifyArgPreview };
+module.exports = { safeHandler, stringifyArgPreview, isPayloadTooLarge, MAX_SOCKET_PAYLOAD_BYTES };
