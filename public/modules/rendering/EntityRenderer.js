@@ -68,7 +68,8 @@ class EntityRenderer {
 
       const type = powerupTypes[powerup.type];
       if (!type) {
-        return;
+        // Skip unknown powerup type — DON'T return, that would abort the whole loop.
+        continue;
       }
 
       const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;

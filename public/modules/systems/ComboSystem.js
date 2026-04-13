@@ -147,12 +147,14 @@ class ComboSystem {
 
       this.comboElement.innerHTML = comboText;
 
-      // Scale-up pop animation — bigger punch per multiplier tier
+      // Scale-up pop animation — bigger punch per combo tier
       const tier =
         this.multiplier >= 10 ? 3 : this.multiplier >= 5 ? 2 : this.multiplier >= 3 ? 1 : 0;
       const peakScale = this.isMobile ? [1.15, 1.25, 1.35, 1.5][tier] : [1.3, 1.5, 1.7, 2.0][tier];
+
       this.comboElement.style.transition = 'transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1)';
       this.comboElement.style.transform = `scale(${peakScale})`;
+
       setTimeout(() => {
         if (this.comboElement) {
           this.comboElement.style.transition = 'transform 0.15s ease-out';

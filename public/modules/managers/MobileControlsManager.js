@@ -38,9 +38,8 @@ class MobileControlsManager {
 
   detectMobile() {
     // Check for touch support and screen size
-    const isTouchDevice = ('ontouchstart' in window) ||
-                         (navigator.maxTouchPoints > 0) ||
-                         (navigator.msMaxTouchPoints > 0);
+    const isTouchDevice =
+      'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
     const isSmallScreen = window.innerWidth <= 768;
     return isTouchDevice && isSmallScreen;
   }
@@ -75,7 +74,7 @@ class MobileControlsManager {
     let touchId = null;
     const maxDistance = 45; // Maximum distance the stick can move from center
 
-    const handleTouchStart = (e) => {
+    const handleTouchStart = e => {
       e.preventDefault();
       const touch = e.touches[0];
       touchId = touch.identifier;
@@ -85,7 +84,7 @@ class MobileControlsManager {
       this.updateJoystickPosition(touch, joystickBase, joystickStick, maxDistance);
     };
 
-    const handleTouchMove = (e) => {
+    const handleTouchMove = e => {
       e.preventDefault();
       if (!this.joystickActive) {
         return;
@@ -97,7 +96,7 @@ class MobileControlsManager {
       }
     };
 
-    const handleTouchEnd = (e) => {
+    const handleTouchEnd = e => {
       e.preventDefault();
       this.joystickActive = false;
       this.joystickVector = { dx: 0, dy: 0 };
@@ -156,13 +155,13 @@ class MobileControlsManager {
 
     this.elements.autoShootBtn = autoShootBtn;
 
-    const handleAutoShoot = (e) => {
+    const handleAutoShoot = e => {
       e.preventDefault();
       this.toggleAutoShoot();
     };
 
     this.handlers.autoShoot = handleAutoShoot;
-    autoShootBtn.addEventListener('touchstart', handleAutoShoot);
+    autoShootBtn.addEventListener('touchstart', handleAutoShoot, { passive: false });
   }
 
   toggleAutoShoot() {
@@ -223,10 +222,7 @@ class MobileControlsManager {
     this.currentTarget = nearestZombie; // Store for visual indicator
 
     if (nearestZombie) {
-      const angle = Math.atan2(
-        nearestZombie.y - player.y,
-        nearestZombie.x - player.x
-      );
+      const angle = Math.atan2(nearestZombie.y - player.y, nearestZombie.x - player.x);
       // Mettre à jour l'angle visuel du canon
       player.angle = angle;
       window.networkManager.shoot(angle);
@@ -308,7 +304,7 @@ class MobileControlsManager {
     this.elements.canvas = canvas;
 
     // Swipe detection for pause menu (from edge)
-    const handleGestureTouchStart = (e) => {
+    const handleGestureTouchStart = e => {
       const touch = e.touches[0];
       this.swipeStartX = touch.clientX;
       this.swipeStartY = touch.clientY;
@@ -320,7 +316,7 @@ class MobileControlsManager {
       }, 500);
     };
 
-    const handleGestureTouchMove = (e) => {
+    const handleGestureTouchMove = e => {
       // Cancel long press if moved
       if (this.longPressTimer) {
         const touch = e.touches[0];
@@ -333,7 +329,7 @@ class MobileControlsManager {
       }
     };
 
-    const handleGestureTouchEnd = (e) => {
+    const handleGestureTouchEnd = e => {
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
@@ -365,7 +361,7 @@ class MobileControlsManager {
     // Double-tap on auto-shoot for burst mode
     const autoShootBtn = this.elements.autoShootBtn || document.getElementById('auto-shoot-btn');
     if (autoShootBtn) {
-      const handleDoubleTapDetect = (_e) => {
+      const handleDoubleTapDetect = _e => {
         const now = Date.now();
         if (now - this.lastTapTime < 300) {
           this.tapCount++;

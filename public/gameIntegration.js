@@ -187,6 +187,7 @@ window.onPlayerDamage = function (x, y, damage) {
     window.enhancedUI.onPlayerDamage();
   }
   if (window.screenEffects) {
+    // Heavy shake on lethal hit, light shake otherwise
     if (damage && damage >= 50) {
       window.screenEffects.shake.shakeMedium();
     } else {
