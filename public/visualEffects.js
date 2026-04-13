@@ -12,12 +12,27 @@ class ParticleSystem {
   constructor() {
     this.particles = [];
     this.maxParticles = 300; // Limite réduite pour meilleures performances (500 -> 300)
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this._reducedMotion = mq.matches;
+    mq.addEventListener('change', e => {
+      this._reducedMotion = e.matches;
+      if (this._reducedMotion) {
+        this.particles = [];
+      }
+    });
+  }
+
+  _skip() {
+    return this._reducedMotion;
   }
 
   /**
    * Crée une explosion de particules
    */
   createExplosion(x, y, color, count = 20, size = 3) {
+    if (this._skip()) {
+      return;
+    }
     // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
@@ -48,6 +63,9 @@ class ParticleSystem {
    * Crée un effet de sang (impact zombie)
    */
   createBloodSplatter(x, y, direction, color = '#00ff00') {
+    if (this._skip()) {
+      return;
+    }
     // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
@@ -79,6 +97,9 @@ class ParticleSystem {
    * Crée un effet de trail (traînée)
    */
   createTrail(x, y, color, size = 2) {
+    if (this._skip()) {
+      return;
+    }
     if (this.particles.length < this.maxParticles) {
       this.particles.push({
         x,
@@ -99,6 +120,9 @@ class ParticleSystem {
    * Crée des étincelles (pour critiques, etc.)
    */
   createSparks(x, y, count = 10) {
+    if (this._skip()) {
+      return;
+    }
     // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
@@ -128,6 +152,9 @@ class ParticleSystem {
    * Crée un effet de collecte (or, XP)
    */
   createCollectEffect(x, y, text, color) {
+    if (this._skip()) {
+      return;
+    }
     this.particles.push({
       x,
       y,
@@ -147,6 +174,9 @@ class ParticleSystem {
    * Crée un effet de heal/buff
    */
   createHealEffect(x, y, radius = 30) {
+    if (this._skip()) {
+      return;
+    }
     // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
@@ -246,12 +276,26 @@ class ParticleSystem {
 class AnimationSystem {
   constructor() {
     this.animations = [];
+    this._reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {
+      this._reducedMotion = e.matches;
+      if (this._reducedMotion) {
+        this.animations = [];
+      }
+    });
+  }
+
+  _skip() {
+    return this._reducedMotion;
   }
 
   /**
    * Crée une animation de dégâts (damage popup)
    */
   createDamageNumber(x, y, damage, isCritical = false) {
+    if (this._skip()) {
+      return;
+    }
     this.animations.push({
       type: 'damage',
       x,
@@ -270,6 +314,9 @@ class AnimationSystem {
    * Crée une animation de heal
    */
   createHealNumber(x, y, amount) {
+    if (this._skip()) {
+      return;
+    }
     this.animations.push({
       type: 'heal',
       x,
@@ -288,6 +335,9 @@ class AnimationSystem {
    * Crée une animation de level up
    */
   createLevelUpAnimation(x, y) {
+    if (this._skip()) {
+      return;
+    }
     this.animations.push({
       type: 'levelup',
       x,
@@ -423,8 +473,8 @@ class AdvancedEffectsManager {
 
     // Trail de balle - seulement 1 fois sur 3 pour mitraillette
     if (weaponType !== 'machinegun' || Math.random() < 0.33) {
-      const bulletColor = weaponType === 'shotgun' ? '#ffaa00' :
-        weaponType === 'machinegun' ? '#ff0000' : '#00ffff';
+      const bulletColor =
+        weaponType === 'shotgun' ? '#ffaa00' : weaponType === 'machinegun' ? '#ff0000' : '#00ffff';
       this.particles.createTrail(x, y, bulletColor, 2);
     }
 
