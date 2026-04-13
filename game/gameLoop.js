@@ -234,9 +234,8 @@ function gameLoop(
       timestamp: frameStart
     });
 
-    if (metricsCollector) {
-      metricsCollector.incrementError('game_loop_exception');
-    }
+    // metricsCollector.incrementError() doesn't exist on the current MetricsCollector;
+    // skip silently rather than spamming a TypeError every frame.
   } finally {
     const frameTime = Date.now() - frameStart;
     metricsCollector.recordFrameTime(frameTime);
