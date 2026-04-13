@@ -61,10 +61,19 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
 /**
  * Handle player bullet collisions with zombies
  */
-function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, _perfIntegration) {
+function handlePlayerBulletCollisions(
+  bullet,
+  bulletId,
+  gameState,
+  io,
+  collisionManager,
+  entityManager,
+  zombieManager,
+  _perfIntegration
+) {
   const hitZombies = collisionManager.checkBulletZombieCollisions(bullet);
 
-  for (const {id: zombieId, zombie} of hitZombies) {
+  for (const { id: zombieId, zombie } of hitZombies) {
     // FIX: Check if bullet was destroyed (e.g., by exceeding pierce limit)
     if (!gameState.bullets[bulletId]) {
       break;
@@ -82,14 +91,31 @@ function handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collision
 
     // OPTIMIZATION: BulletEffects already imported at module level
     BulletEffects.handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager);
-    BulletEffects.handleChainLightning(bullet, zombie, zombieId, gameState, entityManager, collisionManager, io);
+    BulletEffects.handleChainLightning(
+      bullet,
+      zombie,
+      zombieId,
+      gameState,
+      entityManager,
+      collisionManager,
+      io
+    );
     BulletEffects.handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager);
     BulletEffects.handleIceCannon(bullet, zombie, zombieId, gameState, entityManager);
 
     createParticles(zombie.x, zombie.y, zombie.color, 5, entityManager);
 
     if (zombie.health <= 0) {
-      handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, _perfIntegration);
+      handleZombieDeath(
+        zombie,
+        zombieId,
+        bullet,
+        gameState,
+        io,
+        entityManager,
+        zombieManager,
+        _perfIntegration
+      );
     }
 
     // FIX: Only break if bullet has no piercing or was destroyed
@@ -126,7 +152,7 @@ function calculateFinalDamage(bullet, zombie, entityManager) {
 
   if (zombie.type === 'bossColosse' && zombie.hasShield) {
     const bossType = ZOMBIE_TYPES.bossColosse;
-    finalDamage *= (1 - bossType.shieldDamageReduction);
+    finalDamage *= 1 - bossType.shieldDamageReduction;
     createParticles(zombie.x, zombie.y, bossType.shieldColor, 15, entityManager);
   }
 
@@ -163,7 +189,16 @@ function handlePiercing(bullet, bulletId, zombieId, entityManager) {
 /**
  * Handle zombie death from bullet
  */
-function handleZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager, _perfIntegration) {
+function handleZombieDeath(
+  zombie,
+  zombieId,
+  bullet,
+  gameState,
+  io,
+  entityManager,
+  zombieManager,
+  _perfIntegration
+) {
   createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
 
   if (zombie.type === 'explosive') {
@@ -237,11 +272,23 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
 /**
  * Save dead zombie for necromancer
  */
+const DEAD_ZOMBIE_TTL_MS = 30000;
+
+function evictExpiredDeadZombies(deadZombies, now) {
+  for (const id in deadZombies) {
+    if (now - deadZombies[id].deathTime > DEAD_ZOMBIE_TTL_MS) {
+      delete deadZombies[id];
+    }
+  }
+}
+
 function saveDeadZombie(zombie, gameState) {
   if (!gameState.deadZombies) {
     gameState.deadZombies = {};
   }
-  const deadZombieId = `dead_${Date.now()}_${Math.random()}`;
+  const now = Date.now();
+  evictExpiredDeadZombies(gameState.deadZombies, now);
+  const deadZombieId = `dead_${now}_${Math.random()}`;
   gameState.deadZombies[deadZombieId] = {
     x: zombie.x,
     y: zombie.y,
@@ -253,7 +300,7 @@ function saveDeadZombie(zombie, gameState) {
     damage: zombie.damage,
     goldDrop: zombie.goldDrop,
     xpDrop: zombie.xpDrop,
-    deathTime: Date.now()
+    deathTime: now
   };
 }
 

@@ -35,16 +35,23 @@ module.exports = [
       }
     },
     rules: {
-      indent: ['error', 2],
+      // indent: disabled — prettier is the source of truth for indentation
+      // and they disagree on nested array/object spreads.
+      indent: 'off',
       'linebreak-style': ['error', 'unix'],
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
+      ],
       'no-console': 'off',
       'no-var': 'error',
-      'prefer-const': 'warn',
+      'prefer-const': 'error',
       eqeqeq: ['error', 'always'],
       curly: ['error', 'all'],
+      complexity: ['warn', { max: 10 }],
+      'max-lines-per-function': ['warn', { max: 25, skipBlankLines: true, skipComments: true }],
       'brace-style': ['error', '1tbs'],
       'comma-dangle': ['error', 'never'],
       'no-trailing-spaces': 'error',
@@ -73,6 +80,7 @@ module.exports = [
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
         fetch: 'readonly',
+        AbortController: 'readonly',
         alert: 'readonly',
         confirm: 'readonly',
         prompt: 'readonly',
@@ -142,7 +150,8 @@ module.exports = [
         afterEach: 'readonly',
         beforeAll: 'readonly',
         afterAll: 'readonly',
-        jest: 'readonly'
+        jest: 'readonly',
+        URL: 'readonly'
       }
     }
   }

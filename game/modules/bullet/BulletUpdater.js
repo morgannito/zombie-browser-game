@@ -9,7 +9,7 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require('../../utilityFunctions');
+
 const { createParticles } = require('../../lootFunctions');
 
 const { CONFIG } = ConfigManager;
@@ -22,7 +22,10 @@ const TARGET_FRAME_TIME = 1000 / 60;
 const MAX_SUBSTEP_DISTANCE = 15;
 
 // LATENCY OPTIMIZATION: Cache require to avoid repeated lookups
-const { handleZombieBulletCollisions, handlePlayerBulletCollisions } = require('./BulletCollisionHandler');
+const {
+  handleZombieBulletCollisions,
+  handlePlayerBulletCollisions
+} = require('./BulletCollisionHandler');
 
 /**
  * Update all bullets
@@ -30,7 +33,15 @@ const { handleZombieBulletCollisions, handlePlayerBulletCollisions } = require('
  *
  * PHYSICS FIX: Now calculates deltaTime for frame-rate independent movement
  */
-function updateBullets(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
+function updateBullets(
+  gameState,
+  now,
+  io,
+  collisionManager,
+  entityManager,
+  zombieManager,
+  perfIntegration
+) {
   const roomManager = gameState.roomManager;
   const bullets = gameState.bullets;
 
@@ -152,9 +163,15 @@ function updateBulletPositionWithCollision(
 
     // Check wall collision at intermediate position
     const shouldCheckWalls = !bullet.ignoresWalls;
-    if (bullet.x < 0 || bullet.x > CONFIG.ROOM_WIDTH ||
-        bullet.y < 0 || bullet.y > CONFIG.ROOM_HEIGHT ||
-        (shouldCheckWalls && roomManager && roomManager.checkWallCollision(bullet.x, bullet.y, CONFIG.BULLET_SIZE))) {
+    if (
+      bullet.x < 0 ||
+      bullet.x > CONFIG.ROOM_WIDTH ||
+      bullet.y < 0 ||
+      bullet.y > CONFIG.ROOM_HEIGHT ||
+      (shouldCheckWalls &&
+        roomManager &&
+        roomManager.checkWallCollision(bullet.x, bullet.y, CONFIG.BULLET_SIZE))
+    ) {
       entityManager.destroyBullet(bulletId);
       return true;
     }
@@ -201,7 +218,16 @@ function checkBulletCollisionAtPosition(
   if (bullet.isZombieBullet) {
     handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager);
   } else {
-    handlePlayerBulletCollisions(bullet, bulletId, gameState, io, collisionManager, entityManager, zombieManager, perfIntegration);
+    handlePlayerBulletCollisions(
+      bullet,
+      bulletId,
+      gameState,
+      io,
+      collisionManager,
+      entityManager,
+      zombieManager,
+      perfIntegration
+    );
   }
 
   // Check if bullet was destroyed by collision handler
@@ -230,9 +256,15 @@ function shouldDestroyBullet(bullet, now, roomManager) {
   }
 
   const shouldCheckWalls = !bullet.ignoresWalls;
-  if (bullet.x < 0 || bullet.x > CONFIG.ROOM_WIDTH ||
-      bullet.y < 0 || bullet.y > CONFIG.ROOM_HEIGHT ||
-      (shouldCheckWalls && roomManager && roomManager.checkWallCollision(bullet.x, bullet.y, CONFIG.BULLET_SIZE))) {
+  if (
+    bullet.x < 0 ||
+    bullet.x > CONFIG.ROOM_WIDTH ||
+    bullet.y < 0 ||
+    bullet.y > CONFIG.ROOM_HEIGHT ||
+    (shouldCheckWalls &&
+      roomManager &&
+      roomManager.checkWallCollision(bullet.x, bullet.y, CONFIG.BULLET_SIZE))
+  ) {
     return true;
   }
 
@@ -241,16 +273,25 @@ function shouldDestroyBullet(bullet, now, roomManager) {
 
 /**
  * Update plasma rifle trail
+ * Perf: scalar fields instead of {x,y} object allocation; squared distance avoids Math.sqrt
  */
 function updatePlasmaTrail(bullet, entityManager) {
-  if (bullet.isPlasmaRifle && bullet.lastTrailPosition) {
-    const distSinceLastTrail = distance(bullet.x, bullet.y, bullet.lastTrailPosition.x, bullet.lastTrailPosition.y);
-    if (distSinceLastTrail >= 10) {
+  if (!bullet.isPlasmaRifle) {
+    return;
+  }
+  if (bullet._trailInitialized) {
+    const dx = bullet.x - bullet._trailX;
+    const dy = bullet.y - bullet._trailY;
+    if (dx * dx + dy * dy >= 100) {
+      // 10^2, no Math.sqrt needed
       createParticles(bullet.x, bullet.y, bullet.color, 1, entityManager);
-      bullet.lastTrailPosition = { x: bullet.x, y: bullet.y };
+      bullet._trailX = bullet.x;
+      bullet._trailY = bullet.y;
     }
-  } else if (bullet.isPlasmaRifle && !bullet.lastTrailPosition) {
-    bullet.lastTrailPosition = { x: bullet.x, y: bullet.y };
+  } else {
+    bullet._trailX = bullet.x;
+    bullet._trailY = bullet.y;
+    bullet._trailInitialized = true;
   }
 }
 

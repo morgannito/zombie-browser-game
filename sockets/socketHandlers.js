@@ -10,17 +10,23 @@
  * - Rate limiting and input validation
  */
 
+const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
+const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
 const { SOCKET_EVENTS } = require('../shared/socketEvents');
 const ConfigManager = require('../lib/server/ConfigManager');
 const { cleanupPlayerBullets } = require('../game/utilityFunctions');
 const {
   validateMovementData,
   validateShootData,
-  validateUpgradeData,
-  validateBuyItemData
+  validateUpgradeData
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
+const {
+  savePlayerProgressionSnapshot,
+  resetPlayerRunState,
+  restorePlayerProgression
+} = require('../game/modules/player/RespawnHelpers');
 const {
   disconnectedPlayers,
   startSessionCleanupInterval,
@@ -32,85 +38,14 @@ const {
 } = require('./sessionRecovery');
 const { checkRateLimit, cleanupRateLimits } = require('./rateLimitStore');
 const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
+const { safeHandler } = require('./socketUtils');
+const { registerBuyItemHandler, registerShopHandlers } = require('./shopEvents');
 
-const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS, LEVEL_UP_UPGRADES } =
+const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, LEVEL_UP_UPGRADES, SHOP_ITEMS } =
   ConfigManager;
 
 // MEMORY LEAK FIX: Auto-start the interval when module loads
 startSessionCleanupInterval(logger);
-
-function stringifyArgPreview(value, maxLength = 200) {
-  if (typeof value === 'undefined') {
-    return 'undefined';
-  }
-  if (typeof value === 'string') {
-    return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-  }
-  try {
-    const stringified = JSON.stringify(value);
-    if (!stringified) {
-      return String(value);
-    }
-    return stringified.length > maxLength ? `${stringified.slice(0, maxLength)}...` : stringified;
-  } catch {
-    return '[unserializable-arg]';
-  }
-}
-
-/**
- * Safe socket handler wrapper - Enhanced error handling
- * @param {string} handlerName - Handler name for logging
- * @param {Function} handler - Handler function to wrap
- * @param {Object} options - Optional configuration
- * @param {boolean} options.skipRateLimit - Skip rate limiting for this handler
- * @returns {Function} Wrapped handler with error handling
- */
-function safeHandler(handlerName, handler, _options = {}) {
-  return function (...args) {
-    try {
-      // Apply rate limiting unless explicitly skipped (some handlers already check manually)
-      // Note: Most handlers in this file already call checkRateLimit manually,
-      // so we skip it here to avoid double-checking
-
-      // Execute the handler
-      const result = handler.apply(this, args);
-
-      // Handle async handlers
-      if (result instanceof Promise) {
-        result.catch(error => {
-          logger.error('Async socket handler error', {
-            handler: handlerName,
-            socketId: this.id,
-            error: error.message,
-            stack: error.stack,
-            argPreview: stringifyArgPreview(args[0])
-          });
-          this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-            message: 'Une erreur est survenue sur le serveur',
-            code: 'INTERNAL_ERROR'
-          });
-        });
-      }
-
-      return result;
-    } catch (error) {
-      logger.error('Socket handler error', {
-        handler: handlerName,
-        socketId: this.id,
-        error: error.message,
-        stack: error.stack,
-        argPreview: args.length > 0 ? stringifyArgPreview(args[0]) : 'no args'
-      });
-
-      // Notify client of error
-      this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-        message: 'Une erreur est survenue sur le serveur',
-        code: 'INTERNAL_ERROR',
-        ...(process.env.NODE_ENV === 'development' && { details: error.message })
-      });
-    }
-  };
-}
 
 /**
  * Initialize Socket.IO connection handlers
@@ -130,16 +65,24 @@ function initSocketHandlers(
   roomManager,
   metricsCollector,
   perfIntegration,
-  container = null
+  container = null,
+  networkManager = null
 ) {
   return socket => {
     const sessionId = normalizeSessionId(socket.handshake.auth?.sessionId);
     const accountId = socket.userId || null;
+    // Propagate trace_id from handshake auth or generate one for this connection
+    const traceId =
+      socket.handshake.auth?.traceId ||
+      socket.handshake.headers?.['x-trace-id'] ||
+      crypto.randomUUID();
+    socket.traceId = traceId;
 
     logger.info('Player connected', {
       socketId: socket.id,
       sessionId: sessionId || 'none',
-      accountId: accountId || 'none'
+      accountId: accountId || 'none',
+      traceId
     });
 
     // RECOVERY: Check if this session has a saved state
@@ -285,7 +228,16 @@ function initSocketHandlers(
     registerSpawnProtectionHandlers(socket, gameState);
     registerShopHandlers(socket, gameState);
     registerPingHandler(socket);
-    registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId);
+    const stopZombieHeartbeat = startZombieHeartbeat(socket);
+    registerDisconnectHandler(
+      socket,
+      gameState,
+      entityManager,
+      sessionId,
+      accountId,
+      networkManager,
+      stopZombieHeartbeat
+    );
 
     // Register admin commands handlers
     if (gameState.adminCommands) {
@@ -341,6 +293,13 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           player: player.nickname || socket.id,
           speedMultiplier: player.speedMultiplier
         });
+        MetricsCollector.getInstance().recordCheatAttempt('speed_multiplier');
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
         player.speedMultiplier = 1;
       }
 
@@ -406,9 +365,16 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           distance: Math.round(distance),
           budget: Math.round(player.moveBudget)
         });
-        // DISABLE ANTI-CHEAT FOR NOW: Always accept movement to prevent rollback issues for laggy clients
-        // socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-        // return;
+        MetricsCollector.getInstance().recordCheatAttempt('movement_budget');
+        MetricsCollector.getInstance().recordMovementCorrection();
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
+        socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+        return;
       }
 
       // Deduct cost from budget
@@ -451,6 +417,7 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
             Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
           );
           if (clientDistance > 10) {
+            MetricsCollector.getInstance().recordMovementCorrection();
             socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
           }
         }
@@ -526,6 +493,13 @@ function registerShootHandler(socket, gameState, entityManager) {
           bulletCount: totalBullets,
           maxAllowed: MAX_TOTAL_BULLETS
         });
+        MetricsCollector.getInstance().recordCheatAttempt('bullet_count');
+        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
+          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
+          MetricsCollector.getInstance().clearViolations(socket.id);
+          socket.disconnect(true);
+          return;
+        }
       }
       const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
@@ -599,104 +573,14 @@ function registerRespawnHandler(socket, gameState, entityManager) {
     safeHandler('respawn', function () {
       const player = gameState.players[socket.id];
       if (player) {
-        player.lastActivityTime = Date.now(); // Mettre à jour l'activité
+        player.lastActivityTime = Date.now();
 
-        // Sauvegarder les upgrades permanents et la progression
-        const savedUpgrades = { ...player.upgrades };
-        const savedMultipliers = {
-          damage: player.damageMultiplier,
-          speed: player.speedMultiplier,
-          fireRate: player.fireRateMultiplier
-        };
-        const savedProgression = {
-          level: player.level,
-          xp: player.xp
-        };
-        // Sauvegarder les stats de level-up pour les restaurer après respawn
-        const savedLevelUpStats = {
-          regeneration: player.regeneration,
-          bulletPiercing: player.bulletPiercing,
-          lifeSteal: player.lifeSteal,
-          criticalChance: player.criticalChance,
-          goldMagnetRadius: player.goldMagnetRadius,
-          dodgeChance: player.dodgeChance,
-          explosiveRounds: player.explosiveRounds,
-          explosionRadius: player.explosionRadius,
-          explosionDamagePercent: player.explosionDamagePercent,
-          extraBullets: player.extraBullets,
-          thorns: player.thorns,
-          autoTurrets: player.autoTurrets
-        };
+        const snapshot = savePlayerProgressionSnapshot(player);
+        const totalMaxHealth = CONFIG.PLAYER_MAX_HEALTH + (snapshot.upgrades.maxHealth || 0) * 20;
 
-        // Calculer la vie maximale avec les upgrades
-        const baseMaxHealth = CONFIG.PLAYER_MAX_HEALTH;
-        const upgradeHealth = (savedUpgrades.maxHealth || 0) * 20;
-        const totalMaxHealth = baseMaxHealth + upgradeHealth;
-
-        // Réinitialiser le run (Permadeath mais garde les upgrades permanents)
-        player.nickname = null; // Réinitialiser le pseudo
-        player.hasNickname = false;
-
-        // CORRECTION: Nettoyer les balles de la vie précédente
         cleanupPlayerBullets(socket.id, gameState, entityManager);
-
-        player.spawnProtection = false;
-        player.spawnProtectionEndTime = 0;
-        player.invisible = false;
-        player.invisibleEndTime = 0;
-        // Add random spawn offset to prevent players spawning on top of each other
-        // Safe spawn zone: wallThickness + playerSize as minimum margin from walls
-        const respawnWallThickness = CONFIG.WALL_THICKNESS || 40;
-        const respawnPlayerSize = CONFIG.PLAYER_SIZE || 20;
-        const respawnSafeMargin = respawnWallThickness + respawnPlayerSize + 20; // Extra 20px safety buffer
-
-        const respawnOffsetX = (Math.random() - 0.5) * 100; // ±50px horizontally
-        const respawnOffsetY = Math.random() * 40; // 0-40px variation (always towards center)
-
-        player.x = CONFIG.ROOM_WIDTH / 2 + respawnOffsetX;
-        player.y = CONFIG.ROOM_HEIGHT - respawnSafeMargin - 50 - respawnOffsetY;
-        player.health = totalMaxHealth;
-        player.maxHealth = totalMaxHealth;
-        player.alive = true;
-        // NOUVEAU: Conserver le niveau et l'XP après la mort
-        player.level = savedProgression.level;
-        player.xp = savedProgression.xp;
-        player.gold = 0; // L'or est perdu au respawn
-        player.score = 0;
-        player.weapon = 'pistol';
-        player.speedBoost = null;
-        player.weaponTimer = null;
-        player.lastShot = 0;
-
-        // CORRECTION: Réinitialiser les statistiques de run
-        player.zombiesKilled = 0;
-        player.kills = 0;
-        player.combo = 0;
-        player.comboTimer = 0;
-        player.highestCombo = 0;
-        player.totalScore = 0;
-
-        // NOUVEAU: Restaurer les stats de level-up (conservées avec le niveau)
-        player.regeneration = savedLevelUpStats.regeneration;
-        player.bulletPiercing = savedLevelUpStats.bulletPiercing;
-        player.lifeSteal = savedLevelUpStats.lifeSteal;
-        player.criticalChance = savedLevelUpStats.criticalChance;
-        player.goldMagnetRadius = savedLevelUpStats.goldMagnetRadius;
-        player.dodgeChance = savedLevelUpStats.dodgeChance;
-        player.explosiveRounds = savedLevelUpStats.explosiveRounds;
-        player.explosionRadius = savedLevelUpStats.explosionRadius;
-        player.explosionDamagePercent = savedLevelUpStats.explosionDamagePercent;
-        player.extraBullets = savedLevelUpStats.extraBullets;
-        player.thorns = savedLevelUpStats.thorns;
-        player.autoTurrets = savedLevelUpStats.autoTurrets;
-        player.lastRegenTick = Date.now();
-        player.lastAutoShot = Date.now();
-
-        // Restaurer les upgrades permanents
-        player.upgrades = savedUpgrades;
-        player.damageMultiplier = savedMultipliers.damage;
-        player.speedMultiplier = savedMultipliers.speed;
-        player.fireRateMultiplier = savedMultipliers.fireRate;
+        resetPlayerRunState(player, CONFIG, totalMaxHealth);
+        restorePlayerProgression(player, snapshot);
       }
     })
   );
@@ -740,6 +624,20 @@ function registerSelectUpgradeHandler(socket, gameState) {
         return;
       }
 
+      // ANTI-CHEAT: Vérifier que le choix était parmi ceux proposés par le serveur
+      const pending = player.pendingUpgradeChoices || [];
+      const choiceIndex = pending.indexOf(validatedData.upgradeId);
+      if (choiceIndex === -1) {
+        logger.warn('Anti-cheat: selectUpgrade not in pending choices', {
+          player: player.nickname || socket.id,
+          upgradeId: validatedData.upgradeId,
+          pending
+        });
+        return;
+      }
+      // Consommer le choix (retirer toutes les entrées de ce batch)
+      player.pendingUpgradeChoices = [];
+
       // Appliquer l'effet de l'upgrade
       upgrade.effect(player);
 
@@ -751,134 +649,6 @@ function registerSelectUpgradeHandler(socket, gameState) {
         success: true,
         upgradeId: validatedData.upgradeId
       });
-    })
-  );
-}
-
-/**
- * Register buyItem handler
- */
-function registerBuyItemHandler(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.BUY_ITEM,
-    safeHandler('buyItem', function (data) {
-      logger.debug('Shop purchase request', {
-        socketId: socket.id,
-        itemId: data?.itemId,
-        category: data?.category
-      });
-
-      // VALIDATION: Vérifier et sanitize les données d'entrée
-      const validatedData = validateBuyItemData(data);
-      if (!validatedData) {
-        logger.warn('Invalid buy item data received', { socketId: socket.id, data });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-          success: false,
-          message: 'Item invalide'
-        });
-        return;
-      }
-
-      // Rate limiting
-      if (!checkRateLimit(socket.id, 'buyItem')) {
-        logger.warn('Shop purchase rate limited', { socketId: socket.id });
-        return;
-      }
-
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        logger.debug('Shop purchase ignored - invalid player state', {
-          socketId: socket.id,
-          exists: !!player,
-          alive: player?.alive,
-          hasNickname: player?.hasNickname
-        });
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      const { itemId, category } = validatedData;
-
-      if (category === 'permanent') {
-        const item = SHOP_ITEMS.permanent[itemId];
-        // Double vérification (déjà fait dans validateBuyItemData, mais par sécurité)
-        if (!item) {
-          logger.error('Item validation failed', { itemId, category });
-          return;
-        }
-
-        const currentLevel = player.upgrades[itemId] || 0;
-
-        // Vérifier si déjà au max
-        if (currentLevel >= item.maxLevel) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Niveau maximum atteint'
-          });
-          return;
-        }
-
-        // Calculer le coût
-        const cost = item.baseCost + currentLevel * item.costIncrease;
-
-        // Vérifier si le joueur a assez d'or
-        if (player.gold < cost) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Or insuffisant'
-          });
-          return;
-        }
-
-        // Déduire l'or
-        player.gold -= cost;
-
-        // Augmenter le niveau de l'upgrade
-        player.upgrades[itemId] = currentLevel + 1;
-
-        // Appliquer l'effet
-        item.effect(player);
-
-        logger.info('Shop purchase completed', {
-          socketId: socket.id,
-          category,
-          itemId,
-          newLevel: player.upgrades[itemId],
-          remainingGold: player.gold
-        });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
-      } else if (category === 'temporary') {
-        const item = SHOP_ITEMS.temporary[itemId];
-        // Double vérification (déjà fait dans validateBuyItemData, mais par sécurité)
-        if (!item) {
-          logger.error('Temporary item validation failed', { itemId, category });
-          return;
-        }
-
-        // Vérifier si le joueur a assez d'or
-        if (player.gold < item.cost) {
-          socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
-            success: false,
-            message: 'Or insuffisant'
-          });
-          return;
-        }
-
-        // Déduire l'or
-        player.gold -= item.cost;
-
-        // Appliquer l'effet
-        item.effect(player);
-
-        logger.info('Shop purchase completed', {
-          socketId: socket.id,
-          category,
-          itemId,
-          remainingGold: player.gold
-        });
-        socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, { success: true, itemId, category });
-      }
     })
   );
 }
@@ -914,7 +684,8 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
       player.lastActivityTime = Date.now(); // Mettre à jour l'activité
 
       // VALIDATION STRICTE DU PSEUDO
-      let nickname = data.nickname ? data.nickname.trim() : '';
+      const rawNick = typeof data.nickname === 'string' ? data.nickname.slice(0, 20) : '';
+      let nickname = rawNick.trim();
 
       // Filtrer caractères non autorisés (lettres, chiffres, espaces, tirets, underscores)
       nickname = nickname.replace(/[^a-zA-Z0-9\s\-_]/g, '');
@@ -947,7 +718,7 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
       player.spawnProtection = true;
       player.spawnProtectionEndTime = Date.now() + 3000; // 3 secondes de protection
 
-      logger.info('Player chose nickname', { socketId: socket.id, nickname });
+      logger.info('Player chose nickname', { socketId: socket.id });
 
       const accountId = player.accountId || socket.userId || null;
       if (container && accountId) {
@@ -960,13 +731,12 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
               id: accountId,
               username: nickname
             });
-            logger.info('Player created in database', { accountId, username: nickname });
+            logger.info('Player created in database', { accountId });
           }
         } catch (error) {
           // Log but don't block gameplay - player creation is optional for progression features
           logger.warn('Failed to ensure player exists in database', {
             accountId,
-            username: nickname,
             error: error.message
           });
         }
@@ -1002,43 +772,6 @@ function registerSpawnProtectionHandlers(socket, gameState) {
 }
 
 /**
- * Register shop handlers
- */
-function registerShopHandlers(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.SHOP_OPENED,
-    safeHandler('shopOpened', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.invisible = true;
-      player.invisibleEndTime = Infinity; // Invisibilité sans limite de temps
-      logger.info('Player invisible - shop opened', { player: player.nickname || socket.id });
-    })
-  );
-
-  socket.on(
-    SOCKET_EVENTS.CLIENT.SHOP_CLOSED,
-    safeHandler('shopClosed', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.invisible = false;
-      player.invisibleEndTime = 0;
-      logger.info('Player visible - shop closed', { player: player.nickname || socket.id });
-    })
-  );
-}
-
-/**
  * Register ping handler for latency monitoring
  */
 function registerPingHandler(socket) {
@@ -1054,12 +787,71 @@ function registerPingHandler(socket) {
 }
 
 /**
+ * Start a per-socket heartbeat to detect zombie clients.
+ * Emits a server-side ping; if no pong arrives within ZOMBIE_PONG_TIMEOUT,
+ * the socket is forcibly disconnected.
+ *
+ * @param {Object} socket - Socket.IO socket
+ * @returns {Function} cleanup — call on disconnect to stop the timer
+ */
+function startZombieHeartbeat(socket) {
+  const ZOMBIE_PING_INTERVAL = 15000; // send ping every 15 s
+  const ZOMBIE_PONG_TIMEOUT = 10000; // wait up to 10 s for pong
+
+  let pongTimer = null;
+
+  const intervalId = setInterval(() => {
+    if (!socket.connected) {
+      cleanup();
+      return;
+    }
+
+    // Await a pong acknowledgement from the client
+    pongTimer = setTimeout(() => {
+      logger.warn('Zombie client detected — no pong received', { socketId: socket.id });
+      socket.disconnect(true);
+    }, ZOMBIE_PONG_TIMEOUT);
+
+    socket.emit('serverPing', { sentAt: Date.now() }, () => {
+      // Client responded: clear the disconnect timer
+      if (pongTimer) {
+        clearTimeout(pongTimer);
+        pongTimer = null;
+      }
+    });
+  }, ZOMBIE_PING_INTERVAL);
+
+  function cleanup() {
+    clearInterval(intervalId);
+    if (pongTimer) {
+      clearTimeout(pongTimer);
+      pongTimer = null;
+    }
+  }
+
+  return cleanup;
+}
+
+/**
  * Register disconnect handler
  */
-function registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId) {
+function registerDisconnectHandler(
+  socket,
+  gameState,
+  entityManager,
+  sessionId,
+  accountId,
+  networkManager = null,
+  stopZombieHeartbeat = null
+) {
   socket.on(
     SOCKET_EVENTS.SYSTEM.DISCONNECT,
     safeHandler('disconnect', function () {
+      // Stop zombie heartbeat timer to prevent dangling timers
+      if (stopZombieHeartbeat) {
+        stopZombieHeartbeat();
+      }
+
       const player = gameState.players[socket.id];
 
       logger.info('Player disconnected', {
@@ -1067,6 +859,7 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId, 
         sessionId: sessionId || 'none',
         accountId: accountId || 'none'
       });
+      MetricsCollector.getInstance().clearViolations(socket.id);
 
       // SESSION RECOVERY: Save player state for recovery if session exists
       if (sessionId && accountId && player) {
@@ -1099,6 +892,11 @@ function registerDisconnectHandler(socket, gameState, entityManager, sessionId, 
 
       // Nettoyer les rate limits
       cleanupRateLimits(socket.id);
+
+      // Nettoyer les queues NetworkManager (memory leak fix)
+      if (networkManager) {
+        networkManager.cleanupPlayer(socket.id);
+      }
     })
   );
 }

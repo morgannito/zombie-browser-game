@@ -194,7 +194,7 @@ function updateZombies(
       );
     }
 
-    moveZombie(zombie, zombieId, collisionManager, gameState);
+    moveZombie(zombie, zombieId, collisionManager, gameState, now);
 
     // Track stuck zombies: if position barely changed, increment counter
     const movedDist =
@@ -349,7 +349,7 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
  * SSSS OPTIMIZATION: Uses cached pathfinding for performance
  * FIX: Added deltaTime for frame-rate independent movement
  */
-function moveZombie(zombie, zombieId, collisionManager, gameState) {
+function moveZombie(zombie, zombieId, collisionManager, gameState, now = Date.now()) {
   // SSSS OPTIMIZATION: Use cached pathfinding for movement (called every frame for all zombies)
   const closestPlayer = collisionManager.findClosestPlayerCached(
     zombieId,
@@ -359,7 +359,6 @@ function moveZombie(zombie, zombieId, collisionManager, gameState) {
     { ignoreSpawnProtection: true, ignoreInvisible: false }
   );
 
-  const now = Date.now();
   const roomManager = gameState.roomManager;
 
   // FIX: Calculate deltaTime for frame-rate independent movement

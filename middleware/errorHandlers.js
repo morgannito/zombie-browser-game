@@ -12,6 +12,20 @@ const { AppError } = require('../lib/domain/errors/DomainErrors');
 const { buildHttpContext } = require('./httpContext');
 
 /**
+ * Escape HTML special chars to prevent reflected XSS in error pages.
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+/**
  * 404 Not Found handler
  * @param {Object} req - Express request
  * @param {Object} res - Express response
@@ -87,10 +101,10 @@ function serverErrorHandler(err, req, res, _next) {
       </style>
     </head>
     <body>
-      <h1>${err.status || 500}</h1>
+      <h1>${escapeHtml(err.status || 500)}</h1>
       <p>💥 Une erreur serveur s'est produite</p>
       <p><a href="/">← Retour au jeu</a></p>
-      <div class="error-code">Code d'erreur: ${err.status || 500}</div>
+      <div class="error-code">Code d'erreur: ${escapeHtml(err.status || 500)}</div>
     </body>
     </html>
   `);
@@ -179,6 +193,7 @@ function asyncHandler(fn) {
 }
 
 module.exports = {
+  escapeHtml,
   notFoundHandler,
   serverErrorHandler,
   apiErrorHandler,

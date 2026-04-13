@@ -207,7 +207,7 @@ Protection: flag `gameLoopRunning`, detection stuck, error handling.
 | bullet/ | BulletUpdater, CollisionHandler, BulletEffects | Physique, collision, effets speciaux |
 | wave/ | WaveManager | Progression vagues, difficulte |
 | loot/ | LootUpdater, PowerupUpdater | Gestion loot et powerups |
-| player/ | PlayerProgression, PlayerEffects | XP, level up, effets joueur |
+| player/ | PlayerUpdater, PlayerProgression, PlayerEffects, AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler | Timers/regen par tick, XP/combos, effets palier, tourelle auto, tesla coil, mort/retry |
 | hazards/ | HazardManager | Zones de danger environnementales |
 | admin/ | AdminCommands | Commandes admin serveur |
 

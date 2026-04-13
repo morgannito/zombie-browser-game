@@ -8,7 +8,30 @@
 
 class EntityRenderer {
   constructor() {
-    // No persistent state needed
+    // Hit flash state: zombieId -> { startTime, duration }
+    this._hitFlashes = new Map();
+  }
+
+  /**
+   * Register a short red flash on a zombie when it takes a hit
+   * @param {string|number} zombieId
+   * @param {number} duration - ms, default 120
+   */
+  registerHitFlash(zombieId, duration = 120) {
+    this._hitFlashes.set(zombieId, { startTime: performance.now(), duration });
+  }
+
+  _getHitFlashAlpha(zombieId, now) {
+    const flash = this._hitFlashes.get(zombieId);
+    if (!flash) {
+      return 0;
+    }
+    const elapsed = now - flash.startTime;
+    if (elapsed >= flash.duration) {
+      this._hitFlashes.delete(zombieId);
+      return 0;
+    }
+    return 1 - elapsed / flash.duration;
   }
 
   darkenColor(color, percent) {
@@ -45,7 +68,8 @@ class EntityRenderer {
 
       const type = powerupTypes[powerup.type];
       if (!type) {
-        return;
+        // Skip unknown powerup type — DON'T return, that would abort the whole loop.
+        continue;
       }
 
       const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;
@@ -380,6 +404,17 @@ class EntityRenderer {
       headRadius,
       armOffset
     );
+
+    // Hit flash: red tint overlay on the zombie
+    const flashAlpha = this._getHitFlashAlpha(zombie.id, timestamp);
+    if (flashAlpha > 0) {
+      const halfW = bodyWidth / 2 + 4;
+      const halfH = bodyHeight / 2 + headRadius + 8;
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = `rgba(255, 60, 60, ${flashAlpha * 0.75})`;
+      ctx.fillRect(-halfW, -halfH, halfW * 2, halfH * 2);
+      ctx.globalCompositeOperation = 'source-over';
+    }
 
     ctx.restore();
   }

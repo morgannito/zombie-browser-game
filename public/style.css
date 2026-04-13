@@ -2099,8 +2099,16 @@ body {
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.35);
+}
+
+/* HUD text legibility over the game canvas */
+#stats,
+#wave-progress-container,
+#boss-health-container {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 /* ============================================
@@ -3637,6 +3645,24 @@ body {
     transform: scale(1.1);
     box-shadow: 0 0 25px rgba(255, 215, 0, 1);
   }
+}
+
+/* Boss danger indicator: fast red alarm pulse */
+@keyframes boss-danger-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), 0 0 40px rgba(255, 0, 0, 0.4);
+    border-color: var(--color-danger);
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 35px rgba(255, 0, 0, 1), 0 0 70px rgba(255, 0, 0, 0.7);
+    border-color: #ff6666;
+  }
+}
+
+.boss-indicator {
+  animation: boss-danger-pulse 0.65s ease-in-out infinite !important;
 }
 
 /* Distance display on indicators */

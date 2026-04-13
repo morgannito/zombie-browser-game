@@ -144,3 +144,25 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
 ### TODO prochaine inspection
 - Extraire `safeHandler` + handlers shop/nickname/disconnect hors de `sockets/socketHandlers.js` pour réduire la taille du module (encore >1100 lignes).
 - Remplacer progressivement les `console.*` côté runtime critique (server/public networking) par logger structuré activable par niveau.
+
+## 2026-04-12 - Extraction modules player + qualité doc
+
+### Refactor: game/modules/player/
+- `socketHandlers.js` déchargé: extraction de 4 modules dans `game/modules/player/` :
+  - `PlayerUpdater.js` — timers, regen, combo tick par frame
+  - `AutoTurretHandler.js` — ciblage + tir tourelle auto
+  - `TeslaCoilHandler.js` — ciblage multi-cibles, dégâts, life steal, visuels
+  - `DeathProgressionHandler.js` — mort, second chance, queue retry (3 essais / 30s), cleanup orphelins
+- `shopEvents.js` extrait de `socketHandlers.js` avec rate limiting + anti-cheat gold atomique
+- `socketUtils.js` extrait: `safeHandler` + `stringifyArgPreview` partagés
+
+### Sécurité / Anti-cheat
+- Déduction atomique d'or avec rollback sur valeur négative (shopEvents)
+- Cap invisibilité boutique à 60s max (Infinity abuse)
+- Validation pendingUpgradeChoices côté serveur avant application (level up)
+- Limite boucle level-up à 100 itérations max (prévention boucle infinie)
+
+### Qualité doc
+- JSDoc `@param`/`@returns` ajoutés sur toutes les fonctions publiques: AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler, shopEvents, socketUtils
+- ARCHITECTURE.md mis à jour: table player/ complétée (6 modules)
+- README mis à jour: player/ reflète les 6 modules extraits

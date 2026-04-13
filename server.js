@@ -25,10 +25,10 @@ const compression = require('compression');
 const { PORT, ALLOWED_ORIGINS } = require('./config/constants');
 
 // ============================================
-// BOOT VALIDATION - Environment variables
+// BOOT VALIDATION - Environment + game configs (fail-fast)
 // ============================================
-const { validateEnv } = require('./lib/infrastructure/EnvValidator');
-validateEnv();
+const { validateAllConfigs } = require('./lib/infrastructure/ConfigValidator');
+validateAllConfigs();
 
 // ============================================
 // IMPORTS - Infrastructure
@@ -44,13 +44,15 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // IMPORTS - Middleware
 // ============================================
 const { requestIdMiddleware } = require('./middleware/requestId');
+const { httpsRedirect } = require('./middleware/httpsRedirect');
 const { accessLogMiddleware } = require('./middleware/accessLog');
 const { getSocketIOCorsConfig } = require('./middleware/cors');
 const {
   configureHelmet,
   configureApiLimiter,
   configureBodyParser,
-  additionalSecurityHeaders
+  additionalSecurityHeaders,
+  requireMetricsToken
 } = require('./middleware/security');
 const {
   notFoundHandler,
@@ -64,6 +66,7 @@ const {
 const initAuthRoutes = require('./routes/auth');
 const initHealthRoutes = require('./routes/health');
 const initMetricsRoutes = require('./routes/metrics');
+const initAdminStatsRoute = require('./routes/adminStats');
 const initLeaderboardRoutes = require('./routes/leaderboard');
 const initPlayersRoutes = require('./routes/players');
 const featuresRoutes = require('./routes/features');
@@ -113,7 +116,9 @@ const io = require('socket.io')(server, {
   connectTimeout: 45000,
   // Enable compression for better performance
   perMessageDeflate: true,
-  httpCompression: true
+  httpCompression: true,
+  // Limit payload size for polling transport (default 1MB is too large)
+  maxHttpBufferSize: 10240
 });
 
 // HIGH FIX: Async database initialization with error handling
@@ -157,13 +162,21 @@ const metricsCollector = MetricsCollector.getInstance();
 const memoryMonitor = new MemoryMonitor({
   interval: 60000,
   warningThresholdMB: 256,
-  criticalThresholdMB: 512
+  criticalThresholdMB: 512,
+  onCritical: sample => {
+    logger.error('Memory critical — scheduling graceful restart', { rss: sample.rss });
+    // Allow in-flight requests to drain before exiting (PM2/systemd will restart)
+    setTimeout(() => process.exit(1), 5000);
+  }
 });
 memoryMonitor.start();
 
 // ============================================
 // MIDDLEWARE CONFIGURATION
 // ============================================
+
+// HTTPS redirect (must be first — before any route handles the request)
+app.use(httpsRedirect);
 
 // Request ID (before all other middleware for tracing)
 app.use(requestIdMiddleware);
@@ -225,7 +238,11 @@ function startGameLoop(perfIntegration, tickFn) {
 
     const now = perf.now();
 
-    tickFn();
+    try {
+      tickFn();
+    } catch (err) {
+      logger.error('Game loop tick error', { error: err.message, stack: err.stack });
+    }
 
     // Compensate for drift: subtract execution time from next delay
     const elapsed = perf.now() - now;
@@ -292,10 +309,17 @@ async function startServer() {
 
   // Always available routes
   const metricsRoutes = initMetricsRoutes(metricsCollector);
-  app.use('/api/v1/metrics', metricsRoutes);
-  app.use('/api/metrics', metricsRoutes);
+  app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
+  app.use('/api/metrics', requireMetricsToken, metricsRoutes);
   app.use('/api/v1/features', featuresRoutes);
   app.use('/api/features', featuresRoutes);
+  // /admin/stats — debug dashboard, requires METRICS_TOKEN (admin auth)
+  app.use(
+    '/admin/stats',
+    requireMetricsToken,
+    initAdminStatsRoute(metricsCollector, memoryMonitor)
+  );
+  // /health must remain unauthenticated so load balancers / k8s liveness probes can reach it.
   app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
 
   // ============================================
@@ -491,7 +515,8 @@ async function startServer() {
     roomManager,
     metricsCollector,
     perfIntegration,
-    dbAvailable ? container : null
+    dbAvailable ? container : null,
+    networkManager
   );
   io.on('connection', socketHandler);
 
@@ -619,15 +644,28 @@ function cleanupServer() {
 process.on('SIGTERM', cleanupServer);
 process.on('SIGINT', cleanupServer);
 
-// Handle uncaught errors
+// Handle uncaught errors — do NOT kill the server for non-fatal errors.
+// Active sessions must survive async bugs; we only shut down on true OS-level failures.
+const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
+
 process.on('uncaughtException', err => {
-  logger.error('💥 Uncaught Exception:', err);
-  cleanupServer();
+  logger.error('Uncaught exception', {
+    error: err && err.message,
+    code: err && err.code,
+    stack: err && err.stack
+  });
+  if (err && FATAL_OS_CODES.has(err.code)) {
+    cleanupServer();
+  }
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  cleanupServer();
+process.on('unhandledRejection', reason => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error('Unhandled promise rejection', {
+    error: err.message,
+    stack: err.stack
+  });
+  // Do not exit — keep active game sessions alive.
 });
 
 // Export for testing

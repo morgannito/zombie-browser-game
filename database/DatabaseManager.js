@@ -234,11 +234,11 @@ class DatabaseManager {
   }
 
   /**
-   * Backup database
+   * Backup database using better-sqlite3 v12 async API
    * @param {string} backupPath - Path to backup file
-   * @returns {boolean} Success status
+   * @returns {Promise<boolean>} Success status
    */
-  backup(backupPath) {
+  async backup(backupPath) {
     try {
       // Ensure backup directory exists
       const backupDir = path.dirname(backupPath);
@@ -246,8 +246,8 @@ class DatabaseManager {
         fs.mkdirSync(backupDir, { recursive: true });
       }
 
-      // Use better-sqlite3's backup method for safe backup
-      this.db.backup(backupPath);
+      // better-sqlite3 v12: .backup() returns a Promise
+      await this.db.backup(backupPath);
 
       console.log(`[DatabaseManager] Database backed up to: ${backupPath}`);
       return true;

@@ -218,6 +218,17 @@
         document.dispatchEvent(new CustomEvent(name, { detail }));
       };
 
+      // Détecter les hits sur zombies (santé réduite sans mort)
+      if (oldState.zombies && newState.zombies) {
+        Object.keys(newState.zombies).forEach(zid => {
+          const oldZ = oldState.zombies[zid];
+          const newZ = newState.zombies[zid];
+          if (oldZ && newZ && newZ.health < oldZ.health && window.entityRenderer) {
+            window.entityRenderer.registerHitFlash(zid);
+          }
+        });
+      }
+
       // Détecter la mort de zombies
       if (oldState.zombies && newState.zombies) {
         Object.keys(oldState.zombies).forEach(zid => {

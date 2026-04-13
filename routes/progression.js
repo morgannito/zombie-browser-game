@@ -34,7 +34,6 @@ function initProgressionRoutes(container, options = {}) {
     try {
       const skills = await progressionRepo.getAllSkills();
 
-      // Group by category and tier
       const grouped = skills.reduce((acc, skill) => {
         if (!acc[skill.category]) {
           acc[skill.category] = {};
@@ -54,7 +53,7 @@ function initProgressionRoutes(container, options = {}) {
         }
       });
     } catch (error) {
-      logger.error('Error fetching skill tree', { error: error.message });
+      logger.error('Error fetching skill tree', { requestId: req.id, error: error.message });
       res.status(500).json({
         success: false,
         error: 'Failed to fetch skill tree'
@@ -89,7 +88,7 @@ function initProgressionRoutes(container, options = {}) {
           }))
         });
       } catch (error) {
-        logger.error('Error fetching leaderboard', { error: error.message });
+        logger.error('Error fetching leaderboard', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
           error: 'Failed to fetch leaderboard'
@@ -125,7 +124,10 @@ function initProgressionRoutes(container, options = {}) {
           }))
         });
       } catch (error) {
-        logger.error('Error fetching prestige leaderboard', { error: error.message });
+        logger.error('Error fetching prestige leaderboard', {
+          requestId: req.id,
+          error: error.message
+        });
         res.status(500).json({
           success: false,
           error: 'Failed to fetch prestige leaderboard'
@@ -152,7 +154,6 @@ function initProgressionRoutes(container, options = {}) {
 
         let progression = await progressionRepo.findByPlayerId(playerId);
 
-        // Create if doesn't exist
         if (!progression) {
           progression = new AccountProgression({ playerId });
           await progressionRepo.create(progression);
@@ -166,7 +167,7 @@ function initProgressionRoutes(container, options = {}) {
           }
         });
       } catch (error) {
-        logger.error('Error fetching progression', { error: error.message });
+        logger.error('Error fetching progression', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
           error: 'Failed to fetch progression'
@@ -213,7 +214,7 @@ function initProgressionRoutes(container, options = {}) {
           }
         });
       } catch (error) {
-        logger.error('Error adding XP', { error: error.message });
+        logger.error('Error adding XP', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
           error: 'Failed to add XP'
@@ -251,7 +252,6 @@ function initProgressionRoutes(container, options = {}) {
           });
         }
 
-        // Get skill info
         const skill = await progressionRepo.getSkillById(skillId);
 
         if (!skill) {
@@ -261,7 +261,6 @@ function initProgressionRoutes(container, options = {}) {
           });
         }
 
-        // Check prerequisites
         for (const prereqId of skill.prerequisites) {
           if (!progression.hasSkill(prereqId)) {
             return res.status(400).json({
@@ -271,7 +270,6 @@ function initProgressionRoutes(container, options = {}) {
           }
         }
 
-        // Unlock skill
         progression.unlockSkill(skillId, skill.cost);
         await progressionRepo.update(progression);
 
@@ -283,10 +281,15 @@ function initProgressionRoutes(container, options = {}) {
           }
         });
       } catch (error) {
-        logger.error('Error unlocking skill', { error: error.message });
+        logger.error('Error unlocking skill', { requestId: req.id, error: error.message });
+        const isKnownDomainError =
+          error.message &&
+          error.message.length < 120 &&
+          !error.message.includes('SQL') &&
+          !error.message.includes('sqlite');
         res.status(400).json({
           success: false,
-          error: error.message
+          error: isKnownDomainError ? error.message : 'Failed to unlock skill'
         });
       }
     }
@@ -317,7 +320,7 @@ function initProgressionRoutes(container, options = {}) {
           });
         }
 
-        const result = progression.prestige(50); // Min level 50
+        const result = progression.prestige(50);
         await progressionRepo.update(progression);
 
         res.json({
@@ -328,7 +331,7 @@ function initProgressionRoutes(container, options = {}) {
           }
         });
       } catch (error) {
-        logger.error('Error prestiging', { error: error.message });
+        logger.error('Error prestiging', { requestId: req.id, error: error.message });
         res.status(400).json({
           success: false,
           error: error.message

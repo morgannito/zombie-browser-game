@@ -5,10 +5,23 @@
  * - Loot (gold/XP) creation
  * - Particle effects
  * - Explosion effects
+ *
+ * LOOT DROP REFERENCE:
+ *   Gold/XP amounts are set by ZombieConfig (type.gold, type.xp) and scaled by waveMultiplier:
+ *     goldDrop = floor(type.gold × waveMultiplier × eliteMultiplier)   [×3 for elites]
+ *     xpDrop   = floor(type.xp   × waveMultiplier × eliteMultiplier)
+ *
+ *   Typical values at wave 1 (waveMultiplier=1.0):
+ *     normal  →  5g / 10xp    fast →   8g / 15xp
+ *     tank    → 20g / 30xp    boss → 200g / 500xp
+ *
+ *   Power-up lifetime: 20 seconds (despawn if not collected)
+ *   Loot lifetime    : 30 seconds (despawn if not collected)
  */
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
+const logger = require('../lib/infrastructure/Logger');
 
 /**
  * Spawn des power-ups
@@ -21,12 +34,12 @@ const { CONFIG, POWERUP_TYPES } = ConfigManager;
 function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector) {
   // BUG FIX: Validate required parameters
   if (!gameState || !roomManager || !perfIntegration || !metricsCollector) {
-    console.error('[POWERUP] Missing required parameters for spawnPowerup');
+    logger.error('[POWERUP] Missing required parameters for spawnPowerup');
     return;
   }
 
   if (typeof roomManager.checkWallCollision !== 'function') {
-    console.error('[POWERUP] roomManager.checkWallCollision is not a function');
+    logger.error('[POWERUP] roomManager.checkWallCollision is not a function');
     return;
   }
 
@@ -38,7 +51,7 @@ function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector)
 
   const types = Object.keys(POWERUP_TYPES);
   if (types.length === 0) {
-    console.error('[POWERUP] No powerup types defined');
+    logger.error('[POWERUP] No powerup types defined');
     return;
   }
 
@@ -151,7 +164,10 @@ function createParticles(x, y, color, count = 10, entityManager) {
 function createExplosion(x, y, radius, isRocket = false, entityManager) {
   // Utiliser EntityManager avec Object Pool
   entityManager.createExplosion({
-    x, y, radius, isRocket,
+    x,
+    y,
+    radius,
+    isRocket,
     createdAt: Date.now(),
     duration: 400
   });

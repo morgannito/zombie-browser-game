@@ -20,19 +20,31 @@ class EffectsRenderer {
       return;
     }
 
+    // Batch particles by color: 1 beginPath/fill per color group
+    const byColor = new Map();
     for (const particleId in particles) {
       const particle = particles[particleId];
       if (!camera.isInViewport(particle.x, particle.y, 50)) {
         continue;
       }
-
-      ctx.fillStyle = particle.color;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      const color = particle.color;
+      if (!byColor.has(color)) {
+        byColor.set(color, []);
+      }
+      byColor.get(color).push(particle);
     }
+
+    ctx.globalAlpha = 0.7;
+    for (const [color, group] of byColor) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (const particle of group) {
+        ctx.moveTo(particle.x + particle.size, particle.y);
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   renderDynamicPropParticles(ctx, camera, particles) {
@@ -44,37 +56,59 @@ class EffectsRenderer {
       return;
     }
 
-    particles.forEach(particle => {
+    const FIRE_COLORS = new Set(['#ff6600', '#ffaa00', '#ffff00']);
+
+    // Batch by color+alpha key; fire particles need a glow pass so keep separate
+    const normalBuckets = new Map();
+    const glowParticles = [];
+
+    for (const particle of particles) {
       if (!camera.isInViewport(particle.x, particle.y, 50)) {
-        return;
+        continue;
       }
 
-      ctx.save();
-      ctx.globalAlpha = particle.alpha || 1;
+      const color = typeof particle.color === 'string' ? particle.color : '#fff';
+      const alpha = particle.alpha !== null && particle.alpha !== undefined ? particle.alpha : 1;
 
-      if (typeof particle.color === 'string' && particle.color.startsWith('rgba')) {
-        ctx.fillStyle = particle.color;
-      } else {
-        ctx.fillStyle = particle.color || '#fff';
+      if (FIRE_COLORS.has(color)) {
+        glowParticles.push(particle);
+        continue;
       }
 
+      const key = `${color}|${alpha}`;
+      if (!normalBuckets.has(key)) {
+        normalBuckets.set(key, { color, alpha, list: [] });
+      }
+      normalBuckets.get(key).list.push(particle);
+    }
+
+    // Draw normal batches
+    for (const { color, alpha, list } of normalBuckets.values()) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (const p of list) {
+        ctx.moveTo(p.x + p.size, p.y);
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+
+    // Draw fire/glow particles individually (shadow required)
+    for (const particle of glowParticles) {
+      const color = particle.color;
+      const alpha = particle.alpha !== null && particle.alpha !== undefined ? particle.alpha : 1;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = color;
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
+    }
 
-      if (
-        particle.color === '#ff6600' ||
-        particle.color === '#ffaa00' ||
-        particle.color === '#ffff00'
-      ) {
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = particle.color;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-
-      ctx.restore();
-    });
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 
   renderPoisonTrails(ctx, camera, poisonTrails, now) {

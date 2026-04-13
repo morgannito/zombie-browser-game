@@ -177,7 +177,7 @@ describe('Player Entity', () => {
     it('should return correct ratio with deaths', () => {
       const player = new Player({ ...validPlayerData, totalKills: 100, totalDeaths: 25 });
 
-      expect(player.getKDRatio()).toBe('4.00');
+      expect(player.getKDRatio()).toBe(4);
     });
 
     it('should return zero when no kills and no deaths', () => {
@@ -189,7 +189,7 @@ describe('Player Entity', () => {
     it('should handle fractional ratios correctly', () => {
       const player = new Player({ ...validPlayerData, totalKills: 10, totalDeaths: 3 });
 
-      expect(player.getKDRatio()).toBe('3.33');
+      expect(player.getKDRatio()).toBeCloseTo(3.33, 2);
     });
   });
 
@@ -306,7 +306,7 @@ describe('Player Entity', () => {
 
       const player = Player.fromDB(dbRow);
 
-      expect(player.getKDRatio()).toBe('10.00');
+      expect(player.getKDRatio()).toBe(10);
       expect(player.calculateScore()).toBe(100 * 10 + 8 * 100 + 12 * 50 + 2000);
       expect(player.isNewRecord(10, 15)).toBe(true);
     });

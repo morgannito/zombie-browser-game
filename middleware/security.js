@@ -1,19 +1,16 @@
 /**
  * @fileoverview Security middleware configuration
- * @description Provides security middleware including:
- * - Helmet.js for security headers
- * - Rate limiting for API endpoints
- * - Body parser with size limits
- * - Additional security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
  */
 
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const express = require('express');
-const { API_LIMITER_CONFIG } = require('../config/constants');
+const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../config/constants');
 
 /**
  * Configure Helmet security headers
+ * Note: 'unsafe-inline' removed from scriptSrc — use nonces or hashes if inline
+ * scripts are needed. styleSrc no longer uses 'unsafe-inline' — external stylesheets only.
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
@@ -21,10 +18,13 @@ function configureHelmet() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'ws:', 'wss:']
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"]
       }
     }
   });
@@ -43,10 +43,7 @@ function configureApiLimiter() {
  * @returns {Array} Array of body parser middlewares
  */
 function configureBodyParser() {
-  return [
-    express.json({ limit: '10kb' }),
-    express.urlencoded({ extended: true, limit: '10kb' })
-  ];
+  return [express.json({ limit: '10kb' }), express.urlencoded({ extended: true, limit: '10kb' })];
 }
 
 /**
@@ -62,9 +59,36 @@ function additionalSecurityHeaders(req, res, next) {
   next();
 }
 
+/**
+ * Configure Auth rate limiter (stricter than API limiter)
+ * @returns {Function} Rate limiter middleware
+ */
+function configureAuthLimiter() {
+  return rateLimit(AUTH_LIMITER_CONFIG);
+}
+
+/**
+ * Protect monitoring endpoints with a static bearer token.
+ * In development (no METRICS_TOKEN configured), requests pass through.
+ * @returns {Function} Express middleware
+ */
+function requireMetricsToken(req, res, next) {
+  if (!METRICS_TOKEN) {
+    return next(); // dev mode — no token configured
+  }
+  const authHeader = req.headers.authorization || '';
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer' || parts[1] !== METRICS_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return next();
+}
+
 module.exports = {
   configureHelmet,
   configureApiLimiter,
+  configureAuthLimiter,
   configureBodyParser,
-  additionalSecurityHeaders
+  additionalSecurityHeaders,
+  requireMetricsToken
 };

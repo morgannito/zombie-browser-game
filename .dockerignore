@@ -1,8 +1,45 @@
 node_modules
-npm-debug.log
+npm-debug.log*
 .git
 .gitignore
-README.md
-.env
-.DS_Store
+.github
+.husky
+.editorconfig
+.prettierrc.js
+eslint.config.js
+jest.config.js
+
+# Tests et docs
+__tests__/
 *.md
+progress.md
+
+# Fichiers de déploiement non nécessaires dans l'image
+deploy-server.js
+downloadAssets.js
+setup-deploy.sh
+scripts/
+assets/
+
+# Secrets et config sensibles
+.env
+.env.*
+.env.deploy
+.env.deploy.local
+*.local
+
+# Config plateformes (non nécessaire dans l'image)
+fly.toml
+render.yaml
+railway.json
+
+# Data et logs locaux
+data/
+logs/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Couverture de tests
+coverage/

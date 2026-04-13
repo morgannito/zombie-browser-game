@@ -6,14 +6,38 @@ Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression
 
 ## Quick Start
 
+**Prerequisites:** Node.js 18+
+
 ```bash
+# 1. Install dependencies
 npm install
+
+# 2. Configure environment
 cp .env.example .env
+# Edit .env — at minimum set JWT_SECRET (see comments inside)
+
+# 3. Start the server
 npm start
-# http://localhost:3000
 ```
 
-La base de donnees et le schema sont crees automatiquement au premier lancement.
+| Service | URL |
+|---------|-----|
+| Game (HTTP) | http://localhost:3000 |
+| Health check | http://localhost:3000/health |
+| Metrics API | http://localhost:3000/api/v1/metrics |
+
+The SQLite database and schema are created automatically on first launch.
+
+```bash
+# Development (auto-reload)
+npm run dev
+
+# Run tests
+npm test
+
+# Check server health
+npm run health
+```
 
 ## Architecture
 
@@ -61,7 +85,7 @@ zombie-multiplayer-game/
 │       ├── bullet/          # BulletUpdater, CollisionHandler, BulletEffects
 │       ├── wave/            # WaveManager
 │       ├── loot/            # LootUpdater, PowerupUpdater
-│       ├── player/          # PlayerProgression, PlayerEffects
+│       ├── player/          # PlayerUpdater, PlayerProgression, PlayerEffects, AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler
 │       ├── hazards/         # HazardManager
 │       └── admin/           # AdminCommands
 ├── public/                  # Client (Canvas HTML5)
@@ -298,8 +322,58 @@ npm run format         # Prettier
 npm run db:migrate     # Executer migrations
 npm run db:rollback    # Rollback migration
 npm run db:status      # Statut des migrations
+npm run db:backup      # Backup horodate de la base (voir section Database operations)
 npm run deploy:server  # Serveur webhook CI/CD
 ```
+
+## Database operations
+
+### Migrations
+
+```bash
+# Appliquer toutes les migrations en attente
+npm run db:migrate
+
+# Rollback de la derniere migration
+npm run db:rollback
+
+# Rollback des 3 dernieres migrations
+node database/scripts/migrate.js down 3
+
+# Statut des migrations
+npm run db:status
+```
+
+Les migrations sont idempotentes : chaque `CREATE TABLE` utilise `IF NOT EXISTS` et les `INSERT` utilisent `OR IGNORE`. Re-executer une migration est un no-op.
+
+Fichiers par migration :
+
+| Fichier | Description |
+|---------|-------------|
+| `001_initial_schema.sql` | Tables de base (players, sessions, leaderboard) |
+| `002_account_progression.sql` | Progression, skill tree, achievements |
+| `003_achievements_data.sql` | Seed des 25 achievements par defaut |
+| `004_performance_indexes.sql` | Index composites pour les requetes critiques |
+
+Chaque migration dispose d'un fichier de rollback `.down.sql`.
+
+### Backup
+
+```bash
+# Backup avec timestamp vers ./data/backups/ (garde 7 derniers)
+npm run db:backup
+
+# Destination et retention personnalisees
+node scripts/backup.js --dest /mnt/backup/zombie --keep 14
+```
+
+Le script `scripts/backup.js` utilise l'API async de better-sqlite3 v12 (`.backup()` retourne une Promise). La retention supprime automatiquement les backups les plus anciens au-dela du seuil `--keep`.
+
+Variables d'environnement :
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_PATH` | `./data/game.db` | Base source a sauvegarder |
 
 ## Deploiement
 

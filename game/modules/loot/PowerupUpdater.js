@@ -6,6 +6,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
+const logger = require('../../../lib/infrastructure/Logger');
 
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
 
@@ -50,9 +51,11 @@ function checkPowerupCollection(powerup, powerupId, gameState, entityManager) {
  * Check if player can collect powerup
  */
 function canCollectPowerup(player, powerup) {
-  return player.alive &&
-         player.hasNickname &&
-         distance(powerup.x, powerup.y, player.x, player.y) < CONFIG.PLAYER_SIZE + CONFIG.POWERUP_SIZE;
+  return (
+    player.alive &&
+    player.hasNickname &&
+    distance(powerup.x, powerup.y, player.x, player.y) < CONFIG.PLAYER_SIZE + CONFIG.POWERUP_SIZE
+  );
 }
 
 /**
@@ -63,7 +66,7 @@ function collectPowerup(player, powerup, powerupId, gameState, entityManager) {
   // BUG FIX: Validate powerup type exists before applying effect
   const powerupType = POWERUP_TYPES[powerup.type];
   if (!powerupType || typeof powerupType.effect !== 'function') {
-    console.error(`[POWERUP] Invalid powerup type: ${powerup.type}`);
+    logger.error('[POWERUP] Invalid powerup type', { type: powerup.type });
     delete gameState.powerups[powerupId];
     return;
   }
