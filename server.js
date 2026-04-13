@@ -44,6 +44,7 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // IMPORTS - Middleware
 // ============================================
 const { requestIdMiddleware } = require('./middleware/requestId');
+const { httpsRedirect } = require('./middleware/httpsRedirect');
 const { accessLogMiddleware } = require('./middleware/accessLog');
 const { getSocketIOCorsConfig } = require('./middleware/cors');
 const {
@@ -65,6 +66,7 @@ const {
 const initAuthRoutes = require('./routes/auth');
 const initHealthRoutes = require('./routes/health');
 const initMetricsRoutes = require('./routes/metrics');
+const initAdminStatsRoute = require('./routes/adminStats');
 const initLeaderboardRoutes = require('./routes/leaderboard');
 const initPlayersRoutes = require('./routes/players');
 const featuresRoutes = require('./routes/features');
@@ -172,6 +174,9 @@ memoryMonitor.start();
 // ============================================
 // MIDDLEWARE CONFIGURATION
 // ============================================
+
+// HTTPS redirect (must be first — before any route handles the request)
+app.use(httpsRedirect);
 
 // Request ID (before all other middleware for tracing)
 app.use(requestIdMiddleware);
@@ -308,6 +313,12 @@ async function startServer() {
   app.use('/api/metrics', requireMetricsToken, metricsRoutes);
   app.use('/api/v1/features', featuresRoutes);
   app.use('/api/features', featuresRoutes);
+  // /admin/stats — debug dashboard, requires METRICS_TOKEN (admin auth)
+  app.use(
+    '/admin/stats',
+    requireMetricsToken,
+    initAdminStatsRoute(metricsCollector, memoryMonitor)
+  );
   // /health must remain unauthenticated so load balancers / k8s liveness probes can reach it.
   app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
 
