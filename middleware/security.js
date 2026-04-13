@@ -19,7 +19,7 @@ function configureHelmet() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'", 'ws:', 'wss:'],
         fontSrc: ["'self'"],
