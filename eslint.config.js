@@ -35,7 +35,9 @@ module.exports = [
       }
     },
     rules: {
-      indent: ['error', 2],
+      // indent: disabled — prettier is the source of truth for indentation
+      // and they disagree on nested array/object spreads.
+      indent: 'off',
       'linebreak-style': ['error', 'unix'],
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
