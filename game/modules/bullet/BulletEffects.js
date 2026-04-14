@@ -362,13 +362,22 @@ function applyIceAreaEffect(zombie, zombieId, weapon, gameState, now, entityMana
     const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
 
     if (distSq < iceRadiusSq) {
+      // BUGFIX: when zombie is already slowed/frozen, other.speed is the
+      // already-reduced value. Snapshotting it as 'originalSpeed' bakes in
+      // the slow → after expiry the zombie never recovers true base speed.
+      // Resolve through the existing chain (mirrors freezeZombie/slowZombie).
+      const trueOriginalSpeed =
+        (other.slowed && other.slowed.originalSpeed) ||
+        (other.frozen && other.frozen.originalSpeed) ||
+        other.baseSpeed ||
+        other.speed;
       other.slowed = {
         startTime: now,
         endTime: now + halfSlowDuration,
-        originalSpeed: other.speed,
+        originalSpeed: trueOriginalSpeed,
         slowAmount: reducedSlowAmount
       };
-      other.speed = other.slowed.originalSpeed * (1 - reducedSlowAmount);
+      other.speed = trueOriginalSpeed * (1 - reducedSlowAmount);
 
       createParticles(other.x, other.y, '#aaddff', 4, entityManager);
     }
