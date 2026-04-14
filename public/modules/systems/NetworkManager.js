@@ -244,9 +244,10 @@ class NetworkManager {
   setupSocketListeners() {
     // Connection event handlers
     this.on('connect', () => {
+      const transport = this.socket.io?.engine?.transport?.name ?? 'unknown';
       if (this._initialConnect) {
         this._initialConnect = false;
-        console.log('[Socket.IO] Connected successfully');
+        console.log(`[Socket.IO] Connected successfully (transport: ${transport})`);
         this._resetReconnectBackoff();
         if (window.toastManager) {
           const quality = this.getConnectionQuality();
@@ -254,7 +255,7 @@ class NetworkManager {
         }
       } else {
         // Manual reconnect path (backoff via _scheduleReconnect → socket.connect())
-        console.log('[Socket.IO] Reconnected (manual backoff path)');
+        console.log(`[Socket.IO] Reconnected (manual backoff path, transport: ${transport})`);
         this.justReconnected = true;
         this._resetReconnectBackoff();
         if (window.toastManager) {
