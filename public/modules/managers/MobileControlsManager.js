@@ -98,6 +98,14 @@ class MobileControlsManager {
 
     const handleTouchEnd = e => {
       e.preventDefault();
+      // BUGFIX: only reset when OUR finger lifted. Without this filter,
+      // any touchend (e.g. fire-button release while joystick is held)
+      // zeroed out the joystick mid-movement.
+      const lifted = Array.from(e.changedTouches || []).find(t => t.identifier === touchId);
+      if (touchId !== null && !lifted) {
+        return;
+      }
+      touchId = null;
       this.joystickActive = false;
       this.joystickVector = { dx: 0, dy: 0 };
       joystickBase.classList.remove('active');

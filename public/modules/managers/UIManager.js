@@ -125,10 +125,12 @@ class UIManager {
     if (player.level && player.xp !== undefined) {
       const xpNeeded = this.getXPForLevel(player.level);
       const xpPercent = (player.xp / xpNeeded) * 100;
-      els.xpFill.style.width = xpPercent + '%';
+      // BUGFIX: clamp the bar fill to 100% — a brief race between server XP
+      // grant and level-up processing can make xpPercent ≥ 100, stretching
+      // the fill div past its container.
+      els.xpFill.style.width = Math.min(100, xpPercent) + '%';
       els.levelText.textContent = player.level;
       els.xpText.textContent = `${Math.floor(player.xp)}/${xpNeeded}`;
-
       // Near level up indicator (> 85%)
       if (xpPercent > 85) {
         els.xpBar.classList.add('near-levelup');

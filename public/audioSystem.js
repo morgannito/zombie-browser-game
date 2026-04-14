@@ -923,7 +923,13 @@ class AdvancedAudioManager {
    * Méthode de compatibilité - toggle (toggle both sound and music)
    */
   toggle() {
+    // BUGFIX: docstring promised both sound + music; only soundsEnabled
+    // was flipped → music kept playing on global mute.
     this.soundsEnabled = !this.soundsEnabled;
+    this.musicEnabled = this.soundsEnabled;
+    if (!this.musicEnabled && typeof this.stopMusic === 'function') {
+      this.stopMusic();
+    }
     return this.soundsEnabled;
   }
 
