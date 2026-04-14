@@ -986,7 +986,9 @@ class PerformanceSettingsManager {
       this.settings.particlesEnabled === false &&
       this.settings.gridEnabled === false &&
       this.settings.resolutionScale <= 0.5;
-    if (allDowngraded) return;
+    if (allDowngraded) {
+return;
+}
 
     logger.warn(`Low FPS detected (${this.currentFPS} FPS), auto-adjusting performance...`);
 
