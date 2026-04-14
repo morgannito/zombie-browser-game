@@ -593,6 +593,18 @@ function cleanupServer() {
     logger.info('Powerup spawner stopped');
   }
 
+  // BUGFIX (memory leak): perfIntegration owns a gcTimer setInterval that
+  // was never cleared on shutdown — kept the singleton (and its config)
+  // alive forever in test runs and graceful-restart scenarios.
+  try {
+    if (perfIntegration && typeof perfIntegration.cleanup === 'function') {
+      perfIntegration.cleanup();
+      logger.info('Performance integration timers stopped');
+    }
+  } catch (e) {
+    logger.warn('perfIntegration.cleanup() failed', { error: e && e.message });
+  }
+
   // Stop memory monitor
   memoryMonitor.stop();
   logger.info('Memory monitor stopped');

@@ -67,16 +67,21 @@ class MigrationRunner {
       const checksum = this._checksum(sql);
 
       try {
-        this.db.exec('BEGIN');
-        this.db.exec(sql);
-        this.db
-          .prepare('INSERT INTO _migrations (name, checksum) VALUES (?, ?)')
-          .run(file, checksum);
-        this.db.exec('COMMIT');
+        // BUGFIX: use better-sqlite3 native .transaction() helper instead of
+        // manual BEGIN/COMMIT/ROLLBACK on the SQLite handle. The manual flow
+        // conflicts with the driver internal state tracking — on a failure
+        // mid-statement the rollback throws "no transaction is active",
+        // masking the original error and leaving the DB mid-migration.
+        const apply = this.db.transaction(() => {
+          this.db.exec(sql);
+          this.db
+            .prepare('INSERT INTO _migrations (name, checksum) VALUES (?, ?)')
+            .run(file, checksum);
+        });
+        apply();
         result.applied.push(file);
         console.log(`[Migration] Applied: ${file}`);
       } catch (err) {
-        this.db.exec('ROLLBACK');
         throw new Error(`Migration ${file} failed: ${err.message}`);
       }
     }
@@ -106,14 +111,14 @@ class MigrationRunner {
       const sql = fs.readFileSync(downPath, 'utf8');
 
       try {
-        this.db.exec('BEGIN');
-        this.db.exec(sql);
-        this.db.prepare('DELETE FROM _migrations WHERE name = ?').run(name);
-        this.db.exec('COMMIT');
+        const rollback = this.db.transaction(() => {
+          this.db.exec(sql);
+          this.db.prepare('DELETE FROM _migrations WHERE name = ?').run(name);
+        });
+        rollback();
         result.rolledBack.push(name);
         console.log(`[Migration] Rolled back: ${name}`);
       } catch (err) {
-        this.db.exec('ROLLBACK');
         throw new Error(`Rollback ${name} failed: ${err.message}`);
       }
     }

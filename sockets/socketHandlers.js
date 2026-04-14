@@ -832,8 +832,12 @@ function registerDisconnectHandler(
       });
       MetricsCollector.getInstance().clearViolations(socket.id);
 
-      // SESSION RECOVERY: Save player state for recovery if session exists
-      if (sessionId && accountId && player) {
+      // SESSION RECOVERY: Save player state for recovery if session exists.
+      // BUGFIX: removed accountId requirement — anonymous sessions also need
+      // recovery, otherwise the next reconnect re-creates a player with the
+      // same nickname and CreatePlayerUseCase throws ConflictError, spamming
+      // 'Username already taken' in prod logs.
+      if (sessionId && player) {
         // Only save state if player has actually started playing (has nickname)
         if (player.hasNickname && player.alive) {
           const playerStateCopy = createRecoverablePlayerState(player);
