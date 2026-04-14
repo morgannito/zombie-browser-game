@@ -137,8 +137,10 @@ class UIManager {
       }
     }
 
-    // Stats
-    els.scoreValue.textContent = player.score;
+    // Stats — server increments `totalScore` on kills (combo-multiplied);
+    // `player.score` is a legacy field kept at 0. Fall back to score for
+    // any client built before the server rename.
+    els.scoreValue.textContent = (player.totalScore || player.score || 0).toLocaleString();
     els.waveValue.textContent = `${this.gameState.state.wave || 1}`;
     els.goldValue.textContent = player.gold || 0;
 
