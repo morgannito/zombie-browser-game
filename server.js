@@ -109,9 +109,12 @@ const io = require('socket.io')(server, {
   // Transport configuration for better WebSocket support
   transports: ['websocket', 'polling'],
   allowUpgrades: true,
-  // Ping/pong settings for connection health monitoring
+  // Ping/pong settings for connection health monitoring.
+  // pingTimeout was 5s — too aggressive on mobile / unstable wifi: a single
+  // dropped pong would disconnect the player. 20s gives enough margin while
+  // still detecting truly dead sockets quickly.
   pingInterval: 10000,
-  pingTimeout: 5000,
+  pingTimeout: 20000,
   // Connection settings
   connectTimeout: 45000,
   // perMessageDeflate disabled: Cloudflare strips the WS extension headers

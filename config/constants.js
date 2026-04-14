@@ -70,8 +70,9 @@ if (!METRICS_TOKEN && process.env.NODE_ENV === 'production') {
 // Session recovery timeout (10 minutes — increased for better reconnect resilience)
 const SESSION_RECOVERY_TIMEOUT = 10 * 60 * 1000;
 
-// Inactivity timeout (2 minutes)
-const INACTIVITY_TIMEOUT = 2 * 60 * 1000;
+// Inactivity timeout (5 minutes — was 2min, too aggressive: dropped players
+// in shop / level-up / spectator pause. Heartbeat sweep still runs every 30s.)
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
 
 // Heartbeat check interval (30 seconds)
 const HEARTBEAT_CHECK_INTERVAL = 30 * 1000;
