@@ -87,8 +87,12 @@ class PlayerController {
   _computeMovementVector(player, dx, dy, deltaFactor, now) {
     const baseSpeed = this.gameState.config.PLAYER_SPEED;
     let speed = baseSpeed * (player.speedMultiplier || 1);
-    if (player.speedBoost && now < player.speedBoost) speed *= 1.5;
-    if (player.slowedUntil && now < player.slowedUntil) speed *= (player.slowAmount || 1);
+    if (player.speedBoost && now < player.speedBoost) {
+speed *= 1.5;
+}
+    if (player.slowedUntil && now < player.slowedUntil) {
+speed *= (player.slowAmount || 1);
+}
 
     const frameSpeed = speed * deltaFactor;
     this.velocity.x = this.velocity.x * (1 - this.velocitySmoothing) + dx * frameSpeed * this.velocitySmoothing;
@@ -113,8 +117,12 @@ class PlayerController {
       finalX = newX;
       finalY = newY;
     } else {
-      if (!this.checkWallCollision(newX, player.y, size)) finalX = newX;
-      if (!this.checkWallCollision(player.x, newY, size)) finalY = newY;
+      if (!this.checkWallCollision(newX, player.y, size)) {
+finalX = newX;
+}
+      if (!this.checkWallCollision(player.x, newY, size)) {
+finalY = newY;
+}
     }
 
     const wt = this.gameState.config.WALL_THICKNESS || 40;
@@ -177,9 +185,13 @@ class PlayerController {
   update(canvasWidth, canvasHeight, deltaTime) {
     const now = performance.now();
     const player = this.gameState.getPlayer();
-    if (!player || !player.alive) return;
+    if (!player || !player.alive) {
+return;
+}
 
-    if (deltaTime === undefined) deltaTime = now - this.lastUpdateTime;
+    if (deltaTime === undefined) {
+deltaTime = now - this.lastUpdateTime;
+}
     this.lastUpdateTime = now;
     deltaTime = Math.min(deltaTime, 100);
 
@@ -187,7 +199,9 @@ class PlayerController {
 
     // Always update camera even before game starts
     this.camera.follow(player, canvasWidth, canvasHeight, deltaTime);
-    if (!this.gameStarted) return;
+    if (!this.gameStarted) {
+return;
+}
 
     const { dx, dy, magnitude } = this.input.getMovementVector();
 
@@ -236,7 +250,9 @@ class PlayerController {
 
   shoot(_canvasWidth, _canvasHeight) {
     const player = this.gameState.getPlayer();
-    if (!player || !player.alive || !this.gameStarted) return;
+    if (!player || !player.alive || !this.gameStarted) {
+return;
+}
 
     const cameraPos = this.camera.getPosition();
     const mouseWorldX = this.input.mouse.x + cameraPos.x;
