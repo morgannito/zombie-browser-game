@@ -318,26 +318,38 @@ class GameEngine {
     const interp = _tInterp - _t0;
     const renderer = _tRender - _tInterp;
     const total = performance.now() - _t0;
-    p.interp.sum += interp; p.interp.count++; if (interp > p.interp.max) p.interp.max = interp;
-    p.renderer.sum += renderer; p.renderer.count++; if (renderer > p.renderer.max) p.renderer.max = renderer;
-    p.total.sum += total; p.total.count++; if (total > p.total.max) p.total.max = total;
+    p.interp.sum += interp; p.interp.count++; if (interp > p.interp.max) {
+p.interp.max = interp;
+}
+    p.renderer.sum += renderer; p.renderer.count++; if (renderer > p.renderer.max) {
+p.renderer.max = renderer;
+}
+    p.total.sum += total; p.total.count++; if (total > p.total.max) {
+p.total.max = total;
+}
 
     if (performance.now() - p.last >= 5000) {
       // Object.keys only at flush time, not per frame
       let zCount = 0;
       const zombies = window.gameState && window.gameState.state && window.gameState.state.zombies;
-      if (zombies) for (const _k in zombies) zCount++;
+      if (zombies) {
+for (const _k in zombies) {
+zCount++;
+}
+}
       const rows = {};
       for (const [k, v] of Object.entries(p)) {
-        if (k === 'last' || v.count === 0) continue;
+        if (k === 'last' || v.count === 0) {
+continue;
+}
         rows[k] = { avg_ms: +(v.sum / v.count).toFixed(2), max_ms: +v.max.toFixed(2), samples: v.count };
         v.sum = 0; v.count = 0; v.max = 0;
       }
-      // eslint-disable-next-line no-console
+
       console.group(`[perf] render (5s, zombies=${zCount})`);
-      // eslint-disable-next-line no-console
+
       console.table(rows);
-      // eslint-disable-next-line no-console
+
       console.groupEnd();
       p.last = performance.now();
     }
