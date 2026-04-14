@@ -10,6 +10,7 @@ class NetworkManager {
   constructor(socket) {
     this.socket = socket;
     this.justReconnected = false; // Flag to track reconnection state
+    this._initialConnect = true; // True until the first successful connect
     this.listeners = []; // Track all listeners for cleanup
 
     // Latency monitoring
@@ -17,6 +18,11 @@ class NetworkManager {
     this.lastPingTime = 0;
     this.latencyHistory = []; // Keep last 10 measurements
     this.maxLatencyHistory = 10;
+    this._lastLatencyWarnAt = 0; // Throttle high-latency log (once per 5 s)
+
+    // Outbound emit batch queue (flushed via queueMicrotask within same rAF tick)
+    this._emitQueue = [];
+    this._emitFlushPending = false;
 
     // Exponential backoff reconnect state
     this._reconnectAttempts = 0;
@@ -66,6 +72,38 @@ class NetworkManager {
   }
 
   /**
+   * Request a full authoritative game state from the server after reconnection.
+   * Emits 'requestFullState'. If the server does not handle this event it is a
+   * silent no-op — no error is thrown.
+   * @private
+   */
+  _syncFullState() {
+    if (this.socket.connected) {
+      this.socket.emit('requestFullState');
+    }
+  }
+
+  /**
+   * Batch-queue an emit and flush via queueMicrotask (once per microtask checkpoint).
+   * Avoids redundant socket writes when multiple emits land in the same rAF tick.
+   * @param {string} event
+   * @param {*} payload
+   */
+  _queueEmit(event, payload) {
+    this._emitQueue.push({ event, payload });
+    if (!this._emitFlushPending) {
+      this._emitFlushPending = true;
+      queueMicrotask(() => {
+        this._emitFlushPending = false;
+        const queue = this._emitQueue.splice(0);
+        queue.forEach(({ event: ev, payload: pl }) => {
+          this.socket.emit(ev, pl);
+        });
+      });
+    }
+  }
+
+  /**
    * Register event listener and track it for cleanup
    */
   on(event, handler) {
@@ -97,13 +135,14 @@ class NetworkManager {
 
   setupLatencyMonitoring() {
     // MEMORY LEAK FIX: Track ping/pong handlers for cleanup
+    // Use performance.now() — monotonic clock, immune to system clock drift/adjustments.
     const pingHandler = () => {
-      this.lastPingTime = Date.now();
+      this.lastPingTime = performance.now();
     };
 
     const pongHandler = () => {
       if (this.lastPingTime) {
-        const latency = Date.now() - this.lastPingTime;
+        const latency = Math.round(performance.now() - this.lastPingTime);
         this.updateLatency(latency);
       }
     };
@@ -116,28 +155,22 @@ class NetworkManager {
     this.listeners.push({ event: 'ping', handler: pingHandler });
     this.listeners.push({ event: 'pong', handler: pongHandler });
 
-    // Manual ping every 2 seconds for more accurate measurements
+    // Manual ping every 2 seconds for accurate RTT measurement.
+    // performance.now() is monotonic and unaffected by system clock adjustments.
     const timerMgr = window.timerManager;
+    const doPing = () => {
+      if (this.socket.connected) {
+        const start = performance.now();
+        this.socket.emit('ping', start, _ack => {
+          const latency = Math.round(performance.now() - start);
+          this.updateLatency(latency);
+        });
+      }
+    };
     if (timerMgr) {
-      this.pingIntervalId = timerMgr.setInterval(() => {
-        if (this.socket.connected) {
-          const start = Date.now();
-          this.socket.emit('ping', start, _ack => {
-            const latency = Date.now() - start;
-            this.updateLatency(latency);
-          });
-        }
-      }, 2000);
+      this.pingIntervalId = timerMgr.setInterval(doPing, 2000);
     } else {
-      this.pingInterval = setInterval(() => {
-        if (this.socket.connected) {
-          const start = Date.now();
-          this.socket.emit('ping', start, _ack => {
-            const latency = Date.now() - start;
-            this.updateLatency(latency);
-          });
-        }
-      }, 2000);
+      this.pingInterval = setInterval(doPing, 2000);
     }
   }
 
@@ -158,9 +191,13 @@ class NetworkManager {
       window.gameState.updateNetworkLatency(latency);
     }
 
-    // Log high latency warnings
+    // Log high latency warnings — throttled to once every 5 s to avoid log spam.
     if (latency > 200) {
-      console.warn(`[Network] High latency detected: ${latency}ms`);
+      const now = performance.now();
+      if (now - this._lastLatencyWarnAt >= 5000) {
+        this._lastLatencyWarnAt = now;
+        console.warn(`[Network] High latency detected: ${latency}ms`);
+      }
     }
   }
 
@@ -208,11 +245,24 @@ class NetworkManager {
     // Connection event handlers
     this.on('connect', () => {
       const transport = this.socket.io?.engine?.transport?.name ?? 'unknown';
-      console.log(`[Socket.IO] Connected successfully (transport: ${transport})`);
-      this._resetReconnectBackoff();
-      if (window.toastManager) {
-        const quality = this.getConnectionQuality();
-        window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
+      if (this._initialConnect) {
+        this._initialConnect = false;
+        console.log(`[Socket.IO] Connected successfully (transport: ${transport})`);
+        this._resetReconnectBackoff();
+        if (window.toastManager) {
+          const quality = this.getConnectionQuality();
+          window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
+        }
+      } else {
+        // Manual reconnect path (backoff via _scheduleReconnect → socket.connect())
+        console.log(`[Socket.IO] Reconnected (manual backoff path, transport: ${transport})`);
+        this.justReconnected = true;
+        this._resetReconnectBackoff();
+        if (window.toastManager) {
+          window.toastManager.show('✅ Reconnected to server', 'success');
+        }
+        // Re-sync: request full authoritative state. Silent no-op if server does not support it.
+        this._syncFullState();
       }
     });
 
@@ -243,6 +293,8 @@ class NetworkManager {
       if (window.toastManager) {
         window.toastManager.show('✅ Reconnected to server', 'success');
       }
+      // Re-sync: request full authoritative state. Silent no-op if server does not support it.
+      this._syncFullState();
     });
 
     this.on('reconnect_attempt', attemptNumber => {
@@ -739,11 +791,11 @@ class NetworkManager {
   }
 
   playerMove(x, y, angle) {
-    this.socket.emit('playerMove', { x, y, angle });
+    this._queueEmit('playerMove', { x, y, angle });
   }
 
   shoot(angle) {
-    this.socket.emit('shoot', { angle });
+    this._queueEmit('shoot', { angle });
   }
 
   respawn() {
