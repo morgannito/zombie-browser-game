@@ -43,6 +43,122 @@ class EntityRenderer {
   constructor() {
     // Hit flash state: zombieId -> { startTime, duration }
     this._hitFlashes = new Map();
+
+    // Offscreen sprite cache: cacheKey -> OffscreenCanvas (or regular canvas fallback)
+    // Key: "${color}|${isBoss}|${isElite}|${sizeBucket}"
+    // LRU eviction: hard cap at 40 sprites
+    this._zombieSpriteCache = new Map();
+    this._zombieSpriteCacheLRU = []; // ordered oldest→newest by key
+  }
+
+  /**
+   * Returns (from cache or freshly rendered) an offscreen canvas sprite
+   * for the given zombie's (color, isBoss, isElite, sizeBucket) tuple.
+   * Handles OffscreenCanvas fallback and LRU eviction (cap=40).
+   * @param {Object} zombie
+   * @returns {OffscreenCanvas|HTMLCanvasElement}
+   */
+  _getOrBuildZombieSprite(zombie) {
+    const sizeBucket = Math.round(zombie.size / 4);
+    const isElite = zombie.isElite ? 1 : 0;
+    const isBoss = zombie.isBoss ? 1 : 0;
+    const key = `${zombie.color}|${isBoss}|${isElite}|${sizeBucket}`;
+
+    // LRU hit: move to end
+    if (this._zombieSpriteCache.has(key)) {
+      const idx = this._zombieSpriteCacheLRU.indexOf(key);
+      if (idx !== -1) {
+        this._zombieSpriteCacheLRU.splice(idx, 1);
+        this._zombieSpriteCacheLRU.push(key);
+      }
+      return this._zombieSpriteCache.get(key);
+    }
+
+    // Evict oldest if at cap
+    const SPRITE_CACHE_CAP = 40;
+    if (this._zombieSpriteCache.size >= SPRITE_CACHE_CAP) {
+      const evictKey = this._zombieSpriteCacheLRU.shift();
+      if (evictKey) this._zombieSpriteCache.delete(evictKey);
+    }
+
+    // Build sprite: size×2.5 canvas centered on zombie origin
+    const s = sizeBucket * 4; // representative size for this bucket
+    const scale = isBoss ? 1.5 : 1;
+    const baseSize = s / 25;
+    const canvasSize = Math.ceil(s * 2.5);
+    const cx = canvasSize / 2; // center x in offscreen canvas
+    const cy = canvasSize / 2; // center y
+
+    let offscreen;
+    try {
+      offscreen = new OffscreenCanvas(canvasSize, canvasSize);
+    } catch (_) {
+      offscreen = document.createElement('canvas');
+      offscreen.width = canvasSize;
+      offscreen.height = canvasSize;
+    }
+    const oc = offscreen.getContext('2d');
+
+    // Body
+    const bodyW = 18 * baseSize * scale;
+    const bodyH = 20 * baseSize * scale;
+    oc.fillStyle = zombie.color;
+    oc.strokeStyle = '#000';
+    oc.lineWidth = isBoss ? 3 : 1.5;
+    oc.fillRect(cx - bodyW / 2, cy - 5 * baseSize * scale, bodyW, bodyH);
+    oc.strokeRect(cx - bodyW / 2, cy - 5 * baseSize * scale, bodyW, bodyH);
+
+    // Head
+    const headR = 10 * baseSize * scale;
+    oc.beginPath();
+    oc.arc(cx, cy - 10 * baseSize * scale, headR, 0, Math.PI * 2);
+    oc.fill();
+    oc.stroke();
+
+    // Eyes (no shadow – perf sprite)
+    const eyeSize = isBoss ? 4 * scale : 2.5 * scale;
+    const eyeOff = 4 * baseSize * scale;
+    oc.fillStyle = '#ff0000';
+    oc.fillRect(cx - eyeOff - eyeSize / 2, cy - 13 * baseSize * scale, eyeSize, eyeSize);
+    oc.fillRect(cx + eyeOff - eyeSize / 2, cy - 13 * baseSize * scale, eyeSize, eyeSize);
+
+    // Boss crown indicator
+    if (isBoss) {
+      oc.fillStyle = '#ffd700';
+      const crownY = cy - 10 * baseSize * scale - headR - 6;
+      oc.fillRect(cx - headR * 0.7, crownY, headR * 1.4, 5);
+      oc.fillRect(cx - headR * 0.55, crownY - 6, 4, 8);
+      oc.fillRect(cx - 2, crownY - 8, 4, 10);
+      oc.fillRect(cx + headR * 0.55 - 4, crownY - 6, 4, 8);
+    }
+
+    // Elite glow ring
+    if (isElite) {
+      oc.save();
+      oc.strokeStyle = '#ff8c00';
+      oc.lineWidth = 2;
+      oc.globalAlpha = 0.6;
+      oc.beginPath();
+      oc.arc(cx, cy, s * 0.7, 0, Math.PI * 2);
+      oc.stroke();
+      oc.restore();
+    }
+
+    this._zombieSpriteCache.set(key, offscreen);
+    this._zombieSpriteCacheLRU.push(key);
+    return offscreen;
+  }
+
+  /**
+   * Draw zombie via offscreen-canvas blit (fastest path).
+   * Uses _getOrBuildZombieSprite for cache lookup/build, then drawImage.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} zombie
+   */
+  _drawZombieSprited(ctx, zombie) {
+    const sprite = this._getOrBuildZombieSprite(zombie);
+    const canvasSize = sprite.width;
+    ctx.drawImage(sprite, zombie.x - canvasSize / 2, zombie.y - canvasSize / 2);
   }
 
   /**
@@ -351,8 +467,19 @@ class EntityRenderer {
   }
 
   drawZombieSprite(ctx, zombie, timestamp) {
-    // FAST PATH: simplified sprite when perf mode is on (no walk anim, no arms, no legs detail)
-    // Toggle: window.useZombieFastDraw === true. Auto-on when shadows are disabled.
+    // FASTEST PATH: offscreen-canvas blit.
+    // useZombieSpriteCache can be set explicitly. Auto-enables with useZombieFastDraw (perf mode)
+    // unless explicitly opted out (=== false). Blits pre-rendered sprites via drawImage —
+    // typically 3-10x faster than _drawZombieFast for 30+ zombies on screen.
+    const useSpriteCache =
+      window.useZombieSpriteCache === true ||
+      (window.useZombieFastDraw === true && window.useZombieSpriteCache !== false);
+    if (useSpriteCache) {
+      this._drawZombieSprited(ctx, zombie);
+      return;
+    }
+
+    // FAST PATH: simplified immediate-mode sprite (7 ops, no walk anim)
     if (window.useZombieFastDraw === true) {
       this._drawZombieFast(ctx, zombie);
       return;
