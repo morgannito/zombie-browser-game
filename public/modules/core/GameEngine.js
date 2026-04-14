@@ -26,10 +26,11 @@ class GameEngine {
     this.initializeManagers();
     this.start();
 
-    // Debug mode toggle (press 'D' key)
+    // Debug mode toggle (press F3) — was 'D' which conflicted with right-movement
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'd' || e.key === 'D') {
-        if (!document.querySelector('input:focus')) { // Only if not typing in input
+      if (e.key === 'F3' && !e.repeat) {
+        if (!document.querySelector('input:focus')) {
+          e.preventDefault();
           window.gameState.toggleDebug();
         }
       }
