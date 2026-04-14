@@ -38,9 +38,16 @@ class LeaderboardSystem {
 
   addEntry(player) {
     if (player && player.alive === false) {
-      const survivalTime = player.survivalTime
-        ? Math.floor((Date.now() - player.survivalTime) / 1000)
-        : 0;
+      // BUGFIX: caller may pass either a run-start timestamp (legacy live
+      // path) or a pre-computed elapsed seconds value (submitScore path).
+      // Detect: if the value looks like a recent epoch ms (> 1e12), treat
+      // it as a start timestamp; otherwise treat it as already in seconds.
+      let survivalTime = 0;
+      if (typeof player.survivalTime === 'number' && player.survivalTime > 0) {
+        survivalTime = player.survivalTime > 1e12
+          ? Math.floor((Date.now() - player.survivalTime) / 1000)
+          : Math.floor(player.survivalTime);
+      }
 
       const entry = {
         nickname: player.nickname || 'Anonyme',
@@ -98,7 +105,9 @@ class LeaderboardSystem {
       zombiesKilled: stats.zombiesKilled || 0,
       kills: stats.zombiesKilled || 0,
       gold: stats.goldEarned || stats.gold || 0,
-      survivalTime: Date.now() - (stats.runDuration || 0) * 1000
+      // BUGFIX: pass elapsed seconds directly. addEntry now auto-detects
+      // whether this is a timestamp or seconds via the > 1e12 threshold.
+      survivalTime: stats.runDuration || 0
     };
 
     this.addEntry(entry);

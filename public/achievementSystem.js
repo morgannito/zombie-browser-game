@@ -377,8 +377,14 @@ class AchievementSystem {
     // Afficher une notification
     this.showAchievementNotification(achievement);
 
-    // Donner les récompenses automatiquement
-    this.claimReward(achievementId);
+    // BUGFIX: claimReward() returned the reward but its caller discarded
+    // the value, so unlocks marked rewardClaimed=true without ever crediting
+    // gold/gems to the player. Pipe the reward through applyReward.
+    const reward = this.claimReward(achievementId);
+    if (reward && window.dailyChallengeSystem &&
+        typeof window.dailyChallengeSystem.applyReward === 'function') {
+      window.dailyChallengeSystem.applyReward(reward, `Achievement: ${achievement.name}`);
+    }
   }
 
   // Récupérer une récompense
