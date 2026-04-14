@@ -1,11 +1,14 @@
 /**
  * INPUT MANAGER
- * Handles keyboard and mouse input for player controls
+ * Handles keyboard, mouse, and gamepad input for player controls
  * Optimized for minimal input lag with RAF-based polling
  * @module InputManager
  * @author Claude Code
- * @version 3.0.0
+ * @version 4.0.0
  */
+
+// Keys that must suppress browser default behaviour during gameplay.
+const GAMEPLAY_PREVENT_KEYS = new Set(['tab', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 
 class InputManager {
   constructor() {
@@ -19,7 +22,10 @@ class InputManager {
     this.inputSequence = 0;
     this.maxBufferSize = 64; // Keep last 64 inputs for reconciliation
 
-    // Cached movement vector (updated each frame)
+    // Cached movement vector — invariant: cachedMovement is authoritative whenever
+    // movementDirty === false. Any code that changes keys, gamepad state, or
+    // mobileControls MUST set movementDirty = true so the next getMovementVector()
+    // call recomputes. Never clear movementDirty without also updating cachedMovement.
     this.cachedMovement = { dx: 0, dy: 0, magnitude: 0 };
     this.movementDirty = true;
 
@@ -61,8 +67,31 @@ class InputManager {
     this.keysJustPressed = {};
   }
 
+  /**
+   * Returns true when the focused element is a text input — key events there
+   * should be ignored so the player can type without moving the character.
+   */
+  _isInputFocused() {
+    const el = document.activeElement;
+    if (!el) {
+return false;
+}
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+  }
+
   handleKeyDown(e) {
+    // Do not intercept keys while the user is typing in a form field.
+    if (this._isInputFocused()) {
+return;
+}
+
     const key = e.key.toLowerCase();
+
+    // Suppress browser scroll/tab behaviour for gameplay keys.
+    if (GAMEPLAY_PREVENT_KEYS.has(key)) {
+      e.preventDefault();
+    }
 
     // Track if this is a new press (not a repeat)
     if (!this.keys[key]) {
@@ -74,12 +103,9 @@ class InputManager {
     this.keys[key] = true;
     this.movementDirty = true;
 
-    // TAB key for stats panel
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      if (window.gameUI) {
-        window.gameUI.toggleStatsPanel();
-      }
+    // TAB key for stats panel (already prevented above)
+    if (e.key === 'Tab' && window.gameUI) {
+      window.gameUI.toggleStatsPanel();
     }
   }
 
@@ -145,20 +171,63 @@ class InputManager {
   }
 
   /**
-   * Get movement vector with caching for performance
-   * @param {boolean} forceRecalculate - Force recalculation even if cached
+   * Poll connected gamepads and merge their left-stick input into the current
+   * keyboard state. Call this once per game loop frame before getMovementVector().
+   *
+   * Behaviour when no gamepad is connected is a no-op — identical to the
+   * pre-gamepad code path.
+   */
+  updateGamepad() {
+    if (!navigator.getGamepads) {
+return;
+}
+
+    const gamepads = navigator.getGamepads();
+    let gpDx = 0;
+    let gpDy = 0;
+
+    for (const gp of gamepads) {
+      if (!gp || !gp.connected) {
+continue;
+}
+      // Standard mapping: axes[0] = left stick X, axes[1] = left stick Y
+      const ax = gp.axes[0] ?? 0;
+      const ay = gp.axes[1] ?? 0;
+      // Dead-zone: ignore stick drift below 0.15
+      if (Math.abs(ax) > 0.15 || Math.abs(ay) > 0.15) {
+        gpDx = ax;
+        gpDy = ay;
+      }
+      break; // Use first connected gamepad only
+    }
+
+    // Only mark dirty when gamepad state actually changes to avoid dropping cache.
+    if (gpDx !== this._gpDx || gpDy !== this._gpDy) {
+      this._gpDx = gpDx;
+      this._gpDy = gpDy;
+      this.movementDirty = true;
+    }
+  }
+
+  /**
+   * Get movement vector with caching for performance.
+   *
+   * Cache invariant: cachedMovement is returned unchanged as long as
+   * movementDirty === false. movementDirty is set to true by handleKeyDown,
+   * handleKeyUp, handleBlur, and updateGamepad whenever state changes.
+   *
    * @returns {{dx: number, dy: number, magnitude: number}}
    */
-  getMovementVector(forceRecalculate = false) {
-    // Return cached value if movement hasn't changed
-    if (!this.movementDirty && !forceRecalculate) {
+  getMovementVector() {
+    // Return cached value if movement state is unchanged since last call.
+    if (!this.movementDirty) {
       return this.cachedMovement;
     }
 
     let dx = 0;
     let dy = 0;
 
-    // Mobile joystick input (takes priority)
+    // Mobile joystick input (takes priority over all other sources)
     if (this.mobileControls && this.mobileControls.isActive()) {
       const joystickVector = this.mobileControls.getJoystickVector();
       dx = joystickVector.dx;
@@ -184,12 +253,23 @@ class InputManager {
         dx *= invLen;
         dy *= invLen;
       }
+
+      // Merge gamepad left-stick — max magnitude wins so keyboard never
+      // loses to a drifting stick and vice-versa.
+      const gpDx = this._gpDx ?? 0;
+      const gpDy = this._gpDy ?? 0;
+      const kbMag = Math.sqrt(dx * dx + dy * dy);
+      const gpMag = Math.sqrt(gpDx * gpDx + gpDy * gpDy);
+      if (gpMag > kbMag) {
+        dx = gpDx;
+        dy = gpDy;
+      }
     }
 
     // Calculate magnitude for speed calculations
     const magnitude = Math.sqrt(dx * dx + dy * dy);
 
-    // Cache the result
+    // Cache the result and mark clean.
     this.cachedMovement = { dx, dy, magnitude };
     this.movementDirty = false;
 

@@ -4,7 +4,7 @@
  * Enhanced with adaptive interpolation and velocity-based smoothing
  * @module GameStateManager
  * @author Claude Code
- * @version 3.0.0
+ * @version 4.0.0
  */
 
 class GameStateManager {
@@ -55,12 +55,6 @@ class GameStateManager {
       entityStates: {
         zombies: new Map(),
         players: new Map()
-      },
-      // Legacy support
-      previousPositions: {
-        zombies: {},
-        players: {},
-        bullets: {}
       },
       // Performance tracking
       lastFrameTime: performance.now(),
@@ -164,197 +158,205 @@ class GameStateManager {
   }
 
   /**
-   * Apply visual interpolation to entities for smooth movement
-   * Uses velocity-based extrapolation with adaptive smoothing
-   * Call this in the render loop, not in network handlers
-   *
-   * FIXED: Properly separates server position tracking from display position
-   * to avoid velocity corruption and jitter caused by comparing display vs target
+   * Apply visual interpolation to entities for smooth movement.
+   * Top-level dispatcher — frame-budget guard applied here.
+   * Call this in the render loop, not in network handlers.
    */
   applyInterpolation() {
     if (!this.interpolation.enabled) {
       return;
     }
 
-    // Calculate delta time for frame-independent interpolation
     const now = performance.now();
-    const deltaTime = Math.min(now - this.interpolation.lastFrameTime, 100);
+    const rawDelta = now - this.interpolation.lastFrameTime;
     this.interpolation.lastFrameTime = now;
+
+    // Frame-budget guard: if delta > 100ms (tab was hidden, GC pause, etc.)
+    // skip extrapolation entirely to avoid post-stall teleports.
+    const deltaTime = Math.min(rawDelta, 100);
     this.interpolation.deltaTime = deltaTime;
+    const skipExtrapolation = rawDelta > 100;
 
-    // Calculate adaptive interpolation factor based on delta time
-    // Using exponential smoothing: factor = 1 - e^(-speed * dt/1000)
-    const speed = this.interpolation.baseSpeed;
-    const smoothFactor = 1 - Math.exp(-speed * deltaTime / 1000);
+    // Adaptive smooth factor: exponential decay based on delta time.
+    // Use a higher catch-up speed on bad connections (latency > 300ms).
+    const effectiveSpeed = this._adaptiveSpeed();
+    const smoothFactor = 1 - Math.exp(-effectiveSpeed * deltaTime / 1000);
 
-    const entityStates = this.interpolation.entityStates;
-    let interpolatedCount = 0;
+    this.debugStats.interpolatedEntities = 0;
+    this._interpolateZombies(now, smoothFactor, skipExtrapolation);
+    this._interpolatePlayers(now, smoothFactor, skipExtrapolation);
+    this._interpolateBullets(now, smoothFactor, skipExtrapolation);
+  }
 
-    // Interpolate zombies with velocity-based extrapolation
-    for (const [id, zombie] of Object.entries(this.state.zombies)) {
-      let state = entityStates.zombies.get(id);
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
 
-      if (!state) {
-        // Initialize state for new zombie
-        // FIXED: Track serverX/serverY separately to detect real server updates
-        state = {
-          serverX: zombie.x,    // Last known server position
-          serverY: zombie.y,
-          displayX: zombie.x,   // Current rendered position
-          displayY: zombie.y,
-          targetX: zombie.x,    // Interpolation target (may include extrapolation)
-          targetY: zombie.y,
-          velocityX: 0,
-          velocityY: 0,
-          lastUpdateTime: now
-        };
-        entityStates.zombies.set(id, state);
-      }
+  /**
+   * Compute effective interpolation speed.
+   * Bumps to 35 when latency > 300ms so clients catch up faster; capped at 40.
+   * @returns {number}
+   */
+  _adaptiveSpeed() {
+    const base = this.interpolation.baseSpeed; // 25
+    if (this.networkLatency > 300) {
+      return Math.min(40, base + 10); // 35, capped at 40
+    }
+    return base;
+  }
 
-      // FIXED: Compare against stored server position, not zombie.x (which may be displayX)
-      // This detects REAL server updates, not our own interpolation modifications
-      if (zombie.x !== state.serverX || zombie.y !== state.serverY) {
-        // Real server update received - calculate velocity from server position delta
-        const timeSinceLastUpdate = now - state.lastUpdateTime;
-        if (timeSinceLastUpdate > 0 && timeSinceLastUpdate < 500) {
-          // Velocity based on server-to-server position change
-          state.velocityX = (zombie.x - state.serverX) / timeSinceLastUpdate * 1000;
-          state.velocityY = (zombie.y - state.serverY) / timeSinceLastUpdate * 1000;
-        } else {
-          // Too long since last update or first update - reset velocity
-          state.velocityX = 0;
-          state.velocityY = 0;
-        }
-        // Update stored server position
-        state.serverX = zombie.x;
-        state.serverY = zombie.y;
-        state.targetX = zombie.x;
-        state.targetY = zombie.y;
-        state.lastUpdateTime = now;
-      }
+  /**
+   * Build or update the velocity/position tracking state for one entity.
+   * @param {Map} map - entityStates map
+   * @param {string} id
+   * @param {Object} entity - live entity with .x, .y
+   * @param {number} now
+   * @returns {Object} state
+   */
+  _getOrInitState(map, id, entity, now) {
+    let state = map.get(id);
+    if (!state) {
+      state = {
+        serverX: entity.x,
+        serverY: entity.y,
+        displayX: entity.x,
+        displayY: entity.y,
+        targetX: entity.x,
+        targetY: entity.y,
+        velocityX: 0,
+        velocityY: 0,
+        lastUpdateTime: now
+      };
+      map.set(id, state);
+    }
+    return state;
+  }
 
-      // Extrapolate position based on velocity (dead reckoning)
-      // FIXED: Limit extrapolation to avoid overshooting and reduce jitter
+  /**
+   * Detect a real server position update and refresh velocity.
+   * @param {Object} state
+   * @param {Object} entity
+   * @param {number} now
+   */
+  _applyServerUpdate(state, entity, now) {
+    if (entity.x === state.serverX && entity.y === state.serverY) {
+      return; // No real update
+    }
+    const elapsed = now - state.lastUpdateTime;
+    if (elapsed > 0 && elapsed < 500) {
+      state.velocityX = (entity.x - state.serverX) / elapsed * 1000;
+      state.velocityY = (entity.y - state.serverY) / elapsed * 1000;
+    } else {
+      state.velocityX = 0;
+      state.velocityY = 0;
+    }
+    state.serverX = entity.x;
+    state.serverY = entity.y;
+    state.targetX = entity.x;
+    state.targetY = entity.y;
+    state.lastUpdateTime = now;
+  }
+
+  /**
+   * Extrapolate + smooth display position towards predicted position.
+   * @param {Object} state
+   * @param {Object} entity - written back (.x, .y updated)
+   * @param {number} now
+   * @param {number} smoothFactor
+   * @param {boolean} skipExtrapolation
+   */
+  _stepEntity(state, entity, now, smoothFactor, skipExtrapolation) {
+    let predictedX = state.targetX;
+    let predictedY = state.targetY;
+
+    if (!skipExtrapolation) {
       const timeSinceUpdate = now - state.lastUpdateTime;
-      let predictedX = state.targetX;
-      let predictedY = state.targetY;
-
-      // Only extrapolate for short periods (< 100ms) to avoid overshooting
-      // FIXED: Reduced from 200ms to 100ms and added velocity clamping
-      if (timeSinceUpdate < 100 && timeSinceUpdate > 0) {
-        const extrapolationFactor = timeSinceUpdate / 1000;
-        // Clamp extrapolation to prevent extreme jumps
-        const maxExtrapolation = 50; // Max 50px extrapolation
-        const extraX = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityX * extrapolationFactor));
-        const extraY = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityY * extrapolationFactor));
-        predictedX += extraX;
-        predictedY += extraY;
+      if (timeSinceUpdate > 0 && timeSinceUpdate < 100) {
+        const t = timeSinceUpdate / 1000;
+        const MAX_EXTRA = 50;
+        predictedX += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityX * t));
+        predictedY += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityY * t));
       }
+    }
 
-      // Smoothly interpolate display position towards predicted position
-      state.displayX += (predictedX - state.displayX) * smoothFactor;
-      state.displayY += (predictedY - state.displayY) * smoothFactor;
+    state.displayX += (predictedX - state.displayX) * smoothFactor;
+    state.displayY += (predictedY - state.displayY) * smoothFactor;
+    entity.x = state.displayX;
+    entity.y = state.displayY;
+  }
 
-      // Update zombie's rendered position
-      zombie.x = state.displayX;
-      zombie.y = state.displayY;
-      interpolatedCount++;
+  /**
+   * Interpolate all zombies.
+   * @param {number} now
+   * @param {number} smoothFactor
+   * @param {boolean} skipExtrapolation
+   */
+  _interpolateZombies(now, smoothFactor, skipExtrapolation) {
+    const map = this.interpolation.entityStates.zombies;
+
+    for (const [id, zombie] of Object.entries(this.state.zombies)) {
+      const state = this._getOrInitState(map, id, zombie, now);
+      this._applyServerUpdate(state, zombie, now);
+      this._stepEntity(state, zombie, now, smoothFactor, skipExtrapolation);
+      this.debugStats.interpolatedEntities++;
     }
 
     // Clean up states for removed zombies
-    for (const [id] of entityStates.zombies) {
+    for (const [id] of map) {
       if (!this.state.zombies[id]) {
-        entityStates.zombies.delete(id);
+        map.delete(id);
       }
     }
+  }
 
-    // Interpolate other players (not local player) with same fixed approach
+  /**
+   * Interpolate remote players (local player is skipped).
+   * @param {number} now
+   * @param {number} smoothFactor
+   * @param {boolean} skipExtrapolation
+   */
+  _interpolatePlayers(now, smoothFactor, skipExtrapolation) {
+    const map = this.interpolation.entityStates.players;
+
     for (const [id, player] of Object.entries(this.state.players)) {
       if (id === this.playerId) {
-        continue;
-      } // Skip local player
-
-      let state = entityStates.players.get(id);
-
-      if (!state) {
-        // FIXED: Track serverX/serverY separately for players too
-        state = {
-          serverX: player.x,    // Last known server position
-          serverY: player.y,
-          displayX: player.x,   // Current rendered position
-          displayY: player.y,
-          targetX: player.x,    // Interpolation target
-          targetY: player.y,
-          velocityX: 0,
-          velocityY: 0,
-          lastUpdateTime: now
-        };
-        entityStates.players.set(id, state);
+        continue; // Skip local player (client prediction handles it)
       }
-
-      // FIXED: Compare against stored server position to detect REAL server updates
-      if (player.x !== state.serverX || player.y !== state.serverY) {
-        const timeSinceLastUpdate = now - state.lastUpdateTime;
-        if (timeSinceLastUpdate > 0 && timeSinceLastUpdate < 500) {
-          // Velocity based on server-to-server position change
-          state.velocityX = (player.x - state.serverX) / timeSinceLastUpdate * 1000;
-          state.velocityY = (player.y - state.serverY) / timeSinceLastUpdate * 1000;
-        } else {
-          state.velocityX = 0;
-          state.velocityY = 0;
-        }
-        // Update stored server position
-        state.serverX = player.x;
-        state.serverY = player.y;
-        state.targetX = player.x;
-        state.targetY = player.y;
-        state.lastUpdateTime = now;
-      }
-
-      // Extrapolate and smooth with clamping
-      const timeSinceUpdate = now - state.lastUpdateTime;
-      let predictedX = state.targetX;
-      let predictedY = state.targetY;
-
-      // FIXED: Reduced extrapolation window and added clamping
-      if (timeSinceUpdate < 100 && timeSinceUpdate > 0) {
-        const extrapolationFactor = timeSinceUpdate / 1000;
-        const maxExtrapolation = 50;
-        const extraX = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityX * extrapolationFactor));
-        const extraY = Math.max(-maxExtrapolation, Math.min(maxExtrapolation, state.velocityY * extrapolationFactor));
-        predictedX += extraX;
-        predictedY += extraY;
-      }
-
-      state.displayX += (predictedX - state.displayX) * smoothFactor;
-      state.displayY += (predictedY - state.displayY) * smoothFactor;
-
-      player.x = state.displayX;
-      player.y = state.displayY;
-      interpolatedCount++;
+      const state = this._getOrInitState(map, id, player, now);
+      this._applyServerUpdate(state, player, now);
+      this._stepEntity(state, player, now, smoothFactor, skipExtrapolation);
+      this.debugStats.interpolatedEntities++;
     }
 
     // Clean up states for removed players
-    for (const [id] of entityStates.players) {
+    for (const [id] of map) {
       if (!this.state.players[id]) {
-        entityStates.players.delete(id);
+        map.delete(id);
       }
     }
+  }
 
-    // Update debug stats
-    this.debugStats.interpolatedEntities = interpolatedCount;
+  /**
+   * Bullets move deterministically — no velocity extrapolation needed.
+   * This method exists as the prescribed extension point; currently a no-op
+   * beyond counting (server bullets are rendered via getAllBulletsForRendering).
+   * @param {number} _now
+   * @param {number} _smoothFactor
+   * @param {boolean} _skipExtrapolation
+   */
+  _interpolateBullets(_now, _smoothFactor, _skipExtrapolation) {
+    // Bullets are moved server-authoritatively; client predicted bullets are
+    // handled by updatePredictedBullets(). Nothing to interpolate here.
   }
 
   /**
    * Clean up orphaned entities that no longer exist on server
    * Entities that haven't been updated in > 10 seconds are removed
-   * CORRECTION: Increased from 3s to 10s to handle temporary network lag without removing entities
    */
   cleanupOrphanedEntities() {
     const now = Date.now();
     const ORPHAN_TIMEOUT = 10000; // 10 seconds (increased to handle lag)
 
-    // Mark entities with last seen timestamp
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(type => {
       if (!this.state[type]) {
         return;
@@ -369,11 +371,6 @@ class GameStateManager {
         if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
           console.log(`[CLEANUP] Removing orphaned ${type} entity:`, id);
           delete this.state[type][id];
-
-          // Clean interpolation cache
-          if (this.interpolation.previousPositions[type]) {
-            delete this.interpolation.previousPositions[type][id];
-          }
         }
       }
     });
@@ -389,12 +386,18 @@ class GameStateManager {
   }
 
   /**
-   * Update debug statistics — throttled + for-in counters (no allocation).
+   * Update debug statistics — throttled to 500ms + for-in counters (no allocation).
    */
   updateDebugStats() {
     if (!this._debugStatsNext || performance.now() >= this._debugStatsNext) {
       this._debugStatsNext = performance.now() + 500;
-      const count = (o) => { let n = 0; if (o) for (const _k in o) n++; return n; };
+      const count = (o) => {
+ let n = 0; if (o) {
+for (const _k in o) {
+n++;
+}
+} return n;
+};
       this.debugStats.entitiesCount = {
         players: count(this.state.players),
         zombies: count(this.state.zombies),
@@ -464,7 +467,6 @@ class GameStateManager {
   /**
    * CLIENT-SIDE PREDICTION: Update predicted bullets (called every frame)
    * Moves bullets, checks collisions with zombies/walls, and removes expired ones
-   * FIX: Added zombie and wall collision detection for visual consistency
    */
   updatePredictedBullets() {
     if (!this.bulletPredictionEnabled) {
@@ -501,7 +503,7 @@ class GameStateManager {
         continue;
       }
 
-      // FIX: Check collision with walls (client-side visual feedback)
+      // Check collision with walls (client-side visual feedback)
       let hitWall = false;
       for (let w = 0; w < walls.length; w++) {
         const wall = walls[w];
@@ -516,8 +518,7 @@ class GameStateManager {
         continue;
       }
 
-      // FIX: Check collision with zombies (client-side visual feedback)
-      // This prevents bullets from visually passing through zombies
+      // Check collision with zombies (client-side visual feedback)
       const bulletSize = bullet.size || bulletBaseSize;
       let hitZombie = false;
       for (const zombieId in zombies) {
@@ -526,7 +527,6 @@ class GameStateManager {
           continue;
         }
 
-        // Circle-circle collision
         const dx = bullet.x - zombie.x;
         const dy = bullet.y - zombie.y;
         const distSq = dx * dx + dy * dy;
@@ -557,11 +557,10 @@ class GameStateManager {
   /**
    * CLIENT-SIDE PREDICTION: Clear old predicted bullets when server state arrives
    * This prevents visual doubling of bullets
-   * FIX: Improved reconciliation logic with network latency awareness
    */
   reconcilePredictedBullets() {
     const now = Date.now();
-    // FIX: Use network latency to determine reconciliation age
+    // Use network latency to determine reconciliation age
     // Add buffer for processing delays (min 150ms to account for RTT + server processing)
     const RECONCILIATION_AGE = Math.max(150, this.networkLatency * 1.5 + 50);
 
