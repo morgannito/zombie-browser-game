@@ -49,8 +49,10 @@ class GameStateManager {
     // Enhanced visual interpolation system with velocity-based smoothing
     this.interpolation = {
       enabled: true,
-      // Adaptive interpolation speed based on network conditions
-      baseSpeed: 25, // Base interpolation speed (higher = snappier, less mushy)
+      // PERF (latency): bumped 25 → 50. smoothFactor at 60 FPS goes from
+      // ~33 % catch-up/frame to ~55 %, so a 100 px desync resolves in
+      // ~80 ms instead of ~200 ms.
+      baseSpeed: 50,
       // Entity state tracking for velocity-based interpolation
       entityStates: {
         zombies: new Map(),
@@ -216,9 +218,10 @@ class GameStateManager {
    * @returns {number}
    */
   _adaptiveSpeed() {
-    const base = this.interpolation.baseSpeed; // 25
+    const base = this.interpolation.baseSpeed; // 50
     if (this.networkLatency > 300) {
-      return Math.min(40, base + 10); // 35, capped at 40
+      // High-latency boost: catch up faster when packets arrive late.
+      return Math.min(80, base + 20);
     }
     return base;
   }
@@ -289,9 +292,12 @@ class GameStateManager {
 
     if (!skipExtrapolation) {
       const timeSinceUpdate = now - state.lastUpdateTime;
-      if (timeSinceUpdate > 0 && timeSinceUpdate < 100) {
+      // PERF (latency): widened extrapolation window 100 → 150ms and cap
+      // 50 → 120px. Lets remote entities visually "lead" their server
+      // position when packets arrive late instead of pausing mid-stride.
+      if (timeSinceUpdate > 0 && timeSinceUpdate < 150) {
         const t = timeSinceUpdate / 1000;
-        const MAX_EXTRA = 50;
+        const MAX_EXTRA = 120;
         predictedX += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityX * t));
         predictedY += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityY * t));
       }
