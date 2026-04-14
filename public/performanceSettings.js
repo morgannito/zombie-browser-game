@@ -979,6 +979,15 @@ class PerformanceSettingsManager {
    * Auto-adjust performance
    */
   autoAdjustPerformance() {
+    // Bail out silently when there is nothing left to downgrade (avoid spamming
+    // "Low FPS" warnings every 5 s when we're already at minimum settings).
+    const allDowngraded =
+      this.settings.shadowsEnabled === false &&
+      this.settings.particlesEnabled === false &&
+      this.settings.gridEnabled === false &&
+      this.settings.resolutionScale <= 0.5;
+    if (allDowngraded) return;
+
     logger.warn(`Low FPS detected (${this.currentFPS} FPS), auto-adjusting performance...`);
 
     let adjusted = false;

@@ -114,8 +114,11 @@ const io = require('socket.io')(server, {
   pingTimeout: 5000,
   // Connection settings
   connectTimeout: 45000,
-  // Enable compression — only compress messages > 1KB to avoid overhead on small packets
-  perMessageDeflate: { threshold: 1024 },
+  // perMessageDeflate disabled: Cloudflare strips the WS extension headers
+  // and the upgrade handshake then fails with HTTP 400 from the edge.
+  // Re-enable only if the deployment is direct or behind a CDN that supports
+  // websocket extensions cleanly.
+  perMessageDeflate: false,
   httpCompression: true,
   // 1MB buffer — matches rate limiting, defensive against large payloads
   maxHttpBufferSize: 1e6
