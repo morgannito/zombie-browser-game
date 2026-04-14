@@ -51,3 +51,4 @@ deploy-stderr.log
 server.log
 server.js.backup
 .game.pid
+.gitnexus

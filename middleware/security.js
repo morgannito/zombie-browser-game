@@ -10,7 +10,9 @@ const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../c
 /**
  * Configure Helmet security headers
  * Note: 'unsafe-inline' removed from scriptSrc — use nonces or hashes if inline
- * scripts are needed. styleSrc no longer uses 'unsafe-inline' — external stylesheets only.
+ * scripts are needed. styleSrc keeps 'unsafe-inline' because UI managers toggle
+ * modal visibility via element.style.display (and the HTML template relies on
+ * style="display:none" defaults). Without it all modals stay visible at boot.
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
@@ -19,7 +21,7 @@ function configureHelmet() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'", 'ws:', 'wss:'],
         fontSrc: ["'self'"],

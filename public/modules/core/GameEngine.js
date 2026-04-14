@@ -8,12 +8,6 @@
 
 class GameEngine {
   constructor() {
-    const urlParams = new window.URLSearchParams(window.location.search);
-    this.testConfig = {
-      enabled: urlParams.get('autotest') === '1',
-      nickname: (urlParams.get('nickname') || 'CodexBot').slice(0, 15)
-    };
-
     // Store handler references for cleanup
     this.handlers = {
       resize: () => this.resizeCanvas(),
@@ -23,7 +17,6 @@ class GameEngine {
     this.animationFrameId = null; // Store requestAnimationFrame ID for cleanup
     this.lastFrameTime = 0; // For FPS limiting
     this.frameTimeAccumulator = 0; // For consistent frame timing
-    this.manualStepping = false;
 
     // Desktop continuous auto-fire state
     this.lastAutoFireTime = 0;
@@ -31,15 +24,13 @@ class GameEngine {
 
     this.setupCanvas();
     this.initializeManagers();
-    this.exposeTestHooks();
     this.start();
-    this.maybeAutoStartTestSession();
 
-    // Debug mode toggle (press 'D' key)
-    window.addEventListener('keydown', e => {
-      if (e.key === 'd' || e.key === 'D') {
+    // Debug mode toggle (press F3) — was 'D' which conflicted with right-movement
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F3' && !e.repeat) {
         if (!document.querySelector('input:focus')) {
-          // Only if not typing in input
+          e.preventDefault();
           window.gameState.toggleDebug();
         }
       }
@@ -67,9 +58,8 @@ class GameEngine {
     const basePixelRatio = window.devicePixelRatio || 1;
 
     // Apply performance settings resolution scale
-    const resolutionScale = window.performanceSettings
-      ? window.performanceSettings.getResolutionScale()
-      : 1.0;
+    const resolutionScale = window.performanceSettings ?
+      window.performanceSettings.getResolutionScale() : 1.0;
 
     const pixelRatio = basePixelRatio * resolutionScale;
 
@@ -93,9 +83,7 @@ class GameEngine {
     }
 
     const basePixelRatio = window.devicePixelRatio || 1;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     let minimapSize = 200; // Default desktop size
 
@@ -103,9 +91,9 @@ class GameEngine {
     if (isMobile && window.performanceSettings) {
       const settings = window.performanceSettings.getSettings();
       const sizeMap = {
-        small: 50,
-        medium: 80,
-        large: 120
+        'small': 50,
+        'medium': 80,
+        'large': 120
       };
       minimapSize = sizeMap[settings.minimapSize] || 80;
     }
@@ -232,12 +220,7 @@ class GameEngine {
     this.mobileControls = new MobileControlsManager();
     window.mobileControls = this.mobileControls; // Make globally accessible
     window.inputManager.setMobileControls(this.mobileControls);
-    window.playerController = this.playerController = new PlayerController(
-      window.inputManager,
-      window.networkManager,
-      window.gameState,
-      camera
-    );
+    window.playerController = this.playerController = new PlayerController(window.inputManager, window.networkManager, window.gameState, camera);
 
     this.renderer = new Renderer(this.canvas, this.ctx, this.minimapCanvas, this.minimapCtx);
     this.renderer.setCamera(camera);
@@ -246,7 +229,7 @@ class GameEngine {
 
     // Mouse events (only if not mobile)
     if (!this.mobileControls.isMobile) {
-      this.handlers.mousemove = e => {
+      this.handlers.mousemove = (e) => {
         window.inputManager.updateMouse(e.clientX, e.clientY);
       };
 
@@ -303,8 +286,11 @@ class GameEngine {
   }
 
   render() {
+    const _t0 = performance.now();
+
     // Apply visual interpolation for smooth movement BEFORE rendering
     window.gameState.applyInterpolation();
+    const _tInterp = performance.now();
 
     // Update debug stats if debug mode is enabled
     if (window.gameState.debugMode) {
@@ -312,10 +298,48 @@ class GameEngine {
     }
 
     this.renderer.render(window.gameState, window.gameState.playerId);
+    const _tRender = performance.now();
 
     // Render debug overlay if enabled
     if (window.gameState.debugMode) {
       this.renderDebugOverlay();
+    }
+
+    // PROFILING — bucketize render timings, flush every 5s
+    if (!this._renderPerf) {
+      this._renderPerf = {
+        interp: { sum: 0, count: 0, max: 0 },
+        renderer: { sum: 0, count: 0, max: 0 },
+        total: { sum: 0, count: 0, max: 0 },
+        last: performance.now()
+      };
+    }
+    const p = this._renderPerf;
+    const interp = _tInterp - _t0;
+    const renderer = _tRender - _tInterp;
+    const total = performance.now() - _t0;
+    p.interp.sum += interp; p.interp.count++; if (interp > p.interp.max) p.interp.max = interp;
+    p.renderer.sum += renderer; p.renderer.count++; if (renderer > p.renderer.max) p.renderer.max = renderer;
+    p.total.sum += total; p.total.count++; if (total > p.total.max) p.total.max = total;
+
+    if (performance.now() - p.last >= 5000) {
+      // Object.keys only at flush time, not per frame
+      let zCount = 0;
+      const zombies = window.gameState && window.gameState.state && window.gameState.state.zombies;
+      if (zombies) for (const _k in zombies) zCount++;
+      const rows = {};
+      for (const [k, v] of Object.entries(p)) {
+        if (k === 'last' || v.count === 0) continue;
+        rows[k] = { avg_ms: +(v.sum / v.count).toFixed(2), max_ms: +v.max.toFixed(2), samples: v.count };
+        v.sum = 0; v.count = 0; v.max = 0;
+      }
+      // eslint-disable-next-line no-console
+      console.group(`[perf] render (5s, zombies=${zCount})`);
+      // eslint-disable-next-line no-console
+      console.table(rows);
+      // eslint-disable-next-line no-console
+      console.groupEnd();
+      p.last = performance.now();
     }
   }
 
@@ -341,7 +365,7 @@ class GameEngine {
 
     // Title
     ctx.fillStyle = '#ffff00';
-    ctx.fillText('DEBUG MODE (Press D to toggle)', 20, y);
+    ctx.fillText('DEBUG MODE (F3 to toggle)', 20, y);
     y += lineHeight * 1.5;
 
     // Entity counts
@@ -374,9 +398,8 @@ class GameEngine {
 
   gameLoop(timestamp = 0) {
     // FPS limiting based on performance settings
-    const targetFrameTime = window.performanceSettings
-      ? window.performanceSettings.getTargetFrameTime()
-      : 1000 / 60;
+    const targetFrameTime = window.performanceSettings ?
+      window.performanceSettings.getTargetFrameTime() : (1000 / 60);
 
     const deltaTime = timestamp - this.lastFrameTime;
 
@@ -398,7 +421,7 @@ class GameEngine {
       this.lastFrameTime = timestamp - (deltaTime % targetFrameTime);
     }
 
-    this.animationFrameId = requestAnimationFrame(ts => this.gameLoop(ts));
+    this.animationFrameId = requestAnimationFrame((ts) => this.gameLoop(ts));
   }
 
   /**
@@ -418,123 +441,7 @@ class GameEngine {
 
   start() {
     console.log('🎮 Zombie Survival - Game Engine Started');
-    this.isPausedByUser = false;
     this.gameLoop();
-  }
-
-  pause() {
-    if (this.isPausedByUser) {
-      return;
-    }
-    this.isPausedByUser = true;
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-  }
-
-  resume() {
-    if (!this.isPausedByUser) {
-      return;
-    }
-    this.isPausedByUser = false;
-    this.lastFrameTime = 0;
-    if (this.animationFrameId === null && !this.manualStepping) {
-      this.gameLoop();
-    }
-  }
-
-  /**
-   * Expose deterministic hooks for automated browser tests.
-   */
-  exposeTestHooks() {
-    window.advanceTime = async (ms = 16) => {
-      if (!this.manualStepping) {
-        // Stop RAF loop once automated stepping begins, to keep behavior deterministic.
-        if (this.animationFrameId !== null) {
-          cancelAnimationFrame(this.animationFrameId);
-          this.animationFrameId = null;
-        }
-        this.manualStepping = true;
-      }
-
-      const stepMs = 1000 / 60;
-      const steps = Math.max(1, Math.round(ms / stepMs));
-      for (let i = 0; i < steps; i++) {
-        this.update(stepMs);
-        this.render();
-      }
-    };
-
-    window.render_game_to_text = () => {
-      const state = window.gameState?.state || {};
-      const playerId = window.gameState?.playerId || null;
-      const player = playerId ? state.players?.[playerId] : null;
-      const nicknameScreenVisible =
-        document.getElementById('nickname-screen')?.style.display !== 'none';
-
-      const payload = {
-        coordinateSystem: 'origin top-left; x right; y down',
-        mode: nicknameScreenVisible ? 'login' : 'playing',
-        connection: {
-          connected: Boolean(window.socket?.connected),
-          hasPlayerId: Boolean(playerId)
-        },
-        player: player
-          ? {
-              id: playerId,
-              x: Math.round(player.x || 0),
-              y: Math.round(player.y || 0),
-              angle: Number(player.angle || 0).toFixed(2),
-              health: player.health || 0,
-              maxHealth: player.maxHealth || 0,
-              level: player.level || 1,
-              gold: player.gold || 0,
-              alive: Boolean(player.alive)
-            }
-          : null,
-        wave: state.wave || 1,
-        counts: {
-          players: Object.keys(state.players || {}).length,
-          zombies: Object.keys(state.zombies || {}).length,
-          bullets: Object.keys(state.bullets || {}).length,
-          loot: Object.keys(state.loot || {}).length
-        },
-        zombies: Object.values(state.zombies || {})
-          .slice(0, 20)
-          .map(z => ({
-            type: z.type || 'unknown',
-            x: Math.round(z.x || 0),
-            y: Math.round(z.y || 0),
-            hp: z.health || null
-          }))
-      };
-
-      return JSON.stringify(payload);
-    };
-  }
-
-  maybeAutoStartTestSession() {
-    if (!this.testConfig.enabled || !this.nicknameManager) {
-      return;
-    }
-
-    const nicknameInput = document.getElementById('nickname-input');
-    if (nicknameInput && !nicknameInput.value) {
-      nicknameInput.value = this.testConfig.nickname;
-    }
-
-    window.setTimeout(async () => {
-      try {
-        const nicknameScreenVisible =
-          document.getElementById('nickname-screen')?.style.display !== 'none';
-        if (nicknameScreenVisible) {
-          await this.nicknameManager.startGame();
-        }
-      } catch (error) {
-        console.error('[AUTOTEST] Failed to start automatic test session', error);
-      }
-    }, 250);
   }
 
   cleanup() {

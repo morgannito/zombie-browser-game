@@ -145,11 +145,11 @@ function initCameraRecenter() {
 
   // Also allow keyboard shortcut (C key)
   window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
     if (e.key === 'c' || e.key === 'C') {
-      // Don't trigger if typing in input field
-      if (!document.querySelector('input:focus') && !document.querySelector('textarea:focus')) {
-        cameraRecenterBtn.click();
-      }
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      cameraRecenterBtn.click();
     }
   });
 
