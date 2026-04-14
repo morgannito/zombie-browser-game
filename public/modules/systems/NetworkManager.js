@@ -207,7 +207,8 @@ class NetworkManager {
   setupSocketListeners() {
     // Connection event handlers
     this.on('connect', () => {
-      console.log('[Socket.IO] Connected successfully');
+      const transport = this.socket.io?.engine?.transport?.name ?? 'unknown';
+      console.log(`[Socket.IO] Connected successfully (transport: ${transport})`);
       this._resetReconnectBackoff();
       if (window.toastManager) {
         const quality = this.getConnectionQuality();
