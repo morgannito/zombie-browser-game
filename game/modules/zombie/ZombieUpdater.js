@@ -1,6 +1,16 @@
 /**
  * @fileoverview Main zombie update logic
  * @description Core zombie update function and movement
+ *
+ * PERF OPTIMIZATIONS (perf/server-zombie-ai):
+ * 1. Far-freeze   — zombies whose nearest player is outside the AOI rectangle
+ *                   skip ALL AI work this tick (position/health frozen, no drift).
+ * 2. Stagger      — pathfinding is re-run only every N ticks; each zombie gets a
+ *                   per-id offset so recalculations are spread evenly across ticks.
+ * 3. Dist cache   — nearest-player distance/reference is computed once per tick
+ *                   and stored on the zombie object (_cacheTick / _cachedNearestPlayer*).
+ * 4. Target lock  — once a zombie picks a target it keeps it until the target
+ *                   dies/disconnects, avoiding repeated findClosestPlayer calls.
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
@@ -9,6 +19,10 @@ const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+
+// AOI bounds (mirror of NetworkManager constants — kept local to avoid circular dep)
+const AOI_HALF_WIDTH = 1600;
+const AOI_HALF_HEIGHT = 900;
 
 // LATENCY OPTIMIZATION: Cache boss/special updaters to avoid repeated requires
 const {
@@ -41,10 +55,100 @@ function clampToRoomBounds(zombie, x, y) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// PERF helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * PERF — Returns true when zombie is outside every player's AOI rectangle.
+ * Uses fast axis-aligned check (no sqrt needed).
+ *
+ * @param {Object} zombie
+ * @param {Object} players - gameState.players hash
+ * @returns {boolean}
+ */
+function isZombieFarFromAllPlayers(zombie, players) {
+  const ids = Object.keys(players);
+  for (let i = 0; i < ids.length; i++) {
+    const p = players[ids[i]];
+    if (!p || !p.alive) {
+      continue;
+    }
+    if (Math.abs(zombie.x - p.x) <= AOI_HALF_WIDTH && Math.abs(zombie.y - p.y) <= AOI_HALF_HEIGHT) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * PERF — Get (and cache) the nearest live player to a zombie.
+ * Result is stored on zombie._cachedNearestPlayer / _cachedNearestPlayerDist
+ * and is valid for the duration of the current tick (_cacheTick).
+ *
+ * @param {Object} zombie
+ * @param {Object} players - gameState.players hash
+ * @param {number} tick - current perfIntegration.tickCounter
+ * @returns {{ player: Object|null, dist: number }}
+ */
+function getNearestPlayer(zombie, players, tick) {
+  if (zombie._cacheTick === tick) {
+    return { player: zombie._cachedNearestPlayer, dist: zombie._cachedNearestPlayerDist };
+  }
+
+  let minDist = Infinity;
+  let nearest = null;
+  const ids = Object.keys(players);
+
+  for (let i = 0; i < ids.length; i++) {
+    const p = players[ids[i]];
+    if (!p || !p.alive) {
+      continue;
+    }
+    const dx = zombie.x - p.x;
+    const dy = zombie.y - p.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < minDist) {
+      minDist = d;
+      nearest = p;
+    }
+  }
+
+  zombie._cacheTick = tick;
+  zombie._cachedNearestPlayerDist = minDist;
+  zombie._cachedNearestPlayer = nearest;
+  return { player: nearest, dist: minDist };
+}
+
+/**
+ * PERF — Resolve target lock for a zombie.
+ * Returns the locked player if still alive, otherwise clears the lock.
+ *
+ * @param {Object} zombie
+ * @param {Object} players - gameState.players hash
+ * @returns {Object|null} locked player or null
+ */
+function resolveLockedTarget(zombie, players) {
+  if (zombie._lockedTargetId !== null && zombie._lockedTargetId !== undefined) {
+    const p = players[zombie._lockedTargetId];
+    if (p && p.alive && !p.spawnProtection && !p.invisible) {
+      return p;
+    }
+    zombie._lockedTargetId = null;
+    zombie._cachedNearestPlayer = null;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Main update
+// ---------------------------------------------------------------------------
+
 /**
  * Main zombie update function
  * LATENCY OPTIMIZATION: Fast-path guards to skip boss/special updates for regular zombies
  * CRITICAL FIX: Use snapshot of zombie IDs to safely iterate while zombies may be deleted
+ * PERF: Far-freeze + staggered pathfinding + distance cache + target lock applied here.
  */
 function updateZombies(
   gameState,
@@ -60,6 +164,15 @@ function updateZombies(
   // when zombies are deleted by other systems (tesla kill, poison, etc.)
   const zombieIds = Object.keys(zombies).slice();
 
+  // PERF: Current tick for stagger offset and distance cache.
+  const tick = perfIntegration ? perfIntegration.tickCounter : 0;
+  // PERF: Pathfinding rate from config (ticks between full path recalcs).
+  const pathfindingRate =
+    perfIntegration && perfIntegration.perfConfig
+      ? perfIntegration.perfConfig.current.zombiePathfindingRate
+      : 10;
+  const players = gameState.players;
+
   for (let i = 0; i < zombieIds.length; i++) {
     const zombieId = zombieIds[i];
     const zombie = zombies[zombieId];
@@ -67,6 +180,22 @@ function updateZombies(
     if (!zombie) {
       continue;
     } // Fast path: destroyed
+
+    // PERF — Assign a per-zombie stagger offset once (based on numeric id).
+    if (zombie.staggerOffset === null || zombie.staggerOffset === undefined) {
+      zombie.staggerOffset = (Number(zombieId) || 0) % pathfindingRate;
+    }
+
+    // PERF — FAR FREEZE: bosses always update.
+    // Non-boss zombies outside every player's AOI skip ALL AI this tick.
+    // Position/health stay frozen (no drift).
+    const isBoss = zombie.isBoss === true;
+    if (!isBoss && isZombieFarFromAllPlayers(zombie, players)) {
+      // Reset stuck tracker so the counter doesn't accumulate while frozen.
+      zombie._prevX = zombie.x;
+      zombie._prevY = zombie.y;
+      continue;
+    }
 
     const zombieType = zombie.type;
 
@@ -194,7 +323,7 @@ function updateZombies(
       );
     }
 
-    moveZombie(zombie, zombieId, collisionManager, gameState, now);
+    moveZombie(zombie, zombieId, collisionManager, gameState, now, tick, pathfindingRate, players);
 
     // Track stuck zombies: if position barely changed, increment counter
     const movedDist =
@@ -345,20 +474,32 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
 }
 
 /**
- * Move zombie towards player or randomly
- * SSSS OPTIMIZATION: Uses cached pathfinding for performance
- * FIX: Added deltaTime for frame-rate independent movement
+ * Move zombie towards player or randomly.
+ *
+ * SSSS OPTIMIZATION: Uses cached pathfinding for performance.
+ * FIX: Added deltaTime for frame-rate independent movement.
+ * PERF: Staggered pathfinding — target is re-evaluated only every N ticks
+ *        using a per-zombie offset. Between evaluations the locked target is reused.
+ *
+ * @param {Object}  zombie
+ * @param {string}  zombieId
+ * @param {Object}  collisionManager
+ * @param {Object}  gameState
+ * @param {number}  now
+ * @param {number}  [tick=0]           - current perfIntegration.tickCounter
+ * @param {number}  [pathfindingRate=10] - ticks between full path recalcs
+ * @param {Object}  [players={}]       - gameState.players hash
  */
-function moveZombie(zombie, zombieId, collisionManager, gameState, now = Date.now()) {
-  // SSSS OPTIMIZATION: Use cached pathfinding for movement (called every frame for all zombies)
-  const closestPlayer = collisionManager.findClosestPlayerCached(
-    zombieId,
-    zombie.x,
-    zombie.y,
-    Infinity,
-    { ignoreSpawnProtection: true, ignoreInvisible: false }
-  );
-
+function moveZombie(
+  zombie,
+  zombieId,
+  collisionManager,
+  gameState,
+  now = Date.now(),
+  tick = 0,
+  pathfindingRate = 10,
+  players = {}
+) {
   const roomManager = gameState.roomManager;
 
   // FIX: Calculate deltaTime for frame-rate independent movement
@@ -366,6 +507,37 @@ function moveZombie(zombie, zombieId, collisionManager, gameState, now = Date.no
   const lastUpdate = zombie.lastMoveUpdate || now;
   const deltaTime = Math.min((now - lastUpdate) / 16.67, 3); // Cap at 3x to prevent teleporting on lag spikes
   zombie.lastMoveUpdate = now;
+
+  // PERF — STAGGERED PATHFINDING + TARGET LOCK
+  // Determine whether this is a tick where the zombie should re-evaluate its target.
+  const staggerOffset = (zombie.staggerOffset !== null && zombie.staggerOffset !== undefined) ? zombie.staggerOffset : 0;
+  const shouldResolveTarget = (tick + staggerOffset) % pathfindingRate === 0;
+
+  let closestPlayer = null;
+
+  if (shouldResolveTarget) {
+    // Full re-evaluation tick: use cached distance helper then update the lock.
+    const { player } = getNearestPlayer(zombie, players, tick);
+    if (player) {
+      zombie._lockedTargetId = player.id;
+      closestPlayer = player;
+    } else {
+      zombie._lockedTargetId = null;
+    }
+  } else {
+    // Non-evaluation tick: try the locked target first (O(1)).
+    closestPlayer = resolveLockedTarget(zombie, players);
+    if (!closestPlayer) {
+      // Lock expired (target died) — fall back to CollisionManager cache for this tick.
+      closestPlayer = collisionManager.findClosestPlayerCached(zombieId, zombie.x, zombie.y, Infinity, {
+        ignoreSpawnProtection: true,
+        ignoreInvisible: false
+      });
+      if (closestPlayer) {
+        zombie._lockedTargetId = closestPlayer.id;
+      }
+    }
+  }
 
   // FIX: Apply zombie-zombie separation to prevent stacking
   applyZombieSeparation(zombie, zombieId, collisionManager);
@@ -751,5 +923,9 @@ function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
 
 module.exports = {
   updateZombies,
-  moveZombie
+  moveZombie,
+  // Exported for unit tests
+  isZombieFarFromAllPlayers,
+  getNearestPlayer,
+  resolveLockedTarget
 };

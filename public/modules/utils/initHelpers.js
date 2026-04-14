@@ -145,10 +145,14 @@ function initCameraRecenter() {
 
   // Also allow keyboard shortcut (C key)
   window.addEventListener('keydown', (e) => {
-    if (e.repeat) return;
+    if (e.repeat) {
+return;
+}
     if (e.key === 'c' || e.key === 'C') {
       const ae = document.activeElement;
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+return;
+}
       cameraRecenterBtn.click();
     }
   });

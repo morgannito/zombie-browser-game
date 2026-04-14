@@ -73,14 +73,18 @@ class InputManager {
    */
   _isInputFocused() {
     const el = document.activeElement;
-    if (!el) return false;
+    if (!el) {
+return false;
+}
     const tag = el.tagName;
     return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
   }
 
   handleKeyDown(e) {
     // Do not intercept keys while the user is typing in a form field.
-    if (this._isInputFocused()) return;
+    if (this._isInputFocused()) {
+return;
+}
 
     const key = e.key.toLowerCase();
 
@@ -174,14 +178,18 @@ class InputManager {
    * pre-gamepad code path.
    */
   updateGamepad() {
-    if (!navigator.getGamepads) return;
+    if (!navigator.getGamepads) {
+return;
+}
 
     const gamepads = navigator.getGamepads();
     let gpDx = 0;
     let gpDy = 0;
 
     for (const gp of gamepads) {
-      if (!gp || !gp.connected) continue;
+      if (!gp || !gp.connected) {
+continue;
+}
       // Standard mapping: axes[0] = left stick X, axes[1] = left stick Y
       const ax = gp.axes[0] ?? 0;
       const ay = gp.axes[1] ?? 0;

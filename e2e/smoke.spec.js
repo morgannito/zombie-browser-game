@@ -39,7 +39,7 @@ test('boot: fill nickname and start game', async ({ page }) => {
   // The socket must be connected and the game session established
   const state = await page.evaluate(() => ({
     connected: Boolean(window.socket?.connected),
-    nicknameHidden: document.getElementById('nickname-screen')?.style.display === 'none',
+    nicknameHidden: document.getElementById('nickname-screen')?.style.display === 'none'
   }));
 
   expect(state.connected, 'socket must be connected after game start').toBe(true);
@@ -66,14 +66,16 @@ test('boot: no blocking modal visible', async ({ page }) => {
   const modalStates = await page.evaluate(() => {
     function isBlocking(id) {
       const el = document.getElementById(id);
-      if (!el) return false;
+      if (!el) {
+return false;
+}
       // offsetParent is null when the element (or an ancestor) has display:none
       return el.offsetParent !== null;
     }
     return {
       levelUpVisible: isBlocking('level-up-screen'),
       shopVisible: isBlocking('shop'),
-      gameOverVisible: isBlocking('game-over'),
+      gameOverVisible: isBlocking('game-over')
     };
   });
 
