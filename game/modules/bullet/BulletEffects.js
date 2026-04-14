@@ -46,11 +46,16 @@ function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager
     const otherId = zombieIds[i];
     if (otherId !== zombieId) {
       const other = gameState.zombies[otherId];
-      // OPTIMIZATION: Use distanceSquared instead of distance (avoids sqrt)
       const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
       if (distSq < radiusSq) {
         other.health -= explosionDmg;
         createParticles(other.x, other.y, other.color, 8, entityManager);
+        // BUGFIX (multi): splash-killed zombies were never deleted, never awarded
+        // XP/gold/kills, and stayed in gameState until next direct hit. Reuse the
+        // chain-kill path which handles attribution + loot + cleanup.
+        if (other.health <= 0) {
+          handleChainKill(other, otherId, bullet, gameState, entityManager);
+        }
       }
     }
   }

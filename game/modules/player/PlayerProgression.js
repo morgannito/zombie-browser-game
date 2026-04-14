@@ -169,10 +169,15 @@ function checkMilestoneBonus(player) {
 
 /**
  * Set invisibility for upgrade choice
+ * BUGFIX (multi): cap to 60s instead of Infinity. If the client disconnects
+ * while the level-up modal is open, an Infinity end time leaves the player
+ * permanently invulnerable on reconnect / session recovery. 60s is the same
+ * cap used by the shop modal (sockets/shopEvents.js).
  */
 function setInvisibilityForUpgrade(player) {
+  const SAFETY_CAP_MS = 60 * 1000;
   player.invisible = true;
-  player.invisibleEndTime = Infinity;
+  player.invisibleEndTime = Date.now() + SAFETY_CAP_MS;
 }
 
 /**

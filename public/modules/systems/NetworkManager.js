@@ -657,12 +657,41 @@ class NetworkManager {
   handleNewWave(data) {
     if (window.gameUI) {
       window.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
-      setTimeout(() => window.gameUI.showShop(), CONSTANTS.ANIMATIONS.SHOP_DELAY);
+      // BUGFIX (multi): only auto-open the shop if the local player is alive,
+      // not already in a modal (level-up, shop, settings, etc.) and not the
+      // dead/spectating state. Avoids unwanted popup interrupting another
+      // player's combat or upgrade selection.
+      if (this._shouldAutoOpenShop()) {
+        setTimeout(() => {
+          if (this._shouldAutoOpenShop()) {
+            window.gameUI.showShop();
+          }
+        }, CONSTANTS.ANIMATIONS.SHOP_DELAY);
+      }
     }
     if (data.mutators && window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
       window.runMutatorsSystem.applyServerMutators(data.mutators, data);
     }
     document.dispatchEvent(new CustomEvent('wave_changed', { detail: data }));
+  }
+
+  /**
+   * Returns true when the shop modal can be opened without disrupting the
+   * local player (alive, not dead, no other modal blocking).
+   * @private
+   */
+  _shouldAutoOpenShop() {
+    if (!window.gameUI) {
+      return false;
+    }
+    if (window.gameUI.shopOpen || window.gameUI.levelUpOpen || window.gameUI.settingsOpen) {
+      return false;
+    }
+    const localPlayer = window.gameState && window.gameState.getPlayer && window.gameState.getPlayer();
+    if (!localPlayer || !localPlayer.alive) {
+      return false;
+    }
+    return true;
   }
 
   handleLevelUp(data) {
