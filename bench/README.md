@@ -11,14 +11,9 @@ Multi-client smoke/load test for the zombie game server. Spawns N virtual client
 ## Starting the server
 
 ```bash
-# Copy environment file if needed
-cp .env.example .env
-
-# Start in development mode
-npm run dev
-
-# Or production mode
-npm start
+cp .env.example .env   # first time only
+npm run dev            # development (nodemon)
+npm start              # production
 ```
 
 The server defaults to port **3000**. Override with `PORT=3050` if needed.
@@ -29,10 +24,10 @@ The server defaults to port **3000**. Override with `PORT=3050` if needed.
 # Quick run — 10 clients, 30 seconds
 npm run bench
 
-# Custom run — 20 clients, 60 seconds, against port 3050
+# Custom run — 20 clients, 60 seconds
 BENCH_URL=http://127.0.0.1:3050 BENCH_CLIENTS=20 BENCH_DURATION_MS=60000 npm run bench
 
-# All options
+# Full options
 BENCH_URL=http://127.0.0.1:3000 \
 BENCH_CLIENTS=50 \
 BENCH_DURATION_MS=120000 \
@@ -42,43 +37,43 @@ npm run bench
 
 ## Environment variables
 
-| Variable            | Default                   | Description                          |
-|---------------------|---------------------------|--------------------------------------|
-| `BENCH_URL`         | `http://127.0.0.1:3050`   | Base URL of the running server       |
-| `BENCH_CLIENTS`     | `10`                      | Number of virtual clients to spawn   |
-| `BENCH_DURATION_MS` | `30000`                   | Test duration in milliseconds        |
-| `BENCH_MOVE_HZ`     | `30`                      | playerMove emissions per second      |
+| Variable            | Default                   | Description                        |
+|---------------------|---------------------------|------------------------------------|
+| `BENCH_URL`         | `http://127.0.0.1:3050`   | Base URL of the running server     |
+| `BENCH_CLIENTS`     | `10`                      | Number of virtual clients to spawn |
+| `BENCH_DURATION_MS` | `30000`                   | Test duration in milliseconds      |
+| `BENCH_MOVE_HZ`     | `30`                      | playerMove emissions per second    |
 
 ## Generating a report
 
-After a benchmark run, `bench/last-run.json` is written automatically. Generate a formatted report with:
+After a run, `bench/last-run.json` is written automatically:
 
 ```bash
 npm run bench:report
 
-# Or from a specific results file
+# Or from a custom file
 node bench/metrics-report.js bench/last-run.json
 ```
 
 ## What the metrics mean
 
 ### Ack Latency
-Round-trip time from emitting `playerMove` to receiving the server acknowledgement callback. Measured per event.
+Round-trip time from emitting `playerMove` to receiving the socket.io acknowledgement. Measured per event.
 
-- **Median** — typical latency for most events
-- **P95** — 95% of events are faster than this; a good performance SLO target
-- **P99** — worst-case tail latency; high values indicate GC pauses or event loop blocking
+- **Median** — typical latency; expect <10ms locally
+- **P95** — 95% of events complete faster than this; good SLO target
+- **P99** — worst-case tail; values >150ms indicate event loop blocking or GC pauses
 
 ### Messages/sec
-Total packets received by all clients divided by elapsed time. Includes all socket events (`gameState`, `playerJoined`, etc.).
+Total packets received by all clients divided by elapsed time. Includes all socket events.
 
-- **per_client** — normalised view; helps detect whether a single noisy client is skewing the total
+- **per_client** — normalised view; helps compare runs with different client counts
 
 ### Bandwidth (KB/s)
-Bytes received, estimated by `JSON.stringify`-ing each message. Does not account for WebSocket framing overhead — treat as a lower bound.
+Estimated from `JSON.stringify` of each received message (excludes WebSocket framing overhead — treat as a lower bound).
 
 ### Server health
-Snapshot of `/health` fetched at the end of the run. Useful to compare pre/post memory and uptime.
+Snapshot of `/health` fetched at end of run; compare across runs to detect memory growth.
 
 ## Example expected output
 
@@ -120,4 +115,4 @@ Zombie Game — Load Benchmark
 
 ## Safety
 
-Do not run this benchmark against the production VPS. Running it against production will trigger rate limits and degrade service for real users. Local development use only.
+Do not run against the production VPS. Local development only.

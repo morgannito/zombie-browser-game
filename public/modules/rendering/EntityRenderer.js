@@ -78,7 +78,9 @@ class EntityRenderer {
     const SPRITE_CACHE_CAP = 40;
     if (this._zombieSpriteCache.size >= SPRITE_CACHE_CAP) {
       const evictKey = this._zombieSpriteCacheLRU.shift();
-      if (evictKey) this._zombieSpriteCache.delete(evictKey);
+      if (evictKey) {
+this._zombieSpriteCache.delete(evictKey);
+}
     }
 
     // Build sprite: size×2.5 canvas centered on zombie origin
@@ -209,9 +211,28 @@ class EntityRenderer {
 
     now = now || Date.now();
 
+    // Hoisted: constant per-frame value and symbol table
+    const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;
+    const cullRadius = config.POWERUP_SIZE * 2;
+    const symbols = {
+      health: '+',
+      speed: '»',
+      shotgun: 'S',
+      machinegun: 'M',
+      rocketlauncher: 'R'
+    };
+
+    // Hoisted ctx writes that are constant across all powerups
+    ctx.lineWidth = 2;
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
     for (const powerupId in powerups) {
       const powerup = powerups[powerupId];
-      if (!camera.isInViewport(powerup.x, powerup.y, config.POWERUP_SIZE * 2)) {
+
+      // Cull before reading powerup.type or powerupTypes lookup
+      if (!camera.isInViewport(powerup.x, powerup.y, cullRadius)) {
         continue;
       }
 
@@ -221,30 +242,15 @@ class EntityRenderer {
         continue;
       }
 
-      const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;
-
       ctx.fillStyle = type.color;
       ctx.beginPath();
       ctx.arc(powerup.x, powerup.y, pulse, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
       ctx.stroke();
 
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const symbols = {
-        health: '+',
-        speed: '»',
-        shotgun: 'S',
-        machinegun: 'M',
-        rocketlauncher: 'R'
-      };
-
       ctx.fillText(symbols[powerup.type] || '?', powerup.x, powerup.y);
     }
   }
@@ -256,25 +262,31 @@ class EntityRenderer {
 
     now = now || Date.now();
 
+    // Hoisted: rotation is constant for all loot items in this frame
+    const rotation = (now / 500) % (Math.PI * 2);
+    const lootSizeW = config.LOOT_SIZE;
+    const lootSizeH = config.LOOT_SIZE * 0.6;
+
+    // Hoisted ctx writes constant across all loot items
+    ctx.fillStyle = '#ffd700';
+    ctx.strokeStyle = '#ff8c00';
+    ctx.lineWidth = 2;
+
     for (const lootId in loot) {
       const item = loot[lootId];
+
+      // Cull before ctx.save / translate / rotate
       if (!camera.isInViewport(item.x, item.y, 30)) {
         continue;
       }
-
-      const rotation = (now / 500) % (Math.PI * 2);
 
       ctx.save();
       ctx.translate(item.x, item.y);
       ctx.rotate(rotation);
 
-      ctx.fillStyle = '#ffd700';
       ctx.beginPath();
-      ctx.ellipse(0, 0, config.LOOT_SIZE, config.LOOT_SIZE * 0.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, lootSizeW, lootSizeH, 0, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.strokeStyle = '#ff8c00';
-      ctx.lineWidth = 2;
       ctx.stroke();
 
       ctx.restore();
@@ -429,14 +441,15 @@ class EntityRenderer {
     const defaultColor = '#ffff00';
     const defaultSize = config.BULLET_SIZE || 5;
 
-    const bulletIds = Object.keys(bullets);
-    for (let i = 0; i < bulletIds.length; i++) {
-      const bullet = bullets[bulletIds[i]];
+    // for-in avoids Object.keys() intermediate array allocation
+    for (const id in bullets) {
+      const bullet = bullets[id];
 
       if (!bullet || !Number.isFinite(bullet.x) || !Number.isFinite(bullet.y)) {
         continue;
       }
 
+      // Cull before touching any other bullet fields
       if (!camera.isInViewport(bullet.x, bullet.y, 50)) {
         continue;
       }
@@ -448,9 +461,10 @@ class EntityRenderer {
       bulletsByColor.get(color).push(bullet);
     }
 
+    // One beginPath + N arc() + one fill per color group
+    ctx.shadowBlur = 10;
     for (const [color, colorBullets] of bulletsByColor) {
       ctx.fillStyle = color;
-      ctx.shadowBlur = 10;
       ctx.shadowColor = color;
 
       ctx.beginPath();
@@ -1948,18 +1962,28 @@ class EntityRenderer {
     dateNow = dateNow || Date.now();
     timestamp = timestamp || performance.now();
 
-    Object.entries(players).forEach(([pid, p]) => {
+    // Hoisted: constant across all players this frame
+    const cullMargin = config.PLAYER_SIZE * 3;
+    const healthBarY_offset = config.PLAYER_SIZE + 5;
+    const nameBubbleOffset = -config.PLAYER_SIZE - 25;
+
+    // for-in avoids Object.entries() array allocation; hasOwnProperty not needed here
+    // (players object is a plain data map from server)
+    for (const pid in players) {
+      const p = players[pid];
       const isCurrentPlayer = pid === currentPlayerId;
+
       if (!p.alive) {
-        return;
+        continue;
       }
 
       if (!p.hasNickname && !isCurrentPlayer) {
-        return;
+        continue;
       }
 
-      if (!isCurrentPlayer && !camera.isInViewport(p.x, p.y, config.PLAYER_SIZE * 3)) {
-        return;
+      // Cull non-local players before any draw work
+      if (!isCurrentPlayer && !camera.isInViewport(p.x, p.y, cullMargin)) {
+        continue;
       }
 
       if (p.speedBoost && dateNow < p.speedBoost) {
@@ -1980,23 +2004,17 @@ class EntityRenderer {
 
       const nickname = p.nickname || (isCurrentPlayer ? 'Vous' : 'Joueur');
       const playerLabel = `${nickname} (Lv${p.level || 1})`;
-      this.renderPlayerNameBubble(
-        ctx,
-        p.x,
-        p.y,
-        playerLabel,
-        isCurrentPlayer,
-        -config.PLAYER_SIZE - 25
-      );
+      this.renderPlayerNameBubble(ctx, p.x, p.y, playerLabel, isCurrentPlayer, nameBubbleOffset);
 
       const healthPercent = p.health / p.maxHealth;
       ctx.fillStyle =
         healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-      ctx.fillRect(p.x - 20, p.y + config.PLAYER_SIZE + 5, 40 * healthPercent, 5);
+      ctx.fillRect(p.x - 20, p.y + healthBarY_offset, 40 * healthPercent, 5);
+      // Hoisted: strokeStyle and lineWidth are constant for the health bar border
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1;
-      ctx.strokeRect(p.x - 20, p.y + config.PLAYER_SIZE + 5, 40, 5);
-    });
+      ctx.strokeRect(p.x - 20, p.y + healthBarY_offset, 40, 5);
+    }
   }
 
   renderTargetIndicator(ctx, player) {

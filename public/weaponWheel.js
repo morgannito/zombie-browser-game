@@ -43,9 +43,13 @@ class WeaponWheel {
     // E key to toggle weapon wheel (no conflict with AZERTY/QWERTY movement), Escape to close
     document.addEventListener('keydown', (e) => {
       // Ignore autorepeat and keystrokes happening in text inputs
-      if (e.repeat) return;
+      if (e.repeat) {
+return;
+}
       const ae = document.activeElement;
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+return;
+}
 
       const key = e.key.toLowerCase();
 
@@ -83,9 +87,13 @@ class WeaponWheel {
     // Auto-close wheel if any blocking modal becomes visible
     ['level-up-screen', 'shop', 'game-over', 'settings-menu', 'pause-menu'].forEach((id) => {
       const el = document.getElementById(id);
-      if (!el) return;
+      if (!el) {
+return;
+}
       new MutationObserver(() => {
-        if (!this.isOpen) return;
+        if (!this.isOpen) {
+return;
+}
         const becameVisible = el.style.display !== 'none' && el.style.display !== '';
         if (becameVisible || el.classList.contains('is-open')) {
           this.close();

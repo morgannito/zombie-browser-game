@@ -25,7 +25,7 @@ const MOVE_HZ = parseInt(process.env.BENCH_MOVE_HZ || '30', 10);
 const MOVE_INTERVAL_MS = Math.max(1, Math.round(1000 / MOVE_HZ));
 
 // ---------------------------------------------------------------------------
-// Minimal HTTP helper (no deps)
+// Minimal HTTP helpers (no extra deps)
 // ---------------------------------------------------------------------------
 function httpPost(url, body) {
   return new Promise((resolve, reject) => {
@@ -40,8 +40,8 @@ function httpPost(url, body) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-        },
+          'Content-Length': Buffer.byteLength(payload)
+        }
       },
       (res) => {
         let data = '';
@@ -89,7 +89,9 @@ function httpGet(url) {
 // Percentile helper
 // ---------------------------------------------------------------------------
 function percentile(sorted, p) {
-  if (!sorted.length) return 0;
+  if (!sorted.length) {
+return 0;
+}
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.max(0, idx)];
 }
@@ -104,10 +106,10 @@ async function runClient(index) {
     messageCount: 0,
     bytesReceived: 0,
     errors: 0,
-    connected: false,
+    connected: false
   };
 
-  // 1. Login
+  // 1. Login via HTTP
   let session;
   try {
     const loginStart = Date.now();
@@ -127,13 +129,13 @@ async function runClient(index) {
     return stats;
   }
 
-  // 2. Connect socket
+  // 2. Connect WebSocket
   return new Promise((resolve) => {
     const socket = io(BASE_URL, {
       auth: { sessionId, token },
       transports: ['websocket'],
       reconnection: false,
-      timeout: 5000,
+      timeout: 5000
     });
 
     let moveTimer = null;
@@ -141,31 +143,33 @@ async function runClient(index) {
     let targetY = Math.random() * 3000;
 
     const cleanup = () => {
-      if (moveTimer) clearInterval(moveTimer);
+      if (moveTimer) {
+clearInterval(moveTimer);
+}
       socket.disconnect();
       resolve(stats);
     };
 
-    socket.on('connect', () => {
-      stats.connected = true;
-    });
-
     socket.on('gameState', (msg) => {
-      const raw = JSON.stringify(msg);
-      stats.messageCount++;
-      stats.bytesReceived += raw.length;
+      try {
+        const raw = JSON.stringify(msg);
+        stats.messageCount++;
+        stats.bytesReceived += raw.length;
 
-      // Pick a target from current player position + random delta
-      if (msg && msg.players) {
-        const me = msg.players[socket.id] || Object.values(msg.players)[0];
-        if (me) {
-          targetX = (me.x || 0) + (Math.random() - 0.5) * 400;
-          targetY = (me.y || 0) + (Math.random() - 0.5) * 400;
+        // Update target from current position
+        if (msg && msg.players) {
+          const me = msg.players[socket.id] || Object.values(msg.players)[0];
+          if (me) {
+            targetX = (me.x || 0) + (Math.random() - 0.5) * 400;
+            targetY = (me.y || 0) + (Math.random() - 0.5) * 400;
+          }
         }
+      } catch {
+        // ignore
       }
     });
 
-    // Track all incoming messages for bandwidth
+    // Count bandwidth for all events
     socket.onAny((event, ...args) => {
       try {
         const raw = JSON.stringify({ event, args });
@@ -183,7 +187,9 @@ async function runClient(index) {
     });
 
     socket.on('connect', () => {
-      // Emit playerMove at MOVE_HZ
+      stats.connected = true;
+
+      // Emit playerMove at MOVE_HZ, collect ack latency
       moveTimer = setInterval(() => {
         const t0 = Date.now();
         socket.emit('playerMove', { x: targetX, y: targetY }, () => {
@@ -201,7 +207,7 @@ async function runClient(index) {
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`\nZombie Game — Load Benchmark`);
+  console.log('\nZombie Game — Load Benchmark');
   console.log(`  URL:      ${BASE_URL}`);
   console.log(`  Clients:  ${NUM_CLIENTS}`);
   console.log(`  Duration: ${DURATION_MS}ms`);
@@ -209,19 +215,18 @@ async function main() {
 
   const startTime = Date.now();
 
-  // Launch all clients concurrently
   const promises = Array.from({ length: NUM_CLIENTS }, (_, i) => runClient(i));
   const results = await Promise.allSettled(promises);
 
   const elapsedSec = (Date.now() - startTime) / 1000;
 
-  // Aggregate
+  // Aggregate stats
   const all = {
     ackLatencies: [],
     messageCount: 0,
     bytesReceived: 0,
     errors: 0,
-    connected: 0,
+    connected: 0
   };
 
   for (const r of results) {
@@ -231,7 +236,9 @@ async function main() {
       all.messageCount += s.messageCount;
       all.bytesReceived += s.bytesReceived;
       all.errors += s.errors;
-      if (s.connected) all.connected++;
+      if (s.connected) {
+all.connected++;
+}
     } else {
       all.errors++;
     }
@@ -244,10 +251,8 @@ async function main() {
   const p99 = percentile(all.ackLatencies, 99);
   const msgPerSec = all.messageCount / elapsedSec;
   const bwPerSec = all.bytesReceived / elapsedSec;
-  const msgPerSecPerClient = msgPerSec / NUM_CLIENTS;
-  const bwPerSecPerClient = bwPerSec / NUM_CLIENTS;
 
-  // Fetch server health
+  // Server health snapshot
   let health = null;
   try {
     health = await httpGet(`${BASE_URL}/health`);
@@ -255,7 +260,6 @@ async function main() {
     health = { error: 'unreachable' };
   }
 
-  // Print summary
   const summary = {
     duration_sec: elapsedSec.toFixed(2),
     clients_connected: all.connected,
@@ -265,25 +269,26 @@ async function main() {
       median,
       p95,
       p99,
-      samples: all.ackLatencies.length,
+      samples: all.ackLatencies.length
     },
     throughput: {
       total_messages: all.messageCount,
       messages_per_sec: msgPerSec.toFixed(2),
-      messages_per_sec_per_client: msgPerSecPerClient.toFixed(2),
+      messages_per_sec_per_client: (msgPerSec / NUM_CLIENTS).toFixed(2),
       total_bytes: all.bytesReceived,
       bandwidth_kbps: (bwPerSec / 1024).toFixed(2),
-      bandwidth_kbps_per_client: (bwPerSecPerClient / 1024).toFixed(2),
+      bandwidth_kbps_per_client: (bwPerSec / NUM_CLIENTS / 1024).toFixed(2)
     },
-    server_health: health,
+    server_health: health
   };
 
   console.log('\n=== BENCHMARK RESULTS ===\n');
   console.log(JSON.stringify(summary, null, 2));
 
-  // Write to file for metrics-report.js
+  // Persist for metrics-report.js
   const fs = require('fs');
-  const outPath = require('path').join(__dirname, 'last-run.json');
+  const path = require('path');
+  const outPath = path.join(__dirname, 'last-run.json');
   fs.writeFileSync(outPath, JSON.stringify(summary, null, 2));
   console.log(`\nResults saved to: ${outPath}`);
 
