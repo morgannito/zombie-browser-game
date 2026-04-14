@@ -39,6 +39,46 @@ class PlayerController {
     // Velocity smoothing for interpolation
     this.velocity = { x: 0, y: 0 };
     this.velocitySmoothing = 0.8; // Higher = more responsive
+
+    // PROFILING: per-section timing buckets, flushed every 5s to console.table
+    this._perfBuckets = {
+      total: { sum: 0, count: 0, max: 0 },
+      collision: { sum: 0, count: 0, max: 0 },
+      recordInput: { sum: 0, count: 0, max: 0 },
+      emit: { sum: 0, count: 0, max: 0 },
+      angleCompute: { sum: 0, count: 0, max: 0 }
+    };
+    this._perfLastFlush = performance.now();
+  }
+
+  _perfTrack(bucket, ms) {
+    const b = this._perfBuckets[bucket];
+    b.sum += ms;
+    b.count++;
+    if (ms > b.max) b.max = ms;
+  }
+
+  _perfMaybeFlush(now) {
+    if (now - this._perfLastFlush < 5000) return;
+    const rows = {};
+    for (const [k, v] of Object.entries(this._perfBuckets)) {
+      if (v.count === 0) continue;
+      rows[k] = {
+        avg_ms: +(v.sum / v.count).toFixed(3),
+        max_ms: +v.max.toFixed(3),
+        samples: v.count
+      };
+      v.sum = 0; v.count = 0; v.max = 0;
+    }
+    if (Object.keys(rows).length) {
+      // eslint-disable-next-line no-console
+      console.group('[perf] PlayerController.update (5s window)');
+      // eslint-disable-next-line no-console
+      console.table(rows);
+      // eslint-disable-next-line no-console
+      console.groupEnd();
+    }
+    this._perfLastFlush = now;
   }
 
   setNickname(nickname) {
@@ -81,13 +121,14 @@ class PlayerController {
    * @param {number} deltaTime - Time since last frame in ms (optional, calculated if not provided)
    */
   update(canvasWidth, canvasHeight, deltaTime) {
+    const _t0 = performance.now();
     const player = this.gameState.getPlayer();
     if (!player || !player.alive) {
       return;
     }
 
     // Calculate delta time if not provided
-    const now = performance.now();
+    const now = _t0;
     if (deltaTime === undefined) {
       deltaTime = now - this.lastUpdateTime;
     }
@@ -121,6 +162,7 @@ class PlayerController {
     this.lastMovementVector = { dx, dy };
 
     // Calculate aim angle (always update for smooth aiming)
+    const _tA0 = performance.now();
     let angle;
     if (this.input.mobileControls && this.input.mobileControls.isActive()) {
       // Mobile: aim in movement direction
@@ -136,6 +178,7 @@ class PlayerController {
       const mouseWorldY = this.input.mouse.y + cameraPos.y;
       angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
     }
+    this._perfTrack('angleCompute', performance.now() - _tA0);
 
     if (dx !== 0 || dy !== 0) {
       // Calculate speed with multipliers and delta time
@@ -166,6 +209,7 @@ class PlayerController {
       const newY = player.y + this.velocity.y;
 
       // Client-side collision detection with sliding
+      const _tC0 = performance.now();
       let finalX = player.x;
       let finalY = player.y;
 
@@ -182,6 +226,7 @@ class PlayerController {
           finalY = newY;
         }
       }
+      this._perfTrack('collision', performance.now() - _tC0);
 
       // Clamp position to map boundaries
       const wallThickness = this.gameState.config.WALL_THICKNESS || 40;
@@ -196,7 +241,9 @@ class PlayerController {
       player.angle = angle;
 
       // Record input for reconciliation
+      const _tR0 = performance.now();
       const _inputSequence = this.input.recordInput(finalX, finalY, angle, deltaTime);
+      this._perfTrack('recordInput', performance.now() - _tR0);
 
       // Adaptive network throttling
       const positionDelta = Math.sqrt(
@@ -217,7 +264,9 @@ class PlayerController {
         (positionDelta > this.positionThreshold || angleDelta > this.angleThreshold);
 
       if (shouldSend) {
+        const _tE0 = performance.now();
         this.network.playerMove(finalX, finalY, angle);
+        this._perfTrack('emit', performance.now() - _tE0);
         this.lastNetworkUpdate = now;
         this.lastSentPosition = { x: finalX, y: finalY, angle };
       }
@@ -248,6 +297,10 @@ class PlayerController {
 
     // Clear just-pressed keys at end of frame
     this.input.clearJustPressed();
+
+    // PROFILING flush
+    this._perfTrack('total', performance.now() - _t0);
+    this._perfMaybeFlush(performance.now());
   }
 
   shoot(_canvasWidth, _canvasHeight) {

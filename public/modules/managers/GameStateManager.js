@@ -50,7 +50,7 @@ class GameStateManager {
     this.interpolation = {
       enabled: true,
       // Adaptive interpolation speed based on network conditions
-      baseSpeed: 10, // Base interpolation speed (higher = faster catch-up)
+      baseSpeed: 25, // Base interpolation speed (higher = snappier, less mushy)
       // Entity state tracking for velocity-based interpolation
       entityStates: {
         zombies: new Map(),

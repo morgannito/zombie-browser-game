@@ -40,22 +40,52 @@ class WeaponWheel {
   setupEventListeners() {
     const overlay = document.querySelector('.weapon-wheel-overlay');
 
-    // A key to toggle weapon wheel
+    // E key to toggle weapon wheel (no conflict with AZERTY/QWERTY movement), Escape to close
     document.addEventListener('keydown', (e) => {
-      if (e.key.toLowerCase() === 'a') {
-        // Don't open if other menus are open
-        const pauseOpen = document.getElementById('pause-menu')?.style.display !== 'none';
-        const settingsOpen = document.getElementById('settings-menu')?.style.display !== 'none';
-        const gameOverOpen = document.getElementById('game-over')?.style.display !== 'none';
-        const shopOpen = document.getElementById('shop')?.style.display !== 'none';
-        const levelUpOpen = document.getElementById('level-up-screen')?.style.display !== 'none';
+      const key = e.key.toLowerCase();
 
-        if (pauseOpen || settingsOpen || gameOverOpen || shopOpen || levelUpOpen) {
+      if (key === 'escape' && this.isOpen) {
+        this.close();
+        return;
+      }
+
+      if (key === 'e') {
+        // Always allow closing even if other menus opened on top
+        if (this.isOpen) {
+          this.close();
+          return;
+        }
+
+        // Don't open if a blocking modal is currently active.
+        // We detect "active" via signals each manager actually sets, since inline
+        // style="display:none" gets stripped at init by other init scripts.
+        const pauseOpen = document.getElementById('pause-menu')?.classList.contains('is-open');
+        const levelUpActive = document.getElementById('upgrade-choices')?.children.length > 0;
+        const shopEl = document.getElementById('shop');
+        const shopOpen = shopEl?.style.display === 'flex' || shopEl?.style.display === 'block';
+        const gameOverEl = document.getElementById('game-over');
+        const gameOverOpen = gameOverEl?.style.display === 'flex' || gameOverEl?.style.display === 'block';
+        const settingsOpen = document.getElementById('settings-menu')?.style.display === 'block';
+
+        if (pauseOpen || levelUpActive || shopOpen || gameOverOpen || settingsOpen) {
           return;
         }
 
         this.toggle();
       }
+    });
+
+    // Auto-close wheel if any blocking modal becomes visible
+    ['level-up-screen', 'shop', 'game-over', 'settings-menu', 'pause-menu'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      new MutationObserver(() => {
+        if (!this.isOpen) return;
+        const becameVisible = el.style.display !== 'none' && el.style.display !== '';
+        if (becameVisible || el.classList.contains('is-open')) {
+          this.close();
+        }
+      }).observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
     });
 
     // Click overlay to close

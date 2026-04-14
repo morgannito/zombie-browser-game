@@ -675,6 +675,20 @@ class PerformanceSettingsManager {
     // Apply fullscreen mode
     this.applyFullscreen();
 
+    // Propagate shadows toggle to the canvas patch (perfPatches.js)
+    if (typeof window.setCanvasShadowsEnabled === 'function') {
+      window.setCanvasShadowsEnabled(this.settings.shadowsEnabled !== false);
+    }
+
+    // Auto-downgrade when user picks "performance" mode
+    if (this.settings.performanceMode === 'performance') {
+      this.settings.shadowsEnabled = false;
+      this.settings.particlesEnabled = false;
+      if (typeof window.setCanvasShadowsEnabled === 'function') {
+        window.setCanvasShadowsEnabled(false);
+      }
+    }
+
     // Notify game of settings change
     if (window.gameEngine) {
       window.gameEngine.onPerformanceSettingsChanged(this.settings);
@@ -890,14 +904,17 @@ class PerformanceSettingsManager {
     this.fpsMonitoringInterval = setInterval(() => {
       this.updateFPS();
 
-      // DISABLED: Auto-adjust performance
-      // Auto-adjust if enabled and FPS is critically low
-      // Only adjust every 5 seconds to avoid spam and allow changes to take effect
-      // const now = Date.now();
-      // if (this.autoAdjust && this.currentFPS < 20 && now - this.autoAdjustCooldown > 5000) {
-      //   this.autoAdjustPerformance();
-      //   this.autoAdjustCooldown = now;
-      // }
+      // Auto-adjust if enabled and FPS is low. 5s cooldown avoids spam.
+      const now = Date.now();
+      if (
+        this.autoAdjust &&
+        this.currentFPS > 0 &&
+        this.currentFPS < 40 &&
+        now - this.autoAdjustCooldown > 5000
+      ) {
+        this.autoAdjustPerformance();
+        this.autoAdjustCooldown = now;
+      }
     }, 1000);
   }
 
@@ -966,9 +983,16 @@ class PerformanceSettingsManager {
 
     let adjusted = false;
 
-    // Step 1: Disable particles first (least visual impact)
-    if (this.settings.particlesEnabled) {
-      // Step 1: Disable particles first (least visual impact)
+    // Step 0: Disable shadowBlur first (cheapest visual cost, huge perf gain)
+    if (this.settings.shadowsEnabled !== false) {
+      this.settings.shadowsEnabled = false;
+      if (typeof window.setCanvasShadowsEnabled === 'function') {
+        window.setCanvasShadowsEnabled(false);
+      }
+      adjusted = true;
+      logger.debug('Auto-adjust: Disabled canvas shadows');
+    } else if (this.settings.particlesEnabled) {
+      // Step 1: Disable particles
       this.settings.particlesEnabled = false;
       adjusted = true;
       logger.debug('Auto-adjust: Disabled particles');
