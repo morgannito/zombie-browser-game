@@ -323,6 +323,12 @@ function updateZombies(
       );
     }
 
+    // BUGFIX: boss/zombie AI handlers may delete the zombie mid-iteration
+    // (e.g. boss-Roi clone despawn). Skip move for already-deleted entities
+    // to avoid accumulating _stuckFrames on a ghost object.
+    if (!gameState.zombies[zombieId]) {
+      continue;
+    }
     moveZombie(zombie, zombieId, collisionManager, gameState, now, tick, pathfindingRate, players);
 
     // Track stuck zombies: if position barely changed, increment counter

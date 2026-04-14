@@ -122,6 +122,13 @@ return;
     this.keys = {};
     this.keysJustPressed = {};
     this.movementDirty = true;
+    // BUGFIX: PlayerController retains its own velocity vector. Without
+    // this, the player drifts for several frames after focus loss because
+    // velocity decays at 0.8/frame instead of snapping to 0.
+    if (window.playerController && window.playerController.velocity) {
+      window.playerController.velocity.x = 0;
+      window.playerController.velocity.y = 0;
+    }
   }
 
   handleVisibilityChange() {
