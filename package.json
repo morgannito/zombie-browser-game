@@ -19,6 +19,8 @@
     "deploy:uninstall": "launchctl unload ~/Library/LaunchAgents/com.zombiegame.deploy.plist && rm ~/Library/LaunchAgents/com.zombiegame.deploy.plist",
     "deploy:restart": "launchctl stop com.zombiegame.deploy && launchctl start com.zombiegame.deploy",
     "deploy:logs": "tail -f deploy.log",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "db:migrate": "node database/scripts/migrate.js up",
     "db:rollback": "node database/scripts/migrate.js down",
     "db:status": "node database/scripts/migrate.js status",
@@ -47,6 +49,7 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/jest": "^30.0.0",
     "canvas": "^3.2.1",
     "eslint": "^9.39.2",
