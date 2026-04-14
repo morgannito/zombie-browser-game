@@ -42,6 +42,11 @@ class WeaponWheel {
 
     // E key to toggle weapon wheel (no conflict with AZERTY/QWERTY movement), Escape to close
     document.addEventListener('keydown', (e) => {
+      // Ignore autorepeat and keystrokes happening in text inputs
+      if (e.repeat) return;
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+
       const key = e.key.toLowerCase();
 
       if (key === 'escape' && this.isOpen) {

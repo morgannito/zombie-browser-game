@@ -323,7 +323,10 @@ class GameEngine {
     p.total.sum += total; p.total.count++; if (total > p.total.max) p.total.max = total;
 
     if (performance.now() - p.last >= 5000) {
-      const zCount = Object.keys(window.gameState?.state?.zombies || {}).length;
+      // Object.keys only at flush time, not per frame
+      let zCount = 0;
+      const zombies = window.gameState && window.gameState.state && window.gameState.state.zombies;
+      if (zombies) for (const _k in zombies) zCount++;
       const rows = {};
       for (const [k, v] of Object.entries(p)) {
         if (k === 'last' || v.count === 0) continue;
@@ -362,7 +365,7 @@ class GameEngine {
 
     // Title
     ctx.fillStyle = '#ffff00';
-    ctx.fillText('DEBUG MODE (Press D to toggle)', 20, y);
+    ctx.fillText('DEBUG MODE (F3 to toggle)', 20, y);
     y += lineHeight * 1.5;
 
     // Entity counts

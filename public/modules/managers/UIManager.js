@@ -61,7 +61,7 @@ class UIManager {
 
     // Make buyItem global for onclick handlers
     window.buyItem = (itemId, category) => {
-      console.log('[Shop] buyItem called:', itemId, category);
+      logger.debug('[Shop] buyItem called:', itemId, category);
 
       if (!window.networkManager) {
         console.error('[Shop] NetworkManager not available');
@@ -71,7 +71,7 @@ class UIManager {
         return;
       }
 
-      console.log('[Shop] Sending purchase request to server...');
+      logger.debug('[Shop] Sending purchase request to server...');
       window.networkManager.buyItem(itemId, category);
 
       // Show feedback that request was sent
@@ -334,8 +334,8 @@ class UIManager {
       return;
     }
 
-    console.log('[Shop] Populating shop. Player gold:', player.gold);
-    console.log('[Shop] Shop items available:', this.gameState.shopItems);
+    logger.debug('[Shop] Populating shop. Player gold:', player.gold);
+    logger.debug('[Shop] Shop items available:', this.gameState.shopItems);
 
     // Update gold display
     document.getElementById('shop-gold').textContent = player.gold || 0;
@@ -353,7 +353,7 @@ class UIManager {
       return;
     }
 
-    console.log('[Shop] Creating permanent upgrade buttons...');
+    logger.debug('[Shop] Creating permanent upgrade buttons...');
     for (const key in this.gameState.shopItems.permanent) {
       const item = this.gameState.shopItems.permanent[key];
       const currentLevel = player.upgrades[key] || 0;
@@ -389,10 +389,10 @@ class UIManager {
         const itemId = btn.dataset.itemId;
         const category = btn.dataset.category;
 
-        console.log('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
+        logger.debug('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
 
         if (btn.disabled) {
-          console.log('[Shop] Button is disabled, ignoring click');
+          logger.debug('[Shop] Button is disabled, ignoring click');
           if (isMaxed) {
             if (window.toastManager) {
               window.toastManager.show('⚠️ Niveau maximum atteint', 'warning', 2000);
@@ -408,7 +408,7 @@ class UIManager {
         window.buyItem(itemId, category);
       });
 
-      console.log('[Shop] Created button for:', key, 'disabled:', isMaxed || !canAfford);
+      logger.debug('[Shop] Created button for:', key, 'disabled:', isMaxed || !canAfford);
     }
 
     // Populate temporary items
@@ -424,7 +424,7 @@ class UIManager {
       return;
     }
 
-    console.log('[Shop] Creating temporary item buttons...');
+    logger.debug('[Shop] Creating temporary item buttons...');
     for (const key in this.gameState.shopItems.temporary) {
       const item = this.gameState.shopItems.temporary[key];
       const canAfford = player.gold >= item.cost;
@@ -456,10 +456,10 @@ class UIManager {
         const itemId = btn.dataset.itemId;
         const category = btn.dataset.category;
 
-        console.log('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
+        logger.debug('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
 
         if (btn.disabled) {
-          console.log('[Shop] Button is disabled, ignoring click');
+          logger.debug('[Shop] Button is disabled, ignoring click');
           if (window.toastManager) {
             window.toastManager.show('⚠️ Or insuffisant', 'warning', 2000);
           }
@@ -469,10 +469,10 @@ class UIManager {
         window.buyItem(itemId, category);
       });
 
-      console.log('[Shop] Created button for:', key, 'disabled:', !canAfford);
+      logger.debug('[Shop] Created button for:', key, 'disabled:', !canAfford);
     }
 
-    console.log('[Shop] Shop populated successfully');
+    logger.debug('[Shop] Shop populated successfully');
   }
 
   toggleStatsPanel() {

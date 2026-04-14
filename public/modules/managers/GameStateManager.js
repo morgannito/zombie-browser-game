@@ -389,17 +389,21 @@ class GameStateManager {
   }
 
   /**
-   * Update debug statistics
+   * Update debug statistics — throttled + for-in counters (no allocation).
    */
   updateDebugStats() {
-    this.debugStats.entitiesCount = {
-      players: Object.keys(this.state.players).length,
-      zombies: Object.keys(this.state.zombies).length,
-      bullets: Object.keys(this.state.bullets).length,
-      particles: Object.keys(this.state.particles || {}).length,
-      powerups: Object.keys(this.state.powerups || {}).length,
-      loot: Object.keys(this.state.loot || {}).length
-    };
+    if (!this._debugStatsNext || performance.now() >= this._debugStatsNext) {
+      this._debugStatsNext = performance.now() + 500;
+      const count = (o) => { let n = 0; if (o) for (const _k in o) n++; return n; };
+      this.debugStats.entitiesCount = {
+        players: count(this.state.players),
+        zombies: count(this.state.zombies),
+        bullets: count(this.state.bullets),
+        particles: count(this.state.particles),
+        powerups: count(this.state.powerups),
+        loot: count(this.state.loot)
+      };
+    }
     this.debugStats.lastUpdate = Date.now() - this.lastUpdateTimestamp;
   }
 
