@@ -38,9 +38,15 @@ function bar(value, max, width) {
 }
 
 function rating(p99) {
-  if (p99 < 50) return 'Excellent (<50ms)';
-  if (p99 < 150) return 'Good (<150ms)';
-  if (p99 < 500) return 'Degraded (<500ms)';
+  if (p99 < 50) {
+return 'Excellent (<50ms)';
+}
+  if (p99 < 150) {
+return 'Good (<150ms)';
+}
+  if (p99 < 500) {
+return 'Degraded (<500ms)';
+}
   return 'Critical (>=500ms)';
 }
 

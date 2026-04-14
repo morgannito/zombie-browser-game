@@ -179,5 +179,16 @@ module.exports = [
         URL: 'readonly'
       }
     }
+  },
+
+  // Bench harness (Node scripts with URL + fetch globals)
+  {
+    files: ['bench/**/*.js'],
+    languageOptions: {
+      globals: {
+        URL: 'readonly',
+        fetch: 'readonly'
+      }
+    }
   }
 ];

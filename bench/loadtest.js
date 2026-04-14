@@ -40,8 +40,8 @@ function httpPost(url, body) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-        },
+          'Content-Length': Buffer.byteLength(payload)
+        }
       },
       (res) => {
         let data = '';
@@ -89,7 +89,9 @@ function httpGet(url) {
 // Percentile helper
 // ---------------------------------------------------------------------------
 function percentile(sorted, p) {
-  if (!sorted.length) return 0;
+  if (!sorted.length) {
+return 0;
+}
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.max(0, idx)];
 }
@@ -104,7 +106,7 @@ async function runClient(index) {
     messageCount: 0,
     bytesReceived: 0,
     errors: 0,
-    connected: false,
+    connected: false
   };
 
   // 1. Login via HTTP
@@ -133,7 +135,7 @@ async function runClient(index) {
       auth: { sessionId, token },
       transports: ['websocket'],
       reconnection: false,
-      timeout: 5000,
+      timeout: 5000
     });
 
     let moveTimer = null;
@@ -141,7 +143,9 @@ async function runClient(index) {
     let targetY = Math.random() * 3000;
 
     const cleanup = () => {
-      if (moveTimer) clearInterval(moveTimer);
+      if (moveTimer) {
+clearInterval(moveTimer);
+}
       socket.disconnect();
       resolve(stats);
     };
@@ -222,7 +226,7 @@ async function main() {
     messageCount: 0,
     bytesReceived: 0,
     errors: 0,
-    connected: 0,
+    connected: 0
   };
 
   for (const r of results) {
@@ -232,7 +236,9 @@ async function main() {
       all.messageCount += s.messageCount;
       all.bytesReceived += s.bytesReceived;
       all.errors += s.errors;
-      if (s.connected) all.connected++;
+      if (s.connected) {
+all.connected++;
+}
     } else {
       all.errors++;
     }
@@ -263,7 +269,7 @@ async function main() {
       median,
       p95,
       p99,
-      samples: all.ackLatencies.length,
+      samples: all.ackLatencies.length
     },
     throughput: {
       total_messages: all.messageCount,
@@ -271,9 +277,9 @@ async function main() {
       messages_per_sec_per_client: (msgPerSec / NUM_CLIENTS).toFixed(2),
       total_bytes: all.bytesReceived,
       bandwidth_kbps: (bwPerSec / 1024).toFixed(2),
-      bandwidth_kbps_per_client: (bwPerSec / NUM_CLIENTS / 1024).toFixed(2),
+      bandwidth_kbps_per_client: (bwPerSec / NUM_CLIENTS / 1024).toFixed(2)
     },
-    server_health: health,
+    server_health: health
   };
 
   console.log('\n=== BENCHMARK RESULTS ===\n');
