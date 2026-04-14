@@ -24,7 +24,7 @@ const SOCKET_EVENTS = {
     SHOP_OPENED: 'shopOpened',
     SHOP_CLOSED: 'shopClosed',
     END_SPAWN_PROTECTION: 'endSpawnProtection',
-    PING: 'ping',
+    PING: 'app:ping', // BUGFIX: namespaced to avoid Socket.IO heartbeat collision
     ADMIN_COMMAND: 'adminCommand',
     // Leaderboard (public client)
     REQUEST_LEADERBOARD: 'request_leaderboard',
