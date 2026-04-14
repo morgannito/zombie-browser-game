@@ -167,10 +167,14 @@ function updateZombies(
   // PERF: Current tick for stagger offset and distance cache.
   const tick = perfIntegration ? perfIntegration.tickCounter : 0;
   // PERF: Pathfinding rate from config (ticks between full path recalcs).
-  const pathfindingRate =
+  // BUGFIX: clamp to ≥1 to avoid `% 0` → NaN, which would freeze every zombie
+  // forever (shouldResolveTarget always false).
+  const pathfindingRate = Math.max(
+    1,
     perfIntegration && perfIntegration.perfConfig
       ? perfIntegration.perfConfig.current.zombiePathfindingRate
-      : 10;
+      : 10
+  );
   const players = gameState.players;
 
   for (let i = 0; i < zombieIds.length; i++) {
