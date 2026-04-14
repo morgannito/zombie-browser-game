@@ -93,6 +93,16 @@ module.exports = [
         Audio: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
+        OffscreenCanvas: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        CanvasRenderingContext2D: 'readonly',
+        MutationObserver: 'readonly',
+        KeyboardEvent: 'readonly',
+        Event: 'readonly',
+        Gamepad: 'readonly',
+        getComputedStyle: 'readonly',
+        queueMicrotask: 'readonly',
+        URL: 'readonly',
         CONSTANTS: 'readonly',
         MathUtils: 'readonly',
         AssetManager: 'readonly',
@@ -139,7 +149,7 @@ module.exports = [
 
   // Test files (Jest)
   {
-    files: ['**/__tests__/**/*.js', '**/*.test.js', '**/*.spec.js'],
+    files: ['**/__tests__/**/*.js', '**/*.test.js'],
     languageOptions: {
       globals: {
         describe: 'readonly',
@@ -151,6 +161,21 @@ module.exports = [
         beforeAll: 'readonly',
         afterAll: 'readonly',
         jest: 'readonly',
+        URL: 'readonly',
+        window: 'readonly',
+        document: 'readonly'
+      }
+    }
+  },
+
+  // Playwright E2E (e2e/**/*.spec.js)
+  {
+    files: ['e2e/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
         URL: 'readonly'
       }
     }

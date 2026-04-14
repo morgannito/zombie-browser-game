@@ -129,7 +129,7 @@ function getNearestPlayer(zombie, players, tick) {
  * @returns {Object|null} locked player or null
  */
 function resolveLockedTarget(zombie, players) {
-  if (zombie._lockedTargetId != null) {
+  if (zombie._lockedTargetId !== null && zombie._lockedTargetId !== undefined) {
     const p = players[zombie._lockedTargetId];
     if (p && p.alive && !p.spawnProtection && !p.invisible) {
       return p;
@@ -182,7 +182,7 @@ function updateZombies(
     } // Fast path: destroyed
 
     // PERF — Assign a per-zombie stagger offset once (based on numeric id).
-    if (zombie.staggerOffset == null) {
+    if (zombie.staggerOffset === null || zombie.staggerOffset === undefined) {
       zombie.staggerOffset = (Number(zombieId) || 0) % pathfindingRate;
     }
 
@@ -510,7 +510,7 @@ function moveZombie(
 
   // PERF — STAGGERED PATHFINDING + TARGET LOCK
   // Determine whether this is a tick where the zombie should re-evaluate its target.
-  const staggerOffset = zombie.staggerOffset != null ? zombie.staggerOffset : 0;
+  const staggerOffset = (zombie.staggerOffset !== null && zombie.staggerOffset !== undefined) ? zombie.staggerOffset : 0;
   const shouldResolveTarget = (tick + staggerOffset) % pathfindingRate === 0;
 
   let closestPlayer = null;
