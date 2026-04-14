@@ -391,7 +391,13 @@ class GameStateManager {
   updateDebugStats() {
     if (!this._debugStatsNext || performance.now() >= this._debugStatsNext) {
       this._debugStatsNext = performance.now() + 500;
-      const count = (o) => { let n = 0; if (o) for (const _k in o) n++; return n; };
+      const count = (o) => {
+ let n = 0; if (o) {
+for (const _k in o) {
+n++;
+}
+} return n;
+};
       this.debugStats.entitiesCount = {
         players: count(this.state.players),
         zombies: count(this.state.zombies),

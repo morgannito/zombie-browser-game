@@ -4,7 +4,7 @@
  * Frame-independent movement with delta time and smart network throttling
  * @module PlayerController
  * @author Claude Code
- * @version 3.0.0
+ * @version 3.1.0
  */
 
 class PlayerController {
@@ -39,46 +39,6 @@ class PlayerController {
     // Velocity smoothing for interpolation
     this.velocity = { x: 0, y: 0 };
     this.velocitySmoothing = 0.8; // Higher = more responsive
-
-    // PROFILING: per-section timing buckets, flushed every 5s to console.table
-    this._perfBuckets = {
-      total: { sum: 0, count: 0, max: 0 },
-      collision: { sum: 0, count: 0, max: 0 },
-      recordInput: { sum: 0, count: 0, max: 0 },
-      emit: { sum: 0, count: 0, max: 0 },
-      angleCompute: { sum: 0, count: 0, max: 0 }
-    };
-    this._perfLastFlush = performance.now();
-  }
-
-  _perfTrack(bucket, ms) {
-    const b = this._perfBuckets[bucket];
-    b.sum += ms;
-    b.count++;
-    if (ms > b.max) b.max = ms;
-  }
-
-  _perfMaybeFlush(now) {
-    if (now - this._perfLastFlush < 5000) return;
-    const rows = {};
-    for (const [k, v] of Object.entries(this._perfBuckets)) {
-      if (v.count === 0) continue;
-      rows[k] = {
-        avg_ms: +(v.sum / v.count).toFixed(3),
-        max_ms: +v.max.toFixed(3),
-        samples: v.count
-      };
-      v.sum = 0; v.count = 0; v.max = 0;
-    }
-    if (Object.keys(rows).length) {
-      // eslint-disable-next-line no-console
-      console.group('[perf] PlayerController.update (5s window)');
-      // eslint-disable-next-line no-console
-      console.table(rows);
-      // eslint-disable-next-line no-console
-      console.groupEnd();
-    }
-    this._perfLastFlush = now;
   }
 
   setNickname(nickname) {
@@ -115,171 +75,163 @@ class PlayerController {
   }
 
   /**
+   * Compute a frame-speed-adjusted movement vector with velocity smoothing.
+   * Mutates this.velocity in place and returns the candidate position.
+   * @param {object} player
+   * @param {number} dx - Normalised x direction
+   * @param {number} dy - Normalised y direction
+   * @param {number} deltaFactor
+   * @param {number} now - performance.now() timestamp
+   * @returns {{ newX: number, newY: number }}
+   */
+  _computeMovementVector(player, dx, dy, deltaFactor, now) {
+    const baseSpeed = this.gameState.config.PLAYER_SPEED;
+    let speed = baseSpeed * (player.speedMultiplier || 1);
+    if (player.speedBoost && now < player.speedBoost) {
+speed *= 1.5;
+}
+    if (player.slowedUntil && now < player.slowedUntil) {
+speed *= (player.slowAmount || 1);
+}
+
+    const frameSpeed = speed * deltaFactor;
+    this.velocity.x = this.velocity.x * (1 - this.velocitySmoothing) + dx * frameSpeed * this.velocitySmoothing;
+    this.velocity.y = this.velocity.y * (1 - this.velocitySmoothing) + dy * frameSpeed * this.velocitySmoothing;
+
+    return { newX: player.x + this.velocity.x, newY: player.y + this.velocity.y };
+  }
+
+  /**
+   * Resolve collision with wall sliding, then clamp to map bounds.
+   * @param {object} player
+   * @param {number} newX
+   * @param {number} newY
+   * @returns {{ finalX: number, finalY: number }}
+   */
+  _resolveCollision(player, newX, newY) {
+    const size = this.gameState.config.PLAYER_SIZE;
+    let finalX = player.x;
+    let finalY = player.y;
+
+    if (!this.checkWallCollision(newX, newY, size)) {
+      finalX = newX;
+      finalY = newY;
+    } else {
+      if (!this.checkWallCollision(newX, player.y, size)) {
+finalX = newX;
+}
+      if (!this.checkWallCollision(player.x, newY, size)) {
+finalY = newY;
+}
+    }
+
+    const wt = this.gameState.config.WALL_THICKNESS || 40;
+    const ps = this.gameState.config.PLAYER_SIZE || 20;
+    finalX = Math.max(wt + ps, Math.min(this.gameState.config.ROOM_WIDTH - wt - ps, finalX));
+    finalY = Math.max(wt + ps, Math.min(this.gameState.config.ROOM_HEIGHT - wt - ps, finalY));
+
+    return { finalX, finalY };
+  }
+
+  /**
+   * Compute the aiming angle for the current frame.
+   * @param {object} player
+   * @param {number} magnitude - Input magnitude (mobile)
+   * @param {number} dx
+   * @param {number} dy
+   * @returns {number} angle in radians
+   */
+  _computeAimAngle(player, magnitude, dx, dy) {
+    if (this.input.mobileControls && this.input.mobileControls.isActive()) {
+      return magnitude > 0.1 ? Math.atan2(dy, dx) : player.angle;
+    }
+    const cameraPos = this.camera.getPosition();
+    const mouseWorldX = this.input.mouse.x + cameraPos.x;
+    const mouseWorldY = this.input.mouse.y + cameraPos.y;
+    return Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+  }
+
+  /**
+   * Conditionally emit a playerMove network event based on adaptive throttling.
+   * @param {object} player
+   * @param {number} finalX
+   * @param {number} finalY
+   * @param {number} angle
+   * @param {boolean} directionChanged
+   * @param {number} now
+   */
+  _maybeEmitMove(player, finalX, finalY, angle, directionChanged, now) {
+    const positionDelta = Math.hypot(finalX - this.lastSentPosition.x, finalY - this.lastSentPosition.y);
+    const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
+    const networkInterval = directionChanged ? this.networkUpdateIntervalFast : this.networkUpdateIntervalMoving;
+    const timeSinceLastUpdate = now - this.lastNetworkUpdate;
+
+    const shouldSend = timeSinceLastUpdate >= networkInterval &&
+      (positionDelta > this.positionThreshold || angleDelta > this.angleThreshold);
+
+    if (shouldSend) {
+      this.network.playerMove(finalX, finalY, angle);
+      this.lastNetworkUpdate = now;
+      this.lastSentPosition = { x: finalX, y: finalY, angle };
+    }
+  }
+
+  /**
    * Main update method with frame-independent movement
    * @param {number} canvasWidth - Canvas width in CSS pixels
    * @param {number} canvasHeight - Canvas height in CSS pixels
    * @param {number} deltaTime - Time since last frame in ms (optional, calculated if not provided)
    */
   update(canvasWidth, canvasHeight, deltaTime) {
-    const _t0 = performance.now();
+    const now = performance.now();
     const player = this.gameState.getPlayer();
     if (!player || !player.alive) {
-      return;
-    }
+return;
+}
 
-    // Calculate delta time if not provided
-    const now = _t0;
     if (deltaTime === undefined) {
-      deltaTime = now - this.lastUpdateTime;
-    }
+deltaTime = now - this.lastUpdateTime;
+}
     this.lastUpdateTime = now;
+    deltaTime = Math.min(deltaTime, 100);
 
-    // Clamp delta time to prevent huge jumps after tab switch
-    deltaTime = Math.min(deltaTime, 100); // Max 100ms delta
-
-    // Calculate delta time factor for frame-independent movement
-    // If running at 60 FPS (16.67ms), factor = 1.0
     const deltaFactor = deltaTime / this.targetFrameTime;
 
-    // Always update camera to follow player, even before game starts
+    // Always update camera even before game starts
     this.camera.follow(player, canvasWidth, canvasHeight, deltaTime);
-
-    // Only allow movement after game has started
     if (!this.gameStarted) {
-      return;
-    }
+return;
+}
 
-    // Get movement vector
-    const movement = this.input.getMovementVector();
-    const { dx, dy, magnitude } = movement;
+    const { dx, dy, magnitude } = this.input.getMovementVector();
 
-    // Detect direction change for adaptive network rate
     const directionChanged =
       (this.lastMovementVector.dx !== 0 || this.lastMovementVector.dy !== 0) &&
       (Math.sign(dx) !== Math.sign(this.lastMovementVector.dx) ||
        Math.sign(dy) !== Math.sign(this.lastMovementVector.dy));
-
     this.lastMovementVector = { dx, dy };
 
-    // Calculate aim angle (always update for smooth aiming)
-    const _tA0 = performance.now();
-    let angle;
-    if (this.input.mobileControls && this.input.mobileControls.isActive()) {
-      // Mobile: aim in movement direction
-      if (magnitude > 0.1) {
-        angle = Math.atan2(dy, dx);
-      } else {
-        angle = player.angle; // Keep current angle when stationary
-      }
-    } else {
-      // Desktop: aim at mouse
-      const cameraPos = this.camera.getPosition();
-      const mouseWorldX = this.input.mouse.x + cameraPos.x;
-      const mouseWorldY = this.input.mouse.y + cameraPos.y;
-      angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
-    }
-    this._perfTrack('angleCompute', performance.now() - _tA0);
+    const angle = this._computeAimAngle(player, magnitude, dx, dy);
 
     if (dx !== 0 || dy !== 0) {
-      // Calculate speed with multipliers and delta time
-      const baseSpeed = this.gameState.config.PLAYER_SPEED;
-      let speed = baseSpeed * (player.speedMultiplier || 1);
-
-      if (player.speedBoost && now < player.speedBoost) {
-        speed *= 1.5;
-      }
-
-      if (player.slowedUntil && now < player.slowedUntil) {
-        speed *= (player.slowAmount || 1);
-      }
-
-      // Apply delta factor for frame-independent movement
-      const frameSpeed = speed * deltaFactor;
-
-      // Calculate target velocity
-      const targetVelX = dx * frameSpeed;
-      const targetVelY = dy * frameSpeed;
-
-      // Smooth velocity for less jerky movement
-      this.velocity.x = this.velocity.x * (1 - this.velocitySmoothing) + targetVelX * this.velocitySmoothing;
-      this.velocity.y = this.velocity.y * (1 - this.velocitySmoothing) + targetVelY * this.velocitySmoothing;
-
-      // Calculate new position
-      const newX = player.x + this.velocity.x;
-      const newY = player.y + this.velocity.y;
-
-      // Client-side collision detection with sliding
-      const _tC0 = performance.now();
-      let finalX = player.x;
-      let finalY = player.y;
-
-      // Try to move in both directions
-      if (!this.checkWallCollision(newX, newY, this.gameState.config.PLAYER_SIZE)) {
-        finalX = newX;
-        finalY = newY;
-      } else {
-        // Collision detected, try sliding along walls
-        if (!this.checkWallCollision(newX, player.y, this.gameState.config.PLAYER_SIZE)) {
-          finalX = newX;
-        }
-        if (!this.checkWallCollision(player.x, newY, this.gameState.config.PLAYER_SIZE)) {
-          finalY = newY;
-        }
-      }
-      this._perfTrack('collision', performance.now() - _tC0);
-
-      // Clamp position to map boundaries
-      const wallThickness = this.gameState.config.WALL_THICKNESS || 40;
-      const playerSize = this.gameState.config.PLAYER_SIZE || 20;
-
-      finalX = Math.max(wallThickness + playerSize, Math.min(this.gameState.config.ROOM_WIDTH - wallThickness - playerSize, finalX));
-      finalY = Math.max(wallThickness + playerSize, Math.min(this.gameState.config.ROOM_HEIGHT - wallThickness - playerSize, finalY));
+      const { newX, newY } = this._computeMovementVector(player, dx, dy, deltaFactor, now);
+      const { finalX, finalY } = this._resolveCollision(player, newX, newY);
 
       // Client-side prediction: update position immediately
       player.x = finalX;
       player.y = finalY;
       player.angle = angle;
 
-      // Record input for reconciliation
-      const _tR0 = performance.now();
-      const _inputSequence = this.input.recordInput(finalX, finalY, angle, deltaTime);
-      this._perfTrack('recordInput', performance.now() - _tR0);
-
-      // Adaptive network throttling
-      const positionDelta = Math.sqrt(
-        Math.pow(finalX - this.lastSentPosition.x, 2) +
-        Math.pow(finalY - this.lastSentPosition.y, 2)
-      );
-      const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
-
-      // Choose network update interval based on movement state
-      let networkInterval = this.networkUpdateIntervalMoving;
-      if (directionChanged) {
-        networkInterval = this.networkUpdateIntervalFast; // Send immediately on direction change
-      }
-
-      // Send update if enough time passed AND position/angle changed significantly
-      const timeSinceLastUpdate = now - this.lastNetworkUpdate;
-      const shouldSend = timeSinceLastUpdate >= networkInterval &&
-        (positionDelta > this.positionThreshold || angleDelta > this.angleThreshold);
-
-      if (shouldSend) {
-        const _tE0 = performance.now();
-        this.network.playerMove(finalX, finalY, angle);
-        this._perfTrack('emit', performance.now() - _tE0);
-        this.lastNetworkUpdate = now;
-        this.lastSentPosition = { x: finalX, y: finalY, angle };
-      }
+      this.input.recordInput(finalX, finalY, angle, deltaTime);
+      this._maybeEmitMove(player, finalX, finalY, angle, directionChanged, now);
     } else {
-      // Not moving - decay velocity
+      // Not moving — decay velocity
       this.velocity.x *= 0.8;
       this.velocity.y *= 0.8;
 
       // Update angle even when stationary
       if (Math.abs(angle - player.angle) > 0.01) {
         player.angle = angle;
-
-        // Send angle update at idle rate
         const timeSinceLastUpdate = now - this.lastNetworkUpdate;
         if (timeSinceLastUpdate >= this.networkUpdateIntervalIdle) {
           const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
@@ -292,34 +244,21 @@ class PlayerController {
       }
     }
 
-    // Update input manager's idle state
     this.input.updateIdleState();
-
-    // Clear just-pressed keys at end of frame
     this.input.clearJustPressed();
-
-    // PROFILING flush
-    this._perfTrack('total', performance.now() - _t0);
-    this._perfMaybeFlush(performance.now());
   }
 
   shoot(_canvasWidth, _canvasHeight) {
     const player = this.gameState.getPlayer();
     if (!player || !player.alive || !this.gameStarted) {
-      return;
-    }
+return;
+}
 
-    // Convertir les coordonnées écran de la souris en coordonnées monde
     const cameraPos = this.camera.getPosition();
     const mouseWorldX = this.input.mouse.x + cameraPos.x;
     const mouseWorldY = this.input.mouse.y + cameraPos.y;
-    // Calculer l'angle du joueur vers la souris
-    const angle = Math.atan2(
-      mouseWorldY - player.y,
-      mouseWorldX - player.x
-    );
+    const angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
 
-    // Jouer le son de tir
     if (window.onPlayerShoot) {
       window.onPlayerShoot(player.x, player.y, angle, player.weapon || 'pistol');
     }

@@ -78,7 +78,9 @@ class EntityRenderer {
     const SPRITE_CACHE_CAP = 40;
     if (this._zombieSpriteCache.size >= SPRITE_CACHE_CAP) {
       const evictKey = this._zombieSpriteCacheLRU.shift();
-      if (evictKey) this._zombieSpriteCache.delete(evictKey);
+      if (evictKey) {
+this._zombieSpriteCache.delete(evictKey);
+}
     }
 
     // Build sprite: size×2.5 canvas centered on zombie origin
