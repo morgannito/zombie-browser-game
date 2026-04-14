@@ -25,19 +25,25 @@
     shadowsDisabled = !enabled;
     // Auto-tie zombie fast draw to shadows: when shadows off, use simplified sprite
     window.useZombieFastDraw = !enabled;
+    window.useZombieSpriteCache = !enabled;
   };
 
-  // Allow manual override (e.g. dev console)
-  window.useZombieFastDraw = false;
+  // Defaults: ship the fastest pipeline by default. Eye-candy users can flip
+  // shadows back on via the Settings UI; perf-sensitive users benefit immediately
+  // without waiting for auto-adjust to trip.
+  shadowsDisabled = true;
+  window.useZombieFastDraw = true;
+  window.useZombieSpriteCache = true;
 
-  // Honor previously saved setting on load
+  // Honor explicit user override from previous session
   try {
     const saved = localStorage.getItem('zombieGamePerformanceSettings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed && parsed.shadowsEnabled === false) {
-        shadowsDisabled = true;
-        window.useZombieFastDraw = true;
+      if (parsed && parsed.shadowsEnabled === true) {
+        shadowsDisabled = false;
+        window.useZombieFastDraw = false;
+        window.useZombieSpriteCache = false;
       }
     }
   } catch (_) {
