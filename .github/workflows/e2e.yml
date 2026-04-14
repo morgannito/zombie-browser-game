@@ -1,0 +1,64 @@
+name: E2E Smoke Tests
+
+on:
+  push:
+    branches: [main, "test/**", "fix/**", "feat/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    name: Playwright smoke tests (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      PORT: 3050
+      NODE_ENV: test
+      JWT_SECRET: ci-test-secret-not-for-production
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3050
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Start server in background
+        run: npm start &
+
+      - name: Wait for server health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3050/health > /dev/null 2>&1; then
+              echo "Server is up after ${i}s"
+              exit 0
+            fi
+            echo "Waiting for server... (${i}/30)"
+            sleep 1
+          done
+          echo "Server did not start within 30 seconds"
+          exit 1
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e
+
+      - name: Upload traces and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
