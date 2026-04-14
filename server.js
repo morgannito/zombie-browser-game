@@ -114,11 +114,11 @@ const io = require('socket.io')(server, {
   pingTimeout: 5000,
   // Connection settings
   connectTimeout: 45000,
-  // Enable compression for better performance
-  perMessageDeflate: true,
+  // Enable compression — only compress messages > 1KB to avoid overhead on small packets
+  perMessageDeflate: { threshold: 1024 },
   httpCompression: true,
-  // Limit payload size for polling transport (default 1MB is too large)
-  maxHttpBufferSize: 10240
+  // 1MB buffer — matches rate limiting, defensive against large payloads
+  maxHttpBufferSize: 1e6
 });
 
 // HIGH FIX: Async database initialization with error handling
