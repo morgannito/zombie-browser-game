@@ -88,7 +88,25 @@ class GameStateManager {
   }
 
   updateState(newState) {
-    this.state = newState;
+    // BUGFIX (multi): merge instead of replace — preserve client-only env state
+    // (parallax, staticProps, dynamicProps, envParticles, obstacles, doors, totalRooms)
+    // that the server does not echo back in full-state broadcasts.
+    const preserved = {
+      parallax: this.state.parallax,
+      staticProps: this.state.staticProps,
+      dynamicProps: this.state.dynamicProps,
+      dynamicPropParticles: this.state.dynamicPropParticles,
+      envParticles: this.state.envParticles,
+      obstacles: this.state.obstacles,
+      doors: this.state.doors,
+      totalRooms: this.state.totalRooms
+    };
+    this.state = Object.assign({}, this.state, newState);
+    for (const key in preserved) {
+      if (newState[key] === undefined && preserved[key] !== undefined) {
+        this.state[key] = preserved[key];
+      }
+    }
     this.lastUpdateTimestamp = Date.now();
   }
 

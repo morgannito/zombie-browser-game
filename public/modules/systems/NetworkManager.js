@@ -134,8 +134,10 @@ class NetworkManager {
   }
 
   setupLatencyMonitoring() {
-    // MEMORY LEAK FIX: Track ping/pong handlers for cleanup
-    // Use performance.now() — monotonic clock, immune to system clock drift/adjustments.
+    // BUGFIX (multi): use 'app:ping'/'app:pong' instead of 'ping'/'pong' to avoid
+    // collision with Socket.IO's internal heartbeat events. The collision was
+    // causing latency to be measured against random heartbeats and acks were
+    // never resolved (server did not handle the custom 'ping' event).
     const pingHandler = () => {
       this.lastPingTime = performance.now();
     };
@@ -147,21 +149,17 @@ class NetworkManager {
       }
     };
 
-    // Monitor ping/pong for latency measurement
-    this.socket.on('ping', pingHandler);
-    this.socket.on('pong', pongHandler);
-
-    // MEMORY LEAK FIX: Track these listeners for cleanup
-    this.listeners.push({ event: 'ping', handler: pingHandler });
-    this.listeners.push({ event: 'pong', handler: pongHandler });
+    this.socket.on('app:ping', pingHandler);
+    this.socket.on('app:pong', pongHandler);
+    this.listeners.push({ event: 'app:ping', handler: pingHandler });
+    this.listeners.push({ event: 'app:pong', handler: pongHandler });
 
     // Manual ping every 2 seconds for accurate RTT measurement.
-    // performance.now() is monotonic and unaffected by system clock adjustments.
     const timerMgr = window.timerManager;
     const doPing = () => {
       if (this.socket.connected) {
         const start = performance.now();
-        this.socket.emit('ping', start, _ack => {
+        this.socket.emit('app:ping', start, _ack => {
           const latency = Math.round(performance.now() - start);
           this.updateLatency(latency);
         });
