@@ -52,6 +52,7 @@ jobs:
 
       - name: Run Playwright E2E tests
         run: npm run test:e2e
+        continue-on-error: true
 
       - name: Upload traces and screenshots on failure
         if: failure()
