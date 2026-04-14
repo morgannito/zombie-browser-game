@@ -100,16 +100,17 @@ function updatePlayerScore(shooter, zombie, comboMultiplier) {
 /**
  * Emit combo update event
  */
-function emitComboUpdate(shooter, playerId, comboMultiplier, goldBonus, xpBonus, zombie, io) {
-  const goldDrop =
-    typeof zombie.goldDrop === 'number' && isFinite(zombie.goldDrop) ? zombie.goldDrop : 0;
-  const xpDrop = typeof zombie.xpDrop === 'number' && isFinite(zombie.xpDrop) ? zombie.xpDrop : 0;
+function emitComboUpdate(shooter, playerId, comboMultiplier, goldBonus, xpBonus, _zombie, io) {
+  // BUGFIX: was `goldBonus - goldDrop` / `xpBonus - xpDrop` — but goldBonus
+  // already IS the multiplied total. Subtracting the base drop sent only
+  // the incremental delta, so the HUD popup understated the reward by the
+  // base amount on every combo kill.
   io.to(playerId).emit('comboUpdate', {
     combo: shooter.combo,
     multiplier: comboMultiplier,
     score: shooter.totalScore,
-    goldBonus: goldBonus - goldDrop,
-    xpBonus: xpBonus - xpDrop
+    goldBonus,
+    xpBonus
   });
 }
 
