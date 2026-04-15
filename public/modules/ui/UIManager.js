@@ -59,6 +59,9 @@ class UIManager {
     // Esc key closes shop (keyboard accessibility)
     document.addEventListener('keydown', this.handlers.keydown);
 
+    // Guard: prevent duplicate emissions before server acknowledges the first
+    this._buyPending = false;
+
     // Make buyItem global for onclick handlers
     window.buyItem = (itemId, category) => {
       logger.debug('[Shop] buyItem called:', itemId, category);
@@ -71,6 +74,13 @@ class UIManager {
         return;
       }
 
+      // Double-buy guard: drop the click if a purchase is already in-flight
+      if (this._buyPending) {
+        logger.debug('[Shop] Purchase already in-flight, ignoring duplicate click');
+        return;
+      }
+
+      this._buyPending = true;
       logger.debug('[Shop] Sending purchase request to server...');
       window.networkManager.buyItem(itemId, category);
 

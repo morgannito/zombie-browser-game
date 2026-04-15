@@ -731,6 +731,11 @@ class NetworkManager {
   }
 
   handleShopUpdate(data) {
+    // Release the in-flight guard regardless of success/failure
+    if (window.gameUI) {
+      window.gameUI._buyPending = false;
+    }
+
     if (data.success) {
       // Show success message
       if (window.toastManager) {
