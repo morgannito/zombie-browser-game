@@ -6,7 +6,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
-const { createParticles, createExplosion, createLoot } = require('../../lootFunctions');
+const { createParticles, createExplosion, createLoot } = require("../../../game/lootFunctions");
 
 /**
  * Handle explosive bullet effect

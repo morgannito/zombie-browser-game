@@ -6,9 +6,9 @@
  * @version 1.1.0
  */
 
-const Quadtree = require('../Quadtree');
-const MathUtils = require('../MathUtils');
-const { SpatialGrid } = require('../../contexts/zombie/SpatialGrid');
+const Quadtree = require('../../lib/Quadtree');
+const MathUtils = require('../../lib/MathUtils');
+const { SpatialGrid } = require('../zombie/SpatialGrid');
 
 class CollisionManager {
   constructor(gameState, config) {
