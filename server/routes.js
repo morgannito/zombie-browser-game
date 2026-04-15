@@ -72,4 +72,10 @@ function configureRoutes(app, deps) {
   mountSystemRoutes(app, deps);
 }
 
-module.exports = { configureRoutes };
+module.exports = {
+  configureRoutes,
+  // Exported for unit tests
+  mountAuthRoutes,
+  mountDbRoutes,
+  mountSystemRoutes
+};
