@@ -139,214 +139,66 @@ function resolveLockedTarget(zombie, players) {
 // Main update
 // ---------------------------------------------------------------------------
 
-/**
- * Main zombie update function
- * LATENCY OPTIMIZATION: Fast-path guards to skip boss/special updates for regular zombies
- * CRITICAL FIX: Use snapshot of zombie IDs to safely iterate while zombies may be deleted
- * PERF: Far-freeze + staggered pathfinding + distance cache + target lock applied here.
- */
-function updateZombies(
-  gameState,
-  now,
-  io,
-  collisionManager,
-  entityManager,
-  zombieManager,
-  perfIntegration
-) {
-  const zombies = gameState.zombies;
-  // CRITICAL FIX: Create snapshot with .slice() to prevent iteration issues
-  // when zombies are deleted by other systems (tesla kill, poison, etc.)
-  const zombieIds = Object.keys(zombies).slice();
+// Core orchestration extracted to ./updater/core.js. This file wires the
+// per-type ability + boss handlers into the dispatch maps expected by core.
+const { updateZombies: _updateZombiesCore } = require('./updater/core');
 
-  // PERF: Current tick for stagger offset and distance cache.
-  const tick = perfIntegration ? perfIntegration.tickCounter : 0;
-  // PERF: Pathfinding rate from config (ticks between full path recalcs).
-  // BUGFIX: clamp to ≥1 to avoid `% 0` → NaN, which would freeze every zombie
-  // forever (shouldResolveTarget always false).
-  const pathfindingRate = Math.max(
-    1,
-    perfIntegration && perfIntegration.perfConfig
-      ? perfIntegration.perfConfig.current.zombiePathfindingRate
-      : 10
+const ABILITY_HANDLERS = {
+  healer: (zombie, zombieId, ctx) =>
+    processHealerAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
+  slower: (zombie, _zombieId, ctx) =>
+    processSlowerAbility(zombie, ctx.now, ctx.collisionManager),
+  shooter: (zombie, zombieId, ctx) =>
+    processShooterAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
+  poison: (zombie, _zombieId, ctx) =>
+    processPoisonTrail(zombie, ctx.now, ctx.gameState, ctx.entityManager),
+  teleporter: (zombie, zombieId, ctx) =>
+    updateTeleporterZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+  summoner: (zombie, zombieId, ctx) =>
+    updateSummonerZombie(zombie, zombieId, ctx.now, ctx.zombieManager, ctx.entityManager, ctx.gameState),
+  berserker: (zombie, zombieId, ctx) =>
+    updateBerserkerZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+  necromancer: (zombie, zombieId, ctx) =>
+    updateNecromancerZombie(zombie, zombieId, ctx.now, ctx.entityManager, ctx.gameState),
+  brute: (zombie, zombieId, ctx) =>
+    updateBruteZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+  mimic: (zombie, zombieId, ctx) =>
+    updateMimicZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState)
+};
+
+const BOSS_HANDLERS = {
+  bossCharnier: (zombie, _id, ctx) =>
+    updateBossCharnier(zombie, ctx.now, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+  bossInfect: (zombie, _id, ctx) =>
+    updateBossInfect(zombie, ctx.now, ctx.entityManager, ctx.gameState),
+  bossColosse: (zombie, id, ctx) =>
+    updateBossColosse(zombie, id, ctx.now, ctx.io, ctx.entityManager),
+  bossRoi: (zombie, id, ctx) =>
+    updateBossRoi(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+  bossOmega: (zombie, id, ctx) =>
+    updateBossOmega(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+  bossInfernal: (zombie, id, ctx) =>
+    updateBossInfernal(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+  bossCryos: (zombie, id, ctx) =>
+    updateBossCryos(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+  bossVortex: (zombie, id, ctx) =>
+    updateBossVortex(zombie, id, ctx.now, ctx.io, ctx.entityManager, ctx.gameState),
+  bossNexus: (zombie, id, ctx) =>
+    updateBossNexus(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+  bossApocalypse: (zombie, id, ctx) =>
+    updateBossApocalypse(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager)
+};
+
+function updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
+  return _updateZombiesCore(
+    gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration,
+    {
+      abilityHandlers: ABILITY_HANDLERS,
+      bossHandlers: BOSS_HANDLERS,
+      moveZombie,
+      isZombieFarFromAllPlayers
+    }
   );
-  const players = gameState.players;
-
-  for (let i = 0; i < zombieIds.length; i++) {
-    const zombieId = zombieIds[i];
-    const zombie = zombies[zombieId];
-
-    if (!zombie) {
-      continue;
-    } // Fast path: destroyed
-
-    // PERF — Assign a per-zombie stagger offset once (based on numeric id).
-    if (zombie.staggerOffset === null || zombie.staggerOffset === undefined) {
-      zombie.staggerOffset = (Number(zombieId) || 0) % pathfindingRate;
-    }
-
-    // PERF — FAR FREEZE: bosses always update.
-    // Non-boss zombies outside every player's AOI skip ALL AI this tick.
-    // Position/health stay frozen (no drift).
-    const isBoss = zombie.isBoss === true;
-    if (!isBoss && isZombieFarFromAllPlayers(zombie, players)) {
-      // Reset stuck tracker so the counter doesn't accumulate while frozen.
-      zombie._prevX = zombie.x;
-      zombie._prevY = zombie.y;
-      continue;
-    }
-
-    const zombieType = zombie.type;
-
-    // LATENCY OPTIMIZATION: Early returns for type-specific abilities
-    if (zombieType === 'healer') {
-      processHealerAbility(zombie, zombieId, now, collisionManager, entityManager);
-    }
-    if (zombieType === 'slower') {
-      processSlowerAbility(zombie, now, collisionManager);
-    }
-    if (zombieType === 'shooter') {
-      processShooterAbility(zombie, zombieId, now, collisionManager, entityManager);
-    }
-    if (zombieType === 'poison') {
-      processPoisonTrail(zombie, now, gameState, entityManager);
-    }
-
-    // LATENCY OPTIMIZATION: Type guards prevent calling boss functions for regular zombies
-    if (zombieType === 'teleporter') {
-      updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-    if (zombieType === 'summoner') {
-      updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState);
-    }
-    if (zombieType === 'berserker') {
-      updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-    if (zombieType === 'necromancer') {
-      updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState);
-    }
-    if (zombieType === 'brute') {
-      updateBruteZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-    if (zombieType === 'mimic') {
-      updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState);
-    }
-
-    // Boss updates (rare, so grouped together)
-    if (zombieType === 'bossCharnier') {
-      updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState);
-    }
-    if (zombieType === 'bossInfect') {
-      updateBossInfect(zombie, now, entityManager, gameState);
-    }
-    if (zombieType === 'bossColosse') {
-      updateBossColosse(zombie, zombieId, now, io, entityManager);
-    }
-    if (zombieType === 'bossRoi') {
-      updateBossRoi(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState,
-        collisionManager
-      );
-    }
-    if (zombieType === 'bossOmega') {
-      updateBossOmega(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState,
-        collisionManager
-      );
-    }
-    if (zombieType === 'bossInfernal') {
-      updateBossInfernal(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState
-      );
-    }
-    if (zombieType === 'bossCryos') {
-      updateBossCryos(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState
-      );
-    }
-    if (zombieType === 'bossVortex') {
-      updateBossVortex(zombie, zombieId, now, io, entityManager, gameState);
-    }
-    if (zombieType === 'bossNexus') {
-      updateBossNexus(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState,
-        collisionManager
-      );
-    }
-    if (zombieType === 'bossApocalypse') {
-      updateBossApocalypse(
-        zombie,
-        zombieId,
-        now,
-        io,
-        zombieManager,
-        perfIntegration,
-        entityManager,
-        gameState,
-        collisionManager
-      );
-    }
-
-    // BUGFIX: boss/zombie AI handlers may delete the zombie mid-iteration
-    // (e.g. boss-Roi clone despawn). Skip move for already-deleted entities
-    // to avoid accumulating _stuckFrames on a ghost object.
-    if (!gameState.zombies[zombieId]) {
-      continue;
-    }
-    moveZombie(zombie, zombieId, collisionManager, gameState, now, tick, pathfindingRate, players);
-
-    // Track stuck zombies: if position barely changed, increment counter
-    const movedDist =
-      Math.abs(zombie.x - (zombie._prevX || 0)) + Math.abs(zombie.y - (zombie._prevY || 0));
-    zombie._prevX = zombie.x;
-    zombie._prevY = zombie.y;
-
-    if (movedDist < 0.5) {
-      zombie._stuckFrames = (zombie._stuckFrames || 0) + 1;
-    } else {
-      zombie._stuckFrames = 0;
-    }
-
-    // Despawn zombies stuck for ~10 seconds (600 frames at 60fps)
-    if (zombie._stuckFrames > 600) {
-      delete zombies[zombieId];
-    }
-  }
 }
 
 /**
