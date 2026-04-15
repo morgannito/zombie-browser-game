@@ -133,7 +133,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `public/modules/network/` : network singleton (NetworkManager moved from modules/systems/). Delta handler split deferred to subsequent iteration if needed.
 - [x] `public/modules/state/` : GameStateManager + ZombieInterpolator
 - [ ] `public/modules/rendering/` : garder tel quel (déjà OK)
-- [ ] `public/modules/ui/` : UIManager découpé par écran (HUD, shop, level-up, gameover)
+- [x] `public/modules/ui/` : UIManager + NicknameManager regroupés. Découpe par écran (HUD, shop, level-up, gameover) reportée — UIManager 628 lignes mais cohérent, refactor par écran à faire en PR séparée si besoin.
 - [ ] `public/modules/input/` : InputManager + PlayerController + MobileControls
 
 ### Phase 5 — Infrastructure
