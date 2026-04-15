@@ -187,6 +187,11 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] PR #121 fix(session): preserve pendingUpgradeChoices across reconnect — anti-cheat bloquait tous les upgrades post-reconnect
 - [x] PR #122 perf(server): sqrt→sq-dist dans getNearestPlayer + SpatialGrid integer-keyed (~15k allocs/s éliminées)
 - [x] PR #124 feat(ux-mobile): joystick deadzone 0.12, portrait-orientation hint, shop tap targets 44px min
+- [x] PR #140 test(server): cover bootstrap helpers (14 tests) + ratchet server floor 65→85% (local vert, CI découvre régression)
+- [x] PR #141 fix(test): stabilize flaky ZombieManager health test (mock Math.random) + realign zombie/weapons thresholds with CI reality
+- [x] PR #142 style: auto-fix brace-style lint errors in server tests
+- [x] PR #143 fix(docker): sync COPY paths with current tree (remove routes/shared, add contexts/transport/infrastructure/server)
+- [ ] UX agents wave (en cours): `ux/crosshair-feedback`, `ux/damage-feedback`, `ux/hud-polish`
 
 ## Règles d'exécution automatique
 
