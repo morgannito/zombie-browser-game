@@ -106,7 +106,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [ ] Extraire `server.js` setup block → `server/` (sous-étapes):
   - [x] `server/socketio.js` — Socket.IO factory
   - [x] `server/memory.js` — MemoryMonitor init
-  - [ ] `server/database.js` — dbManager init
+  - [x] `server/database.js` — dbManager init
   - [ ] `server/middleware.js` — express middleware wiring
   - [ ] `server/routes.js` — route mounting
   - [ ] `server/bootstrap.js` — main startServer orchestrator
