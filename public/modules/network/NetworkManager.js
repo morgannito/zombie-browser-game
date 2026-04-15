@@ -405,7 +405,17 @@ class NetworkManager {
       // Increased threshold to allow more client prediction freedom
       if (distance > 500) {
         console.warn(
-          '[ROLLBACK-FULL] distance=' + distance.toFixed(0) + 'px — accepting server pos'
+          '[ROLLBACK-FULL] distance=' +
+            distance.toFixed(0) +
+            'px local=(' +
+            localPlayerState.x.toFixed(0) +
+            ',' +
+            localPlayerState.y.toFixed(0) +
+            ') server=(' +
+            serverPlayer.x.toFixed(0) +
+            ',' +
+            serverPlayer.y.toFixed(0) +
+            ')'
         );
         // Server position is already applied, no change needed
       } else {
