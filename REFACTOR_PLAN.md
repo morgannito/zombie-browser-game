@@ -151,7 +151,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### ZombieUpdater split (reduce complexity)
 - [x] `updater/wallCollision.js` — resolveWallCollisions (65 lignes, complexity 17) split en 4 stratégies SRP (trySlideAlongWall, applyRepulsion, escapeIfStuck, resolveWallCollisions orchestrator), chaque fonction <25 lignes complexity <10
-- [ ] `updater/separation.js` — applyZombieSeparation (50 lignes, complexity 14)
+- [x] `updater/separation.js` — applyZombieSeparation split en 3 SRP (accumulateSeparation, computeSeparationForce, applyWithWallCheck + orchestrator)
 - [ ] `updater/movement.js` — moveZombie (53 lignes, complexity 13)
 - [ ] `updater/randomWalk.js` — moveRandomly (31 lignes)
 - [ ] `updater/core.js` — updateZombies (171 lignes, complexity 37) — le gros morceau
