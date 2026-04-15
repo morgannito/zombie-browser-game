@@ -165,4 +165,15 @@ function createBootstrap(deps) {
   return { startServer };
 }
 
-module.exports = { createBootstrap };
+module.exports = {
+  createBootstrap,
+  // Exported for unit tests
+  buildContainer,
+  attachProgression,
+  attachAdminCommands,
+  startPowerupSpawner,
+  makeTickFn,
+  wireSocketHandlers,
+  attachErrorHandlers,
+  listenAndLog
+};
