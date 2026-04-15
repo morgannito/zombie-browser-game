@@ -13,6 +13,12 @@ class UIRenderer {
     this.damageNumbers = [];
     this.lastZombieHealthCheck = {};
 
+    // Hit markers system
+    this.hitMarkers = [];
+    this.HIT_MARKER_DURATION = 150; // ms
+    this.HIT_MARKER_SIZE = 10;      // half-arm length in px
+    this.HIT_MARKER_GAP = 3;        // gap from center in px
+
     // Kill feed system
     this.lastZombieCount = 0;
     this.killFeedItems = [];
@@ -80,28 +86,52 @@ class UIRenderer {
   addDamageNumber(x, y, damage, type) {
     type = type || 'normal';
 
-    const colors = {
+    const DAMAGE_COLORS = {
       normal: '#ffffff',
-      critical: '#ffff00',
-      poison: '#00ff00',
+      critical: '#ffdd00',
+      poison: '#55ff55',
       fire: '#ff6600',
       ice: '#00ffff',
-      boss: '#ff0000'
+      boss: '#ff4444'
     };
+    const DAMAGE_LIFETIME = 1800; // ms
+    const BASE_FONT_SIZE = 18;
+    const MAX_FONT_SIZE = 32;
+    const fontSize = Math.min(BASE_FONT_SIZE + Math.sqrt(damage) * 0.6, MAX_FONT_SIZE);
 
     this.damageNumbers.push({
-      x: x,
-      y: y,
+      x,
+      y,
       damage: Math.ceil(damage),
-      color: colors[type] || colors.normal,
+      color: DAMAGE_COLORS[type] || DAMAGE_COLORS.normal,
+      isCritical: type === 'critical' || type === 'boss',
+      fontSize,
       opacity: 1,
-      velocity: -2,
       createdAt: Date.now(),
-      lifetime: 2000
+      lifetime: DAMAGE_LIFETIME
     });
 
     if (this.damageNumbers.length > 50) {
       this.damageNumbers.shift();
+    }
+  }
+
+  /**
+   * Add a hit marker at world position (called when player bullet hits zombie)
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {boolean} isCritical - Critical hit gets red color
+   */
+  addHitMarker(x, y, isCritical) {
+    this.hitMarkers.push({
+      x,
+      y,
+      isCritical: !!isCritical,
+      createdAt: Date.now()
+    });
+
+    if (this.hitMarkers.length > 20) {
+      this.hitMarkers.shift();
     }
   }
 
@@ -121,6 +151,7 @@ class UIRenderer {
           const damage = lastHealth - currentHealth;
           const damageType = zombie.isBoss ? 'boss' : 'normal';
           this.addDamageNumber(zombie.x, zombie.y - zombie.size, damage, damageType);
+          this.addHitMarker(zombie.x, zombie.y, zombie.isBoss);
         }
       }
 
@@ -141,10 +172,10 @@ class UIRenderer {
    */
   updateDamageNumbers(_deltaTime) {
     const now = Date.now();
+    const FLOAT_SPEED = 1.2; // px per frame (upward)
 
     for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
       const dmg = this.damageNumbers[i];
-
       const age = now - dmg.createdAt;
 
       if (age > dmg.lifetime) {
@@ -152,8 +183,26 @@ class UIRenderer {
         continue;
       }
 
-      dmg.y += dmg.velocity;
-      dmg.opacity = 1 - age / dmg.lifetime;
+      // Cubic ease-out: fast at start, slows down
+      const t = age / dmg.lifetime;
+      const eased = 1 - Math.pow(1 - t, 3);
+      dmg.y -= FLOAT_SPEED * (1 - eased * 0.8);
+
+      // Fade out only in last 40% of lifetime
+      const fadeStart = 0.6;
+      dmg.opacity = t < fadeStart ? 1 : 1 - (t - fadeStart) / (1 - fadeStart);
+    }
+  }
+
+  /**
+   * Update hit markers: remove expired ones
+   */
+  updateHitMarkers() {
+    const now = Date.now();
+    for (let i = this.hitMarkers.length - 1; i >= 0; i--) {
+      if (now - this.hitMarkers[i].createdAt > this.HIT_MARKER_DURATION) {
+        this.hitMarkers.splice(i, 1);
+      }
     }
   }
 
@@ -166,6 +215,8 @@ class UIRenderer {
     }
 
     ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     for (const dmg of this.damageNumbers) {
       if (!camera.isInViewport(dmg.x, dmg.y, 50)) {
@@ -173,12 +224,10 @@ class UIRenderer {
       }
 
       ctx.globalAlpha = dmg.opacity;
-      ctx.font = 'bold 20px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(dmg.fontSize)}px Arial`;
 
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = dmg.isCritical ? 5 : 3;
       ctx.strokeText(`-${dmg.damage}`, dmg.x, dmg.y);
 
       ctx.fillStyle = dmg.color;
@@ -186,6 +235,71 @@ class UIRenderer {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Render hit markers as X shapes at zombie world positions
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} camera
+   */
+  renderHitMarkers(ctx, camera) {
+    if (!camera || this.hitMarkers.length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+
+    for (const marker of this.hitMarkers) {
+      const age = now - marker.createdAt;
+      const t = age / this.HIT_MARKER_DURATION;
+      const opacity = 1 - t;
+      const spread = this.HIT_MARKER_GAP + t * 4; // arms spread outward as it fades
+
+      if (!camera.isInViewport(marker.x, marker.y, 30)) {
+        continue;
+      }
+
+      const sx = marker.x;
+      const sy = marker.y;
+      const arm = this.HIT_MARKER_SIZE;
+      const color = marker.isCritical ? '#ff4444' : '#ffffff';
+
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 4;
+      this._drawHitX(ctx, sx, sy, arm, spread);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      this._drawHitX(ctx, sx, sy, arm, spread);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw the X shape of a hit marker
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x - Center X (world coords)
+   * @param {number} y - Center Y (world coords)
+   * @param {number} arm - Arm length
+   * @param {number} gap - Gap from center
+   */
+  _drawHitX(ctx, x, y, arm, gap) {
+    const d = gap * Math.SQRT1_2; // diagonal offset
+    ctx.beginPath();
+    ctx.moveTo(x - d, y - d);
+    ctx.lineTo(x - d - arm, y - d - arm);
+    ctx.moveTo(x + d, y - d);
+    ctx.lineTo(x + d + arm, y - d - arm);
+    ctx.moveTo(x - d, y + d);
+    ctx.lineTo(x - d - arm, y + d + arm);
+    ctx.moveTo(x + d, y + d);
+    ctx.lineTo(x + d + arm, y + d + arm);
+    ctx.stroke();
   }
 
   /**
