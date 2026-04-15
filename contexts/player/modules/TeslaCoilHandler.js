@@ -185,7 +185,7 @@ function _handleTeslaKill(zombie, player, gameState, entityManager, now, io, zom
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss && io && zombieManager) {
-    const { handleNewWave } = require("../../../game/modules/wave/WaveManager");
+    const { handleNewWave } = require("../../wave/modules/WaveManager");
     handleNewWave(gameState, io, zombieManager);
   }
 }

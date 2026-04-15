@@ -120,7 +120,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Créer `contexts/zombie/` : déplacer `game/modules/zombie/*` + `lib/server/ZombieManager.js` + `lib/server/SpatialGrid.js`
 - [x] Créer `contexts/weapons/` : déplacer `game/modules/bullet/*` + `lib/server/CollisionManager.js`
 - [x] Créer `contexts/player/` : déplacer `game/modules/player/*` + `lib/server/PlayerManager.js`
-- [ ] Créer `contexts/wave/` : déplacer `game/modules/wave/*` + `lib/server/RoomManager.js`
+- [x] Créer `contexts/wave/` : déplacer `game/modules/wave/*` + `lib/server/RoomManager.js`
 - [ ] Créer `contexts/session/` : déplacer `sockets/sessionRecovery.js` + `sockets/playerStateFactory.js`
 - [ ] Créer `contexts/leaderboard/` : déplacer submitScoreUseCase + `public/leaderboardSystem.js` (client)
 

@@ -181,7 +181,7 @@ describe('HazardManager — init error paths', () => {
 // ---------------------------------------------------------------------------
 
 describe('WaveManager — error paths', () => {
-  const { handleNewWave } = require('../../../game/modules/wave/WaveManager');
+  const { handleNewWave } = require("../../../contexts/wave/modules/WaveManager");
 
   test('test_handleNewWave_emptyPlayers_doesNotThrow', () => {
     // Arrange
