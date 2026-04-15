@@ -17,7 +17,7 @@ const {
   updatePoisonedZombies,
   updateFrozenSlowedZombies
 } = require('../contexts/zombie/modules/ZombieEffects');
-const { updateBullets } = require('./modules/bullet/BulletUpdater');
+const { updateBullets } = require('../contexts/weapons/modules/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');
 const HazardManager = require('./modules/hazards/HazardManager');
