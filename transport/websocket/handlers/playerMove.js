@@ -78,7 +78,11 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
 
       const now = Date.now();
       const lastMoveTime = player.lastMoveTime || now;
-      const timeDelta = now - lastMoveTime;
+      // FIX(tp): cap timeDelta to prevent budget starvation after tab-unfocus
+      // or massive lag bursts. Without this cap a 10s gap would accrue 3000px
+      // of budget in one frame, which the next legit move can't spend fast
+      // enough — causing false rejections on the following tick.
+      const timeDelta = Math.min(now - lastMoveTime, 500);
       player.lastMoveTime = now;
 
       // CHECK STUN: Si le joueur est stunné, bloquer le mouvement
@@ -182,7 +186,11 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
           const clientDistance = Math.sqrt(
             Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
           );
-          if (clientDistance > 10) {
+          // FIX(tp): raise wall-collision correction threshold 10 → 30px.
+          // Sub-30px diffs are almost always sliding/rounding noise that the
+          // client has already resolved locally — forcing a POSITION_CORRECTION
+          // triggers visible jitter on every wall brush.
+          if (clientDistance > 30) {
             MetricsCollector.getInstance().recordMovementCorrection();
             socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
           }
