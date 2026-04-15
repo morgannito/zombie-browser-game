@@ -4,7 +4,7 @@
  * window (e.g. after a short aim). Third slice of the socketHandlers split.
  */
 
-const { SOCKET_EVENTS } = require('../../../shared/socketEvents');
+const { SOCKET_EVENTS } = require("../events");
 const { safeHandler } = require('../../../sockets/socketUtils');
 const logger = require('../../../lib/infrastructure/Logger');
 

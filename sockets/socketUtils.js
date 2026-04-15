@@ -4,7 +4,7 @@
  */
 
 const logger = require('../lib/infrastructure/Logger');
-const { SOCKET_EVENTS } = require('../shared/socketEvents');
+const { SOCKET_EVENTS } = require("../transport/websocket/events");
 
 /** Maximum serialized payload size (bytes) accepted from a client socket event. */
 const MAX_SOCKET_PAYLOAD_BYTES = 4096;
