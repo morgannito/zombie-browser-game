@@ -18,7 +18,8 @@ jest.mock('../../../../game/lootFunctions', () => ({
   createParticles: jest.fn()
 }));
 
-const { createParticles } = require('../../../../game/lootFunctions');
+// createParticles is mocked globally above, no direct reference needed in tests
+require('../../../../game/lootFunctions');
 
 const {
   updateBossInfernal,
