@@ -6,7 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
-const logger = require("../../lib/infrastructure/Logger");
+const logger = require("../../infrastructure/logging/Logger");
 const { Joi, validateRequest } = require("../../middleware/validation");
 const { requireSameUserInParam } = require("../../middleware/authz");
 

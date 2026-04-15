@@ -5,7 +5,7 @@
  */
 
 const DatabaseManager = require('../lib/database/DatabaseManager');
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 
 const dbManager = DatabaseManager.getInstance();
 

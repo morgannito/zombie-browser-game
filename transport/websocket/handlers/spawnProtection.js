@@ -6,7 +6,7 @@
 
 const { SOCKET_EVENTS } = require("../events");
 const { safeHandler } = require('../../../sockets/socketUtils');
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require("../../../infrastructure/logging/Logger");
 
 /**
  * Register the spawn-protection handler on a socket.

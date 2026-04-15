@@ -10,7 +10,7 @@ const { safeHandler } = require('../../../sockets/socketUtils');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { validateUpgradeData } = require('../../../game/validationFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require("../../../infrastructure/logging/Logger");
 
 const { LEVEL_UP_UPGRADES } = ConfigManager;
 

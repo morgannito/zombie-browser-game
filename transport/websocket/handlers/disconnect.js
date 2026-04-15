@@ -14,7 +14,7 @@ const {
   disconnectedPlayers,
   createRecoverablePlayerState
 } = require("../../../contexts/session/sessionRecovery");
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require("../../../infrastructure/logging/Logger");
 const MetricsCollector = require('../../../lib/infrastructure/MetricsCollector');
 const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
 

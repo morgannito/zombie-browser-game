@@ -4,7 +4,7 @@
  *   aliases). Keeps server.js free of per-route require() noise.
  */
 
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 const { requireMetricsToken } = require('../middleware/security');
 
 const initAuthRoutes = require("../transport/http/auth");

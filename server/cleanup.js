@@ -6,7 +6,7 @@
  *   listeners that only escalate to shutdown on true OS-level failures.
  */
 
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 
 const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
 const FORCED_EXIT_MS = 10000;

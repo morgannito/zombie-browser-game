@@ -137,7 +137,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `public/modules/input/` : InputManager + PlayerController + MobileControlsManager
 
 ### Phase 5 — Infrastructure
-- [ ] `infrastructure/logging/` : wrappers Logger
+- [x] `infrastructure/logging/` : Logger moved to infrastructure/logging/. Hot paths (server/, contexts/, transport/) migrated; legacy `lib/infrastructure/Logger` kept as back-compat shim for the remaining ~22 call sites (game/, sockets/, middleware/, tests).
 - [ ] `infrastructure/metrics/` : MetricsCollector + Prometheus exporter
 - [ ] `infrastructure/database/` : fusion `database/` + `lib/database/` + `lib/infrastructure/DatabaseManager.js`
 
