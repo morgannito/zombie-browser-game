@@ -161,7 +161,8 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] zombie context 15% → 23% (ZombieEffects 95% — 19 tests unitaires sur frozen/slowed/poison/splitter). Threshold ratchet 15→20%.
 - [x] zombie context 20% → 34.63% (SpecialZombieUpdater 92% — 22 tests teleporter/summoner/berserker/necromancer/brute/mimic). Threshold ratchet 20→30%.
 - [x] zombie context 30% → 44.85% (ZombieUpdater 86% — 40 tests perf helpers + ability handlers + collision/damage helpers). Threshold ratchet 30→40%.
-- [ ] zombie context 40% → 50% (tests BossUpdaterSimple + ZombieManager)
+- [x] zombie context 40% → 51.02% (BossUpdaterSimple 43% — 16 tests Charnier/Infect/Colosse/Roi phase-transitions). Threshold ratchet 40→50%.
+- [ ] zombie context 50% → 70% (tests BossAbilities + ZombieManager + BossUpdaterSimple remaining branches)
 - [ ] zombie context 30% → 50%
 - [ ] weapons context 4% → 30%
 - [ ] player context 5% → 30%
