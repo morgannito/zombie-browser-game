@@ -111,7 +111,7 @@ function killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zomb
 
   // BUG FIX: Si c'était un boss, déclencher la nouvelle wave
   if (zombie.isBoss && io && zombieManager) {
-    const { handleNewWave } = require("../../../game/modules/wave/WaveManager");
+    const { handleNewWave } = require("../../wave/modules/WaveManager");
     handleNewWave(gameState, io, zombieManager);
   }
 }

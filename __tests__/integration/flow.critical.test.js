@@ -184,7 +184,7 @@ describe('critical flow — death → respawn', () => {
 describe('critical flow — level up wave', () => {
   test('test_handleNewWave_waveCounter_increments', () => {
     // Arrange
-    const { handleNewWave } = require('../../game/modules/wave/WaveManager');
+    const { handleNewWave } = require("../../contexts/wave/modules/WaveManager");
     const gameState = {
       wave: 3,
       bossSpawned: true,

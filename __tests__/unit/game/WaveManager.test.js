@@ -6,7 +6,7 @@
 
 'use strict';
 
-const { handleNewWave } = require('../../../game/modules/wave/WaveManager');
+const { handleNewWave } = require("../../../contexts/wave/modules/WaveManager");
 
 function makeGameState(overrides = {}) {
   return {

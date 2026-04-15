@@ -13,7 +13,7 @@ process.env.DB_PATH = ':memory:';
 process.env.REQUIRE_DATABASE = 'false';
 
 const { createTestServer, connectAndInit, waitForEvent } = require('./testServerFactory');
-const { handleNewWave } = require('../../game/modules/wave/WaveManager');
+const { handleNewWave } = require("../../contexts/wave/modules/WaveManager");
 
 let ctx;
 

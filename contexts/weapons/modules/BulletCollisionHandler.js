@@ -12,7 +12,7 @@ const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 // OPTIMIZATION: Pre-load all dependencies at module level instead of inside loops
 const { handleSplitterDeath } = require('../../zombie/modules/ZombieEffects');
-const { handleNewWave } = require("../../../game/modules/wave/WaveManager");
+const { handleNewWave } = require("../../wave/modules/WaveManager");
 const { updatePlayerCombo } = require("../../player/modules/PlayerProgression");
 
 // OPTIMIZATION: Pre-load BulletEffects at module level
