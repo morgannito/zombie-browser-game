@@ -21,12 +21,12 @@ const { updateBullets } = require('../contexts/weapons/modules/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');
 const HazardManager = require('./modules/hazards/HazardManager');
-const { updatePlayers } = require('./modules/player/PlayerUpdater');
+const { updatePlayers } = require('../contexts/player/modules/PlayerUpdater');
 const {
   handlePlayerDeathProgression,
   processFailedDeathQueue,
   cleanupOrphanedTrackingData
-} = require('./modules/player/DeathProgressionHandler');
+} = require('../contexts/player/modules/DeathProgressionHandler');
 
 // HIGH FIX: Race condition protection with stuck detection
 let gameLoopRunning = false;

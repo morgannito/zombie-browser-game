@@ -3,7 +3,7 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { createParticles, createLoot } = require('../../lootFunctions');
+const { createParticles, createLoot } = require("../../../game/lootFunctions");
 
 /**
  * Update tesla coil for a player: check cooldown and fire if ready.
@@ -185,7 +185,7 @@ function _handleTeslaKill(zombie, player, gameState, entityManager, now, io, zom
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss && io && zombieManager) {
-    const { handleNewWave } = require('../wave/WaveManager');
+    const { handleNewWave } = require("../../../game/modules/wave/WaveManager");
     handleNewWave(gameState, io, zombieManager);
   }
 }
