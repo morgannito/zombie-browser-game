@@ -19,14 +19,16 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
 COPY server.js ./
 COPY config/ ./config/
+COPY contexts/ ./contexts/
 COPY database/ ./database/
 COPY game/ ./game/
+COPY infrastructure/ ./infrastructure/
 COPY lib/ ./lib/
 COPY middleware/ ./middleware/
 COPY public/ ./public/
-COPY routes/ ./routes/
-COPY shared/ ./shared/
+COPY server/ ./server/
 COPY sockets/ ./sockets/
+COPY transport/ ./transport/
 
 # Créer les répertoires runtime et donner les droits à node
 RUN mkdir -p /app/data /app/logs && \
