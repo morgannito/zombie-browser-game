@@ -257,6 +257,13 @@ class GameStateManager {
   _getOrInitState(map, id, entity, now) {
     let state = map.get(id);
     if (!state) {
+      // Pre-seed the snapshot buffer with a fake old snapshot so that the first
+      // real _applyServerUpdate can interpolate immediately. Without this,
+      // renderTime (= now - 100ms) is always before the first snapshot,
+      // forcing Case 2 fallback for ~100ms — visible as "zombies freeze when
+      // entering view". This is critical during camera movement where AOI
+      // churn constantly introduces new entities.
+      const seedT = now - 100;
       state = {
         serverX: entity.x,
         serverY: entity.y,
@@ -267,8 +274,7 @@ class GameStateManager {
         velocityX: 0,
         velocityY: 0,
         lastUpdateTime: now,
-        // Temporal interpolation buffer: ringbuffer of {x, y, t} snapshots
-        snapshots: []
+        snapshots: [{ x: entity.x, y: entity.y, t: seedT }]
       };
       map.set(id, state);
     }
