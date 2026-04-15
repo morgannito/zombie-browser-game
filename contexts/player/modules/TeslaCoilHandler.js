@@ -190,4 +190,4 @@ function _handleTeslaKill(zombie, player, gameState, entityManager, now, io, zom
   }
 }
 
-module.exports = { updateTeslaCoil };
+module.exports = { updateTeslaCoil, _applyTeslaDamage };
