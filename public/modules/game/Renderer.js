@@ -70,6 +70,11 @@ class Renderer {
     this.uiRenderer.addKillFeedItem(killer, victim, type);
   }
 
+  // Proxy: pickup label popup (public API)
+  addPickupLabel(x, y, text, color) {
+    this.uiRenderer.addPickupLabel(x, y, text, color);
+  }
+
   // Proxy: access damageNumbers array
   get damageNumbers() {
     return this.uiRenderer.damageNumbers;
@@ -246,12 +251,14 @@ class Renderer {
     // Check zombie damage for damage numbers and hit markers
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
 
-    // Update and render damage numbers + hit markers
+    // Update and render damage numbers + hit markers + pickup labels
     const deltaTime = 16;
     this.uiRenderer.updateDamageNumbers(deltaTime);
     this.uiRenderer.updateHitMarkers();
+    this.uiRenderer.updatePickupLabels();
     this.uiRenderer.renderHitMarkers(this.ctx, this.camera);
     this.uiRenderer.renderDamageNumbers(this.ctx, this.camera);
+    this.uiRenderer.renderPickupLabels(this.ctx, this.camera);
 
     this.ctx.restore();
 

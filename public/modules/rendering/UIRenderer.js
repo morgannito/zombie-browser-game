@@ -19,6 +19,12 @@ class UIRenderer {
     this.HIT_MARKER_SIZE = 10;      // half-arm length in px
     this.HIT_MARKER_GAP = 3;        // gap from center in px
 
+    // Pickup label popups system
+    this.pickupLabels = [];
+    this.PICKUP_LABEL_LIFETIME = 900; // ms
+    this.PICKUP_LABEL_FLOAT_SPEED = 1.0; // px/frame upward
+    this.PICKUP_LABEL_FONT_SIZE = 16; // px
+
     // Kill feed system
     this.lastZombieCount = 0;
     this.killFeedItems = [];
@@ -300,6 +306,69 @@ class UIRenderer {
     ctx.moveTo(x + d, y + d);
     ctx.lineTo(x + d + arm, y + d + arm);
     ctx.stroke();
+  }
+
+  /**
+   * Add a floating pickup label at a world position.
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {string} text - Label text, e.g. "+50 gold"
+   * @param {string} color - CSS color string
+   */
+  addPickupLabel(x, y, text, color) {
+    this.pickupLabels.push({
+      x,
+      y,
+      text,
+      color: color || '#ffd700',
+      opacity: 1,
+      createdAt: Date.now()
+    });
+    if (this.pickupLabels.length > 30) {
+      this.pickupLabels.shift();
+    }
+  }
+
+  /** Advance pickup labels (float upward + fade). Call once per frame. */
+  updatePickupLabels() {
+    const now = Date.now();
+    for (let i = this.pickupLabels.length - 1; i >= 0; i--) {
+      const lbl = this.pickupLabels[i];
+      const t = (now - lbl.createdAt) / this.PICKUP_LABEL_LIFETIME;
+      if (t >= 1) {
+        this.pickupLabels.splice(i, 1);
+        continue;
+      }
+      lbl.y -= this.PICKUP_LABEL_FLOAT_SPEED;
+      lbl.opacity = t < 0.5 ? 1 : 1 - (t - 0.5) / 0.5;
+    }
+  }
+
+  /**
+   * Render floating pickup labels in world space.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} camera
+   */
+  renderPickupLabels(ctx, camera) {
+    if (!camera || this.pickupLabels.length === 0) {
+      return;
+    }
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${this.PICKUP_LABEL_FONT_SIZE}px Arial`;
+    for (const lbl of this.pickupLabels) {
+      if (!camera.isInViewport(lbl.x, lbl.y, 60)) {
+        continue;
+      }
+      ctx.globalAlpha = lbl.opacity;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(lbl.text, lbl.x, lbl.y);
+      ctx.fillStyle = lbl.color;
+      ctx.fillText(lbl.text, lbl.x, lbl.y);
+    }
+    ctx.restore();
   }
 
   /**

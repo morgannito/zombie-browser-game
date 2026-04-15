@@ -272,6 +272,17 @@
               window.onXPGain(loot.x, loot.y, loot.amount);
               dispatchGameEvent('xp_gained', { amount: loot.amount || 0, x: loot.x, y: loot.y });
             }
+            spawnPickupLabel(loot.x, loot.y, loot.type, loot.amount);
+          }
+        });
+      }
+
+      // Détecter la collecte de powerups
+      if (oldState.powerups && newState.powerups) {
+        Object.keys(oldState.powerups).forEach(pid => {
+          if (!newState.powerups[pid]) {
+            const pw = oldState.powerups[pid];
+            spawnPickupLabel(pw.x, pw.y, pw.type, null);
           }
         });
       }
@@ -344,6 +355,33 @@
 
     function getXPForLevel(level) {
       return Math.floor(100 * Math.pow(1.5, level - 1));
+    }
+
+    /**
+     * Spawn a floating pickup label via window.renderer.
+     * @param {number} x - World X
+     * @param {number} y - World Y
+     * @param {string} type - Item type key
+     * @param {number|null} amount - Numeric amount or null
+     */
+    function spawnPickupLabel(x, y, type, amount) {
+      const renderer = window.renderer;
+      if (!renderer || typeof renderer.addPickupLabel !== 'function') {
+        return;
+      }
+      const LABEL_COLORS = {
+        gold: '#ffd700',
+        xp: '#00e5ff',
+        ammo: '#ff9800',
+        health: '#66ff66',
+        speed: '#ffffff',
+        shotgun: '#00e5ff',
+        machinegun: '#00e5ff',
+        rocketlauncher: '#00e5ff'
+      };
+      const color = LABEL_COLORS[type] || '#ffd700';
+      const text = amount ? `+${amount} ${type}` : `+${type}`;
+      renderer.addPickupLabel(x, y - 20, text, color);
     }
 
     // ===============================================

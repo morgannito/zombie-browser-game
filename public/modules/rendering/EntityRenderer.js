@@ -262,20 +262,21 @@ this._zombieSpriteCache.delete(evictKey);
 
     now = now || Date.now();
 
-    // Hoisted: rotation is constant for all loot items in this frame
+    // Pulse constants: alpha oscillates between 0.75 and 1.0 every 2s
+    const PULSE_PERIOD = 2000;
+    const ALPHA_MIN = 0.75;
+    const ALPHA_MAX = 1.0;
+    const GLOW_EXTRA = 6; // px extra radius for halo
+
     const rotation = (now / 500) % (Math.PI * 2);
+    const pulseT = (Math.sin((now / PULSE_PERIOD) * Math.PI * 2) + 1) / 2;
+    const pulseAlpha = ALPHA_MIN + pulseT * (ALPHA_MAX - ALPHA_MIN);
     const lootSizeW = config.LOOT_SIZE;
     const lootSizeH = config.LOOT_SIZE * 0.6;
-
-    // Hoisted ctx writes constant across all loot items
-    ctx.fillStyle = '#ffd700';
-    ctx.strokeStyle = '#ff8c00';
-    ctx.lineWidth = 2;
 
     for (const lootId in loot) {
       const item = loot[lootId];
 
-      // Cull before ctx.save / translate / rotate
       if (!camera.isInViewport(item.x, item.y, 30)) {
         continue;
       }
@@ -284,6 +285,18 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.translate(item.x, item.y);
       ctx.rotate(rotation);
 
+      // Soft glow halo
+      ctx.globalAlpha = pulseAlpha * 0.35;
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, lootSizeW + GLOW_EXTRA, lootSizeH + GLOW_EXTRA, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Coin body with pulsing opacity
+      ctx.globalAlpha = pulseAlpha;
+      ctx.fillStyle = '#ffd700';
+      ctx.strokeStyle = '#ff8c00';
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(0, 0, lootSizeW, lootSizeH, 0, 0, Math.PI * 2);
       ctx.fill();
