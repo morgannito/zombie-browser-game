@@ -142,7 +142,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `infrastructure/database/` : moved lib/database/DatabaseManager → infrastructure/database/. Hot path migrated (server/database.js); legacy lib path back-compat shim. Root-level database/ (migrations, repositories, scripts, schema.sql, seed.sql) stays put — it's operational tooling, not application code.
 
 ### Phase 6 — Quality gates
-- [ ] Documenter les dépendances inter-contextes autorisées (ADR)
+- [x] Documenter les dépendances inter-contextes autorisées (ADR) — `docs/adr/0001-context-dependencies.md`
 - [ ] ESLint `no-restricted-imports` entre contextes
 - [ ] GitNexus : re-indexer et vérifier 0 cycle
 - [ ] Coverage ≥ 70 % par contexte
