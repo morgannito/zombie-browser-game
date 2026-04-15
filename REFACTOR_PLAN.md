@@ -122,7 +122,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Créer `contexts/player/` : déplacer `game/modules/player/*` + `lib/server/PlayerManager.js`
 - [x] Créer `contexts/wave/` : déplacer `game/modules/wave/*` + `lib/server/RoomManager.js`
 - [x] Créer `contexts/session/` : déplacer `sockets/sessionRecovery.js` + `sockets/playerStateFactory.js`
-- [ ] Créer `contexts/leaderboard/` : déplacer submitScoreUseCase + `public/leaderboardSystem.js` (client)
+- [x] Créer `contexts/leaderboard/` : déplacer SubmitScoreUseCase + GetLeaderboardUseCase (server). `public/leaderboardSystem.js` (client) reporté en Phase 4 (client mirror).
 
 ### Phase 3 — Transport
 - [ ] `transport/http/` : routes Express regroupées

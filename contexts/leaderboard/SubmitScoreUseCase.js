@@ -3,9 +3,9 @@
  * Submits a score to the leaderboard
  */
 
-const LeaderboardEntry = require('../../domain/entities/LeaderboardEntry');
-const logger = require('../../infrastructure/Logger');
-const { ValidationError, NotFoundError } = require('../../domain/errors/DomainErrors');
+const LeaderboardEntry = require("../../lib/domain/entities/LeaderboardEntry");
+const logger = require("../../lib/infrastructure/Logger");
+const { ValidationError, NotFoundError } = require("../../lib/domain/errors/DomainErrors");
 
 /**
  * Use case de soumission d'un score au classement.

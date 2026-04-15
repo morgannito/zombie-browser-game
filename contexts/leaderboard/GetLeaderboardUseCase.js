@@ -3,7 +3,7 @@
  * Retrieves leaderboard entries
  */
 
-const logger = require('../../infrastructure/Logger');
+const logger = require("../../lib/infrastructure/Logger");
 
 class GetLeaderboardUseCase {
   constructor(leaderboardRepository) {
