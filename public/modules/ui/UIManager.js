@@ -44,8 +44,12 @@ class UIManager {
       finalGold: document.getElementById('final-gold'),
       finalKills: document.getElementById('final-kills'),
       playersCount: document.getElementById('players-count'),
-      zombiesCount: document.getElementById('zombies-count')
+      zombiesCount: document.getElementById('zombies-count'),
+      healthGhost: document.getElementById('health-ghost')
     };
+
+    this._ghostPercent = 100;
+    this._ghostTimer = null;
 
     this.setupEventListeners();
   }
@@ -118,11 +122,12 @@ class UIManager {
       this.gameOverDispatched = false;
     }
 
-    // Health bar
-    const healthPercent = (player.health / player.maxHealth) * 100;
+    // Health bar with damage-lag ghost bar
+    const healthPercent = Math.max(0, (player.health / player.maxHealth) * 100);
     const { els } = this;
     els.healthFill.style.width = healthPercent + '%';
     els.healthText.textContent = Math.max(0, Math.round(player.health));
+    this._updateHealthGhost(healthPercent);
 
     // Low health warning (< 30%)
     if (healthPercent < 30) {
@@ -230,48 +235,64 @@ class UIManager {
     }
   }
 
-  showBossAnnouncement(bossName) {
-    const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').textContent = 'BOSS !';
-    announcement.querySelector('p').textContent = bossName;
-    announcement.style.background = 'rgba(255, 0, 0, 0.9)';
-    announcement.style.display = 'block';
+  _updateHealthGhost(healthPercent) {
+    const { els } = this;
+    if (!els.healthGhost) {
+      return;
+    }
+    if (healthPercent < this._ghostPercent) {
+      if (this._ghostTimer) {
+        clearTimeout(this._ghostTimer);
+      }
+      this._ghostTimer = setTimeout(() => {
+        this._ghostPercent = healthPercent;
+        els.healthGhost.style.width = healthPercent + '%';
+        this._ghostTimer = null;
+      }, 400);
+    } else {
+      this._ghostPercent = healthPercent;
+      els.healthGhost.style.width = healthPercent + '%';
+    }
+  }
 
+  _showAnnouncement(h1Text, pText, bg, duration) {
+    const el = document.getElementById('wave-announcement');
+    el.querySelector('h1').textContent = h1Text;
+    el.querySelector('p').textContent = pText;
+    el.style.background = bg;
+    el.style.display = 'none';
+    void el.offsetWidth;
+    el.style.display = 'block';
     setTimeout(() => {
-      announcement.style.display = 'none';
-      announcement.style.background = 'rgba(255, 170, 0, 0.9)';
-    }, CONSTANTS.ANIMATIONS.BOSS_ANNOUNCEMENT);
+      el.style.display = 'none';
+    }, duration);
+  }
+
+  showBossAnnouncement(bossName) {
+    this._showAnnouncement(
+      'BOSS !',
+      bossName,
+      'rgba(255, 0, 0, 0.9)',
+      CONSTANTS.ANIMATIONS.BOSS_ANNOUNCEMENT
+    );
   }
 
   showNewWaveAnnouncement(wave, zombiesCount) {
-    const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').textContent = `VAGUE ${wave}`;
-    announcement.querySelector('p').textContent = `${zombiesCount} zombies à éliminer !`;
-    announcement.style.background = 'rgba(0, 255, 100, 0.9)';
-    announcement.style.display = 'block';
-
-    setTimeout(() => {
-      announcement.style.display = 'none';
-      announcement.style.background = 'rgba(255, 170, 0, 0.9)';
-    }, 3000);
+    this._showAnnouncement(
+      `VAGUE ${wave}`,
+      `${zombiesCount} zombies à éliminer !`,
+      'rgba(0, 255, 100, 0.9)',
+      3000
+    );
   }
 
   showMilestoneBonus(bonus, _level) {
-    const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').textContent = `${bonus.icon} ${bonus.title}`;
-    announcement.querySelector('p').textContent = bonus.description;
-    announcement.style.background =
-      'linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 140, 0, 0.95) 100%)';
-    announcement.style.border = '4px solid #FFD700';
-    announcement.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.8)';
-    announcement.style.display = 'block';
-
-    setTimeout(() => {
-      announcement.style.display = 'none';
-      announcement.style.background = 'rgba(255, 170, 0, 0.9)';
-      announcement.style.border = 'none';
-      announcement.style.boxShadow = 'none';
-    }, CONSTANTS.ANIMATIONS.MILESTONE_DELAY);
+    this._showAnnouncement(
+      `${bonus.icon} ${bonus.title}`,
+      bonus.description,
+      'linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 140, 0, 0.95) 100%)',
+      CONSTANTS.ANIMATIONS.MILESTONE_DELAY
+    );
   }
 
   showLevelUpScreen(newLevel, upgradeChoices) {
@@ -319,14 +340,12 @@ class UIManager {
   }
 
   showRoomAnnouncement(roomNum, totalRooms) {
-    const announcement = document.getElementById('wave-announcement');
-    announcement.querySelector('h1').textContent = `Salle ${roomNum}/${totalRooms}`;
-    announcement.querySelector('p').textContent = 'En avant!';
-    announcement.style.display = 'block';
-
-    setTimeout(() => {
-      announcement.style.display = 'none';
-    }, 2000);
+    this._showAnnouncement(
+      `Salle ${roomNum}/${totalRooms}`,
+      'En avant!',
+      'rgba(255, 170, 0, 0.9)',
+      2000
+    );
   }
 
   showRunCompleted(gold, level) {
@@ -653,8 +672,8 @@ class UIManager {
 
   _formatKillerLabel(killerType) {
     if (!killerType) {
-return null;
-}
+      return null;
+    }
     const labels = {
       zombie: 'Zombie',
       fast: 'Zombie Rapide',
@@ -683,8 +702,8 @@ return null;
     const el = document.getElementById('final-killed-by');
     const row = document.getElementById('killed-by-row');
     if (!el || !row) {
-return;
-}
+      return;
+    }
     const label = this._formatKillerLabel(killerType);
     if (label) {
       el.textContent = label;
