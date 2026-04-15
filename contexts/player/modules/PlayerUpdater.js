@@ -3,6 +3,8 @@
  */
 
 const { GAMEPLAY_CONSTANTS } = require('../../../lib/server/ConfigManager');
+const { updateAutoTurrets } = require('./AutoTurretHandler');
+const { updateTeslaCoil } = require('./TeslaCoilHandler');
 
 /**
  * Update all alive players each game loop tick
@@ -16,8 +18,6 @@ function updatePlayers(
   deltaMultiplier = 1,
   zombieManager = null
 ) {
-  const { updateAutoTurrets } = require('./AutoTurretHandler');
-  const { updateTeslaCoil } = require('./TeslaCoilHandler');
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];

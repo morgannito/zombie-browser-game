@@ -16,6 +16,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
 const { distance } = require('../../../game/utilityFunctions');
+const { handlePlayerDeathProgression } = require('../../../game/gameLoop');
 const { createParticles } = require('../../../game/lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -512,7 +513,6 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
     }
 
     if (player.health <= 0) {
-      const handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
       handlePlayerDeathProgression(player, player.id, gameState, now, false);
     }
   }
