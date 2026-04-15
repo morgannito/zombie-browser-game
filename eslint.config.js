@@ -31,7 +31,8 @@ module.exports = [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         setTimeout: 'readonly',
-        clearTimeout: 'readonly'
+        clearTimeout: 'readonly',
+        performance: 'readonly'
       }
     },
     rules: {
@@ -199,42 +200,73 @@ module.exports = [
   {
     files: ['contexts/**/*.js'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['**/server/**'], message: 'Contexts must not import from server/ — depend down only.' },
-          { group: ['**/transport/**'], message: 'Contexts must not import from transport/ — depend down only.' },
-          { group: ['**/routes/**'], message: 'Contexts must not import from routes/ (legacy path) — depend down only.' },
-          { group: ['**/sockets/**'], message: 'Contexts must not import from sockets/ (legacy path) — depend down only.' }
-        ]
-      }]
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/server/**'],
+              message: 'Contexts must not import from server/ — depend down only.'
+            },
+            {
+              group: ['**/transport/**'],
+              message: 'Contexts must not import from transport/ — depend down only.'
+            },
+            {
+              group: ['**/routes/**'],
+              message: 'Contexts must not import from routes/ (legacy path) — depend down only.'
+            },
+            {
+              group: ['**/sockets/**'],
+              message: 'Contexts must not import from sockets/ (legacy path) — depend down only.'
+            }
+          ]
+        }
+      ]
     }
   },
   // Leaf contexts (wave/session/leaderboard) may not import other contexts.
   {
     files: ['contexts/wave/**/*.js', 'contexts/session/**/*.js', 'contexts/leaderboard/**/*.js'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['**/contexts/zombie/**', '**/contexts/weapons/**', '**/contexts/player/**'],
-            message: 'Leaf contexts (wave, session, leaderboard) must not depend on other contexts.' },
-          { group: ['**/server/**'], message: 'Contexts must not import from server/.' },
-          { group: ['**/transport/**'], message: 'Contexts must not import from transport/.' }
-        ]
-      }]
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/contexts/zombie/**', '**/contexts/weapons/**', '**/contexts/player/**'],
+              message:
+                'Leaf contexts (wave, session, leaderboard) must not depend on other contexts.'
+            },
+            { group: ['**/server/**'], message: 'Contexts must not import from server/.' },
+            { group: ['**/transport/**'], message: 'Contexts must not import from transport/.' }
+          ]
+        }
+      ]
     }
   },
   // zombie may only cross sideways into wave (boss wave handoff).
   {
     files: ['contexts/zombie/**/*.js'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['**/contexts/weapons/**', '**/contexts/player/**', '**/contexts/session/**', '**/contexts/leaderboard/**'],
-            message: 'zombie context only depends sideways on wave (see ADR 0001).' },
-          { group: ['**/server/**'], message: 'Contexts must not import from server/.' },
-          { group: ['**/transport/**'], message: 'Contexts must not import from transport/.' }
-        ]
-      }]
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/contexts/weapons/**',
+                '**/contexts/player/**',
+                '**/contexts/session/**',
+                '**/contexts/leaderboard/**'
+              ],
+              message: 'zombie context only depends sideways on wave (see ADR 0001).'
+            },
+            { group: ['**/server/**'], message: 'Contexts must not import from server/.' },
+            { group: ['**/transport/**'], message: 'Contexts must not import from transport/.' }
+          ]
+        }
+      ]
     }
   }
 ];
