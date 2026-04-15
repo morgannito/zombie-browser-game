@@ -635,9 +635,11 @@ class NetworkManager {
       const correctionDistance = Math.sqrt(dx * dx + dy * dy);
 
       // Smart interpolation based on correction size
-      // Small corrections (< 30px) = likely collision correction → smooth interpolation
-      // Large corrections (>= 30px) = likely anti-cheat/teleport → immediate correction
-      if (correctionDistance < 30) {
+      // FIX(tp): raised smooth threshold 30 → 100px. Anti-cheat leaky-bucket
+      // rejections under lag spikes typically correct by 40-80px — applying
+      // a hard snap in that range was the main source of perceived player TP.
+      // True desyncs (>100px) still hard-correct.
+      if (correctionDistance < 100) {
         // Smooth interpolation for small corrections
         const interpolationFactor = 0.5;
         player.x += dx * interpolationFactor;
