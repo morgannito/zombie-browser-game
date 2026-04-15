@@ -158,7 +158,8 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Coverage ratchet
 - [x] zombie context 5% → 18% (wallCollision 74%, separation 91%, randomWalk 74% — 22 nouveaux tests unitaires). Threshold ratchet 5→15%.
-- [ ] zombie context 15% → 30% (tests separation + movement après extraction)
+- [x] zombie context 15% → 23% (ZombieEffects 95% — 19 tests unitaires sur frozen/slowed/poison/splitter). Threshold ratchet 15→20%.
+- [ ] zombie context 20% → 30% (tests SpecialZombieUpdater + ZombieUpdater handlers)
 - [ ] zombie context 30% → 50%
 - [ ] weapons context 4% → 30%
 - [ ] player context 5% → 30%
