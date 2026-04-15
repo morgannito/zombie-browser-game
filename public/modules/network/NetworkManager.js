@@ -404,10 +404,8 @@ class NetworkManager {
       // Large difference (> 500px) = trust server (anti-cheat or major desync)
       // Increased threshold to allow more client prediction freedom
       if (distance > 500) {
-        console.log(
-          '[Socket.IO] Large position difference in full state, accepting server position:',
-          distance.toFixed(1),
-          'px'
+        console.warn(
+          '[ROLLBACK-FULL] distance=' + distance.toFixed(0) + 'px — accepting server pos'
         );
         // Server position is already applied, no change needed
       } else {
@@ -544,42 +542,26 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Input reconciliation: if server acknowledges a sequence number, replay
-      // all buffered inputs with seq > lastAckSequence on top of serverPos.
-      // TODO(server): server must include `lastAckSequence` in gameStateDelta
-      // for the player entry so the client can drop acknowledged inputs.
-      if (
-        delta.lastAckSequence !== undefined &&
-        window.inputManager &&
-        window.inputManager.inputBuffer
-      ) {
-        const lastAck = delta.lastAckSequence;
-        const pending = window.inputManager.inputBuffer.filter(inp => inp.seq > lastAck);
-        if (pending.length > 0) {
-          let rx = serverPlayer.x;
-          let ry = serverPlayer.y;
-          pending.forEach(inp => {
-            rx += inp.dx || 0;
-            ry += inp.dy || 0;
-          });
-          window.gameState.state.players[window.gameState.playerId].x = rx;
-          window.gameState.state.players[window.gameState.playerId].y = ry;
-          // Prune acknowledged inputs from buffer to keep it bounded
-          window.inputManager.inputBuffer = pending;
-        }
-      } else if (distance > 500) {
-        // No lastAckSequence yet (server not upgraded): fall back to threshold snap.
-        // Large difference (> 500px) = trust server (anti-cheat or major desync).
-        console.log(
-          '[Socket.IO] Large position difference detected, accepting server position:',
-          distance.toFixed(1),
-          'px'
+      // Large difference (> 500px) = trust server (anti-cheat or major desync).
+      if (distance > 500) {
+        console.warn(
+          '[ROLLBACK] distance=' +
+            distance.toFixed(0) +
+            'px local=(' +
+            localPlayerState.x.toFixed(0) +
+            ',' +
+            localPlayerState.y.toFixed(0) +
+            ') server=(' +
+            serverPlayer.x.toFixed(0) +
+            ',' +
+            serverPlayer.y.toFixed(0) +
+            ')'
         );
         window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
       }
-      // Small/medium differences without ack (< 500px) = trust client prediction.
+      // Small/medium differences (< 500px) = trust client prediction.
     }
 
     // Clear reconnection flag after first delta update
@@ -636,7 +618,15 @@ class NetworkManager {
 
   handlePositionCorrection(data) {
     // Server detected invalid movement and is correcting position
-    console.log('[Socket.IO] Position corrected by server:', data);
+    const local = window.gameState?.state?.players?.[window.gameState.playerId];
+    console.warn(
+      '[ROLLBACK-CORR] server=(' +
+        data.x.toFixed(0) +
+        ',' +
+        data.y.toFixed(0) +
+        ')' +
+        (local ? ' local=(' + local.x.toFixed(0) + ',' + local.y.toFixed(0) + ')' : '')
+    );
 
     // Apply correction to player position (this overrides client prediction)
     if (
