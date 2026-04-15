@@ -48,7 +48,7 @@ const {
 } = require('./BossUpdater');
 
 // Wall-collision resolver moved to ./updater/wallCollision.js for SRP + lint compliance.
-const { clampToRoomBounds, resolveWallCollisions } = require('./updater/wallCollision');
+const { resolveWallCollisions } = require('./updater/wallCollision');
 
 // ---------------------------------------------------------------------------
 // PERF helpers
@@ -495,6 +495,11 @@ function processPoisonTrail(zombie, now, gameState, entityManager) {
  * @param {number}  [pathfindingRate=10] - ticks between full path recalcs
  * @param {Object}  [players={}]       - gameState.players hash
  */
+// moveZombie dispatcher extracted to ./updater/movement.js — see that file
+// for the staggered-pathfinding + target-lock logic. Deps (getNearestPlayer,
+// resolveLockedTarget, moveTowardsPlayer, moveRandomly) stay here for now.
+const { moveZombie: _moveZombieDispatch } = require('./updater/movement');
+
 function moveZombie(
   zombie,
   zombieId,
@@ -505,66 +510,14 @@ function moveZombie(
   pathfindingRate = 10,
   players = {}
 ) {
-  const roomManager = gameState.roomManager;
-
-  // FIX: Calculate deltaTime for frame-rate independent movement
-  // Target is 60 FPS (16.67ms per frame)
-  const lastUpdate = zombie.lastMoveUpdate || now;
-  const deltaTime = Math.min((now - lastUpdate) / 16.67, 3); // Cap at 3x to prevent teleporting on lag spikes
-  zombie.lastMoveUpdate = now;
-
-  // PERF — STAGGERED PATHFINDING + TARGET LOCK
-  // Determine whether this is a tick where the zombie should re-evaluate its target.
-  const staggerOffset = (zombie.staggerOffset !== null && zombie.staggerOffset !== undefined) ? zombie.staggerOffset : 0;
-  const shouldResolveTarget = (tick + staggerOffset) % pathfindingRate === 0;
-
-  let closestPlayer = null;
-
-  if (shouldResolveTarget) {
-    // Full re-evaluation tick: use cached distance helper then update the lock.
-    const { player } = getNearestPlayer(zombie, players, tick);
-    if (player) {
-      zombie._lockedTargetId = player.id;
-      closestPlayer = player;
-    } else {
-      zombie._lockedTargetId = null;
-    }
-  } else {
-    // Non-evaluation tick: try the locked target first (O(1)).
-    closestPlayer = resolveLockedTarget(zombie, players);
-    if (!closestPlayer) {
-      // Lock expired (target died) — fall back to CollisionManager cache for this tick.
-      closestPlayer = collisionManager.findClosestPlayerCached(zombieId, zombie.x, zombie.y, Infinity, {
-        ignoreSpawnProtection: true,
-        ignoreInvisible: false
-      });
-      if (closestPlayer) {
-        zombie._lockedTargetId = closestPlayer.id;
-      }
-    }
-  }
-
-  // FIX: Apply zombie-zombie separation to prevent stacking
-  applyZombieSeparation(zombie, zombieId, collisionManager);
-
-  if (closestPlayer) {
-    moveTowardsPlayer(
-      zombie,
-      zombieId,
-      closestPlayer,
-      roomManager,
-      collisionManager,
-      gameState,
-      now,
-      deltaTime
-    );
-  } else {
-    moveRandomly(zombie, now, roomManager, deltaTime);
-  }
+  return _moveZombieDispatch(
+    zombie, zombieId, collisionManager, gameState, now, tick, pathfindingRate, players,
+    { getNearestPlayer, resolveLockedTarget, moveTowardsPlayer, moveRandomly }
+  );
 }
 
-// Separation logic extracted to ./updater/separation.js for SRP + lint compliance.
-const { applyZombieSeparation } = require('./updater/separation');
+// applyZombieSeparation lives in ./updater/separation.js; it's consumed via
+// the deps bag passed to movement.moveZombie, so no direct import here.
 
 /**
  * Move zombie towards closest player
