@@ -10,7 +10,7 @@ const { safeHandler } = require('../../../sockets/socketUtils');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { validateMovementData } = require('../../../game/validationFunctions');
 const logger = require("../../../infrastructure/logging/Logger");
-const MetricsCollector = require('../../../lib/infrastructure/MetricsCollector');
+const MetricsCollector = require("../../../infrastructure/metrics/MetricsCollector");
 const ConfigManager = require('../../../lib/server/ConfigManager');
 
 const { CONFIG } = ConfigManager;

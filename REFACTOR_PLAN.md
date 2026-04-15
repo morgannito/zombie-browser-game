@@ -138,7 +138,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 5 — Infrastructure
 - [x] `infrastructure/logging/` : Logger moved to infrastructure/logging/. Hot paths (server/, contexts/, transport/) migrated; legacy `lib/infrastructure/Logger` kept as back-compat shim for the remaining ~22 call sites (game/, sockets/, middleware/, tests).
-- [ ] `infrastructure/metrics/` : MetricsCollector + Prometheus exporter
+- [x] `infrastructure/metrics/` : MetricsCollector moved to infrastructure/metrics/. Prometheus exporter already part of MetricsCollector. Hot paths (server.js, transport/websocket/handlers) migrated; legacy import kept as back-compat shim.
 - [ ] `infrastructure/database/` : fusion `database/` + `lib/database/` + `lib/infrastructure/DatabaseManager.js`
 
 ### Phase 6 — Quality gates
