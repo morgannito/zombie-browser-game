@@ -121,4 +121,11 @@ return;
   return { timer, stop: () => clearInterval(timer) };
 }
 
-module.exports = { startHeartbeat };
+module.exports = {
+  startHeartbeat,
+  // Exported for unit tests
+  isOrphan,
+  ensureActivityTimestamp,
+  scanPlayers,
+  evictPlayers
+};
