@@ -216,7 +216,7 @@ function checkBulletCollisionAtPosition(
   }
 
   if (bullet.isZombieBullet) {
-    handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager);
+    handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager, collisionManager);
   } else {
     handlePlayerBulletCollisions(
       bullet,

@@ -121,6 +121,16 @@ class PlayerRepository extends IPlayerRepository {
         SELECT is_banned, ban_reason, ban_expires_at
         FROM players
         WHERE id = ?
+      `),
+
+      updateGoldSpent: this.db.prepare(`
+        UPDATE player_stats
+        SET total_gold_spent = total_gold_spent + ?
+        WHERE player_id = ?
+      `),
+
+      unbanPlayer: this.db.prepare(`
+        UPDATE players SET is_banned = 0, ban_expires_at = NULL WHERE id = ?
       `)
     };
   }
@@ -295,12 +305,7 @@ class PlayerRepository extends IPlayerRepository {
       }
 
       // Deduct gold
-      const updateGoldStmt = this.db.prepare(`
-        UPDATE player_stats
-        SET total_gold_spent = total_gold_spent + ?
-        WHERE player_id = ?
-      `);
-      updateGoldStmt.run(cost, playerId);
+      this.stmts.updateGoldSpent.run(cost, playerId);
 
       // Add/upgrade the upgrade
       this.stmts.insertOrUpdateUpgrade.run(playerId, upgradeType, 1, cost);
@@ -363,10 +368,7 @@ class PlayerRepository extends IPlayerRepository {
       const now = Math.floor(Date.now() / 1000);
       if (now > result.ban_expires_at) {
         // Unban
-        const unbanStmt = this.db.prepare(`
-          UPDATE players SET is_banned = 0, ban_expires_at = NULL WHERE id = ?
-        `);
-        unbanStmt.run(playerId);
+        this.stmts.unbanPlayer.run(playerId);
         return false;
       }
     }

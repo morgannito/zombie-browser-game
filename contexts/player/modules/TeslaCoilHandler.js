@@ -182,6 +182,7 @@ function _handleTeslaKill(zombie, player, gameState, entityManager, now, io, zom
 
   createLoot(zombie.x, zombie.y, zombie.goldDrop, zombie.xpDrop, gameState);
   delete gameState.zombies[zombie.id];
+  gameState.collisionManager?.invalidatePathfindingCache(zombie.id);
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss && io && zombieManager) {

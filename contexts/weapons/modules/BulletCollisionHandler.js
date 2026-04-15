@@ -7,6 +7,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
+const MathUtils = require('../../../lib/MathUtils');
 
 let _deadZombieCounter = 0;
 
@@ -32,31 +33,35 @@ function getHandlePlayerDeathProgression() {
 /**
  * Handle zombie bullet collisions with players
  */
-function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager) {
-  for (const playerId in gameState.players) {
-    const player = gameState.players[playerId];
+function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager, collisionManager) {
+  const bulletSize = bullet.size || CONFIG.BULLET_SIZE || 5;
+  const candidates = collisionManager.findPlayersInRadius(
+    bullet.x, bullet.y, CONFIG.PLAYER_SIZE + bulletSize
+  );
 
+  for (const player of candidates) {
     if (!player.alive || !player.hasNickname || player.spawnProtection || player.invisible) {
       continue;
     }
 
-    if (distance(bullet.x, bullet.y, player.x, player.y) < CONFIG.PLAYER_SIZE) {
-      if (Math.random() < (player.dodgeChance || 0)) {
-        entityManager.destroyBullet(bulletId);
-        break;
-      }
+    if (!MathUtils.circleCollision(bullet.x, bullet.y, bulletSize, player.x, player.y, CONFIG.PLAYER_SIZE)) {
+      continue;
+    }
 
-      player.health -= bullet.damage;
-
-      if (player.health <= 0) {
-        // OPTIMIZATION: Use cached reference instead of require() in loop
-        getHandlePlayerDeathProgression()(player, playerId, gameState, Date.now(), false);
-      }
-
-      createParticles(player.x, player.y, '#ff0000', 8, entityManager);
+    if (Math.random() < (player.dodgeChance || 0)) {
       entityManager.destroyBullet(bulletId);
       break;
     }
+
+    player.health -= bullet.damage;
+
+    if (player.health <= 0) {
+      getHandlePlayerDeathProgression()(player, player.id, gameState, Date.now(), false);
+    }
+
+    createParticles(player.x, player.y, '#ff0000', 8, entityManager);
+    entityManager.destroyBullet(bulletId);
+    break;
   }
 }
 
@@ -211,6 +216,7 @@ function handleZombieDeath(
     // OPTIMIZATION: handleSplitterDeath imported at module level
     handleSplitterDeath(zombie, zombieId, gameState, entityManager);
     delete gameState.zombies[zombieId];
+    gameState.collisionManager?.invalidatePathfindingCache(zombieId);
     gameState.zombiesKilledThisWave++;
     return;
   }
@@ -223,6 +229,7 @@ function handleZombieDeath(
   cleanupZombieDamageTracking(zombieId, gameState);
 
   delete gameState.zombies[zombieId];
+  gameState.collisionManager?.invalidatePathfindingCache(zombieId);
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss) {

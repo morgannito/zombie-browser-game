@@ -199,75 +199,46 @@ class AddictionIntegration {
 
   // Setup event listeners
   setupEventListeners() {
-    // Écouter le démarrage du jeu
-    document.addEventListener('game_started', () => {
-      this.onGameStart();
-    });
+    this._listeners = [];
 
-    // Écouter la fin du jeu
-    document.addEventListener('game_over', (e) => {
-      this.onGameOver(e.detail);
-    });
+    this._onGameStarted = () => { this.onGameStart(); };
+    this._onGameOver = (e) => { this.onGameOver(e.detail); };
+    this._onZombieKilled = (e) => { this.onZombieKilled(e.detail); };
+    this._onLevelUp = (e) => { this.onLevelUp(e.detail); };
+    this._onUpgradeObtained = (e) => { this.onUpgradeObtained(e.detail); };
+    this._onBossDefeated = (e) => { this.onBossDefeated(e.detail); };
+    this._onGoldCollected = (e) => { this.onGoldCollected(e.detail); };
+    this._onCriticalHit = () => { this.onCriticalHit(); };
+    this._onDodge = () => { this.onDodge(); };
+    this._onWaveChanged = (e) => { this.onWaveChanged(e.detail); };
+    this._onRoomChanged = (e) => { this.onRoomChanged(e.detail); };
+    this._onMissionRewardGold = (_e) => {
+      if (window.gameEngine) { /* Sera géré par le jeu principal */ }
+    };
+    this._onMissionRewardXp = (_e) => {
+      if (window.gameEngine) { /* Sera géré par le jeu principal */ }
+    };
 
-    // Écouter les kills de zombies
-    document.addEventListener('zombie_killed', (e) => {
-      this.onZombieKilled(e.detail);
-    });
+    const pairs = [
+      ['game_started', this._onGameStarted],
+      ['game_over', this._onGameOver],
+      ['zombie_killed', this._onZombieKilled],
+      ['level_up', this._onLevelUp],
+      ['upgrade_obtained', this._onUpgradeObtained],
+      ['boss_defeated', this._onBossDefeated],
+      ['gold_collected', this._onGoldCollected],
+      ['critical_hit', this._onCriticalHit],
+      ['dodge', this._onDodge],
+      ['wave_changed', this._onWaveChanged],
+      ['room_changed', this._onRoomChanged],
+      ['mission_reward_gold', this._onMissionRewardGold],
+      ['mission_reward_xp', this._onMissionRewardXp],
+    ];
 
-    // Écouter les level ups
-    document.addEventListener('level_up', (e) => {
-      this.onLevelUp(e.detail);
-    });
-
-    // Écouter les upgrades
-    document.addEventListener('upgrade_obtained', (e) => {
-      this.onUpgradeObtained(e.detail);
-    });
-
-    // Écouter les boss defeats
-    document.addEventListener('boss_defeated', (e) => {
-      this.onBossDefeated(e.detail);
-    });
-
-    // Écouter la collecte d'or
-    document.addEventListener('gold_collected', (e) => {
-      this.onGoldCollected(e.detail);
-    });
-
-    // Écouter les critiques
-    document.addEventListener('critical_hit', () => {
-      this.onCriticalHit();
-    });
-
-    // Écouter les esquives
-    document.addEventListener('dodge', () => {
-      this.onDodge();
-    });
-
-    // Écouter le changement de vague
-    document.addEventListener('wave_changed', (e) => {
-      this.onWaveChanged(e.detail);
-    });
-
-    // Écouter le changement de room
-    document.addEventListener('room_changed', (e) => {
-      this.onRoomChanged(e.detail);
-    });
-
-    // Custom events pour missions
-    document.addEventListener('mission_reward_gold', (_e) => {
-      // Ajouter or au joueur
-      if (window.gameEngine) {
-        // Sera géré par le jeu principal
-      }
-    });
-
-    document.addEventListener('mission_reward_xp', (_e) => {
-      // Ajouter XP au joueur
-      if (window.gameEngine) {
-        // Sera géré par le jeu principal
-      }
-    });
+    for (const [event, handler] of pairs) {
+      document.addEventListener(event, handler);
+      this._listeners.push({ event, handler });
+    }
   }
 
   // Événement: Démarrage du jeu
@@ -559,6 +530,12 @@ class AddictionIntegration {
   // MEMORY LEAK FIX: Cleanup method for destroying the system
   destroy() {
     this.stopPeriodicCheck();
+    if (this._listeners) {
+      for (const { event, handler } of this._listeners) {
+        document.removeEventListener(event, handler);
+      }
+      this._listeners = [];
+    }
     this.initialized = false;
     this.gameStarted = false;
     console.log('AddictionIntegration destroyed');

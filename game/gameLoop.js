@@ -173,12 +173,10 @@ function gameLoop(
 
     updateMetrics(gameState, metricsCollector);
 
-    // CRITICAL FIX: Update order optimized for correct collision detection
-    // 1. First update all entity positions (zombies, bullets, players)
-    // 2. Then rebuild quadtree with new positions
-    // 3. Then do collision detection
+    // Rebuild quadtree BEFORE entity updates so collision queries read current-tick positions.
+    // (Previously rebuilt after updatePlayers/updateZombies — one tick behind.)
+    collisionManager.rebuildQuadtree();
 
-    // Update positions first
     updatePlayers(
       gameState,
       now,
@@ -197,9 +195,6 @@ function gameLoop(
       zombieManager,
       perfIntegration
     );
-
-    // CRITICAL FIX: Rebuild quadtree AFTER position updates for accurate collision detection
-    collisionManager.rebuildQuadtree();
 
     // Now do collision-based updates with accurate quadtree
     gameState.hazardManager.update(now);

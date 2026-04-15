@@ -122,6 +122,8 @@ class LifetimeStatsSystem {
 
   // Sauvegarder les stats
   saveStats() {
+    this.stats.upgradesObtained = this.stats.upgradesObtained.slice(-500);
+    this.stats.loginDates = this.stats.loginDates.slice(-365);
     storageManager.set('lifetime_stats', this.stats);
   }
 

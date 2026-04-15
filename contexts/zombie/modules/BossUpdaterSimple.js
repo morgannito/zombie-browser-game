@@ -308,6 +308,7 @@ function updateBossRoi(
   if (zombie.isClone && now >= zombie.despawnTime) {
     createParticles(zombie.x, zombie.y, '#ff69b4', 20, entityManager);
     delete gameState.zombies[zombieId];
+    gameState.collisionManager?.invalidatePathfindingCache(zombieId);
   }
 }
 
