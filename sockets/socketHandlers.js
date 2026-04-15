@@ -23,11 +23,6 @@ const {
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
 const {
-  savePlayerProgressionSnapshot,
-  resetPlayerRunState,
-  restorePlayerProgression
-} = require('../game/modules/player/RespawnHelpers');
-const {
   disconnectedPlayers,
   startSessionCleanupInterval,
   stopSessionCleanupInterval,
@@ -567,24 +562,8 @@ function registerShootHandler(socket, gameState, entityManager) {
 /**
  * Register respawn handler
  */
-function registerRespawnHandler(socket, gameState, entityManager) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.RESPAWN,
-    safeHandler('respawn', function () {
-      const player = gameState.players[socket.id];
-      if (player) {
-        player.lastActivityTime = Date.now();
-
-        const snapshot = savePlayerProgressionSnapshot(player);
-        const totalMaxHealth = CONFIG.PLAYER_MAX_HEALTH + (snapshot.upgrades.maxHealth || 0) * 20;
-
-        cleanupPlayerBullets(socket.id, gameState, entityManager);
-        resetPlayerRunState(player, CONFIG, totalMaxHealth);
-        restorePlayerProgression(player, snapshot);
-      }
-    })
-  );
-}
+// Respawn handler moved to transport/websocket/handlers/respawn.js
+const { registerRespawnHandler } = require('../transport/websocket/handlers/respawn');
 
 /**
  * Register selectUpgrade handler
@@ -755,25 +734,8 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
   );
 }
 
-/**
- * Register spawn protection handlers
- */
-function registerSpawnProtectionHandlers(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.END_SPAWN_PROTECTION,
-    safeHandler('endSpawnProtection', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.spawnProtection = false;
-      logger.info('Spawn protection ended', { player: player.nickname || socket.id });
-    })
-  );
-}
+// Spawn-protection handler moved to transport/websocket/handlers/spawnProtection.js
+const { registerSpawnProtectionHandlers } = require('../transport/websocket/handlers/spawnProtection');
 
 // Ping handler moved to transport/websocket/handlers/ping.js
 // Kept here as a re-export for backward compatibility during the refactor.
