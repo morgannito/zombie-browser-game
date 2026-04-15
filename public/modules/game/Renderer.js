@@ -65,6 +65,11 @@ class Renderer {
     this.uiRenderer.addDamageNumber(x, y, damage, type);
   }
 
+  // Proxy: pickup label popup (public API)
+  addPickupLabel(x, y, text, color) {
+    this.uiRenderer.addPickupLabel(x, y, text, color);
+  }
+
   // Proxy: kill feed (public API)
   addKillFeedItem(killer, victim, type) {
     this.uiRenderer.addKillFeedItem(killer, victim, type);
@@ -246,12 +251,14 @@ class Renderer {
     // Check zombie damage for damage numbers and hit markers
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
 
-    // Update and render damage numbers + hit markers
+    // Update and render damage numbers + hit markers + pickup labels
     const deltaTime = 16;
     this.uiRenderer.updateDamageNumbers(deltaTime);
     this.uiRenderer.updateHitMarkers();
+    this.uiRenderer.updatePickupLabels();
     this.uiRenderer.renderHitMarkers(this.ctx, this.camera);
     this.uiRenderer.renderDamageNumbers(this.ctx, this.camera);
+    this.uiRenderer.renderPickupLabels(this.ctx, this.camera);
 
     this.ctx.restore();
 
@@ -271,6 +278,19 @@ class Renderer {
     this.uiRenderer.updateWaveProgress(gameState);
 
     this.ctx.restore(); // Restore pixelRatio scaling
+
+    // Boss offscreen indicators — CSS-pixel screen space
+    const pixelRatioForIndicators = window.devicePixelRatio || 1;
+    this.ctx.save();
+    this.ctx.scale(pixelRatioForIndicators, pixelRatioForIndicators);
+    this.uiRenderer.renderBossOffscreenIndicators(
+      this.ctx,
+      this.camera,
+      gameState,
+      this.canvas.width / pixelRatioForIndicators,
+      this.canvas.height / pixelRatioForIndicators
+    );
+    this.ctx.restore();
 
     // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
     if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {

@@ -19,6 +19,12 @@ class UIRenderer {
     this.HIT_MARKER_SIZE = 10;      // half-arm length in px
     this.HIT_MARKER_GAP = 3;        // gap from center in px
 
+    // Pickup label popups system
+    this.pickupLabels = [];
+    this.PICKUP_LABEL_LIFETIME = 900; // ms
+    this.PICKUP_LABEL_FLOAT_SPEED = 1.0; // px/frame upward
+    this.PICKUP_LABEL_FONT_SIZE = 16; // px
+
     // Kill feed system
     this.lastZombieCount = 0;
     this.killFeedItems = [];
@@ -303,6 +309,69 @@ class UIRenderer {
   }
 
   /**
+   * Add a floating pickup label at a world position.
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {string} text - Label text, e.g. "+50 gold"
+   * @param {string} color - CSS color string
+   */
+  addPickupLabel(x, y, text, color) {
+    this.pickupLabels.push({
+      x,
+      y,
+      text,
+      color: color || '#ffd700',
+      opacity: 1,
+      createdAt: Date.now()
+    });
+    if (this.pickupLabels.length > 30) {
+      this.pickupLabels.shift();
+    }
+  }
+
+  /** Advance pickup labels (float upward + fade out). Call once per frame. */
+  updatePickupLabels() {
+    const now = Date.now();
+    for (let i = this.pickupLabels.length - 1; i >= 0; i--) {
+      const lbl = this.pickupLabels[i];
+      const t = (now - lbl.createdAt) / this.PICKUP_LABEL_LIFETIME;
+      if (t >= 1) {
+        this.pickupLabels.splice(i, 1);
+        continue;
+      }
+      lbl.y -= this.PICKUP_LABEL_FLOAT_SPEED;
+      lbl.opacity = t < 0.5 ? 1 : 1 - (t - 0.5) / 0.5;
+    }
+  }
+
+  /**
+   * Render floating pickup labels in world space.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} camera
+   */
+  renderPickupLabels(ctx, camera) {
+    if (!camera || this.pickupLabels.length === 0) {
+      return;
+    }
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${this.PICKUP_LABEL_FONT_SIZE}px Arial`;
+    for (const lbl of this.pickupLabels) {
+      if (!camera.isInViewport(lbl.x, lbl.y, 60)) {
+        continue;
+      }
+      ctx.globalAlpha = lbl.opacity;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(lbl.text, lbl.x, lbl.y);
+      ctx.fillStyle = lbl.color;
+      ctx.fillText(lbl.text, lbl.x, lbl.y);
+    }
+    ctx.restore();
+  }
+
+  /**
    * Update Boss Health Bar UI
    * @param {object} gameState - Game state object
    */
@@ -497,6 +566,85 @@ class UIRenderer {
         this.killFeedItems.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * Render offscreen boss indicators: red arrow on screen edge pointing to each boss.
+   * @param {CanvasRenderingContext2D} ctx - Main canvas context (screen-space, post-pixelRatio scale)
+   * @param {object} camera - CameraManager instance
+   * @param {object} gameState - Game state
+   * @param {number} canvasW - Logical canvas width (CSS pixels)
+   * @param {number} canvasH - Logical canvas height (CSS pixels)
+   */
+  renderBossOffscreenIndicators(ctx, camera, gameState, canvasW, canvasH) {
+    if (!camera) {
+      return;
+    }
+    const MARGIN = 28;
+    const ARROW = 12;
+    const bounds = camera.getViewportBounds(0);
+    ctx.save();
+    for (const zombie of Object.values(gameState.state.zombies)) {
+      if (!zombie.isBoss) {
+        continue;
+      }
+      if (camera.isInViewport(zombie.x, zombie.y, 0)) {
+        continue;
+      }
+      this._drawBossArrow(ctx, zombie, bounds, canvasW, canvasH, MARGIN, ARROW);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Draw a single boss offscreen arrow + distance label.
+   */
+  _drawBossArrow(ctx, boss, bounds, cW, cH, margin, arrowSize) {
+    const cx = (bounds.left + bounds.right) / 2;
+    const cy = (bounds.top + bounds.bottom) / 2;
+    const dx = boss.x - cx;
+    const dy = boss.y - cy;
+    const angle = Math.atan2(dy, dx);
+    const hw = cW / 2 - margin;
+    const hh = cH / 2 - margin;
+    const tan = Math.tan(angle);
+    let ex, ey;
+    if (Math.abs(dy) <= Math.abs(dx)) {
+      ex = dx > 0 ? hw : -hw;
+      ey = ex * tan;
+    } else {
+      ey = dy > 0 ? hh : -hh;
+      ex = ey / tan;
+    }
+    ex = Math.max(-hw, Math.min(hw, ex));
+    ey = Math.max(-hh, Math.min(hh, ey));
+    const sx = cW / 2 + ex;
+    const sy = cH / 2 + ey;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(angle);
+    ctx.strokeStyle = '#ff2222';
+    ctx.fillStyle = 'rgba(255,34,34,0.85)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(arrowSize, 0);
+    ctx.lineTo(-arrowSize, -arrowSize * 0.7);
+    ctx.lineTo(-arrowSize * 0.4, 0);
+    ctx.lineTo(-arrowSize, arrowSize * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    const dist = Math.round(Math.hypot(dx, dy) / 50);
+    ctx.rotate(-angle);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`${dist}m`, 0, arrowSize + 10);
+    ctx.restore();
   }
 
   updateWaveProgress(gameState) {
