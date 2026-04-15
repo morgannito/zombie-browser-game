@@ -3746,3 +3746,115 @@ body {
     height: 6px;
   }
 }
+
+/* ============================================
+   UX MOBILE — PORTRAIT ORIENTATION HINT
+   Shown only on touch devices in portrait mode.
+   Hidden automatically when landscape.
+   ============================================ */
+#portrait-hint {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+  pointer-events: none;
+}
+
+#portrait-hint .hint-icon {
+  font-size: 4rem;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+
+#portrait-hint .hint-text {
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+}
+
+#portrait-hint .hint-sub {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  40%       { transform: rotate(90deg); }
+  60%       { transform: rotate(90deg); }
+}
+
+/* Show hint only when: touch device + in-game + portrait */
+@media (pointer: coarse) and (orientation: portrait) {
+  body.game-active #portrait-hint {
+    display: flex;
+  }
+}
+
+/* ============================================
+   UX MOBILE — SHOP & LEVEL-UP TAP TARGETS
+   Enforce ≥44px tap targets and readable text
+   on narrow screens.
+   ============================================ */
+@media (max-width: 768px) {
+  /* Shop close button */
+  #shop-close-btn {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 20rem;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+  }
+
+  /* Shop buy buttons */
+  .shop-buy-btn {
+    min-height: 44px;
+    min-width: 64px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Shop items stack vertically so the buy button is reachable */
+  .shop-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .shop-item-buy {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Shop header compact */
+  #shop {
+    width: min(96%, 50rem);
+    max-height: 88vh;
+  }
+
+  .shop-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .shop-header p {
+    font-size: 1rem;
+  }
+
+  /* Level-up upgrade cards — full-width, large tap area */
+  .upgrade-card {
+    width: min(100%, 22rem);
+    min-height: 44px;
+    padding: 1rem;
+  }
+}
