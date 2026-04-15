@@ -50,6 +50,9 @@ class UIRenderer {
     };
     this._zombieCountFrame = 0;
 
+    // Font string cache: fontSize (number) -> 'bold Npx Arial'
+    this._fontCache = new Map();
+
     // Local map for boss names (fallback if CONSTANTS.BOSS_NAMES is missing)
     this.bossNameMap =
       typeof CONSTANTS !== 'undefined' && CONSTANTS.BOSS_NAMES
@@ -230,7 +233,11 @@ class UIRenderer {
       }
 
       ctx.globalAlpha = dmg.opacity;
-      ctx.font = `bold ${Math.round(dmg.fontSize)}px Arial`;
+      const fs = Math.round(dmg.fontSize);
+      if (!this._fontCache.has(fs)) {
+        this._fontCache.set(fs, `bold ${fs}px Arial`);
+      }
+      ctx.font = this._fontCache.get(fs);
 
       ctx.strokeStyle = '#000';
       ctx.lineWidth = dmg.isCritical ? 5 : 3;

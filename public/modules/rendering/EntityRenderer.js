@@ -495,7 +495,8 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.shadowBlur = 0;
   }
 
-  drawZombieSprite(ctx, zombie, timestamp) {
+  drawZombieSprite(ctx, zombie, timestamp, now) {
+    now = now || Date.now();
     // FASTEST PATH: offscreen-canvas blit.
     // useZombieSpriteCache can be set explicitly. Auto-enables with useZombieFastDraw (perf mode)
     // unless explicitly opted out (=== false). Blits pre-rendered sprites via drawImage —
@@ -598,7 +599,8 @@ this._zombieSpriteCache.delete(evictKey);
       bodyWidth,
       bodyHeight,
       headRadius,
-      armOffset
+      armOffset,
+      now
     );
 
     // Hit flash: red tint overlay on the zombie
@@ -624,7 +626,8 @@ this._zombieSpriteCache.delete(evictKey);
     bodyWidth,
     bodyHeight,
     headRadius,
-    armOffset
+    armOffset,
+    now
   ) {
     if (zombie.type === 'tank') {
       ctx.fillStyle = '#444';
@@ -702,9 +705,9 @@ this._zombieSpriteCache.delete(evictKey);
     } else if (zombie.type === 'shooter') {
       this._renderShooterDetails(ctx, zombie, baseSize, scale, bodyWidth, armOffset);
     } else if (zombie.type === 'teleporter') {
-      this._renderTeleporterDetails(ctx, zombie, baseSize, scale, headRadius);
+      this._renderTeleporterDetails(ctx, zombie, baseSize, scale, headRadius, now);
     } else if (zombie.type === 'summoner') {
-      this._renderSummonerDetails(ctx, zombie, baseSize, scale, headRadius);
+      this._renderSummonerDetails(ctx, zombie, baseSize, scale, headRadius, now);
     } else if (zombie.type === 'shielded') {
       this._renderShieldedDetails(ctx, zombie, baseSize, scale, headRadius);
     } else if (zombie.type === 'minion') {
@@ -722,9 +725,9 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.textBaseline = 'middle';
       ctx.fillText('\u221e', 0, -10 * baseSize * scale);
     } else if (zombie.type === 'bossCharnier') {
-      this._renderBossCharnierDetails(ctx, zombie, scale, headRadius);
+      this._renderBossCharnierDetails(ctx, zombie, scale, headRadius, now);
     } else if (zombie.type === 'bossInfect') {
-      this._renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius);
+      this._renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius, now);
     } else if (zombie.type === 'bossColosse') {
       this._renderBossColosseDetails(
         ctx,
@@ -733,12 +736,13 @@ this._zombieSpriteCache.delete(evictKey);
         scale,
         bodyWidth,
         bodyHeight,
-        headRadius
+        headRadius,
+        now
       );
     } else if (zombie.type === 'bossRoi') {
-      this._renderBossRoiDetails(ctx, zombie, baseSize, scale, headRadius);
+      this._renderBossRoiDetails(ctx, zombie, baseSize, scale, headRadius, now);
     } else if (zombie.type === 'bossOmega') {
-      this._renderBossOmegaDetails(ctx, zombie, baseSize, scale, headRadius);
+      this._renderBossOmegaDetails(ctx, zombie, baseSize, scale, headRadius, now);
     } else if (zombie.isBoss) {
       ctx.fillStyle = '#ff0000';
       ctx.strokeStyle = '#000';
@@ -795,8 +799,8 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.globalAlpha = 1;
   }
 
-  _renderTeleporterDetails(ctx, zombie, baseSize, scale, headRadius) {
-    const pulseAmount = Math.sin(Date.now() / 150) * 0.2;
+  _renderTeleporterDetails(ctx, zombie, baseSize, scale, headRadius, now) {
+    const pulseAmount = Math.sin(now / 150) * 0.2;
     ctx.strokeStyle = '#aa00ff';
     ctx.lineWidth = 2;
     ctx.shadowBlur = 15;
@@ -827,8 +831,8 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.stroke();
   }
 
-  _renderSummonerDetails(ctx, zombie, baseSize, scale, headRadius) {
-    const pulseAmount = Math.sin(Date.now() / 250) * 0.2;
+  _renderSummonerDetails(ctx, zombie, baseSize, scale, headRadius, now) {
+    const pulseAmount = Math.sin(now / 250) * 0.2;
     ctx.strokeStyle = '#00ddff';
     ctx.lineWidth = 2;
     ctx.shadowBlur = 12;
@@ -902,10 +906,10 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.restore();
   }
 
-  _renderBossCharnierDetails(ctx, zombie, scale, headRadius) {
+  _renderBossCharnierDetails(ctx, zombie, scale, headRadius, now) {
     ctx.save();
 
-    const pulseAmount = Math.sin(Date.now() / 300) * 0.2;
+    const pulseAmount = Math.sin(now / 300) * 0.2;
     ctx.strokeStyle = '#1a0033';
     ctx.lineWidth = 4;
     ctx.shadowBlur = 25;
@@ -931,18 +935,18 @@ this._zombieSpriteCache.delete(evictKey);
     ];
 
     skullPositions.forEach(pos => {
-      const x = Math.cos(pos.angle + Date.now() / 1000) * pos.radius;
-      const y = Math.sin(pos.angle + Date.now() / 1000) * pos.radius;
+      const x = Math.cos(pos.angle + now / 1000) * pos.radius;
+      const y = Math.sin(pos.angle + now / 1000) * pos.radius;
       ctx.fillText('\uD83D\uDC80', x, y);
     });
 
     ctx.restore();
   }
 
-  _renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius) {
+  _renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius, now) {
     ctx.save();
 
-    const pulseAmount = Math.sin(Date.now() / 250) * 0.2;
+    const pulseAmount = Math.sin(now / 250) * 0.2;
     ctx.strokeStyle = '#00ff00';
     ctx.lineWidth = 5;
     ctx.shadowBlur = 30;
@@ -967,11 +971,11 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.restore();
   }
 
-  _renderBossColosseDetails(ctx, zombie, baseSize, scale, bodyWidth, bodyHeight, headRadius) {
+  _renderBossColosseDetails(ctx, zombie, baseSize, scale, bodyWidth, bodyHeight, headRadius, now) {
     ctx.save();
 
     const isEnraged = zombie.isEnraged || zombie.health / zombie.maxHealth < 0.3;
-    const pulseAmount = Math.sin(Date.now() / (isEnraged ? 100 : 300)) * 0.3;
+    const pulseAmount = Math.sin(now / (isEnraged ? 100 : 300)) * 0.3;
     ctx.strokeStyle = isEnraged ? '#ff0000' : '#ff6600';
     ctx.lineWidth = isEnraged ? 6 : 4;
     ctx.shadowBlur = isEnraged ? 35 : 20;
@@ -1013,10 +1017,10 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.restore();
   }
 
-  _renderBossRoiDetails(ctx, zombie, baseSize, scale, headRadius) {
+  _renderBossRoiDetails(ctx, zombie, baseSize, scale, headRadius, now) {
     ctx.save();
 
-    const pulseAmount = Math.sin(Date.now() / 200) * 0.15;
+    const pulseAmount = Math.sin(now / 200) * 0.15;
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 5;
     ctx.shadowBlur = 30;
@@ -1077,10 +1081,10 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.restore();
   }
 
-  _renderBossOmegaDetails(ctx, zombie, baseSize, scale, headRadius) {
+  _renderBossOmegaDetails(ctx, zombie, baseSize, scale, headRadius, now) {
     ctx.save();
 
-    const pulseAmount = Math.sin(Date.now() / 150) * 0.2;
+    const pulseAmount = Math.sin(now / 150) * 0.2;
     const phase = zombie.phase || 1;
 
     ctx.strokeStyle = '#1a0033';
@@ -1134,7 +1138,7 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillStyle = '#ffffff';
     ctx.font = `${10 * scale}px Arial`;
     for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI * 2) / 6 + Date.now() / 1000;
+      const angle = (i * Math.PI * 2) / 6 + now / 1000;
       const x = Math.cos(angle) * (headRadius + 40);
       const y = Math.sin(angle) * (headRadius + 40);
       ctx.fillText('\u2605', x, y);
@@ -1145,6 +1149,7 @@ this._zombieSpriteCache.delete(evictKey);
 
   renderZombies(ctx, camera, zombies, timestamp) {
     timestamp = timestamp || performance.now();
+    const now = Date.now();
 
     for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
@@ -1162,7 +1167,7 @@ this._zombieSpriteCache.delete(evictKey);
         continue;
       }
 
-      this.drawZombieSprite(ctx, zombie, timestamp);
+      this.drawZombieSprite(ctx, zombie, timestamp, now);
 
       if (zombie.maxHealth) {
         const healthPercent = zombie.health / zombie.maxHealth;
@@ -1209,11 +1214,12 @@ this._zombieSpriteCache.delete(evictKey);
         ctx.fillText(bossName, zombie.x, zombie.y - zombie.size - 25);
       }
 
-      this.renderZombieSpecialIndicator(ctx, zombie);
+      this.renderZombieSpecialIndicator(ctx, zombie, now);
     }
   }
 
-  renderZombieSpecialIndicator(ctx, zombie) {
+  renderZombieSpecialIndicator(ctx, zombie, now) {
+    now = now || Date.now();
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1233,7 +1239,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.arc(
         zombie.x,
         zombie.y,
-        zombie.size + 10 + Math.sin(Date.now() / 200) * 5,
+        zombie.size + 10 + Math.sin(now / 200) * 5,
         0,
         Math.PI * 2
       );
@@ -1262,7 +1268,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.fillText('\u23F1', zombie.x, zombie.y);
     } else if (zombie.type === 'poison') {
       ctx.save();
-      ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 200) * 0.15;
+      ctx.globalAlpha = 0.4 + Math.sin(now / 200) * 0.15;
       ctx.strokeStyle = '#22ff22';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1277,7 +1283,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.fillText('\u2620', zombie.x, zombie.y);
     } else if (zombie.type === 'teleporter') {
       ctx.save();
-      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 150) * 0.2;
+      ctx.globalAlpha = 0.5 + Math.sin(now / 150) * 0.2;
       ctx.strokeStyle = '#9900ff';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1292,7 +1298,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.strokeText('\u26A1', zombie.x, zombie.y);
       ctx.fillText('\u26A1', zombie.x, zombie.y);
     } else if (zombie.type === 'summoner') {
-      this._renderSummonerIndicator(ctx, zombie);
+      this._renderSummonerIndicator(ctx, zombie, now);
     } else if (zombie.type === 'shielded') {
       this._renderShieldedIndicator(ctx, zombie);
     } else if (zombie.type === 'minion') {
@@ -1305,27 +1311,27 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.stroke();
       ctx.restore();
     } else if (zombie.type === 'berserker') {
-      this._renderBerserkerIndicator(ctx, zombie);
+      this._renderBerserkerIndicator(ctx, zombie, now);
     } else if (zombie.type === 'bossCharnier') {
-      this._renderBossCharnierIndicator(ctx, zombie);
+      this._renderBossCharnierIndicator(ctx, zombie, now);
     } else if (zombie.type === 'bossInfect') {
-      this._renderBossInfectIndicator(ctx, zombie);
+      this._renderBossInfectIndicator(ctx, zombie, now);
     } else if (zombie.type === 'bossColosse') {
-      this._renderBossColosseIndicator(ctx, zombie);
+      this._renderBossColosseIndicator(ctx, zombie, now);
     } else if (zombie.type === 'bossRoi') {
-      this._renderBossRoiIndicator(ctx, zombie);
+      this._renderBossRoiIndicator(ctx, zombie, now);
     } else if (zombie.type === 'bossOmega') {
-      this._renderBossOmegaIndicator(ctx, zombie);
+      this._renderBossOmegaIndicator(ctx, zombie, now);
     }
   }
 
-  _renderSummonerIndicator(ctx, zombie) {
+  _renderSummonerIndicator(ctx, zombie, now) {
     ctx.save();
-    ctx.globalAlpha = 0.35 + Math.sin(Date.now() / 180) * 0.15;
+    ctx.globalAlpha = 0.35 + Math.sin(now / 180) * 0.15;
     ctx.strokeStyle = '#cc00ff';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(zombie.x, zombie.y, zombie.size + 14 + Math.sin(Date.now() / 250) * 4, 0, Math.PI * 2);
+    ctx.arc(zombie.x, zombie.y, zombie.size + 14 + Math.sin(now / 250) * 4, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
@@ -1382,17 +1388,17 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillText('\uD83D\uDEE1\uFE0F', zombie.x, zombie.y);
   }
 
-  _renderBerserkerIndicator(ctx, zombie) {
+  _renderBerserkerIndicator(ctx, zombie, now) {
     if (zombie.isExtremeRaged) {
       ctx.save();
-      ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 100) * 0.3;
+      ctx.globalAlpha = 0.6 + Math.sin(now / 100) * 0.3;
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(
         zombie.x,
         zombie.y,
-        zombie.size + 15 + Math.sin(Date.now() / 150) * 5,
+        zombie.size + 15 + Math.sin(now / 150) * 5,
         0,
         Math.PI * 2
       );
@@ -1416,14 +1422,14 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.fillText('\u2694\uFE0F', zombie.x, zombie.y);
     } else if (zombie.isRaged) {
       ctx.save();
-      ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 180) * 0.2;
+      ctx.globalAlpha = 0.4 + Math.sin(now / 180) * 0.2;
       ctx.strokeStyle = '#ff6600';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(
         zombie.x,
         zombie.y,
-        zombie.size + 10 + Math.sin(Date.now() / 200) * 3,
+        zombie.size + 10 + Math.sin(now / 200) * 3,
         0,
         Math.PI * 2
       );
@@ -1462,9 +1468,9 @@ this._zombieSpriteCache.delete(evictKey);
     }
   }
 
-  _renderBossCharnierIndicator(ctx, zombie) {
+  _renderBossCharnierIndicator(ctx, zombie, now) {
     ctx.save();
-    ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
+    ctx.globalAlpha = 0.3 + Math.sin(now / 150) * 0.2;
     ctx.strokeStyle = '#8b0000';
     ctx.lineWidth = 5;
     ctx.beginPath();
@@ -1487,9 +1493,9 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillText('RAIIVY', zombie.x, zombie.y - zombie.size - 40);
   }
 
-  _renderBossInfectIndicator(ctx, zombie) {
+  _renderBossInfectIndicator(ctx, zombie, now) {
     ctx.save();
-    ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 200) * 0.2;
+    ctx.globalAlpha = 0.4 + Math.sin(now / 200) * 0.2;
     ctx.strokeStyle = '#00ff00';
     ctx.lineWidth = 5;
     ctx.beginPath();
@@ -1512,12 +1518,12 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillText('SORENZA', zombie.x, zombie.y - zombie.size - 40);
   }
 
-  _renderBossColosseIndicator(ctx, zombie) {
+  _renderBossColosseIndicator(ctx, zombie, now) {
     const isEnraged = zombie.isEnraged;
     const auraColor = isEnraged ? '#ff0000' : '#ff4500';
 
     ctx.save();
-    ctx.globalAlpha = 0.5 + Math.sin(Date.now() / (isEnraged ? 100 : 180)) * 0.3;
+    ctx.globalAlpha = 0.5 + Math.sin(now / (isEnraged ? 100 : 180)) * 0.3;
     ctx.strokeStyle = auraColor;
     ctx.lineWidth = isEnraged ? 8 : 5;
     ctx.beginPath();
@@ -1541,9 +1547,9 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillText(name, zombie.x, zombie.y - zombie.size - 40);
   }
 
-  _renderBossRoiIndicator(ctx, zombie) {
+  _renderBossRoiIndicator(ctx, zombie, now) {
     ctx.save();
-    ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 120) * 0.3;
+    ctx.globalAlpha = 0.5 + Math.sin(now / 120) * 0.3;
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 6;
     ctx.beginPath();
@@ -1574,12 +1580,12 @@ this._zombieSpriteCache.delete(evictKey);
     ctx.fillText(phaseName, zombie.x, zombie.y - zombie.size - 40);
   }
 
-  _renderBossOmegaIndicator(ctx, zombie) {
+  _renderBossOmegaIndicator(ctx, zombie, now) {
     const phaseColors = ['#ff00ff', '#ff0088', '#8800ff', '#ff0000'];
     const currentColor = phaseColors[(zombie.phase || 1) - 1];
 
     ctx.save();
-    ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 80) * 0.4;
+    ctx.globalAlpha = 0.6 + Math.sin(now / 80) * 0.4;
     ctx.strokeStyle = currentColor;
     ctx.lineWidth = 8;
     ctx.beginPath();
