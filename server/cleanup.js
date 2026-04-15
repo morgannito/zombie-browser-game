@@ -137,4 +137,10 @@ cleanupServer();
   return { cleanupServer, install };
 }
 
-module.exports = { createCleanup };
+module.exports = {
+  createCleanup,
+  // Exported for unit tests
+  stopTimers,
+  stopPerfIntegration,
+  stopHazards
+};
