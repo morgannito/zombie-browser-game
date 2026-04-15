@@ -203,62 +203,106 @@ class ParticleSystem {
   }
 
   /**
-   * Met à jour toutes les particules
+   * Met à jour toutes les particules — swap-and-pop O(1) removal
    */
   update() {
-    for (let i = this.particles.length - 1; i >= 0; i--) {
+    let len = this.particles.length;
+    let i = 0;
+    while (i < len) {
       const p = this.particles[i];
-
-      // Mise à jour position
       p.x += p.vx;
       p.y += p.vy;
       p.vy += p.gravity;
-
-      // Friction
       p.vx *= 0.98;
       p.vy *= 0.98;
-
-      // Durée de vie
       p.life -= p.decay;
-
-      // Suppression si mort
       if (p.life <= 0) {
-        this.particles.splice(i, 1);
+        len--;
+        this.particles[i] = this.particles[len];
+        this.particles.length = len;
+        // Do not increment i — re-examine swapped-in element
+      } else {
+        i++;
       }
     }
   }
 
   /**
-   * Dessine toutes les particules
+   * Dessine un groupe de particules de même couleur, batchant les arcs par alpha.
+   * Quantise globalAlpha à 0.05 pour fusionner les paths → moins de fill() calls.
    */
-  render(ctx) {
-    this.particles.forEach(p => {
-      ctx.save();
-      ctx.globalAlpha = p.life;
-
-      if (p.type === 'text') {
-        // Texte flottant (pour afficher +gold, +XP)
-        ctx.font = `bold ${p.size}px Arial`;
-        ctx.fillStyle = p.color;
-        ctx.textAlign = 'center';
-        ctx.fillText(p.text, p.x, p.y);
-      } else {
-        // Particule normale
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Glow effect pour certaines particules
-        if (p.type === 'spark' || p.type === 'heal') {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = p.color;
+  _renderColorGroup(ctx, color, group) {
+    const ALPHA_STEP = 0.05;
+    ctx.fillStyle = color;
+    group.sort((a, b) => b.life - a.life);
+    let curAlpha = -1;
+    let pathOpen = false;
+    for (const p of group) {
+      const qa = Math.round(p.life / ALPHA_STEP) * ALPHA_STEP;
+      if (qa !== curAlpha) {
+        if (pathOpen) {
           ctx.fill();
         }
+        curAlpha = qa;
+        ctx.globalAlpha = Math.min(1, Math.max(0, qa));
+        ctx.beginPath();
+        pathOpen = true;
       }
+      const r = p.size * p.life;
+      ctx.moveTo(p.x + r, p.y);
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    }
+    if (pathOpen) {
+      ctx.fill();
+    }
+    // Single glow pass per color group (no-op in perf mode via perfPatches.js)
+    for (const p of group) {
+      if (p.type === 'spark' || p.type === 'heal') {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = color;
+        ctx.globalAlpha = p.life * 0.5;
+        ctx.beginPath();
+        const r = p.size * p.life;
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        break;
+      }
+    }
+  }
 
-      ctx.restore();
-    });
+  /**
+   * Dessine toutes les particules — batching par couleur, pas de save/restore.
+   */
+  render(ctx) {
+    if (this.particles.length === 0) {
+      return;
+    }
+    const buckets = new Map();
+    const textParticles = [];
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
+      if (p.type === 'text') {
+        textParticles.push(p);
+      } else {
+        let list = buckets.get(p.color);
+        if (!list) {
+          buckets.set(p.color, (list = []));
+        }
+        list.push(p);
+      }
+    }
+    for (const [color, group] of buckets) {
+      this._renderColorGroup(ctx, color, group);
+    }
+    ctx.textAlign = 'center';
+    for (const p of textParticles) {
+      ctx.globalAlpha = p.life;
+      ctx.font = `bold ${p.size}px Arial`;
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
   }
 
   /**
