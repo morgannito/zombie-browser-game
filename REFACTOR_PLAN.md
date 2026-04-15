@@ -92,7 +92,17 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 1 — Inventaire & quick wins (safe)
 - [x] Créer REFACTOR_PLAN.md (cette PR)
-- [ ] Extraire `socketHandlers.js` → `transport/websocket/handlers/{player,shop,upgrade,session,ping,admin}.js`
+- [ ] Extraire `socketHandlers.js` → `transport/websocket/handlers/` (sous-étapes):
+  - [x] `ping.js` (latency monitoring)
+  - [ ] `respawn.js`
+  - [ ] `spawnProtection.js`
+  - [ ] `selectUpgrade.js`
+  - [ ] `shop.js` (déjà partiellement dans sockets/shopEvents.js — fusionner)
+  - [ ] `playerMove.js`
+  - [ ] `shoot.js`
+  - [ ] `setNickname.js`
+  - [ ] `disconnect.js`
+  - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
 - [ ] Extraire `server.js` setup block (≈lignes 100-400) → `server/bootstrap.js`
 - [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
 - [ ] Extraire `server.js` shutdown → `server/cleanup.js`
