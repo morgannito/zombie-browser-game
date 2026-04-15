@@ -34,7 +34,7 @@ if (process.env.CI) {
     './contexts/wave/':        { lines: 92, statements: 92, functions: 95, branches: 85 },
     './contexts/zombie/':      { lines: 88, statements: 88, functions: 78, branches: 78 },
     './contexts/weapons/':     { lines: 82, statements: 82, functions: 88, branches: 75 },
-    './contexts/player/':      { lines: 75, statements: 75, functions: 68, branches: 70 },
+    './contexts/player/':      { lines: 86, statements: 86, functions: 82, branches: 80 },
     './server/':               { lines: 85, statements: 85, functions: 80, branches: 70 }
   };
 }
