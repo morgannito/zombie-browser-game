@@ -17,7 +17,7 @@ const { createTestServer, connectAndInit, waitForEvent } = require('./testServer
 const {
   disconnectedPlayers,
   createRecoverablePlayerState
-} = require('../../sockets/sessionRecovery');
+} = require('../../contexts/session/sessionRecovery');
 
 let ctx;
 

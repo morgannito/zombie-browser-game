@@ -16,7 +16,7 @@ const { SOCKET_EVENTS } = require('../shared/socketEvents');
 const ConfigManager = require('../lib/server/ConfigManager');
 // Handler bodies moved to transport/websocket/handlers/*; remaining code in
 // this file is only the bootstrap (initSocketHandlers) and legacy helpers.
-const { createPlayerState } = require('./playerStateFactory');
+const { createPlayerState } = require("../contexts/session/playerStateFactory");
 const {
   disconnectedPlayers,
   startSessionCleanupInterval,
@@ -24,7 +24,7 @@ const {
   normalizeSessionId,
   sanitizePlayersState,
   restoreRecoverablePlayerState
-} = require('./sessionRecovery');
+} = require("../contexts/session/sessionRecovery");
 const { checkRateLimit } = require('./rateLimitStore');
 const { safeHandler } = require('./socketUtils');
 const {

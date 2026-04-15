@@ -6,7 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { getDisconnectedSessionCount } = require('../sockets/sessionRecovery');
+const { getDisconnectedSessionCount } = require('../contexts/session/sessionRecovery');
 
 /**
  * Initialize health check route

@@ -7,7 +7,7 @@ const {
   createRecoverablePlayerState,
   restoreRecoverablePlayerState,
   getDisconnectedSessionCount
-} = require('../../../sockets/sessionRecovery');
+} = require("../../../contexts/session/sessionRecovery");
 
 describe('sessionRecovery', () => {
   beforeEach(() => {

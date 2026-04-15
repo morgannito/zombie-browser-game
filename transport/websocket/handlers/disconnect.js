@@ -13,7 +13,7 @@ const { cleanupPlayerBullets } = require('../../../game/utilityFunctions');
 const {
   disconnectedPlayers,
   createRecoverablePlayerState
-} = require('../../../sockets/sessionRecovery');
+} = require("../../../contexts/session/sessionRecovery");
 const logger = require('../../../lib/infrastructure/Logger');
 const MetricsCollector = require('../../../lib/infrastructure/MetricsCollector');
 const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
