@@ -134,28 +134,13 @@ class NetworkManager {
   }
 
   setupLatencyMonitoring() {
-    // BUGFIX (multi): use 'app:ping'/'app:pong' instead of 'ping'/'pong' to avoid
-    // collision with Socket.IO's internal heartbeat events. The collision was
-    // causing latency to be measured against random heartbeats and acks were
-    // never resolved (server did not handle the custom 'ping' event).
-    const pingHandler = () => {
-      this.lastPingTime = performance.now();
-    };
+    // Single-source RTT: client-initiated ping with ack callback only.
+    // The old app:ping/app:pong listener pair has been removed — the server
+    // responds via ack, never via an app:pong emit, so that listener was a
+    // dead code path that never fired.
+    // The first 2 samples are discarded (cold-start / TCP slow-start skew).
+    this._warmupSamplesRemaining = 2;
 
-    const pongHandler = () => {
-      if (this.lastPingTime) {
-        const latency = Math.round(performance.now() - this.lastPingTime);
-        this.updateLatency(latency);
-      }
-    };
-
-    this.socket.on('app:ping', pingHandler);
-    this.socket.on('app:pong', pongHandler);
-    this.listeners.push({ event: 'app:ping', handler: pingHandler });
-    this.listeners.push({ event: 'app:pong', handler: pongHandler });
-
-    // Manual ping every 2 seconds for accurate RTT measurement.
-    const timerMgr = window.timerManager;
     const doPing = () => {
       if (this.socket.connected) {
         const start = performance.now();
@@ -165,6 +150,8 @@ class NetworkManager {
         });
       }
     };
+
+    const timerMgr = window.timerManager;
     if (timerMgr) {
       this.pingIntervalId = timerMgr.setInterval(doPing, 2000);
     } else {
@@ -173,6 +160,12 @@ class NetworkManager {
   }
 
   updateLatency(latency) {
+    // Discard cold-start samples (TCP slow-start / first-packet overhead).
+    if (this._warmupSamplesRemaining > 0) {
+      this._warmupSamplesRemaining--;
+      return;
+    }
+
     this.latency = latency;
 
     // Add to history
@@ -190,7 +183,8 @@ class NetworkManager {
     }
 
     // Log high latency warnings — throttled to once every 5 s to avoid log spam.
-    if (latency > 200) {
+    // Threshold raised to 300ms (ping ICMP ~25ms; 200ms was too noisy in practice).
+    if (latency > 300) {
       const now = performance.now();
       if (now - this._lastLatencyWarnAt >= 5000) {
         this._lastLatencyWarnAt = now;
@@ -554,7 +548,11 @@ class NetworkManager {
       // all buffered inputs with seq > lastAckSequence on top of serverPos.
       // TODO(server): server must include `lastAckSequence` in gameStateDelta
       // for the player entry so the client can drop acknowledged inputs.
-      if (delta.lastAckSequence !== undefined && window.inputManager && window.inputManager.inputBuffer) {
+      if (
+        delta.lastAckSequence !== undefined &&
+        window.inputManager &&
+        window.inputManager.inputBuffer
+      ) {
         const lastAck = delta.lastAckSequence;
         const pending = window.inputManager.inputBuffer.filter(inp => inp.seq > lastAck);
         if (pending.length > 0) {
@@ -727,7 +725,8 @@ class NetworkManager {
     if (window.gameUI.shopOpen || window.gameUI.levelUpOpen || window.gameUI.settingsOpen) {
       return false;
     }
-    const localPlayer = window.gameState && window.gameState.getPlayer && window.gameState.getPlayer();
+    const localPlayer =
+      window.gameState && window.gameState.getPlayer && window.gameState.getPlayer();
     if (!localPlayer || !localPlayer.alive) {
       return false;
     }
