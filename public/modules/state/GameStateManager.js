@@ -109,6 +109,22 @@ class GameStateManager {
         this.state[key] = preserved[key];
       }
     }
+    // Stamp authoritative server coordinates on interpolated entity types so
+    // _applyServerUpdate can distinguish a real server push from display-position
+    // drift written back by _stepEntity (full-state path; delta path stamps in
+    // NetworkManager.handleGameStateDelta).
+    const INTERPOLATED = ['zombies', 'players'];
+    for (const type of INTERPOLATED) {
+      const entities = this.state[type];
+      if (!entities) continue;
+      for (const id in entities) {
+        const e = entities[id];
+        if (e && e.x !== undefined) {
+          e._serverX = e.x;
+          e._serverY = e.y;
+        }
+      }
+    }
     this.lastUpdateTimestamp = Date.now();
   }
 
@@ -255,17 +271,46 @@ class GameStateManager {
 
   /**
    * Detect a real server position update and refresh velocity.
+   *
+   * REGRESSION FIX: _stepEntity overwrites entity.x/y with the interpolated
+   * display position each frame. Without a dedicated server-coord stamp, on
+   * frames without a new delta entity.x (display) ≠ state.serverX (target),
+   * causing a spurious backward velocity up to −120 px/frame that the widened
+   * 150ms / 120px extrapolation window amplifies into a visible teleport.
+   *
+   * NetworkManager now stamps entity._serverX/_serverY on every delta push;
+   * updateState stamps them on every full-state push. _applyServerUpdate reads
+   * the stamp and clears it so subsequent frames without new server data
+   * correctly skip the update entirely.
+   *
    * @param {Object} state
    * @param {Object} entity
    * @param {number} now
    */
   _applyServerUpdate(state, entity, now) {
-    if (entity.x === state.serverX && entity.y === state.serverY) {
-      return; // No real update
+    // Only process when the entity carries a fresh server-coordinate stamp.
+    // The stamp is set by:
+    //   - NetworkManager.handleGameStateDelta  (delta path)
+    //   - GameStateManager.updateState         (full-state path)
+    // and cleared here after processing so subsequent frames without new
+    // server data correctly skip the update.  This prevents the spurious
+    // backward-velocity spike that occurred when _stepEntity overwrote
+    // entity.x/y with the interpolated display position and the old code
+    // misread that as a new server push.
+    if (entity._serverX === undefined) {
+      return; // No new server data this frame
+    }
+    const newX = entity._serverX;
+    const newY = entity._serverY;
+    entity._serverX = undefined;
+    entity._serverY = undefined;
+
+    if (newX === state.serverX && newY === state.serverY) {
+      return; // Position unchanged on server — skip velocity update
     }
     const elapsed = now - state.lastUpdateTime;
-    const dx = entity.x - state.serverX;
-    const dy = entity.y - state.serverY;
+    const dx = newX - state.serverX;
+    const dy = newY - state.serverY;
     if (elapsed > 0 && elapsed < 500) {
       state.velocityX = dx / elapsed * 1000;
       state.velocityY = dy / elapsed * 1000;
@@ -273,10 +318,10 @@ class GameStateManager {
       state.velocityX = 0;
       state.velocityY = 0;
     }
-    state.serverX = entity.x;
-    state.serverY = entity.y;
-    state.targetX = entity.x;
-    state.targetY = entity.y;
+    state.serverX = newX;
+    state.serverY = newY;
+    state.targetX = newX;
+    state.targetY = newY;
     state.lastUpdateTime = now;
     // AOI re-entry fix: if the entity jumped far (>200px) after >500ms of
     // silence (typical AOI re-entry after it left and came back), snap the
@@ -284,8 +329,8 @@ class GameStateManager {
     // perceived as teleport.
     const JUMP_PX_SQ = 200 * 200;
     if (elapsed >= 500 && (dx * dx + dy * dy) > JUMP_PX_SQ) {
-      state.displayX = entity.x;
-      state.displayY = entity.y;
+      state.displayX = newX;
+      state.displayY = newY;
     }
   }
 
