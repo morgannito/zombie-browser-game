@@ -431,7 +431,8 @@ class GameEngine {
   }
 
   gameLoop(timestamp = 0) {
-    // FPS limiting based on performance settings
+    // FPS limiting: use a -1ms tolerance so RAF firing slightly early
+    // (16.5ms vs 16.67ms target) doesn't halve the framerate to 30fps.
     const targetFrameTime = window.performanceSettings
       ? window.performanceSettings.getTargetFrameTime()
       : 1000 / 60;
@@ -440,17 +441,15 @@ class GameEngine {
     const renderDeltaTime = this._lastTimestamp ? timestamp - this._lastTimestamp : 16;
     this._lastTimestamp = timestamp;
 
-    // Always update player prediction every RAF tick for 60fps fluidity.
-    // Only throttle the full render to targetFrameTime.
     try {
       // Player position prediction runs unconditionally each RAF frame
       this.playerController.update(window.innerWidth, window.innerHeight, renderDeltaTime);
 
-      if (deltaTime >= targetFrameTime) {
+      // -1ms tolerance absorbs rAF jitter; target 60fps runs at ~60fps, not ~30.
+      if (deltaTime >= targetFrameTime - 1) {
         this.update(renderDeltaTime);
         this.render(renderDeltaTime);
 
-        // Notify performance settings for FPS counting
         if (window.performanceSettings) {
           window.performanceSettings.onFrameRendered();
         }
