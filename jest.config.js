@@ -30,8 +30,8 @@ if (process.env.CI) {
     // on the current state, with a 70% aspirational target tracked in
     // REFACTOR_PLAN.md (Phase 6). Raise these as more tests land.
     './contexts/leaderboard/': { lines: 50, statements: 50, functions: 35, branches: 40 },
-    './contexts/session/':     { lines: 30, statements: 30, functions: 30, branches: 20 },
-    './contexts/wave/':        { lines: 20, statements: 20, functions: 15, branches: 5 },
+    './contexts/session/':     { lines: 85, statements: 85, functions: 95, branches: 70 },
+    './contexts/wave/':        { lines: 85, statements: 85, functions: 90, branches: 75 },
     './contexts/zombie/':      { lines: 50, statements: 50, functions: 58, branches: 45 },
     './contexts/weapons/':     { lines: 55, statements: 55, functions: 60, branches: 45 },
     './contexts/player/':      { lines: 70, statements: 70, functions: 65, branches: 60 }
