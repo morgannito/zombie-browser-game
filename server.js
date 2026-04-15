@@ -37,7 +37,7 @@ const logger = require('./lib/infrastructure/Logger');
 const DatabaseManager = require('./lib/database/DatabaseManager');
 const Container = require('./lib/application/Container');
 const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
-const MemoryMonitor = require('./lib/infrastructure/MemoryMonitor');
+const { createMemoryMonitor } = require('./server/memory');
 const JwtService = require('./lib/infrastructure/auth/JwtService');
 
 // ============================================
@@ -146,17 +146,7 @@ async function initializeDatabase() {
 const metricsCollector = MetricsCollector.getInstance();
 
 // Initialize memory monitor (infrastructure layer)
-const memoryMonitor = new MemoryMonitor({
-  interval: 60000,
-  warningThresholdMB: 256,
-  criticalThresholdMB: 512,
-  onCritical: sample => {
-    logger.error('Memory critical — scheduling graceful restart', { rss: sample.rss });
-    // Allow in-flight requests to drain before exiting (PM2/systemd will restart)
-    setTimeout(() => process.exit(1), 5000);
-  }
-});
-memoryMonitor.start();
+const memoryMonitor = createMemoryMonitor();
 
 // ============================================
 // MIDDLEWARE CONFIGURATION

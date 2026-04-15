@@ -105,7 +105,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
 - [ ] Extraire `server.js` setup block → `server/` (sous-étapes):
   - [x] `server/socketio.js` — Socket.IO factory
-  - [ ] `server/memory.js` — MemoryMonitor init
+  - [x] `server/memory.js` — MemoryMonitor init
   - [ ] `server/database.js` — dbManager init
   - [ ] `server/middleware.js` — express middleware wiring
   - [ ] `server/routes.js` — route mounting
