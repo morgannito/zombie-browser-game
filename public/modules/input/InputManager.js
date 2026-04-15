@@ -115,6 +115,16 @@ return;
     this.movementDirty = true;
     this.lastInputTime = performance.now();
     this.isIdle = false;
+
+    // Instant stop: if all WASD keys are now released, notify PlayerController
+    // so it can force-emit position immediately without waiting for the throttle.
+    const wasd = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
+    if (wasd.includes(key) && this.onMovementStop) {
+      const anyMoving = wasd.some(k => this.keys[k]);
+      if (!anyMoving) {
+        this.onMovementStop();
+      }
+    }
   }
 
   handleBlur() {

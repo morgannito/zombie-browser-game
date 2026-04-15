@@ -15,7 +15,8 @@ class AudioManager {
 
   initAudioContext() {
     try {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.audioContext = window.getAudioCore?.()?.audioContext
+        ?? new (window.AudioContext || window.webkitAudioContext)();
     } catch {
       console.warn('Web Audio API not supported');
       this.enabled = false;
@@ -73,6 +74,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.1, startTime);
     gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
 
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(startTime);
     osc.stop(startTime + 0.1);
   }
@@ -90,6 +92,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.1, time);
       gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
 
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
       osc.start(time);
       osc.stop(time + 0.05);
     }
@@ -108,6 +111,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.08, startTime);
     gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.2);
 
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(startTime);
     osc.stop(startTime + 0.2);
   }
@@ -125,6 +129,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.08, startTime);
     gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
 
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(startTime);
     osc.stop(startTime + 0.15);
   }
@@ -140,6 +145,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.1, startTime);
     gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.05);
 
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(startTime);
     osc.stop(startTime + 0.05);
   }

@@ -116,6 +116,12 @@ class WeaponAudioSystem {
 
     this.reverbNode = this.context.createConvolver();
     this.reverbNode.buffer = impulse;
+
+    // Shared reverb output gain — connected once here, never per-shot
+    this.reverbGain = this.context.createGain();
+    this.reverbGain.gain.value = 0.2;
+    this.reverbNode.connect(this.reverbGain);
+    this.reverbGain.connect(this.masterGain);
   }
 
   /**
@@ -178,12 +184,8 @@ class WeaponAudioSystem {
     blastFilter.connect(blastGain);
     blastGain.connect(this.masterGain);
 
-    // Reverb path
-    const reverbGain = this.context.createGain();
-    reverbGain.gain.value = 0.15 * attenuation;
+    // Reverb path — reverbNode connected once in init(); just feed it
     blastGain.connect(this.reverbNode);
-    this.reverbNode.connect(reverbGain);
-    reverbGain.connect(this.masterGain);
 
     blast.start(now);
     blast.stop(now + 0.1);
@@ -248,12 +250,8 @@ class WeaponAudioSystem {
       filter.connect(blastGain);
       blastGain.connect(this.masterGain);
 
-      // Reverb
-      const reverbGain = this.context.createGain();
-      reverbGain.gain.value = 0.25 * attenuation;
+      // Reverb — reverbNode connected once in init(); just feed it
       blastGain.connect(this.reverbNode);
-      this.reverbNode.connect(reverbGain);
-      reverbGain.connect(this.masterGain);
 
       blast.start(now + delay);
       blast.stop(now + delay + 0.2);
@@ -312,12 +310,8 @@ class WeaponAudioSystem {
     filter.connect(blastGain);
     blastGain.connect(this.masterGain);
 
-    // Moins de reverb (tir rapide)
-    const reverbGain = this.context.createGain();
-    reverbGain.gain.value = 0.08 * attenuation;
+    // Reverb (tir rapide) — reverbNode connected once in init(); just feed it
     blastGain.connect(this.reverbNode);
-    this.reverbNode.connect(reverbGain);
-    reverbGain.connect(this.masterGain);
 
     blast.start(now);
     blast.stop(now + 0.05);
@@ -397,12 +391,8 @@ class WeaponAudioSystem {
     blastFilter.connect(blastGain);
     blastGain.connect(this.masterGain);
 
-    // Forte reverb
-    const reverbGain = this.context.createGain();
-    reverbGain.gain.value = 0.3 * attenuation;
+    // Forte reverb — reverbNode connected once in init(); just feed it
     blastGain.connect(this.reverbNode);
-    this.reverbNode.connect(reverbGain);
-    reverbGain.connect(this.masterGain);
 
     blast.start(now + 0.005);
     blast.stop(now + 0.25);

@@ -460,6 +460,10 @@ class NetworkManager {
       window.gameState.updateServerTime(delta.serverTime);
     }
 
+    // Capture serverTime once for the whole delta batch so each entity
+    // snapshot gets a consistent authoritative timestamp.
+    const packetServerTime = delta.serverTime || undefined;
+
     // Apply delta updates
     if (delta.updated) {
       Object.entries(delta.updated).forEach(([type, entities]) => {
@@ -482,18 +486,16 @@ class NetworkManager {
             window.gameState.state[type][id].angle = currentPos.angle;
           } else {
             // For other entities: apply update normally.
-            // Stamp authoritative server coords before replacing the entity so
-            // _applyServerUpdate can distinguish a real server push from
-            // display-position drift written by _stepEntity.
-            // REGRESSION FIX: with baseSpeed=50 + 150ms extrapolation window,
-            // _stepEntity overwrites entity.x/y with the interpolated display
-            // position each frame. Without this stamp, on frames without a new
-            // delta _applyServerUpdate sees entity.x (display) ≠ state.serverX
-            // (target), computes a spurious backward velocity up to −120px/frame,
-            // and extrapolates the zombie backward → perceived teleport.
+            // Stamp authoritative server coords + serverTime before replacing
+            // the entity so _applyServerUpdate can distinguish a real server
+            // push from display-position drift written by _stepEntity, and so
+            // the temporal interpolation buffer gets a proper timestamp.
             if (entity.x !== undefined) {
               entity._serverX = entity.x;
               entity._serverY = entity.y;
+              if (packetServerTime !== undefined) {
+                entity._serverTime = packetServerTime;
+              }
             }
             window.gameState.state[type][id] = entity;
           }
@@ -534,8 +536,9 @@ class NetworkManager {
       window.biomeSystem.applyToGameState();
     }
 
-    // Server reconciliation: check if server position differs significantly
-    // Increased tolerance to 200px to reduce rubber banding
+    // Server reconciliation: check if server position differs significantly.
+    // If the server echoes lastAckSequence, replay unacknowledged inputs on top
+    // of the server position to get a reconciled position (client-side prediction).
     if (
       localPlayerState &&
       delta.updated &&
@@ -547,9 +550,28 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 500px) = trust server (anti-cheat or major desync)
-      // Increased threshold to allow more client prediction freedom
-      if (distance > 500) {
+      // Input reconciliation: if server acknowledges a sequence number, replay
+      // all buffered inputs with seq > lastAckSequence on top of serverPos.
+      // TODO(server): server must include `lastAckSequence` in gameStateDelta
+      // for the player entry so the client can drop acknowledged inputs.
+      if (delta.lastAckSequence !== undefined && window.inputManager && window.inputManager.inputBuffer) {
+        const lastAck = delta.lastAckSequence;
+        const pending = window.inputManager.inputBuffer.filter(inp => inp.seq > lastAck);
+        if (pending.length > 0) {
+          let rx = serverPlayer.x;
+          let ry = serverPlayer.y;
+          pending.forEach(inp => {
+            rx += inp.dx || 0;
+            ry += inp.dy || 0;
+          });
+          window.gameState.state.players[window.gameState.playerId].x = rx;
+          window.gameState.state.players[window.gameState.playerId].y = ry;
+          // Prune acknowledged inputs from buffer to keep it bounded
+          window.inputManager.inputBuffer = pending;
+        }
+      } else if (distance > 500) {
+        // No lastAckSequence yet (server not upgraded): fall back to threshold snap.
+        // Large difference (> 500px) = trust server (anti-cheat or major desync).
         console.log(
           '[Socket.IO] Large position difference detected, accepting server position:',
           distance.toFixed(1),
@@ -559,8 +581,7 @@ class NetworkManager {
         window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
         window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
       }
-      // Small/medium differences (< 500px) = ALWAYS trust client prediction for fluid movement
-      // No interpolation to avoid any lag feeling on local player
+      // Small/medium differences without ack (< 500px) = trust client prediction.
     }
 
     // Clear reconnection flag after first delta update
@@ -842,7 +863,9 @@ class NetworkManager {
   }
 
   playerMove(x, y, angle) {
-    this._queueEmit('playerMove', { x, y, angle });
+    // Bypass microtask queue for movement — emit synchronously to minimize
+    // perceived input lag. Shop/progression events keep using _queueEmit.
+    this.socket.emit('playerMove', { x, y, angle });
   }
 
   shoot(angle) {

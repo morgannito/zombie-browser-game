@@ -24,8 +24,8 @@ class PlayerController {
     // Adaptive network update rate based on movement
     this.lastNetworkUpdate = 0;
     this.networkUpdateIntervalIdle = 1000 / 20; // 20 Hz when idle
-    this.networkUpdateIntervalMoving = 1000 / 30; // 30 Hz when moving
-    this.networkUpdateIntervalFast = 1000 / 60; // 60 Hz for direction changes
+    this.networkUpdateIntervalMoving = 1000 / 60; // 60 Hz when moving (was 30 Hz — halves move latency)
+    // networkUpdateIntervalFast stays at 60 Hz for direction changes (same rate, instant burst still used)
 
     // Movement state for adaptive rate
     this.lastMovementVector = { dx: 0, dy: 0 };
@@ -35,6 +35,15 @@ class PlayerController {
 
     // Input sequence for reconciliation
     this.lastAcknowledgedSequence = 0;
+
+    // Instant stop: force-emit position when all WASD keys are released
+    this.input.onMovementStop = () => {
+      const player = this.gameState.getPlayer();
+      if (!player || !player.alive || !this.gameStarted) return;
+      this.network.playerMove(player.x, player.y, player.angle);
+      this.lastNetworkUpdate = performance.now();
+      this.lastSentPosition = { x: player.x, y: player.y, angle: player.angle };
+    };
 
     // Velocity smoothing for interpolation
     this.velocity = { x: 0, y: 0 };

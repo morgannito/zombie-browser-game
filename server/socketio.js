@@ -30,7 +30,8 @@ function createSocketIOServer(httpServer) {
     pingInterval: 10000,
     pingTimeout: 20000,
     connectTimeout: 45000,
-    perMessageDeflate: false,
+    // Activé par défaut, désactivable pour Cloudflare via env DISABLE_WS_COMPRESSION=true
+    perMessageDeflate: process.env.DISABLE_WS_COMPRESSION === 'true' ? false : { threshold: 1024 },
     httpCompression: true,
     maxHttpBufferSize: 1e6
   });

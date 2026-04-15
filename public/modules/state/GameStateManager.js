@@ -215,8 +215,8 @@ continue;
     this.interpolation.deltaTime = deltaTime;
     const skipExtrapolation = rawDelta > 100;
 
-    // Adaptive smooth factor: exponential decay based on delta time.
-    // Use a higher catch-up speed on bad connections (latency > 300ms).
+    // smoothFactor kept for API compatibility (no longer used in _stepEntity
+    // which uses the temporal buffer, but still accepted as a parameter).
     const effectiveSpeed = this._adaptiveSpeed();
     const smoothFactor = 1 - Math.exp(-effectiveSpeed * deltaTime / 1000);
 
@@ -264,7 +264,9 @@ continue;
         targetY: entity.y,
         velocityX: 0,
         velocityY: 0,
-        lastUpdateTime: now
+        lastUpdateTime: now,
+        // Temporal interpolation buffer: ringbuffer of {x, y, t} snapshots
+        snapshots: []
       };
       map.set(id, state);
     }
@@ -289,7 +291,13 @@ continue;
    * @param {Object} entity
    * @param {number} now
    */
-  _applyServerUpdate(state, entity, now) {
+  /**
+   * @param {Object} state
+   * @param {Object} entity
+   * @param {number} now - performance.now()
+   * @param {number} [serverTime] - authoritative server timestamp (ms); falls back to now
+   */
+  _applyServerUpdate(state, entity, now, serverTime) {
     // Only process when the entity carries a fresh server-coordinate stamp.
     // The stamp is set by:
     //   - NetworkManager.handleGameStateDelta  (delta path)
@@ -304,12 +312,22 @@ continue;
     }
     const newX = entity._serverX;
     const newY = entity._serverY;
+    // Carry serverTime on stamp so _applyServerUpdate can use it
+    const snapshotT = (entity._serverTime !== undefined) ? entity._serverTime : now;
     entity._serverX = undefined;
     entity._serverY = undefined;
+    entity._serverTime = undefined;
 
     if (newX === state.serverX && newY === state.serverY) {
-      return; // Position unchanged on server — skip velocity update
+      return; // Position unchanged on server — skip update
     }
+
+    // Push snapshot into ringbuffer (max 4 entries)
+    state.snapshots.push({ x: newX, y: newY, t: snapshotT });
+    if (state.snapshots.length > 4) {
+      state.snapshots.shift();
+    }
+
     const elapsed = now - state.lastUpdateTime;
     const dx = newX - state.serverX;
     const dy = newY - state.serverY;
@@ -333,38 +351,88 @@ continue;
     if (elapsed >= 500 && (dx * dx + dy * dy) > JUMP_PX_SQ) {
       state.displayX = newX;
       state.displayY = newY;
+      // Also seed the snapshot buffer at the new position to prevent
+      // stale snapshots pulling the display backward after AOI re-entry.
+      state.snapshots = [{ x: newX, y: newY, t: snapshotT }];
     }
   }
 
   /**
-   * Extrapolate + smooth display position towards predicted position.
+   * Temporal interpolation buffer: position entity at renderTime = now - 100ms.
+   * Uses the snapshot ringbuffer for intra-packet interpolation; falls back to
+   * velocity extrapolation (capped at 75ms) when renderTime is ahead of the
+   * last known snapshot (packet late or buffer not yet seeded).
+   *
    * @param {Object} state
    * @param {Object} entity - written back (.x, .y updated)
-   * @param {number} now
-   * @param {number} smoothFactor
+   * @param {number} now - performance.now()
+   * @param {number} _smoothFactor - unused (kept for API compat)
    * @param {boolean} skipExtrapolation
    */
-  _stepEntity(state, entity, now, smoothFactor, skipExtrapolation) {
-    let predictedX = state.targetX;
-    let predictedY = state.targetY;
+  _stepEntity(state, entity, now, _smoothFactor, skipExtrapolation) {
+    const INTERP_DELAY = 100; // ms behind "now" to sample
+    const MAX_EXTRAP_MS = 75; // cap on extrapolation when buffer is ahead of renderTime
 
-    if (!skipExtrapolation) {
-      const timeSinceUpdate = now - state.lastUpdateTime;
-      // PERF (latency): widened extrapolation window 100 → 150ms and cap
-      // 50 → 120px. Lets remote entities visually "lead" their server
-      // position when packets arrive late instead of pausing mid-stride.
-      if (timeSinceUpdate > 0 && timeSinceUpdate < 150) {
-        const t = timeSinceUpdate / 1000;
-        const MAX_EXTRA = 120;
-        predictedX += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityX * t));
-        predictedY += Math.max(-MAX_EXTRA, Math.min(MAX_EXTRA, state.velocityY * t));
+    const renderTime = now - INTERP_DELAY;
+    const snaps = state.snapshots;
+
+    // ── Case 1: not enough snapshots yet — fall back to target directly ──────
+    if (snaps.length === 0) {
+      entity.x = state.displayX;
+      entity.y = state.displayY;
+      return;
+    }
+
+    // ── Case 2: renderTime is BEFORE the oldest snapshot (buffer just seeded) ─
+    if (renderTime <= snaps[0].t) {
+      entity.x = snaps[0].x;
+      entity.y = snaps[0].y;
+      state.displayX = snaps[0].x;
+      state.displayY = snaps[0].y;
+      return;
+    }
+
+    const last = snaps[snaps.length - 1];
+
+    // ── Case 3: renderTime is AFTER the newest snapshot — extrapolate ─────────
+    if (renderTime >= last.t) {
+      if (skipExtrapolation) {
+        entity.x = last.x;
+        entity.y = last.y;
+        state.displayX = last.x;
+        state.displayY = last.y;
+        return;
+      }
+      // Cap extrapolation to MAX_EXTRAP_MS beyond the last snapshot
+      const overtime = Math.min(renderTime - last.t, MAX_EXTRAP_MS);
+      const t = overtime / 1000;
+      entity.x = last.x + state.velocityX * t;
+      entity.y = last.y + state.velocityY * t;
+      state.displayX = entity.x;
+      state.displayY = entity.y;
+      return;
+    }
+
+    // ── Case 4: renderTime sits between two snapshots — interpolate ───────────
+    for (let i = 1; i < snaps.length; i++) {
+      const a = snaps[i - 1];
+      const b = snaps[i];
+      if (renderTime >= a.t && renderTime < b.t) {
+        const span = b.t - a.t;
+        const alpha = span > 0 ? (renderTime - a.t) / span : 0;
+        entity.x = a.x + (b.x - a.x) * alpha;
+        entity.y = a.y + (b.y - a.y) * alpha;
+        state.displayX = entity.x;
+        state.displayY = entity.y;
+        return;
       }
     }
 
-    state.displayX += (predictedX - state.displayX) * smoothFactor;
-    state.displayY += (predictedY - state.displayY) * smoothFactor;
-    entity.x = state.displayX;
-    entity.y = state.displayY;
+    // Fallback (should not be reached)
+    entity.x = last.x;
+    entity.y = last.y;
+    state.displayX = last.x;
+    state.displayY = last.y;
   }
 
   /**
@@ -378,7 +446,7 @@ continue;
 
     for (const [id, zombie] of Object.entries(this.state.zombies)) {
       const state = this._getOrInitState(map, id, zombie, now);
-      this._applyServerUpdate(state, zombie, now);
+      this._applyServerUpdate(state, zombie, now, zombie._serverTime);
       this._stepEntity(state, zombie, now, smoothFactor, skipExtrapolation);
       this.debugStats.interpolatedEntities++;
     }
@@ -405,7 +473,7 @@ continue;
         continue; // Skip local player (client prediction handles it)
       }
       const state = this._getOrInitState(map, id, player, now);
-      this._applyServerUpdate(state, player, now);
+      this._applyServerUpdate(state, player, now, player._serverTime);
       this._stepEntity(state, player, now, smoothFactor, skipExtrapolation);
       this.debugStats.interpolatedEntities++;
     }
