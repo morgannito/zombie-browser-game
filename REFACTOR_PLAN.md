@@ -147,6 +147,33 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] GitNexus : re-indexed at db62685 — 3,609 nodes / 10,629 edges / 323 clusters / 300 flows. Analyzer succeeded cleanly (no broken refs). Programmatic cycle audit deferred to follow-up using `gitnexus_cypher` MCP queries (MCP unavailable in current session).
 - [x] Coverage ≥ 70 % par contexte — instrumented via jest.config.js per-path thresholds. Current floors set to baseline (leaderboard 50%, session 30%, wave 20%, zombie/weapons/player 4-5%). 70% target tracked as ratchet — raise per-context floor each time tests are added. CI now fails if any context regresses.
 
+## Phase 7 — Post-refactor improvements
+
+### ZombieUpdater split (reduce complexity)
+- [x] `updater/wallCollision.js` — resolveWallCollisions (65 lignes, complexity 17) split en 4 stratégies SRP (trySlideAlongWall, applyRepulsion, escapeIfStuck, resolveWallCollisions orchestrator), chaque fonction <25 lignes complexity <10
+- [ ] `updater/separation.js` — applyZombieSeparation (50 lignes, complexity 14)
+- [ ] `updater/movement.js` — moveZombie (53 lignes, complexity 13)
+- [ ] `updater/randomWalk.js` — moveRandomly (31 lignes)
+- [ ] `updater/core.js` — updateZombies (171 lignes, complexity 37) — le gros morceau
+
+### Coverage ratchet
+- [ ] zombie context 5% → 15% (ajouter tests sur wallCollision pure-functions)
+- [ ] zombie context 15% → 30% (tests separation + movement après extraction)
+- [ ] zombie context 30% → 50%
+- [ ] weapons context 4% → 30%
+- [ ] player context 5% → 30%
+
+### Shim cleanup (migrer les ~22 call sites restants)
+- [ ] Migrer `lib/infrastructure/Logger` consumers → `infrastructure/logging/Logger`
+- [ ] Migrer `lib/infrastructure/MetricsCollector` consumers → `infrastructure/metrics/MetricsCollector`
+- [ ] Migrer `lib/database/DatabaseManager` consumers → `infrastructure/database/DatabaseManager`
+- [ ] Supprimer les 3 shims quand 0 consommateurs
+
+### Divers
+- [ ] PR #36 `perf/server-zombie-ai` : rebase ou close (UNSTABLE >20 loops)
+- [ ] GitNexus cycle audit programmatique (via MCP `gitnexus_cypher`)
+- [ ] UIManager.js (628 lignes) split par écran (HUD/shop/levelup/gameover) si bug surface dans le refactor complete
+
 ## Règles d'exécution automatique
 
 1. Chaque itération ouvre **une PR focalisée** (< 400 lignes diff).

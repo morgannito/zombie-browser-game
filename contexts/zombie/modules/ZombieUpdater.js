@@ -47,13 +47,8 @@ const {
   updateBossApocalypse
 } = require('./BossUpdater');
 
-function clampToRoomBounds(zombie, x, y) {
-  const margin = Math.max(1, (zombie.size || 0) + 1);
-  return {
-    finalX: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
-    finalY: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
-  };
-}
+// Wall-collision resolver moved to ./updater/wallCollision.js for SRP + lint compliance.
+const { clampToRoomBounds, resolveWallCollisions } = require('./updater/wallCollision');
 
 // ---------------------------------------------------------------------------
 // PERF helpers
@@ -712,112 +707,6 @@ function calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime = 1) {
   };
 }
 
-/**
- * Resolve wall collisions with proper sliding and unstuck mechanism
- * FIX: Complete rewrite for robust collision handling
- *
- * Features:
- * - Wall sliding: Zombie glides along wall surface
- * - Soft repulsion: Smooth push-back from walls
- * - Corner handling: Works when touching 2+ walls
- * - Unstuck mechanism: Escapes if trapped inside wall
- */
-function resolveWallCollisions(zombie, newX, newY, roomManager) {
-  // Fallback boundary check when roomManager is null
-  if (!roomManager) {
-    return clampToRoomBounds(zombie, newX, newY);
-  }
-
-  // Check if new position is clear - fast path
-  if (!roomManager.checkWallCollision(newX, newY, zombie.size)) {
-    return clampToRoomBounds(zombie, newX, newY);
-  }
-
-  // Get detailed collision info for the new position
-  const collisionInfo = roomManager.getWallCollisionInfo(newX, newY, zombie.size);
-
-  // Calculate movement vector
-  const moveX = newX - zombie.x;
-  const moveY = newY - zombie.y;
-
-  let finalX = zombie.x;
-  let finalY = zombie.y;
-
-  // Strategy 1: Try wall sliding (move along the wall)
-  // Test X movement alone
-  const xOnlyCollision = roomManager.checkWallCollision(newX, zombie.y, zombie.size);
-  // Test Y movement alone
-  const yOnlyCollision = roomManager.checkWallCollision(zombie.x, newY, zombie.size);
-
-  if (!xOnlyCollision && !yOnlyCollision) {
-    // Both axes work individually - choose the one with more movement
-    if (Math.abs(moveX) > Math.abs(moveY)) {
-      finalX = newX;
-    } else {
-      finalY = newY;
-    }
-  } else if (!xOnlyCollision) {
-    // Can slide along X axis
-    finalX = newX;
-  } else if (!yOnlyCollision) {
-    // Can slide along Y axis
-    finalY = newY;
-  } else {
-    // Strategy 2: Both axes blocked - apply soft repulsion
-    // Use collision info to push away from walls
-    if (collisionInfo.colliding && collisionInfo.penetration > 0) {
-      const repulsionStrength = 0.5; // Soft push strength (0-1)
-      const pushMagnitude = Math.min(collisionInfo.penetration * repulsionStrength, zombie.speed);
-
-      // Normalize push vector
-      const pushLen = Math.sqrt(
-        collisionInfo.pushX * collisionInfo.pushX + collisionInfo.pushY * collisionInfo.pushY
-      );
-      if (pushLen > 0.001) {
-        const pushDirX = collisionInfo.pushX / pushLen;
-        const pushDirY = collisionInfo.pushY / pushLen;
-
-        // Apply push and verify it doesn't cause another collision
-        const pushedX = zombie.x + pushDirX * pushMagnitude;
-        const pushedY = zombie.y + pushDirY * pushMagnitude;
-
-        if (!roomManager.checkWallCollision(pushedX, pushedY, zombie.size)) {
-          finalX = pushedX;
-          finalY = pushedY;
-        } else {
-          // Try push on each axis separately
-          if (!roomManager.checkWallCollision(pushedX, zombie.y, zombie.size)) {
-            finalX = pushedX;
-          }
-          if (!roomManager.checkWallCollision(zombie.x, pushedY, zombie.size)) {
-            finalY = pushedY;
-          }
-        }
-      }
-    }
-  }
-
-  // Strategy 3: Unstuck mechanism - zombie is trapped inside a wall
-  // Check if zombie is CURRENTLY stuck (not just blocked)
-  const currentCollision = roomManager.getWallCollisionInfo(finalX, finalY, zombie.size);
-  if (currentCollision.colliding && currentCollision.penetration > 1) {
-    // Severely stuck - emergency push toward room center
-    const roomCenterX = CONFIG.ROOM_WIDTH / 2;
-    const roomCenterY = CONFIG.ROOM_HEIGHT / 2;
-    const toCenterX = roomCenterX - finalX;
-    const toCenterY = roomCenterY - finalY;
-    const toCenterDist = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY);
-
-    if (toCenterDist > 0.001) {
-      const unstuckSpeed = Math.max(zombie.speed, 3); // At least 3 pixels per frame
-      finalX += (toCenterX / toCenterDist) * unstuckSpeed;
-      finalY += (toCenterY / toCenterDist) * unstuckSpeed;
-    }
-  }
-
-  // Final boundary clamp to prevent going outside room
-  return clampToRoomBounds(zombie, finalX, finalY);
-}
 
 /**
  * Check and handle player collisions
