@@ -11,11 +11,21 @@ const CONFIG = {
 };
 
 const makeUpgrades = () => ({
-  damage1:   { name: 'Sharp Bullets', description: '+20% dmg',  rarity: 'common',    effect: jest.fn(p => { p.damageMultiplier += 0.2; }) },
-  damage2:   { name: 'Sharper',       description: '+30% dmg',  rarity: 'common',    effect: jest.fn(p => { p.damageMultiplier += 0.3; }) },
-  piercing:  { name: 'Piercing',      description: 'pierce +1', rarity: 'rare',      effect: jest.fn(p => { p.bulletPiercing += 1; }) },
-  turret:    { name: 'Auto Turret',   description: '+1 turret', rarity: 'rare',      effect: jest.fn(p => { p.autoTurrets += 1; }) },
-  godmode:   { name: 'Godmode',       description: 'immortal',  rarity: 'legendary', effect: jest.fn(p => { p.godmode = true; }) }
+  damage1:   { name: 'Sharp Bullets', description: '+20% dmg',  rarity: 'common',    effect: jest.fn(p => {
+ p.damageMultiplier += 0.2;
+}) },
+  damage2:   { name: 'Sharper',       description: '+30% dmg',  rarity: 'common',    effect: jest.fn(p => {
+ p.damageMultiplier += 0.3;
+}) },
+  piercing:  { name: 'Piercing',      description: 'pierce +1', rarity: 'rare',      effect: jest.fn(p => {
+ p.bulletPiercing += 1;
+}) },
+  turret:    { name: 'Auto Turret',   description: '+1 turret', rarity: 'rare',      effect: jest.fn(p => {
+ p.autoTurrets += 1;
+}) },
+  godmode:   { name: 'Godmode',       description: 'immortal',  rarity: 'legendary', effect: jest.fn(p => {
+ p.godmode = true;
+}) }
 });
 
 function makeGS() {
@@ -24,7 +34,9 @@ function makeGS() {
 
 describe('getXPForLevel', () => {
   let pm;
-  beforeEach(() => { pm = new PlayerManager(makeGS(), CONFIG, {}); });
+  beforeEach(() => {
+ pm = new PlayerManager(makeGS(), CONFIG, {});
+});
 
   test('levels 1-5 use 50 + 30*(level-1)', () => {
     expect(pm.getXPForLevel(1)).toBe(50);
@@ -145,7 +157,9 @@ describe('applyUpgrade', () => {
 
 describe('addXP', () => {
   let pm;
-  beforeEach(() => { pm = new PlayerManager(makeGS(), CONFIG, makeUpgrades()); });
+  beforeEach(() => {
+ pm = new PlayerManager(makeGS(), CONFIG, makeUpgrades());
+});
 
   test('adds XP without leveling when below threshold', () => {
     const player = { xp: 0, level: 1 };
