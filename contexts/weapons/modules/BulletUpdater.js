@@ -296,5 +296,9 @@ function updatePlasmaTrail(bullet, entityManager) {
 }
 
 module.exports = {
-  updateBullets
+  updateBullets,
+  // Exported for unit tests
+  _updateBulletPosition,
+  shouldDestroyBullet,
+  updatePlasmaTrail
 };

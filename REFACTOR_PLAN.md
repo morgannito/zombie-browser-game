@@ -165,7 +165,8 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [ ] zombie context 50% → 70% (tests BossAbilities + ZombieManager + BossUpdaterSimple remaining branches)
 - [ ] zombie context 30% → 50%
 - [x] weapons context 4% → 28.45% (BulletEffects 92% — 17 tests explosive/chain/poison/ice). Threshold ratchet 4→25%.
-- [ ] weapons context 25% → 50% (BulletCollisionHandler + BulletUpdater tests)
+- [x] weapons context 25% → 42.68% (BulletUpdater — 15 tests pos/gravity/bounds/plasma-trail + integration). Threshold ratchet 25→40%.
+- [ ] weapons context 40% → 60% (BulletCollisionHandler tests — 0% covered)
 - [ ] player context 5% → 30%
 
 ### Shim cleanup (migrer les ~22 call sites restants)
