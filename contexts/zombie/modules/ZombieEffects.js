@@ -6,6 +6,8 @@
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
+const { handleNewWave } = require('../../wave/modules/WaveManager');
+const { handlePlayerDeathProgression } = require('../../../game/gameLoop');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
@@ -55,7 +57,6 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
           createParticles(player.x, player.y, '#00ff00', 3, entityManager);
 
           if (player.health <= 0) {
-            const handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
             handlePlayerDeathProgression(player, player.id, gameState, now, false);
           }
         }
@@ -112,7 +113,6 @@ function killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zomb
 
   // BUG FIX: Si c'était un boss, déclencher la nouvelle wave
   if (zombie.isBoss && io && zombieManager) {
-    const { handleNewWave } = require('../../wave/modules/WaveManager');
     handleNewWave(gameState, io, zombieManager);
   }
 }
@@ -205,7 +205,6 @@ function applySplitExplosionDamage(zombie, splitterType, gameState, entityManage
       createParticles(player.x, player.y, '#ff8800', 10, entityManager);
 
       if (player.health <= 0) {
-        const handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
         handlePlayerDeathProgression(player, playerId, gameState, Date.now(), false);
       }
     }

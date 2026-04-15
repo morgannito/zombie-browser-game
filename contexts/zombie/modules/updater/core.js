@@ -72,9 +72,8 @@ function tickOneZombie(zombie, zombieId, tickState, handlers) {
  return;
 }
 
-  const ctx = { ...tickState };
-  dispatchAbility(zombie, zombieId, ctx, handlers.abilityHandlers);
-  dispatchBoss(zombie, zombieId, ctx, handlers.bossHandlers);
+  dispatchAbility(zombie, zombieId, tickState, handlers.abilityHandlers);
+  dispatchBoss(zombie, zombieId, tickState, handlers.bossHandlers);
 
   if (!gameState.zombies[zombieId]) {
  return;
@@ -100,7 +99,7 @@ function updateZombies(
   gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration, handlers
 ) {
   const zombies = gameState.zombies;
-  const zombieIds = Object.keys(zombies).slice();
+  const zombieIds = Object.keys(zombies);
   const { tick, pathfindingRate } = resolveTickContext(perfIntegration);
   const players = gameState.players;
 

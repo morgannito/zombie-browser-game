@@ -108,7 +108,7 @@ class Renderer {
     this.ctx.restore();
   }
 
-  render(gameState, playerId) {
+  render(gameState, playerId, deltaTime = 16) {
     this.clear();
 
     const timestamp = performance.now();
@@ -252,7 +252,6 @@ class Renderer {
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
 
     // Update and render damage numbers + hit markers + pickup labels
-    const deltaTime = 16;
     this.uiRenderer.updateDamageNumbers(deltaTime);
     this.uiRenderer.updateHitMarkers();
     this.uiRenderer.updatePickupLabels();

@@ -8,6 +8,8 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
 
+let _deadZombieCounter = 0;
+
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 // OPTIMIZATION: Pre-load all dependencies at module level instead of inside loops
@@ -288,7 +290,7 @@ function saveDeadZombie(zombie, gameState) {
   }
   const now = Date.now();
   evictExpiredDeadZombies(gameState.deadZombies, now);
-  const deadZombieId = `dead_${now}_${Math.random()}`;
+  const deadZombieId = 'dead_' + (++_deadZombieCounter);
   gameState.deadZombies[deadZombieId] = {
     x: zombie.x,
     y: zombie.y,
