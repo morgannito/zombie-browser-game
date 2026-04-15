@@ -4,7 +4,7 @@
  */
 
 // Mock all infrastructure / database modules before requiring Container
-jest.mock('../../../lib/database/DatabaseManager', () => ({
+jest.mock('../../../infrastructure/database/DatabaseManager', () => ({
   getInstance: jest.fn().mockReturnValue({
     getDb: jest.fn().mockReturnValue({})
   })
@@ -66,7 +66,7 @@ jest.mock('../../../lib/application/use-cases/GetUpgradesUseCase', () =>
 beforeEach(() => {
   jest.resetModules();
   // Re-apply mocks after resetModules
-  jest.mock('../../../lib/database/DatabaseManager', () => ({
+  jest.mock('../../../infrastructure/database/DatabaseManager', () => ({
     getInstance: jest.fn().mockReturnValue({
       getDb: jest.fn().mockReturnValue({})
     })

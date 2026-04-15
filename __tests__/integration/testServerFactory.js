@@ -15,7 +15,7 @@ const { initializeRooms, loadRoom } = require('../../game/roomFunctions');
 const ConfigManager = require('../../lib/server/ConfigManager');
 const EntityManager = require('../../lib/server/EntityManager');
 const RoomManager = require("../../contexts/wave/RoomManager");
-const MetricsCollector = require('../../lib/infrastructure/MetricsCollector');
+const MetricsCollector = require('../../infrastructure/metrics/MetricsCollector');
 const perfIntegration = require('../../lib/server/PerformanceIntegration');
 const { initSocketHandlers, stopSessionCleanupInterval } = require('../../transport/websocket');
 

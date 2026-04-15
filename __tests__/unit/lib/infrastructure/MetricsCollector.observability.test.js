@@ -10,7 +10,7 @@ describe('MetricsCollector — histogram support', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    const mod = require('../../../../lib/infrastructure/MetricsCollector');
+    const mod = require('../../../../infrastructure/metrics/MetricsCollector');
     mc = mod.getInstance();
     mc.reset();
   });
@@ -65,7 +65,7 @@ describe('/metrics/game — buildGameStats', () => {
   test('test_buildGameStats_returns_expected_shape', () => {
     jest.resetModules();
     const { buildGameStats } = require("../../../../transport/http/metrics");
-    const mc = require('../../../../lib/infrastructure/MetricsCollector').getInstance();
+    const mc = require('../../../../infrastructure/metrics/MetricsCollector').getInstance();
     mc.reset();
     const stats = buildGameStats(mc);
     expect(stats).toHaveProperty('waves');
@@ -77,7 +77,7 @@ describe('/metrics/game — buildGameStats', () => {
   test('test_buildGameStats_dropRate_zero_when_no_kills', () => {
     jest.resetModules();
     const { buildGameStats } = require("../../../../transport/http/metrics");
-    const mc = require('../../../../lib/infrastructure/MetricsCollector').getInstance();
+    const mc = require('../../../../infrastructure/metrics/MetricsCollector').getInstance();
     mc.reset();
     const stats = buildGameStats(mc);
     expect(stats.powerups.dropRate).toBe(0);
@@ -86,7 +86,7 @@ describe('/metrics/game — buildGameStats', () => {
   test('test_buildGameStats_dropRate_calculated', () => {
     jest.resetModules();
     const { buildGameStats } = require("../../../../transport/http/metrics");
-    const mc = require('../../../../lib/infrastructure/MetricsCollector').getInstance();
+    const mc = require('../../../../infrastructure/metrics/MetricsCollector').getInstance();
     mc.reset();
     mc.incrementZombiesKilled();
     mc.incrementZombiesKilled();
@@ -100,7 +100,7 @@ describe('/admin/stats — buildAdminStats', () => {
   test('test_buildAdminStats_returns_expected_shape', () => {
     jest.resetModules();
     const { buildAdminStats } = require("../../../../transport/http/adminStats");
-    const mc = require('../../../../lib/infrastructure/MetricsCollector').getInstance();
+    const mc = require('../../../../infrastructure/metrics/MetricsCollector').getInstance();
     mc.reset();
     const stats = buildAdminStats(mc, null);
     expect(stats).toHaveProperty('server');
@@ -114,7 +114,7 @@ describe('/admin/stats — buildAdminStats', () => {
   test('test_buildAdminStats_memoryTrend_null_when_no_monitor', () => {
     jest.resetModules();
     const { buildAdminStats } = require("../../../../transport/http/adminStats");
-    const mc = require('../../../../lib/infrastructure/MetricsCollector').getInstance();
+    const mc = require('../../../../infrastructure/metrics/MetricsCollector').getInstance();
     mc.reset();
     const stats = buildAdminStats(mc, null);
     expect(stats.memoryTrend).toBeNull();
