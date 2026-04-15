@@ -40,7 +40,7 @@ class DatabaseManager {
       this.db.pragma('busy_timeout = 5000'); // Auto-retry on SQLITE_BUSY for 5s
       this.db.pragma('cache_size = -64000'); // 64MB cache
       this.db.pragma('temp_store = MEMORY');
-      this.db.pragma('mmap_size = 30000000000'); // 30GB mmap
+      this.db.pragma('mmap_size = 134217728'); // 128MB mmap
 
       logger.info('Database connection established', { path: DB_PATH });
 
@@ -94,6 +94,7 @@ class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_sessions_player ON sessions(player_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_socket ON sessions(socket_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_disconnected ON sessions(disconnected_at) WHERE disconnected_at IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_sessions_active ON sessions(player_id) WHERE disconnected_at IS NULL;
     `);
 
     // Permanent upgrades table - shop purchases that persist
