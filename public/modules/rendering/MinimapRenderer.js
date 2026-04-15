@@ -8,7 +8,42 @@
 
 class MinimapRenderer {
   constructor() {
-    // No persistent state needed
+    // Heatmap offscreen canvas for zombie density
+    this._heatCanvas = null;
+    this._heatCtx = null;
+  }
+
+  /**
+   * Build a zombie density heatmap on an offscreen canvas.
+   * Each zombie adds a radial red gradient; bosses count more.
+   * @param {number} w - Map pixel width
+   * @param {number} h - Map pixel height
+   * @param {object[]} zombies - Array of zombie objects with x,y,isBoss
+   * @param {number} scaleX - World-to-minimap scale X
+   * @param {number} scaleY - World-to-minimap scale Y
+   */
+  _buildHeatmap(w, h, zombies, scaleX, scaleY) {
+    if (!this._heatCanvas || this._heatCanvas.width !== w || this._heatCanvas.height !== h) {
+      this._heatCanvas = document.createElement('canvas');
+      this._heatCanvas.width = w;
+      this._heatCanvas.height = h;
+      this._heatCtx = this._heatCanvas.getContext('2d');
+    }
+    const hCtx = this._heatCtx;
+    hCtx.clearRect(0, 0, w, h);
+    for (const z of zombies) {
+      const mx = z.x * scaleX;
+      const my = z.y * scaleY;
+      const r = z.isBoss ? 18 : 10;
+      const alpha = z.isBoss ? 0.35 : 0.18;
+      const grad = hCtx.createRadialGradient(mx, my, 0, mx, my, r);
+      grad.addColorStop(0, `rgba(255,0,0,${alpha})`);
+      grad.addColorStop(1, 'rgba(255,0,0,0)');
+      hCtx.fillStyle = grad;
+      hCtx.beginPath();
+      hCtx.arc(mx, my, r, 0, Math.PI * 2);
+      hCtx.fill();
+    }
   }
 
   renderMinimap(minimapCanvas, minimapCtx, gameState, playerId) {
@@ -39,6 +74,13 @@ class MinimapRenderer {
         wall.height * scaleY
       );
     });
+
+    // Zombie density heatmap
+    const zombieList = Object.values(gameState.state.zombies);
+    if (zombieList.length > 0) {
+      this._buildHeatmap(mapWidth, mapHeight, zombieList, scaleX, scaleY);
+      minimapCtx.drawImage(this._heatCanvas, 0, 0);
+    }
 
     // Zombies
     Object.values(gameState.state.zombies).forEach(zombie => {
