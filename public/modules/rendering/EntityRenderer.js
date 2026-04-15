@@ -49,6 +49,10 @@ class EntityRenderer {
     // LRU eviction: hard cap at 40 sprites
     this._zombieSpriteCache = new Map();
     this._zombieSpriteCacheLRU = []; // ordered oldest→newest by key
+
+    // measureText cache: label string -> pixel width (invalidated on font change)
+    this._textWidthCache = new Map();
+    this._textWidthCacheFont = '';
   }
 
   /**
@@ -79,8 +83,8 @@ class EntityRenderer {
     if (this._zombieSpriteCache.size >= SPRITE_CACHE_CAP) {
       const evictKey = this._zombieSpriteCacheLRU.shift();
       if (evictKey) {
-this._zombieSpriteCache.delete(evictKey);
-}
+        this._zombieSpriteCache.delete(evictKey);
+      }
     }
 
     // Build sprite: size×2.5 canvas centered on zombie origin
@@ -1236,13 +1240,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(
-        zombie.x,
-        zombie.y,
-        zombie.size + 10 + Math.sin(now / 200) * 5,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(zombie.x, zombie.y, zombie.size + 10 + Math.sin(now / 200) * 5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
@@ -1395,13 +1393,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(
-        zombie.x,
-        zombie.y,
-        zombie.size + 15 + Math.sin(now / 150) * 5,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(zombie.x, zombie.y, zombie.size + 15 + Math.sin(now / 150) * 5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
@@ -1426,13 +1418,7 @@ this._zombieSpriteCache.delete(evictKey);
       ctx.strokeStyle = '#ff6600';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(
-        zombie.x,
-        zombie.y,
-        zombie.size + 10 + Math.sin(now / 200) * 3,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(zombie.x, zombie.y, zombie.size + 10 + Math.sin(now / 200) * 3, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
@@ -1627,9 +1613,20 @@ this._zombieSpriteCache.delete(evictKey);
   renderPlayerNameBubble(ctx, x, y, text, isCurrentPlayer, offsetY) {
     offsetY = offsetY || -40;
 
-    ctx.font = 'bold 14px Arial';
-    const textMetrics = ctx.measureText(text);
-    const textWidth = textMetrics.width;
+    const font = 'bold 14px Arial';
+    ctx.font = font;
+    if (this._textWidthCacheFont !== font) {
+      this._textWidthCache.clear();
+      this._textWidthCacheFont = font;
+    }
+    let textWidth = this._textWidthCache.get(text);
+    if (textWidth === undefined) {
+      textWidth = ctx.measureText(text).width;
+      if (this._textWidthCache.size > 64) {
+        this._textWidthCache.clear();
+      }
+      this._textWidthCache.set(text, textWidth);
+    }
 
     const paddingX = 12;
     const bubbleWidth = textWidth + paddingX * 2;
