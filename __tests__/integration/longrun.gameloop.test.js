@@ -18,7 +18,7 @@ const { gameLoop } = require('../../game/gameLoop');
 const ConfigManager = require('../../lib/server/ConfigManager');
 const CollisionManager = require('../../lib/server/CollisionManager');
 const EntityManager = require('../../lib/server/EntityManager');
-const ZombieManager = require('../../lib/server/ZombieManager');
+const ZombieManager = require('../../contexts/zombie/ZombieManager');
 const MetricsCollector = require('../../lib/infrastructure/MetricsCollector');
 const perfIntegration = require('../../lib/server/PerformanceIntegration');
 

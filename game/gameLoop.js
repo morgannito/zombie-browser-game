@@ -11,12 +11,12 @@ const ConfigManager = require('../lib/server/ConfigManager');
 const { GAMEPLAY_CONSTANTS } = ConfigManager;
 
 // Module imports
-const { updateZombies } = require('./modules/zombie/ZombieUpdater');
+const { updateZombies } = require('../contexts/zombie/modules/ZombieUpdater');
 const {
   updatePoisonTrails,
   updatePoisonedZombies,
   updateFrozenSlowedZombies
-} = require('./modules/zombie/ZombieEffects');
+} = require('../contexts/zombie/modules/ZombieEffects');
 const { updateBullets } = require('./modules/bullet/BulletUpdater');
 const { updatePowerups } = require('./modules/loot/PowerupUpdater');
 const { updateLoot } = require('./modules/loot/LootUpdater');

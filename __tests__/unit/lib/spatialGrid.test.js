@@ -1,6 +1,6 @@
 'use strict';
 
-const { SpatialGrid } = require('../../../lib/server/SpatialGrid');
+const { SpatialGrid } = require('../../../contexts/zombie/SpatialGrid');
 
 describe('SpatialGrid', () => {
   describe('insert + nearby — 100 zombies', () => {

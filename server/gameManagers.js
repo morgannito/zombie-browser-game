@@ -9,7 +9,7 @@ const CollisionManager = require('../lib/server/CollisionManager');
 const NetworkManager = require('../lib/server/NetworkManager');
 const RoomManager = require('../lib/server/RoomManager');
 const RunMutatorManager = require('../lib/server/RunMutatorManager');
-const ZombieManager = require('../lib/server/ZombieManager');
+const ZombieManager = require('../contexts/zombie/ZombieManager');
 const logger = require('../lib/infrastructure/Logger');
 
 function buildZombieManager(gameState, config, zombieTypes, roomManager, io) {
