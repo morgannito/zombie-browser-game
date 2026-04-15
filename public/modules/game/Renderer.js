@@ -294,6 +294,8 @@ class Renderer {
     // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
     if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {
       const pixelRatio = window.devicePixelRatio || 1;
+      this.ctx.save();
+      this.ctx.scale(pixelRatio, pixelRatio);
       this.crosshairRenderer.render(
         this.ctx,
         window.inputManager.mouse.x,
@@ -302,6 +304,7 @@ class Renderer {
         this.camera.getPosition(),
         pixelRatio
       );
+      this.ctx.restore();
     }
   }
 
