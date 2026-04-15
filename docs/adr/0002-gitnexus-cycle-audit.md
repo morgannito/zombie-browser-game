@@ -13,7 +13,8 @@ Programmatic verification that the refactor's stated architecture holds:
 2. No cross-layer violations (contexts → server/transport/routes).
 3. No reverse-layer imports (infrastructure → contexts).
 
-Index snapshot: **3,664 nodes**, **10,707 edges**, **340 clusters**, **300 flows**.
+Index snapshot: **3,679 nodes**, **10,755 edges**, **339 clusters**, **300 flows** (re-audit 2026-04-15 post UX wave).  
+Previous snapshot: 3,664 nodes, 10,707 edges, 340 clusters, 300 flows — still 0 cycles, 0 violations.
 
 ## Queries run
 
