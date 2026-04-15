@@ -64,12 +64,8 @@ const { gameLoop } = require('./game/gameLoop');
 const { initializeRooms } = require('./game/roomFunctions');
 
 const ConfigManager = require('./lib/server/ConfigManager');
-const EntityManager = require('./lib/server/EntityManager');
-const CollisionManager = require('./lib/server/CollisionManager');
-const NetworkManager = require('./lib/server/NetworkManager');
-const RoomManager = require('./lib/server/RoomManager');
-const ZombieManager = require('./lib/server/ZombieManager');
-const RunMutatorManager = require('./lib/server/RunMutatorManager');
+// Game managers factory (entity/collision/network/room/mutator/zombie).
+const { createGameManagers } = require('./server/gameManagers');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -198,26 +194,19 @@ async function startServer() {
   // Initialize rooms (Rogue-like system)
   initializeRooms(gameState, CONFIG);
 
-  // Initialize game managers
-  const entityManager = new EntityManager(gameState, CONFIG);
-  const collisionManager = new CollisionManager(gameState, CONFIG);
-  const networkManager = new NetworkManager(io, gameState);
-  const roomManager = new RoomManager(gameState, CONFIG, io);
-  const mutatorManager = new RunMutatorManager(gameState, io);
-  const zombieManager = new ZombieManager(
+  // Initialize game managers (entity, collision, network, room, mutator, zombie).
+  const {
+    entityManager,
+    collisionManager,
+    networkManager,
+    roomManager,
+    zombieManager
+  } = createGameManagers({
     gameState,
-    CONFIG,
-    ZOMBIE_TYPES,
-    (x, y, size) => roomManager.checkWallCollision(x, y, size),
+    config: CONFIG,
+    zombieTypes: ZOMBIE_TYPES,
     io
-  );
-
-  // CRITICAL FIX: Add roomManager to gameState for zombie movement
-  gameState.roomManager = roomManager;
-  gameState.mutatorManager = mutatorManager;
-
-  mutatorManager.initialize();
-  logger.info('Run mutators initialized');
+  });
 
   // Initialize progression integration (XP, skills, achievements)
   if (dbAvailable) {

@@ -109,7 +109,10 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `server/database.js` — dbManager init
   - [x] `server/middleware.js` — express middleware wiring
   - [x] `server/routes.js` — route mounting
-  - [ ] `server/bootstrap.js` — main startServer orchestrator
+  - [ ] `server/bootstrap.js` — main startServer orchestrator (sous-étapes):
+    - [x] `server/gameManagers.js` — entity/collision/network/room/zombie/mutator init
+    - [ ] `server/heartbeat.js` — inactivity cleanup interval
+    - [ ] `server/bootstrap.js` — final startServer orchestrator
 - [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
 - [ ] Extraire `server.js` shutdown → `server/cleanup.js`
 
