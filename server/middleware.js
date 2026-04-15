@@ -19,7 +19,8 @@ const {
 
 function mountStaticAssets(app) {
   const isProduction = process.env.NODE_ENV === 'production';
-  app.use('/shared', express.static('shared'));
+  // Note: /shared/socketEvents.js was server-only; events moved to
+  // transport/websocket/events.js. Mount removed (no remaining shared assets).
   app.use(
     '/assets',
     express.static('assets', {

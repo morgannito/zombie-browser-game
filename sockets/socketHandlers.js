@@ -12,7 +12,7 @@
 
 const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
-const { SOCKET_EVENTS } = require('../shared/socketEvents');
+const { SOCKET_EVENTS } = require("../transport/websocket/events");
 const ConfigManager = require('../lib/server/ConfigManager');
 // Handler bodies moved to transport/websocket/handlers/*; remaining code in
 // this file is only the bootstrap (initSocketHandlers) and legacy helpers.

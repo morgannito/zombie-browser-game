@@ -5,7 +5,7 @@
  */
 
 const logger = require('../../../lib/infrastructure/Logger');
-const { SOCKET_EVENTS } = require('../../../shared/socketEvents');
+const { SOCKET_EVENTS } = require("../events");
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { validateBuyItemData } = require('../../../game/validationFunctions');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
