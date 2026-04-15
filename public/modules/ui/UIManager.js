@@ -158,7 +158,22 @@ class UIManager {
 
     // Game over
     if (!player.alive) {
+      const wasHidden = els.gameOver.style.display !== 'block';
       els.gameOver.style.display = 'block';
+
+      // Respawn button starts disabled (HTML attribute) to prevent accidental
+      // clicks during the death animation. Re-enable after a short delay so
+      // the player sees the recap before acting.
+      if (wasHidden) {
+        const respawnBtn = document.getElementById('respawn-btn');
+        if (respawnBtn && respawnBtn.disabled) {
+          setTimeout(() => {
+            respawnBtn.disabled = false;
+            respawnBtn.focus();
+          }, 1500);
+        }
+      }
+
       els.finalScore.textContent = (player.totalScore || player.score || 0).toLocaleString();
       els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
       els.finalLevel.textContent = player.level || 1;
@@ -174,17 +189,20 @@ class UIManager {
       }
 
       if (!this.gameOverDispatched) {
+        const killedBy = player.lastKillerType || null;
         const gameOverStats = {
           score: player.totalScore || player.score || 0,
           wave: this.gameState.state.wave || 1,
           level: player.level || 1,
           gold: player.gold || 0,
           weapon: player.weapon || 'pistol',
-          zombiesKilled: player.zombiesKilled || player.kills || 0
+          zombiesKilled: player.zombiesKilled || player.kills || 0,
+          killedBy
         };
         document.dispatchEvent(new CustomEvent('game_over', { detail: gameOverStats }));
         this.gameOverDispatched = true;
         this.gameStartedDispatched = false;
+        this._updateDeathCause(killedBy);
       }
     } else {
       // Réinitialiser le flag quand le joueur est vivant
@@ -631,6 +649,49 @@ class UIManager {
     container.innerHTML = hasUpgrades
       ? html
       : '<div class="no-upgrades">Aucun upgrade permanent acheté</div>';
+  }
+
+  _formatKillerLabel(killerType) {
+    if (!killerType) {
+return null;
+}
+    const labels = {
+      zombie: 'Zombie',
+      fast: 'Zombie Rapide',
+      tank: 'Zombie Tank',
+      berserker: 'Berserker',
+      exploder: 'Zombie Explosif',
+      splitter: 'Zombie Diviseur',
+      spitter: 'Zombie Cracheur',
+      ghost: 'Zombie Fantôme',
+      elemental: 'Zombie Élémentaire',
+      bossCharnier: 'Boss : Le Charnier',
+      bossInfect: "Boss : L'Infect",
+      bossColosse: 'Boss : Le Colosse',
+      bossRoi: 'Boss : Le Roi',
+      bossInfernal: "Boss : L'Infernal",
+      bossCryos: 'Boss : Cryos',
+      bossVortex: 'Boss : Vortex',
+      bossNexus: 'Boss : Nexus',
+      bossApocalypse: "Boss : L'Apocalypse",
+      hazard: 'Zone de Danger'
+    };
+    return labels[killerType] || killerType;
+  }
+
+  _updateDeathCause(killerType) {
+    const el = document.getElementById('final-killed-by');
+    const row = document.getElementById('killed-by-row');
+    if (!el || !row) {
+return;
+}
+    const label = this._formatKillerLabel(killerType);
+    if (label) {
+      el.textContent = label;
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
   }
 }
 

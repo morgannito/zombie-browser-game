@@ -49,6 +49,7 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
         const lastDamage = player.lastPoisonDamage[trailId] || 0;
 
         if (now - lastDamage >= 500) {
+          player.lastKillerType = trail.zombieType || 'ghost';
           player.health -= trail.damage;
           player.lastPoisonDamage[trailId] = now;
           createParticles(player.x, player.y, '#00ff00', 3, entityManager);
@@ -198,6 +199,7 @@ function applySplitExplosionDamage(zombie, splitterType, gameState, entityManage
     const dist = distance(zombie.x, zombie.y, player.x, player.y);
     if (dist < splitterType.splitExplosionRadius) {
       const explosionDamage = 20;
+      player.lastKillerType = zombie.type;
       player.health -= explosionDamage;
 
       createParticles(player.x, player.y, '#ff8800', 10, entityManager);

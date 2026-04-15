@@ -102,6 +102,7 @@ function updateBossInfect(zombie, now, entityManager, gameState) {
 
       const dist = distance(zombie.x, zombie.y, player.x, player.y);
       if (dist < bossType.deathAuraRadius) {
+        player.lastKillerType = zombie.type;
         player.health -= bossType.deathAuraDamage;
 
         // Particules vertes toxiques
@@ -462,6 +463,7 @@ function updateBossOmega(
           angleDiff < bossType.laserWidth / 2 / distToZombie &&
           distToZombie < bossType.laserRange
         ) {
+          player.lastKillerType = zombie.type;
           player.health -= bossType.laserDamage;
 
           // Particules d'impact

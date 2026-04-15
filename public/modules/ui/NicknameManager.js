@@ -15,6 +15,7 @@ class NicknameManager {
     this.respawnBtn = document.getElementById('respawn-btn');
 
     this.spawnProtectionInterval = null; // Store interval for cleanup
+    this.respawnCountdownInterval = null;
     this.isStarting = false;
 
     // Store handler references for cleanup
@@ -25,7 +26,8 @@ class NicknameManager {
         }
       },
       startGame: () => this.startGame(),
-      respawn: () => this.respawn()
+      respawn: () => this.respawn(),
+      gameOver: () => this._enableRespawnWithDelay()
     };
 
     this.setupEventListeners();
@@ -43,6 +45,8 @@ class NicknameManager {
     if (this.respawnBtn) {
       this.respawnBtn.addEventListener('click', this.handlers.respawn);
     }
+
+    document.addEventListener('game_over', this.handlers.gameOver);
   }
 
   cleanup() {
@@ -50,6 +54,11 @@ class NicknameManager {
     if (this.spawnProtectionInterval) {
       clearInterval(this.spawnProtectionInterval);
       this.spawnProtectionInterval = null;
+    }
+
+    if (this.respawnCountdownInterval) {
+      clearInterval(this.respawnCountdownInterval);
+      this.respawnCountdownInterval = null;
     }
 
     // Remove event listeners
@@ -64,6 +73,8 @@ class NicknameManager {
     if (this.respawnBtn) {
       this.respawnBtn.removeEventListener('click', this.handlers.respawn);
     }
+
+    document.removeEventListener('game_over', this.handlers.gameOver);
   }
 
   async startGame() {
@@ -185,12 +196,42 @@ class NicknameManager {
     }, CONSTANTS.SPAWN_PROTECTION.UPDATE_INTERVAL);
   }
 
+  _enableRespawnWithDelay() {
+    if (!this.respawnBtn) {
+return;
+}
+    const DELAY_MS = 1500;
+    const TICK_MS = 100;
+    const endTime = Date.now() + DELAY_MS;
+    this.respawnBtn.disabled = true;
+    this.respawnBtn.textContent = '1...';
+    if (this.respawnCountdownInterval) {
+      clearInterval(this.respawnCountdownInterval);
+    }
+    this.respawnCountdownInterval = setInterval(() => {
+      const remaining = endTime - Date.now();
+      if (remaining <= 0) {
+        clearInterval(this.respawnCountdownInterval);
+        this.respawnCountdownInterval = null;
+        this.respawnBtn.disabled = false;
+        this.respawnBtn.textContent = 'CONTINUER ?';
+      } else {
+        this.respawnBtn.textContent = `${Math.ceil(remaining / 1000)}...`;
+      }
+    }, TICK_MS);
+  }
+
   respawn() {
     this.playerController.respawn();
 
     const gameOverScreen = document.getElementById('game-over');
     if (gameOverScreen) {
       gameOverScreen.style.display = 'none';
+    }
+
+    // Re-arm the respawn button's disabled guard for the next death cycle
+    if (this.respawnBtn) {
+      this.respawnBtn.disabled = true;
     }
 
     // Show nickname screen again

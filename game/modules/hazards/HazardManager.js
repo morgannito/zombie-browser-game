@@ -61,6 +61,7 @@ class HazardManager {
           if (!hazard.lastDamageTick || now - hazard.lastDamageTick >= damageInterval) {
             hazard.lastDamageTick = now;
 
+            player.lastKillerType = hazard.type || 'hazard';
             player.health -= hazard.damage;
 
             // Visual feedback
@@ -113,6 +114,7 @@ class HazardManager {
           if (!pool.lastDamageTick || now - pool.lastDamageTick >= 500) {
             pool.lastDamageTick = now;
 
+            player.lastKillerType = 'hazard';
             player.health -= pool.damage / 2; // Damage every 0.5s
 
             createParticles(player.x, player.y, '#00ff00', 4, this.entityManager);
