@@ -20,7 +20,6 @@ const {
   distance, distanceSquared, cleanupPlayerBullets,
   generateUpgradeChoices, getXPForLevel
 } = require('../../../game/utilityFunctions');
-const logger = require('../../../infrastructure/logging/Logger');
 
 beforeEach(() => jest.clearAllMocks());
 
