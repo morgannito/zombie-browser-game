@@ -170,7 +170,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [ ] weapons context 55% → 70% (remaining BulletCollisionHandler branches — boss death, explosive, splitter)
 - [x] player context 5% → 26.34% (PlayerEffects 100% + RespawnHelpers 100% + PlayerProgression 58% — 35 tests milestones/combo/respawn). Threshold ratchet 5→22%.
 - [x] player context 22% → 37.56% (PlayerUpdater 100% — 16 tests timers/regen/combo-reset + orchestrator). Threshold ratchet 22→33%.
-- [ ] player context 33% → 50% (DeathProgressionHandler + AutoTurretHandler + TeslaCoilHandler tests)
+- [x] player context 33% → 75.85% (DeathProgressionHandler 82% + AutoTurretHandler 100% + TeslaCoilHandler 100% — 68 tests via 3 parallel agents PR #112/#113/#114). Threshold ratchet 33→70%.
 
 ### Shim cleanup (migrer les ~22 call sites restants)
 - [x] Migrer `lib/infrastructure/Logger` consumers → `infrastructure/logging/Logger` + suppression shim (PR #101)
