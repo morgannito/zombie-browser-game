@@ -33,7 +33,10 @@ const {
 const { checkRateLimit, cleanupRateLimits } = require('./rateLimitStore');
 const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
 const { safeHandler } = require('./socketUtils');
-const { registerBuyItemHandler, registerShopHandlers } = require('./shopEvents');
+const {
+  registerBuyItemHandler,
+  registerShopHandlers
+} = require('../transport/websocket/handlers/shop');
 
 const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS } = ConfigManager;
 
