@@ -168,10 +168,11 @@ class OptimizedSoundEffects {
       return;
     }
 
+    const pitch = 0.95 + Math.random() * 0.1; // +-5% pitch variation per kill
     this.core.playTone({
       type: 'zombieDeath',
-      frequency: 300,
-      frequencyEnd: 50,
+      frequency: 300 * pitch,
+      frequencyEnd: 50 * pitch,
       duration: 0.3,
       volume: 0.28,
       waveType: 'sawtooth',

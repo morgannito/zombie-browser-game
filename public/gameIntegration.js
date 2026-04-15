@@ -29,6 +29,7 @@ function initializeEnhancedSystems() {
   // Système audio
   if (typeof AdvancedAudioManager !== 'undefined') {
     window.advancedAudio = new AdvancedAudioManager();
+    window.advancedAudio._initVisibilityGating();
     logger.debug('Audio system loaded');
 
     // Démarrer la musique du menu après interaction utilisateur
@@ -168,6 +169,12 @@ window.onPlayerHeal = function (x, y, amount) {
   if (window.advancedAudio) {
     window.advancedAudio.playSound('heal');
   }
+  if (window.advancedAudio && window.gameState && window.gameState.state && window.gameState.playerId) {
+    const p = window.gameState.state.players && window.gameState.state.players[window.gameState.playerId];
+    if (p && p.maxHealth > 0 && p.health / p.maxHealth >= 0.25) {
+      window.advancedAudio.stopLowHealthHeartbeat();
+    }
+  }
   if (window.enhancedUI) {
     window.enhancedUI.onPlayerHeal(amount);
   }
@@ -182,6 +189,16 @@ window.onPlayerDamage = function (x, y, damage) {
   }
   if (window.advancedAudio) {
     window.advancedAudio.playSound('playerDamage');
+  }
+  if (window.advancedAudio && window.gameState && window.gameState.state && window.gameState.playerId) {
+    const p = window.gameState.state.players && window.gameState.state.players[window.gameState.playerId];
+    if (p && p.maxHealth > 0) {
+      if (p.health / p.maxHealth < 0.25) {
+        window.advancedAudio.startLowHealthHeartbeat();
+      } else {
+        window.advancedAudio.stopLowHealthHeartbeat();
+      }
+    }
   }
   if (window.enhancedUI) {
     window.enhancedUI.onPlayerDamage();
