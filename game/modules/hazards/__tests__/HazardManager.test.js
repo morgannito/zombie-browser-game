@@ -484,4 +484,72 @@ describe('HazardManager', () => {
       expect(spy2).toHaveBeenCalledWith(now);
     });
   });
+
+  describe('lastKillerType tracking', () => {
+    it('should set lastKillerType to hazard type when player takes hazard damage', () => {
+      const now = Date.now();
+
+      gameState.players.player1.x = 100;
+      gameState.players.player1.y = 100;
+      gameState.players.player1.health = 100;
+
+      gameState.hazards.push({
+        type: 'meteor',
+        x: 100,
+        y: 100,
+        radius: 50,
+        damage: 10,
+        createdAt: now - 100,
+        duration: 5000
+      });
+
+      hazardManager.updateHazards(now);
+
+      expect(gameState.players.player1.lastKillerType).toBe('meteor');
+    });
+
+    it('should set lastKillerType to hazard when player takes toxic pool damage', () => {
+      const now = Date.now();
+
+      gameState.players.player1.x = 200;
+      gameState.players.player1.y = 200;
+      gameState.players.player1.health = 100;
+
+      gameState.toxicPools.push({
+        id: 'pool_test',
+        x: 200,
+        y: 200,
+        radius: 60,
+        damage: 10,
+        createdAt: now - 100,
+        duration: 5000
+      });
+
+      hazardManager.updateToxicPools(now);
+
+      expect(gameState.players.player1.lastKillerType).toBe('hazard');
+    });
+
+    it('should not set lastKillerType when player is out of hazard radius', () => {
+      const now = Date.now();
+
+      gameState.players.player1.x = 500;
+      gameState.players.player1.y = 500;
+      gameState.players.player1.health = 100;
+
+      gameState.hazards.push({
+        type: 'iceSpike',
+        x: 100,
+        y: 100,
+        radius: 50,
+        damage: 10,
+        createdAt: now - 100,
+        duration: 5000
+      });
+
+      hazardManager.updateHazards(now);
+
+      expect(gameState.players.player1.lastKillerType).toBeUndefined();
+    });
+  });
 });

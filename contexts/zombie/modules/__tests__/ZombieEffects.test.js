@@ -242,4 +242,53 @@ describe('handleSplitterDeath', () => {
     handleSplitterDeath(zombie, 'z1', gameState, {});
     expect(player.health).toBe(50);
   });
+
+  test('sets lastKillerType to zombie type on explosion damage', () => {
+    const zombie = { type: 'splitter', x: 100, y: 100, maxHealth: 100, damage: 10 };
+    const player = { alive: true, x: 110, y: 100, health: 100 };
+    const gameState = { zombies: {}, nextZombieId: 1, players: { p1: player } };
+    handleSplitterDeath(zombie, 'z1', gameState, {});
+    expect(player.lastKillerType).toBe('splitter');
+  });
+});
+
+describe('updatePoisonTrails - lastKillerType tracking', () => {
+  const mockCollisionManager = {
+    findPlayersInRadius: jest.fn()
+  };
+  const mockEntityManager = {};
+
+  beforeEach(() => {
+    mockCollisionManager.findPlayersInRadius.mockReset();
+  });
+
+  test('sets lastKillerType from trail.zombieType when player takes poison damage', () => {
+    const now = Date.now();
+    const player = { x: 100, y: 100, health: 100, spawnProtection: false, invisible: false };
+    const trail = {
+      x: 100, y: 100, radius: 50, damage: 5,
+      createdAt: now - 100, duration: 5000, zombieType: 'spitter'
+    };
+    const gameState = { poisonTrails: { t1: trail } };
+    mockCollisionManager.findPlayersInRadius.mockReturnValue([player]);
+
+    updatePoisonTrails(gameState, now, mockCollisionManager, mockEntityManager);
+
+    expect(player.lastKillerType).toBe('spitter');
+  });
+
+  test('falls back to ghost when trail.zombieType is missing', () => {
+    const now = Date.now();
+    const player = { x: 100, y: 100, health: 100, spawnProtection: false, invisible: false };
+    const trail = {
+      x: 100, y: 100, radius: 50, damage: 5,
+      createdAt: now - 100, duration: 5000
+    };
+    const gameState = { poisonTrails: { t1: trail } };
+    mockCollisionManager.findPlayersInRadius.mockReturnValue([player]);
+
+    updatePoisonTrails(gameState, now, mockCollisionManager, mockEntityManager);
+
+    expect(player.lastKillerType).toBe('ghost');
+  });
 });
