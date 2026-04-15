@@ -81,6 +81,12 @@ function isZombieFarFromAllPlayers(zombie, players) {
  * Result is stored on zombie._cachedNearestPlayer / _cachedNearestPlayerDist
  * and is valid for the duration of the current tick (_cacheTick).
  *
+ * PERF: Uses squared-distance comparison to avoid Math.sqrt on every
+ * (zombie, player) pair.  sqrt is only taken once — on the winner — to store
+ * the true distance for callers that need it.  With N zombies doing a target
+ * eval every 10 ticks and P players this saves N*P sqrts every 10 ticks
+ * (e.g. 50 zombies × 4 players = 200 sqrts avoided per eval cycle).
+ *
  * @param {Object} zombie
  * @param {Object} players - gameState.players hash
  * @param {number} tick - current perfIntegration.tickCounter
@@ -91,7 +97,7 @@ function getNearestPlayer(zombie, players, tick) {
     return { player: zombie._cachedNearestPlayer, dist: zombie._cachedNearestPlayerDist };
   }
 
-  let minDist = Infinity;
+  let minDistSq = Infinity;
   let nearest = null;
   const ids = Object.keys(players);
 
@@ -102,17 +108,18 @@ function getNearestPlayer(zombie, players, tick) {
     }
     const dx = zombie.x - p.x;
     const dy = zombie.y - p.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < minDist) {
-      minDist = d;
+    const dSq = dx * dx + dy * dy;
+    if (dSq < minDistSq) {
+      minDistSq = dSq;
       nearest = p;
     }
   }
 
   zombie._cacheTick = tick;
-  zombie._cachedNearestPlayerDist = minDist;
+  // Take sqrt only once on the winner so callers that need true dist still work.
+  zombie._cachedNearestPlayerDist = minDistSq === Infinity ? Infinity : Math.sqrt(minDistSq);
   zombie._cachedNearestPlayer = nearest;
-  return { player: nearest, dist: minDist };
+  return { player: nearest, dist: zombie._cachedNearestPlayerDist };
 }
 
 /**
@@ -497,6 +504,7 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
 
     player.health -= damageDealt;
     player.lastDamageTime[zombieId] = now;
+    player.lastKillerType = zombie.type;
 
     if (player.thorns > 0) {
       const thornsDamage = damageDealt * player.thorns;

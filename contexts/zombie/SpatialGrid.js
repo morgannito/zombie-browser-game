@@ -7,6 +7,12 @@
  *
  * Cell size is tunable via CELL_SIZE (default 100 px).
  * Rebuild once per tick; query as many times as needed.
+ *
+ * PERF: Uses nested Map<integer, Map<integer, Array>> instead of
+ * Map<string, Array> to avoid template-literal string allocation on every
+ * insert and every cell lookup.  On a tick with 50 zombies and ~20 bullet
+ * queries (each scanning ~9 cells) this removes ~230 string allocations per
+ * tick — roughly 13 800 per second at 60 FPS — reducing GC pressure.
  */
 
 const CELL_SIZE = 100;
@@ -17,18 +23,13 @@ class SpatialGrid {
    */
   constructor(cellSize = CELL_SIZE) {
     this.cellSize = cellSize;
-    /** @type {Map<string, Array>} */
+    /** @type {Map<number, Map<number, Array>>} outer key = cx, inner key = cy */
     this.cells = new Map();
   }
 
   /** Convert world coordinate to cell index */
   _cellIndex(v) {
     return Math.floor(v / this.cellSize);
-  }
-
-  /** Canonical map key for (cx, cy) */
-  _key(cx, cy) {
-    return `${cx},${cy}`;
   }
 
   /** Remove all entities from the grid */
@@ -42,11 +43,18 @@ class SpatialGrid {
    * @param {Object} entity
    */
   insert(entity) {
-    const key = this._key(this._cellIndex(entity.x), this._cellIndex(entity.y));
-    let cell = this.cells.get(key);
+    const cx = this._cellIndex(entity.x);
+    const cy = this._cellIndex(entity.y);
+
+    let row = this.cells.get(cx);
+    if (!row) {
+      row = new Map();
+      this.cells.set(cx, row);
+    }
+    let cell = row.get(cy);
     if (!cell) {
       cell = [];
-      this.cells.set(key, cell);
+      row.set(cy, cell);
     }
     cell.push(entity);
   }
@@ -69,8 +77,12 @@ class SpatialGrid {
 
     const result = [];
     for (let cx = minCX; cx <= maxCX; cx++) {
+      const row = this.cells.get(cx);
+      if (!row) {
+        continue;
+      }
       for (let cy = minCY; cy <= maxCY; cy++) {
-        const cell = this.cells.get(this._key(cx, cy));
+        const cell = row.get(cy);
         if (cell) {
           for (let i = 0; i < cell.length; i++) {
             result.push(cell[i]);
