@@ -38,10 +38,13 @@ class WeaponWheel {
   }
 
   setupEventListeners() {
+    this._listeners = [];
+    this._observers = [];
+
     const overlay = document.querySelector('.weapon-wheel-overlay');
 
     // E key to toggle weapon wheel (no conflict with AZERTY/QWERTY movement), Escape to close
-    document.addEventListener('keydown', (e) => {
+    this._onKeydown = (e) => {
       // Ignore autorepeat and keystrokes happening in text inputs
       if (e.repeat) {
 return;
@@ -82,7 +85,9 @@ return;
 
         this.toggle();
       }
-    });
+    };
+    document.addEventListener('keydown', this._onKeydown);
+    this._listeners.push({ target: document, event: 'keydown', handler: this._onKeydown });
 
     // Auto-close wheel if any blocking modal becomes visible
     ['level-up-screen', 'shop', 'game-over', 'settings-menu', 'pause-menu'].forEach((id) => {
@@ -90,7 +95,7 @@ return;
       if (!el) {
 return;
 }
-      new MutationObserver(() => {
+      const obs = new MutationObserver(() => {
         if (!this.isOpen) {
 return;
 }
@@ -98,7 +103,9 @@ return;
         if (becameVisible || el.classList.contains('is-open')) {
           this.close();
         }
-      }).observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+      });
+      obs.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+      this._observers.push(obs);
     });
 
     // Click overlay to close
@@ -107,11 +114,24 @@ return;
     }
 
     // Mouse movement for hover effect
-    document.addEventListener('mousemove', (e) => {
+    this._onMousemove = (e) => {
       if (this.isOpen) {
         this.updateHover(e);
       }
-    });
+    };
+    document.addEventListener('mousemove', this._onMousemove);
+    this._listeners.push({ target: document, event: 'mousemove', handler: this._onMousemove });
+  }
+
+  destroy() {
+    for (const { target, event, handler } of this._listeners) {
+      target.removeEventListener(event, handler);
+    }
+    this._listeners = [];
+    for (const obs of this._observers) {
+      obs.disconnect();
+    }
+    this._observers = [];
   }
 
   renderWeapons() {
