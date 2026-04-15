@@ -114,7 +114,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
     - [x] `server/heartbeat.js` — inactivity cleanup interval
     - [x] `server/bootstrap.js` — final startServer orchestrator
 - [x] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js` (heartbeat → server/heartbeat.js, powerup spawner → server/bootstrap.js, gameLoop → server/timers.js)
-- [ ] Extraire `server.js` shutdown → `server/cleanup.js`
+- [x] Extraire `server.js` shutdown → `server/cleanup.js`
 
 ### Phase 2 — Contextes domaine
 - [ ] Créer `contexts/zombie/` : déplacer `game/modules/zombie/*` + `lib/server/ZombieManager.js` + `lib/server/SpatialGrid.js`
