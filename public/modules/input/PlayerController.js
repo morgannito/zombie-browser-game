@@ -39,7 +39,9 @@ class PlayerController {
     // Instant stop: force-emit position when all WASD keys are released
     this.input.onMovementStop = () => {
       const player = this.gameState.getPlayer();
-      if (!player || !player.alive || !this.gameStarted) return;
+      if (!player || !player.alive || !this.gameStarted) {
+        return;
+      }
       this.network.playerMove(player.x, player.y, player.angle);
       this.lastNetworkUpdate = performance.now();
       this.lastSentPosition = { x: player.x, y: player.y, angle: player.angle };
@@ -47,7 +49,7 @@ class PlayerController {
 
     // Velocity smoothing for interpolation
     this.velocity = { x: 0, y: 0 };
-    this.velocitySmoothing = 0.8; // Higher = more responsive
+    this.velocitySmoothing = 0.3; // Lowered from 0.8 — snappier input response
   }
 
   setNickname(nickname) {
@@ -73,10 +75,12 @@ class PlayerController {
     }
 
     for (const wall of walls) {
-      if (x + size > wall.x &&
+      if (
+        x + size > wall.x &&
         x - size < wall.x + wall.width &&
         y + size > wall.y &&
-        y - size < wall.y + wall.height) {
+        y - size < wall.y + wall.height
+      ) {
         return true;
       }
     }
@@ -97,15 +101,17 @@ class PlayerController {
     const baseSpeed = this.gameState.config.PLAYER_SPEED;
     let speed = baseSpeed * (player.speedMultiplier || 1);
     if (player.speedBoost && now < player.speedBoost) {
-speed *= 1.5;
-}
+      speed *= 1.5;
+    }
     if (player.slowedUntil && now < player.slowedUntil) {
-speed *= (player.slowAmount || 1);
-}
+      speed *= player.slowAmount || 1;
+    }
 
     const frameSpeed = speed * deltaFactor;
-    this.velocity.x = this.velocity.x * (1 - this.velocitySmoothing) + dx * frameSpeed * this.velocitySmoothing;
-    this.velocity.y = this.velocity.y * (1 - this.velocitySmoothing) + dy * frameSpeed * this.velocitySmoothing;
+    this.velocity.x =
+      this.velocity.x * (1 - this.velocitySmoothing) + dx * frameSpeed * this.velocitySmoothing;
+    this.velocity.y =
+      this.velocity.y * (1 - this.velocitySmoothing) + dy * frameSpeed * this.velocitySmoothing;
 
     return { newX: player.x + this.velocity.x, newY: player.y + this.velocity.y };
   }
@@ -127,11 +133,11 @@ speed *= (player.slowAmount || 1);
       finalY = newY;
     } else {
       if (!this.checkWallCollision(newX, player.y, size)) {
-finalX = newX;
-}
+        finalX = newX;
+      }
       if (!this.checkWallCollision(player.x, newY, size)) {
-finalY = newY;
-}
+        finalY = newY;
+      }
     }
 
     const wt = this.gameState.config.WALL_THICKNESS || 40;
@@ -170,12 +176,18 @@ finalY = newY;
    * @param {number} now
    */
   _maybeEmitMove(player, finalX, finalY, angle, directionChanged, now) {
-    const positionDelta = Math.hypot(finalX - this.lastSentPosition.x, finalY - this.lastSentPosition.y);
+    const positionDelta = Math.hypot(
+      finalX - this.lastSentPosition.x,
+      finalY - this.lastSentPosition.y
+    );
     const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
-    const networkInterval = directionChanged ? this.networkUpdateIntervalFast : this.networkUpdateIntervalMoving;
+    const networkInterval = directionChanged
+      ? this.networkUpdateIntervalFast
+      : this.networkUpdateIntervalMoving;
     const timeSinceLastUpdate = now - this.lastNetworkUpdate;
 
-    const shouldSend = timeSinceLastUpdate >= networkInterval &&
+    const shouldSend =
+      timeSinceLastUpdate >= networkInterval &&
       (positionDelta > this.positionThreshold || angleDelta > this.angleThreshold);
 
     if (shouldSend) {
@@ -195,12 +207,12 @@ finalY = newY;
     const now = performance.now();
     const player = this.gameState.getPlayer();
     if (!player || !player.alive) {
-return;
-}
+      return;
+    }
 
     if (deltaTime === undefined) {
-deltaTime = now - this.lastUpdateTime;
-}
+      deltaTime = now - this.lastUpdateTime;
+    }
     this.lastUpdateTime = now;
     deltaTime = Math.min(deltaTime, 100);
 
@@ -209,15 +221,15 @@ deltaTime = now - this.lastUpdateTime;
     // Always update camera even before game starts
     this.camera.follow(player, canvasWidth, canvasHeight, deltaTime);
     if (!this.gameStarted) {
-return;
-}
+      return;
+    }
 
     const { dx, dy, magnitude } = this.input.getMovementVector();
 
     const directionChanged =
       (this.lastMovementVector.dx !== 0 || this.lastMovementVector.dy !== 0) &&
       (Math.sign(dx) !== Math.sign(this.lastMovementVector.dx) ||
-       Math.sign(dy) !== Math.sign(this.lastMovementVector.dy));
+        Math.sign(dy) !== Math.sign(this.lastMovementVector.dy));
     this.lastMovementVector = { dx, dy };
 
     const angle = this._computeAimAngle(player, magnitude, dx, dy);
@@ -260,8 +272,8 @@ return;
   shoot(_canvasWidth, _canvasHeight) {
     const player = this.gameState.getPlayer();
     if (!player || !player.alive || !this.gameStarted) {
-return;
-}
+      return;
+    }
 
     const cameraPos = this.camera.getPosition();
     const mouseWorldX = this.input.mouse.x + cameraPos.x;

@@ -27,7 +27,7 @@ class GameEngine {
     this.start();
 
     // Debug mode toggle (press F3) — was 'D' which conflicted with right-movement
-    window.addEventListener('keydown', (e) => {
+    window.addEventListener('keydown', e => {
       if (e.key === 'F3' && !e.repeat) {
         if (!document.querySelector('input:focus')) {
           e.preventDefault();
@@ -58,8 +58,9 @@ class GameEngine {
     const basePixelRatio = window.devicePixelRatio || 1;
 
     // Apply performance settings resolution scale
-    const resolutionScale = window.performanceSettings ?
-      window.performanceSettings.getResolutionScale() : 1.0;
+    const resolutionScale = window.performanceSettings
+      ? window.performanceSettings.getResolutionScale()
+      : 1.0;
 
     const pixelRatio = basePixelRatio * resolutionScale;
 
@@ -83,7 +84,9 @@ class GameEngine {
     }
 
     const basePixelRatio = window.devicePixelRatio || 1;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
 
     let minimapSize = 200; // Default desktop size
 
@@ -91,9 +94,9 @@ class GameEngine {
     if (isMobile && window.performanceSettings) {
       const settings = window.performanceSettings.getSettings();
       const sizeMap = {
-        'small': 50,
-        'medium': 80,
-        'large': 120
+        small: 50,
+        medium: 80,
+        large: 120
       };
       minimapSize = sizeMap[settings.minimapSize] || 80;
     }
@@ -220,7 +223,12 @@ class GameEngine {
     this.mobileControls = new MobileControlsManager();
     window.mobileControls = this.mobileControls; // Make globally accessible
     window.inputManager.setMobileControls(this.mobileControls);
-    window.playerController = this.playerController = new PlayerController(window.inputManager, window.networkManager, window.gameState, camera);
+    window.playerController = this.playerController = new PlayerController(
+      window.inputManager,
+      window.networkManager,
+      window.gameState,
+      camera
+    );
 
     this.renderer = new Renderer(this.canvas, this.ctx, this.minimapCanvas, this.minimapCtx);
     this.renderer.setCamera(camera);
@@ -229,7 +237,7 @@ class GameEngine {
 
     // Mouse events (only if not mobile)
     if (!this.mobileControls.isMobile) {
-      this.handlers.mousemove = (e) => {
+      this.handlers.mousemove = e => {
         window.inputManager.updateMouse(e.clientX, e.clientY);
       };
 
@@ -283,9 +291,8 @@ class GameEngine {
       }
     }
 
-    // Use CSS pixels (window dimensions) instead of physical canvas dimensions
-    // Pass deltaTime for frame-independent movement
-    this.playerController.update(window.innerWidth, window.innerHeight, deltaTime);
+    // Note: playerController.update() is called unconditionally each RAF frame
+    // in gameLoop() for 60fps local prediction — do not duplicate here.
   }
 
   render(deltaTime = 16) {
@@ -321,32 +328,44 @@ class GameEngine {
     const interp = _tInterp - _t0;
     const renderer = _tRender - _tInterp;
     const total = performance.now() - _t0;
-    p.interp.sum += interp; p.interp.count++; if (interp > p.interp.max) {
-p.interp.max = interp;
-}
-    p.renderer.sum += renderer; p.renderer.count++; if (renderer > p.renderer.max) {
-p.renderer.max = renderer;
-}
-    p.total.sum += total; p.total.count++; if (total > p.total.max) {
-p.total.max = total;
-}
+    p.interp.sum += interp;
+    p.interp.count++;
+    if (interp > p.interp.max) {
+      p.interp.max = interp;
+    }
+    p.renderer.sum += renderer;
+    p.renderer.count++;
+    if (renderer > p.renderer.max) {
+      p.renderer.max = renderer;
+    }
+    p.total.sum += total;
+    p.total.count++;
+    if (total > p.total.max) {
+      p.total.max = total;
+    }
 
     if (performance.now() - p.last >= 5000) {
       // Object.keys only at flush time, not per frame
       let zCount = 0;
       const zombies = window.gameState && window.gameState.state && window.gameState.state.zombies;
       if (zombies) {
-for (const _k in zombies) {
-zCount++;
-}
-}
+        for (const _k in zombies) {
+          zCount++;
+        }
+      }
       const rows = {};
       for (const [k, v] of Object.entries(p)) {
         if (k === 'last' || v.count === 0) {
-continue;
-}
-        rows[k] = { avg_ms: +(v.sum / v.count).toFixed(2), max_ms: +v.max.toFixed(2), samples: v.count };
-        v.sum = 0; v.count = 0; v.max = 0;
+          continue;
+        }
+        rows[k] = {
+          avg_ms: +(v.sum / v.count).toFixed(2),
+          max_ms: +v.max.toFixed(2),
+          samples: v.count
+        };
+        v.sum = 0;
+        v.count = 0;
+        v.max = 0;
       }
 
       console.group(`[perf] render (5s, zombies=${zCount})`);
@@ -413,32 +432,36 @@ continue;
 
   gameLoop(timestamp = 0) {
     // FPS limiting based on performance settings
-    const targetFrameTime = window.performanceSettings ?
-      window.performanceSettings.getTargetFrameTime() : (1000 / 60);
+    const targetFrameTime = window.performanceSettings
+      ? window.performanceSettings.getTargetFrameTime()
+      : 1000 / 60;
 
     const deltaTime = timestamp - this.lastFrameTime;
     const renderDeltaTime = this._lastTimestamp ? timestamp - this._lastTimestamp : 16;
     this._lastTimestamp = timestamp;
 
-    // Only update/render if enough time has passed
-    if (deltaTime >= targetFrameTime) {
-      try {
-        this.update(deltaTime);
+    // Always update player prediction every RAF tick for 60fps fluidity.
+    // Only throttle the full render to targetFrameTime.
+    try {
+      // Player position prediction runs unconditionally each RAF frame
+      this.playerController.update(window.innerWidth, window.innerHeight, renderDeltaTime);
+
+      if (deltaTime >= targetFrameTime) {
+        this.update(renderDeltaTime);
         this.render(renderDeltaTime);
 
         // Notify performance settings for FPS counting
         if (window.performanceSettings) {
           window.performanceSettings.onFrameRendered();
         }
-      } catch (error) {
-        console.error('Game loop error:', error);
-        // Continue the game loop even if there's an error
-      }
 
-      this.lastFrameTime = timestamp - (deltaTime % targetFrameTime);
+        this.lastFrameTime = timestamp - (deltaTime % targetFrameTime);
+      }
+    } catch (error) {
+      console.error('Game loop error:', error);
     }
 
-    this.animationFrameId = requestAnimationFrame((ts) => this.gameLoop(ts));
+    this.animationFrameId = requestAnimationFrame(ts => this.gameLoop(ts));
   }
 
   /**
