@@ -117,8 +117,8 @@ class GameStateManager {
     for (const type of INTERPOLATED) {
       const entities = this.state[type];
       if (!entities) {
-continue;
-}
+        continue;
+      }
       for (const id in entities) {
         const e = entities[id];
         if (e && e.x !== undefined) {
@@ -218,7 +218,7 @@ continue;
     // smoothFactor kept for API compatibility (no longer used in _stepEntity
     // which uses the temporal buffer, but still accepted as a parameter).
     const effectiveSpeed = this._adaptiveSpeed();
-    const smoothFactor = 1 - Math.exp(-effectiveSpeed * deltaTime / 1000);
+    const smoothFactor = 1 - Math.exp((-effectiveSpeed * deltaTime) / 1000);
 
     this.debugStats.interpolatedEntities = 0;
     this._interpolateZombies(now, smoothFactor, skipExtrapolation);
@@ -297,7 +297,7 @@ continue;
    * @param {number} now - performance.now()
    * @param {number} [serverTime] - authoritative server timestamp (ms); falls back to now
    */
-  _applyServerUpdate(state, entity, now, serverTime) {
+  _applyServerUpdate(state, entity, now, _serverTime) {
     // Only process when the entity carries a fresh server-coordinate stamp.
     // The stamp is set by:
     //   - NetworkManager.handleGameStateDelta  (delta path)
@@ -313,7 +313,7 @@ continue;
     const newX = entity._serverX;
     const newY = entity._serverY;
     // Carry serverTime on stamp so _applyServerUpdate can use it
-    const snapshotT = (entity._serverTime !== undefined) ? entity._serverTime : now;
+    const snapshotT = entity._serverTime !== undefined ? entity._serverTime : now;
     entity._serverX = undefined;
     entity._serverY = undefined;
     entity._serverTime = undefined;
@@ -332,8 +332,8 @@ continue;
     const dx = newX - state.serverX;
     const dy = newY - state.serverY;
     if (elapsed > 0 && elapsed < 500) {
-      state.velocityX = dx / elapsed * 1000;
-      state.velocityY = dy / elapsed * 1000;
+      state.velocityX = (dx / elapsed) * 1000;
+      state.velocityY = (dy / elapsed) * 1000;
     } else {
       state.velocityX = 0;
       state.velocityY = 0;
@@ -348,12 +348,15 @@ continue;
     // display position instead of smoothing. Avoids visible "glide" artifact
     // perceived as teleport.
     const JUMP_PX_SQ = 200 * 200;
-    if (elapsed >= 500 && (dx * dx + dy * dy) > JUMP_PX_SQ) {
+    if (elapsed >= 500 && dx * dx + dy * dy > JUMP_PX_SQ) {
       state.displayX = newX;
       state.displayY = newY;
-      // Also seed the snapshot buffer at the new position to prevent
-      // stale snapshots pulling the display backward after AOI re-entry.
-      state.snapshots = [{ x: newX, y: newY, t: snapshotT }];
+      // Seed buffer with two snapshots spanning the interpolation delay so
+      // _stepEntity can lerp immediately (prevents ~100ms freeze on re-entry).
+      state.snapshots = [
+        { x: newX, y: newY, t: snapshotT - 100 },
+        { x: newX, y: newY, t: snapshotT }
+      ];
     }
   }
 
@@ -507,23 +510,25 @@ continue;
     const now = Date.now();
     const ORPHAN_TIMEOUT = 10000; // 10 seconds (increased to handle lag)
 
-    ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(type => {
-      if (!this.state[type]) {
-        return;
-      }
-
-      for (const [id, entity] of Object.entries(this.state[type])) {
-        if (!entity._lastSeen) {
-          entity._lastSeen = now;
+    ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(
+      type => {
+        if (!this.state[type]) {
+          return;
         }
 
-        // Remove if not updated recently
-        if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
-          console.log(`[CLEANUP] Removing orphaned ${type} entity:`, id);
-          delete this.state[type][id];
+        for (const [id, entity] of Object.entries(this.state[type])) {
+          if (!entity._lastSeen) {
+            entity._lastSeen = now;
+          }
+
+          // Remove if not updated recently
+          if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
+            console.log(`[CLEANUP] Removing orphaned ${type} entity:`, id);
+            delete this.state[type][id];
+          }
         }
       }
-    });
+    );
   }
 
   /**
@@ -541,13 +546,15 @@ continue;
   updateDebugStats() {
     if (!this._debugStatsNext || performance.now() >= this._debugStatsNext) {
       this._debugStatsNext = performance.now() + 500;
-      const count = (o) => {
- let n = 0; if (o) {
-for (const _k in o) {
-n++;
-}
-} return n;
-};
+      const count = o => {
+        let n = 0;
+        if (o) {
+          for (const _k in o) {
+            n++;
+          }
+        }
+        return n;
+      };
       this.debugStats.entitiesCount = {
         players: count(this.state.players),
         zombies: count(this.state.zombies),
@@ -645,8 +652,10 @@ n++;
       // Remove if expired or out of bounds
       const age = now - bullet.createdAt;
       const outOfBounds =
-        bullet.x < 0 || bullet.x > this.config.ROOM_WIDTH ||
-        bullet.y < 0 || bullet.y > this.config.ROOM_HEIGHT;
+        bullet.x < 0 ||
+        bullet.x > this.config.ROOM_WIDTH ||
+        bullet.y < 0 ||
+        bullet.y > this.config.ROOM_HEIGHT;
 
       if (age > bullet.maxLifetime || outOfBounds) {
         delete this.predictedBullets[bulletId];
@@ -657,8 +666,12 @@ n++;
       let hitWall = false;
       for (let w = 0; w < walls.length; w++) {
         const wall = walls[w];
-        if (bullet.x >= wall.x && bullet.x <= wall.x + wall.width &&
-            bullet.y >= wall.y && bullet.y <= wall.y + wall.height) {
+        if (
+          bullet.x >= wall.x &&
+          bullet.x <= wall.x + wall.width &&
+          bullet.y >= wall.y &&
+          bullet.y <= wall.y + wall.height
+        ) {
           hitWall = true;
           break;
         }
