@@ -5,7 +5,7 @@
  *   reports counts to the metrics collector.
  */
 
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 function isOrphan(player) {
   return !player || typeof player !== 'object';

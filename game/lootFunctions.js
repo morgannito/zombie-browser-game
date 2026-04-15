@@ -21,7 +21,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 /**
  * Spawn des power-ups

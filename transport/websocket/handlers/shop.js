@@ -4,8 +4,8 @@
  * Moved from sockets/shopEvents.js as part of the transport/websocket split.
  */
 
-const logger = require("../../../infrastructure/logging/Logger");
-const { SOCKET_EVENTS } = require("../events");
+const logger = require('../../../infrastructure/logging/Logger');
+const { SOCKET_EVENTS } = require('../events');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { validateBuyItemData } = require('../../../game/validationFunctions');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');

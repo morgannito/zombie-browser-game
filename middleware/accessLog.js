@@ -3,7 +3,7 @@
  * @description Logs request/response metadata with request-id correlation.
  */
 
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 const { buildHttpContext } = require('./httpContext');
 
 const SKIPPED_PATH_PREFIXES = ['/health', '/api/metrics', '/api/v1/metrics'];

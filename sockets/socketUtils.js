@@ -3,8 +3,8 @@
  * @description Shared utilities for socket event handlers: safe wrapper and arg preview.
  */
 
-const logger = require("../infrastructure/logging/Logger");
-const { SOCKET_EVENTS } = require("../transport/websocket/events");
+const logger = require('../infrastructure/logging/Logger');
+const { SOCKET_EVENTS } = require('../transport/websocket/events');
 
 /** Maximum serialized payload size (bytes) accepted from a client socket event. */
 const MAX_SOCKET_PAYLOAD_BYTES = 4096;

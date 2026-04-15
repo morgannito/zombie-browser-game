@@ -32,9 +32,9 @@ validateAllConfigs();
 // ============================================
 // IMPORTS - Infrastructure
 // ============================================
-const logger = require("./infrastructure/logging/Logger");
+const logger = require('./infrastructure/logging/Logger');
 const { dbManager } = require('./server/database');
-const MetricsCollector = require("./infrastructure/metrics/MetricsCollector");
+const MetricsCollector = require('./infrastructure/metrics/MetricsCollector');
 const { createMemoryMonitor } = require('./server/memory');
 
 // ============================================

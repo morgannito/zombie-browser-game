@@ -5,7 +5,7 @@
  *   startServer() entry point.
  */
 
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 const Container = require('../lib/application/Container');
 const JwtService = require('../lib/infrastructure/auth/JwtService');
 const { initializeDatabase } = require('./database');

@@ -7,10 +7,10 @@
 const EntityManager = require('../lib/server/EntityManager');
 const CollisionManager = require('../contexts/weapons/CollisionManager');
 const NetworkManager = require('../lib/server/NetworkManager');
-const RoomManager = require("../contexts/wave/RoomManager");
+const RoomManager = require('../contexts/wave/RoomManager');
 const RunMutatorManager = require('../lib/server/RunMutatorManager');
 const ZombieManager = require('../contexts/zombie/ZombieManager');
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 function buildZombieManager(gameState, config, zombieTypes, roomManager, io) {
   return new ZombieManager(

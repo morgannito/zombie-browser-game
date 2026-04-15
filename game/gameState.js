@@ -12,7 +12,7 @@
 const MAX_SAFE_ID = Number.MAX_SAFE_INTEGER - 1000; // Safety margin
 
 // LOW FIX: Import logger for structured logging
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 /**
  * Initialize game state with all entities and safe ID counters

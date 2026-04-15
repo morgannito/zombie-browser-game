@@ -11,7 +11,7 @@
  */
 
 const crypto = require('crypto');
-const logger = require("../../infrastructure/logging/Logger");
+const logger = require('../../infrastructure/logging/Logger');
 const { SOCKET_EVENTS } = require('./events');
 const ConfigManager = require('../../lib/server/ConfigManager');
 const { createPlayerState } = require('../../contexts/session/playerStateFactory');

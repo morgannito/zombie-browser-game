@@ -2,7 +2,7 @@
  * Unit tests for lib/server/RoomManager.js
  */
 
-const RoomManager = require("../../../contexts/wave/RoomManager");
+const RoomManager = require('../../../contexts/wave/RoomManager');
 
 const makeConfig = (overrides = {}) => ({
   ROOM_WIDTH: 3000,

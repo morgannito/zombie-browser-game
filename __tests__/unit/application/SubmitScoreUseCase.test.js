@@ -3,7 +3,7 @@
  * Tests leaderboard score submission with mocked repositories
  */
 
-const SubmitScoreUseCase = require("../../../contexts/leaderboard/SubmitScoreUseCase");
+const SubmitScoreUseCase = require('../../../contexts/leaderboard/SubmitScoreUseCase');
 
 // Mock Logger
 jest.mock('../../../infrastructure/logging/Logger', () => ({

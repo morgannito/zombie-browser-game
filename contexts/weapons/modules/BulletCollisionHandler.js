@@ -337,5 +337,13 @@ function cleanupZombieDamageTracking(zombieId, gameState) {
 
 module.exports = {
   handleZombieBulletCollisions,
-  handlePlayerBulletCollisions
+  handlePlayerBulletCollisions,
+  // Exported for unit tests
+  calculateFinalDamage,
+  applyLifeSteal,
+  handlePiercing,
+  saveDeadZombie,
+  evictExpiredDeadZombies,
+  calculateLootBonus,
+  cleanupZombieDamageTracking
 };
