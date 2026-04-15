@@ -47,6 +47,7 @@ class OptimizedAudioCore {
     // Node pools for reuse
     this.oscillatorPool = [];
     this.gainNodePool = [];
+    this.freeGains = new Set(); // O(1) free gain node lookup
     this.filterPool = [];
 
     // Priority system (higher = more important, less likely to be culled)
@@ -142,6 +143,7 @@ class OptimizedAudioCore {
       gain.connect(this.masterGain);
       gain._inUse = false;
       this.gainNodePool.push(gain);
+      this.freeGains.add(gain);
 
       const filter = this.audioContext.createBiquadFilter();
       filter._inUse = false;
@@ -153,8 +155,10 @@ class OptimizedAudioCore {
    * Get a gain node from pool or create new
    */
   getGainNode() {
-    let node = this.gainNodePool.find(n => !n._inUse);
-    if (!node) {
+    let node = this.freeGains.values().next().value;
+    if (node) {
+      this.freeGains.delete(node);
+    } else {
       node = this.audioContext.createGain();
       node.connect(this.masterGain);
       this.gainNodePool.push(node);
@@ -171,6 +175,7 @@ class OptimizedAudioCore {
     if (node) {
       node._inUse = false;
       node.gain.value = 0;
+      this.freeGains.add(node);
     }
   }
 

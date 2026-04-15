@@ -98,7 +98,8 @@ class AmbientAudioSystem {
     // Create audio context on user interaction
     if (!this.audioContext) {
       try {
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.audioContext = window.getAudioCore?.()?.audioContext
+          ?? new (window.AudioContext || window.webkitAudioContext)();
       } catch (e) {
         console.warn('Web Audio API not supported:', e);
       }
