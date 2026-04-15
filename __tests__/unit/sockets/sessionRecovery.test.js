@@ -117,6 +117,66 @@ describe('sessionRecovery', () => {
     expect(restored.level).toBe(3);
   });
 
+  test('createRecoverablePlayerState preserves pendingUpgradeChoices batches', () => {
+    // Regression: omitting pendingUpgradeChoices caused anti-cheat to block all
+    // upgrade selections after a reconnect during the level-up modal.
+    const batches = [['healthBoost', 'damageBoost'], ['speedBoost']];
+    const player = {
+      id: 'sock', nickname: 'A', hasNickname: true,
+      spawnProtection: false, spawnProtectionEndTime: 0,
+      invisible: false, invisibleEndTime: 0, lastActivityTime: 0,
+      x: 0, y: 0, health: 100, maxHealth: 100,
+      level: 1, xp: 0, gold: 0, score: 0, alive: true,
+      angle: 0, weapon: 'pistol', lastShot: 0,
+      speedBoost: null, weaponTimer: null,
+      kills: 0, zombiesKilled: 0, combo: 0, comboTimer: 0,
+      highestCombo: 0, totalScore: 0, survivalTime: 0,
+      upgrades: {},
+      damageMultiplier: 1, speedMultiplier: 1, fireRateMultiplier: 1,
+      regeneration: 0, bulletPiercing: 0, lifeSteal: 0,
+      criticalChance: 0, goldMagnetRadius: 0, dodgeChance: 0,
+      explosiveRounds: 0, explosionRadius: 0, explosionDamagePercent: 0,
+      extraBullets: 0, thorns: 0, lastRegenTick: 0,
+      autoTurrets: 0, lastAutoShot: 0,
+      pendingUpgradeChoices: batches
+    };
+
+    const snapshot = createRecoverablePlayerState(player);
+
+    // Batches must survive the round-trip
+    expect(snapshot.pendingUpgradeChoices).toEqual(batches);
+
+    // Deep clone — mutating the snapshot must not affect the original
+    snapshot.pendingUpgradeChoices[0].push('extra');
+    expect(player.pendingUpgradeChoices[0]).not.toContain('extra');
+  });
+
+  test('createRecoverablePlayerState gives empty array when pendingUpgradeChoices missing', () => {
+    const player = {
+      id: 'sock', nickname: 'B', hasNickname: true,
+      spawnProtection: false, spawnProtectionEndTime: 0,
+      invisible: false, invisibleEndTime: 0, lastActivityTime: 0,
+      x: 0, y: 0, health: 100, maxHealth: 100,
+      level: 1, xp: 0, gold: 0, score: 0, alive: true,
+      angle: 0, weapon: 'pistol', lastShot: 0,
+      speedBoost: null, weaponTimer: null,
+      kills: 0, zombiesKilled: 0, combo: 0, comboTimer: 0,
+      highestCombo: 0, totalScore: 0, survivalTime: 0,
+      upgrades: {},
+      damageMultiplier: 1, speedMultiplier: 1, fireRateMultiplier: 1,
+      regeneration: 0, bulletPiercing: 0, lifeSteal: 0,
+      criticalChance: 0, goldMagnetRadius: 0, dodgeChance: 0,
+      explosiveRounds: 0, explosionRadius: 0, explosionDamagePercent: 0,
+      extraBullets: 0, thorns: 0, lastRegenTick: 0,
+      autoTurrets: 0, lastAutoShot: 0
+      // pendingUpgradeChoices intentionally absent
+    };
+
+    const snapshot = createRecoverablePlayerState(player);
+
+    expect(snapshot.pendingUpgradeChoices).toEqual([]);
+  });
+
   test('SESSION_RECOVERY_TIMEOUT is 10 minutes', () => {
     const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
     expect(SESSION_RECOVERY_TIMEOUT).toBe(10 * 60 * 1000);
