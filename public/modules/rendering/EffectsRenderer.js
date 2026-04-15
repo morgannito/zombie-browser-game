@@ -306,11 +306,12 @@ class EffectsRenderer {
       ctx.fillStyle = p.color;
 
       if (p.glow) {
-        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
-        gradient.addColorStop(0, p.color);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(p.x - p.size * 3, p.y - p.size * 3, p.size * 6, p.size * 6);
+        // Use shadowBlur instead of createRadialGradient — avoids gradient alloc per particle
+        ctx.shadowBlur = p.size * 3;
+        ctx.shadowColor = p.color;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        ctx.shadowBlur = 0;
       } else if (p.rotation !== undefined) {
         ctx.save();
         ctx.translate(p.x, p.y);
