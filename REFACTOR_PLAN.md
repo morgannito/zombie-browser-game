@@ -139,7 +139,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 ### Phase 5 — Infrastructure
 - [x] `infrastructure/logging/` : Logger moved to infrastructure/logging/. Hot paths (server/, contexts/, transport/) migrated; legacy `lib/infrastructure/Logger` kept as back-compat shim for the remaining ~22 call sites (game/, sockets/, middleware/, tests).
 - [x] `infrastructure/metrics/` : MetricsCollector moved to infrastructure/metrics/. Prometheus exporter already part of MetricsCollector. Hot paths (server.js, transport/websocket/handlers) migrated; legacy import kept as back-compat shim.
-- [ ] `infrastructure/database/` : fusion `database/` + `lib/database/` + `lib/infrastructure/DatabaseManager.js`
+- [x] `infrastructure/database/` : moved lib/database/DatabaseManager → infrastructure/database/. Hot path migrated (server/database.js); legacy lib path back-compat shim. Root-level database/ (migrations, repositories, scripts, schema.sql, seed.sql) stays put — it's operational tooling, not application code.
 
 ### Phase 6 — Quality gates
 - [ ] Documenter les dépendances inter-contextes autorisées (ADR)

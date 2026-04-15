@@ -4,7 +4,7 @@
  *   that honors the REQUIRE_DATABASE env flag (hard-exit vs degraded mode).
  */
 
-const DatabaseManager = require('../lib/database/DatabaseManager');
+const DatabaseManager = require("../infrastructure/database/DatabaseManager");
 const logger = require("../infrastructure/logging/Logger");
 
 const dbManager = DatabaseManager.getInstance();
