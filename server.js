@@ -17,7 +17,6 @@
 // ============================================
 const express = require('express');
 const http = require('http');
-const compression = require('compression');
 
 // ============================================
 // IMPORTS - Configuration
@@ -43,15 +42,9 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // ============================================
 // IMPORTS - Middleware
 // ============================================
-const { requestIdMiddleware } = require('./middleware/requestId');
-const { httpsRedirect } = require('./middleware/httpsRedirect');
-const { accessLogMiddleware } = require('./middleware/accessLog');
-// getSocketIOCorsConfig now encapsulated in server/socketio.js
+// Middleware wiring now lives in server/middleware.js (configureMiddleware).
+// Only metrics-token guard is still needed inline for metrics routes.
 const {
-  configureHelmet,
-  configureApiLimiter,
-  configureBodyParser,
-  additionalSecurityHeaders,
   requireMetricsToken
 } = require('./middleware/security');
 const {
@@ -125,46 +118,8 @@ const memoryMonitor = createMemoryMonitor();
 // ============================================
 // MIDDLEWARE CONFIGURATION
 // ============================================
-
-// HTTPS redirect (must be first — before any route handles the request)
-app.use(httpsRedirect);
-
-// Request ID (before all other middleware for tracing)
-app.use(requestIdMiddleware);
-app.use(accessLogMiddleware);
-
-// HTTP compression (before all routes and static files)
-app.use(compression());
-
-// Security middleware
-app.use(configureHelmet());
-app.use('/api/', configureApiLimiter());
-app.use(...configureBodyParser());
-app.use(additionalSecurityHeaders);
-
-// Shared constants (available to both server and client via /shared/socketEvents.js)
-app.use('/shared', express.static('shared'));
-
-// Static files with cache headers
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Game assets (sprites, tiles, icons, backgrounds)
-app.use(
-  '/assets',
-  express.static('assets', {
-    maxAge: isProduction ? '7d' : 0,
-    etag: true,
-    immutable: isProduction,
-    fallthrough: false
-  })
-);
-app.use(
-  express.static('public', {
-    maxAge: isProduction ? '1d' : 0,
-    etag: true,
-    lastModified: true
-  })
-);
+const { configureMiddleware } = require('./server/middleware');
+configureMiddleware(app);
 
 /**
  * Start game loop with setTimeout recursive pattern and drift compensation.

@@ -107,7 +107,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `server/socketio.js` — Socket.IO factory
   - [x] `server/memory.js` — MemoryMonitor init
   - [x] `server/database.js` — dbManager init
-  - [ ] `server/middleware.js` — express middleware wiring
+  - [x] `server/middleware.js` — express middleware wiring
   - [ ] `server/routes.js` — route mounting
   - [ ] `server/bootstrap.js` — main startServer orchestrator
 - [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
