@@ -30,8 +30,9 @@ function createSocketIOServer(httpServer) {
     pingInterval: 10000,
     pingTimeout: 20000,
     connectTimeout: 45000,
-    // Activé par défaut, désactivable pour Cloudflare via env DISABLE_WS_COMPRESSION=true
-    perMessageDeflate: process.env.DISABLE_WS_COMPRESSION === 'true' ? false : { threshold: 1024 },
+    // Désactivé par défaut (Cloudflare strippe WS compression et cause des latences élevées).
+    // Activer avec ENABLE_WS_COMPRESSION=true uniquement si proxy direct (sans CF).
+    perMessageDeflate: process.env.ENABLE_WS_COMPRESSION === 'true' ? { threshold: 1024 } : false,
     httpCompression: true,
     maxHttpBufferSize: 1e6
   });
