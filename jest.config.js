@@ -33,7 +33,7 @@ if (process.env.CI) {
     './contexts/session/':     { lines: 93, statements: 93, functions: 100, branches: 75 },
     './contexts/wave/':        { lines: 92, statements: 92, functions: 95, branches: 85 },
     './contexts/zombie/':      { lines: 88, statements: 88, functions: 78, branches: 78 },
-    './contexts/weapons/':     { lines: 62, statements: 62, functions: 66, branches: 52 },
+    './contexts/weapons/':     { lines: 82, statements: 82, functions: 88, branches: 75 },
     './contexts/player/':      { lines: 75, statements: 75, functions: 68, branches: 70 },
     './server/':               { lines: 85, statements: 85, functions: 80, branches: 70 }
   };
