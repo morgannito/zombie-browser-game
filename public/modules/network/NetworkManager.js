@@ -401,11 +401,13 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 500px) = trust server (anti-cheat or major desync)
-      // Increased threshold to allow more client prediction freedom
+      // Always trust client prediction on full-state. The previous 500px snap
+      // caused visible rollbacks when client/server state diverged cross-session
+      // or during wall desyncs. Real anti-cheat violations come via the
+      // `positionCorrection` event which still applies corrections.
       if (distance > 500) {
         console.warn(
-          '[ROLLBACK-FULL] distance=' +
+          '[DESYNC-FULL] ' +
             distance.toFixed(0) +
             'px local=(' +
             localPlayerState.x.toFixed(0) +
@@ -417,14 +419,10 @@ class NetworkManager {
             serverPlayer.y.toFixed(0) +
             ')'
         );
-        // Server position is already applied, no change needed
-      } else {
-        // Small/medium difference (< 500px) = ALWAYS trust client prediction for fluid movement
-        // No interpolation to avoid any lag feeling on local player
-        window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
-        window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
-        window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
       }
+      window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
+      window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
+      window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
     }
 
     // Clear reconnection flag after accepting server state
@@ -552,10 +550,10 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Large difference (> 500px) = trust server (anti-cheat or major desync).
+      // Never snap to server on delta — anti-cheat uses positionCorrection event.
       if (distance > 500) {
         console.warn(
-          '[ROLLBACK] distance=' +
+          '[DESYNC] distance=' +
             distance.toFixed(0) +
             'px local=(' +
             localPlayerState.x.toFixed(0) +
@@ -565,13 +563,10 @@ class NetworkManager {
             serverPlayer.x.toFixed(0) +
             ',' +
             serverPlayer.y.toFixed(0) +
-            ')'
+            ') — ignored, keeping client prediction'
         );
-        window.gameState.state.players[window.gameState.playerId].x = serverPlayer.x;
-        window.gameState.state.players[window.gameState.playerId].y = serverPlayer.y;
-        window.gameState.state.players[window.gameState.playerId].angle = serverPlayer.angle;
       }
-      // Small/medium differences (< 500px) = trust client prediction.
+      // All delta cases trust client prediction for the local player.
     }
 
     // Clear reconnection flag after first delta update
