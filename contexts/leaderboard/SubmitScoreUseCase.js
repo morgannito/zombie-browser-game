@@ -4,7 +4,7 @@
  */
 
 const LeaderboardEntry = require("../../lib/domain/entities/LeaderboardEntry");
-const logger = require("../../lib/infrastructure/Logger");
+const logger = require("../../infrastructure/logging/Logger");
 const { ValidationError, NotFoundError } = require("../../lib/domain/errors/DomainErrors");
 
 /**

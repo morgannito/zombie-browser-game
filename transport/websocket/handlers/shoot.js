@@ -9,7 +9,7 @@ const { SOCKET_EVENTS } = require("../events");
 const { safeHandler } = require('../../../sockets/socketUtils');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { validateShootData } = require('../../../game/validationFunctions');
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require("../../../infrastructure/logging/Logger");
 const MetricsCollector = require('../../../lib/infrastructure/MetricsCollector');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 
