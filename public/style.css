@@ -111,7 +111,7 @@ body {
 #gameCanvas {
   display: block;
   background-color: var(--bg-canvas);
-  cursor: crosshair;
+  cursor: none; /* Custom canvas crosshair replaces native cursor */
   position: absolute;
   top: 0;
   left: 0;
@@ -169,6 +169,7 @@ body {
 }
 
 #health-bar {
+  position: relative;
   width: 12.5rem;
   height: 1.25rem;
   background-color: #333;
@@ -177,13 +178,26 @@ body {
   overflow: hidden;
 }
 
+#health-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(255, 80, 80, 0.55);
+  transition: width 0.6s ease-out;
+  transform: translateZ(0);
+}
+
 #health-fill {
+  position: relative;
   height: 100%;
   width: 100%;
   background: linear-gradient(to right, var(--color-danger), var(--color-primary));
-  transition: width var(--transition-base);
+  transition: width 0.25s ease-out;
   /* GPU acceleration */
   transform: translateZ(0);
+  z-index: 1;
 }
 
 /* Low health warning */
@@ -691,6 +705,29 @@ body {
 /* ============================================
    WAVE ANNOUNCEMENT
    ============================================ */
+@keyframes wave-enter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
 #wave-announcement {
   position: absolute;
   top: 50%;
@@ -702,7 +739,7 @@ body {
   border-radius: var(--radius-lg);
   border: 4px solid #ffff00;
   pointer-events: none;
-  animation: pulse 0.5s ease-in-out;
+  animation: wave-enter 3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 #wave-announcement h1 {

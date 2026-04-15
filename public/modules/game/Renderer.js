@@ -6,9 +6,10 @@
  *   - EffectsRenderer: particles, explosions, poison trails, weather, lighting
  *   - UIRenderer: HUD, boss health bar, kill feed, combo, damage numbers, wave info
  *   - MinimapRenderer: minimap overlay
+ *   - CrosshairRenderer: canvas crosshair with spread + zombie hover feedback
  * @module Renderer
  * @author Claude Code
- * @version 3.0.0
+ * @version 3.1.0
  */
 
 class Renderer {
@@ -31,6 +32,14 @@ class Renderer {
     this.effectsRenderer = new window.EffectsRenderer();
     this.uiRenderer = new window.UIRenderer();
     this.minimapRenderer = new window.MinimapRenderer();
+    this.crosshairRenderer = window.CrosshairRenderer ? new window.CrosshairRenderer() : null;
+  }
+
+  // Proxy: notify crosshair of a shot (spread feedback)
+  onShoot() {
+    if (this.crosshairRenderer) {
+      this.crosshairRenderer.onShoot();
+    }
   }
 
   setCamera(camera) {
@@ -260,6 +269,18 @@ class Renderer {
     this.uiRenderer.updateWaveProgress(gameState);
 
     this.ctx.restore(); // Restore pixelRatio scaling
+
+    // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
+    if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {
+      this.crosshairRenderer.render(
+        this.ctx,
+        window.inputManager.mouse.x,
+        window.inputManager.mouse.y,
+        gameState.state.zombies,
+        this.camera.getPosition(),
+        window.devicePixelRatio || 1
+      );
+    }
   }
 
   renderWaitingMessage() {

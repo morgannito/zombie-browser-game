@@ -277,6 +277,9 @@ class GameEngine {
       if (currentTime - this.lastAutoFireTime >= this.AUTO_FIRE_INTERVAL) {
         this.playerController.shoot(window.innerWidth, window.innerHeight);
         this.lastAutoFireTime = currentTime;
+        if (this.renderer && this.renderer.onShoot) {
+          this.renderer.onShoot();
+        }
       }
     }
 
