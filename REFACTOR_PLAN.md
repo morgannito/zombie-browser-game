@@ -98,7 +98,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `spawnProtection.js`
   - [x] `selectUpgrade.js`
   - [x] `shop.js` (déplacé depuis sockets/shopEvents.js via git mv + re-export back-compat)
-  - [ ] `playerMove.js`
+  - [x] `playerMove.js`
   - [x] `shoot.js`
   - [ ] `setNickname.js`
   - [ ] `disconnect.js`
