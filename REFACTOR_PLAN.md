@@ -99,7 +99,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `selectUpgrade.js`
   - [x] `shop.js` (déplacé depuis sockets/shopEvents.js via git mv + re-export back-compat)
   - [ ] `playerMove.js`
-  - [ ] `shoot.js`
+  - [x] `shoot.js`
   - [ ] `setNickname.js`
   - [ ] `disconnect.js`
   - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
