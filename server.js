@@ -34,7 +34,7 @@ validateAllConfigs();
 // IMPORTS - Infrastructure
 // ============================================
 const logger = require('./lib/infrastructure/Logger');
-const DatabaseManager = require('./lib/database/DatabaseManager');
+const { dbManager, initializeDatabase } = require('./server/database');
 const Container = require('./lib/application/Container');
 const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
 const { createMemoryMonitor } = require('./server/memory');
@@ -108,39 +108,13 @@ const server = http.createServer(app);
 const { createSocketIOServer } = require('./server/socketio');
 const io = createSocketIOServer(server);
 
-// HIGH FIX: Async database initialization with error handling
-const dbManager = DatabaseManager.getInstance();
+// Database init moved to server/database.js. dbAvailable is hydrated from the
+// factory's return value at the call site below.
 let dbAvailable = false;
 let gameState = null;
 let stopGameLoop = null; // cleanup function returned by startGameLoop
 let heartbeatTimer = null;
 let powerupSpawnerTimer = null;
-
-async function initializeDatabase() {
-  try {
-    await Promise.resolve(dbManager.initialize());
-    dbAvailable = true;
-    logger.info('✅ Database connected successfully');
-    return true;
-  } catch (err) {
-    logger.error('❌ CRITICAL: Database initialization failed', {
-      error: err.message,
-      stack: err.stack
-    });
-
-    // Check if database is required
-    const requireDatabase = process.env.REQUIRE_DATABASE === 'true';
-
-    if (requireDatabase) {
-      logger.error('❌ Database required but unavailable, shutting down');
-      process.exit(1);
-    } else {
-      logger.warn('⚠️  Running without database - progression features disabled');
-      dbAvailable = false;
-      return false;
-    }
-  }
-}
 
 // Initialize metrics collector (doesn't need DB)
 const metricsCollector = MetricsCollector.getInstance();
@@ -241,7 +215,7 @@ function startGameLoop(perfIntegration, tickFn) {
 
 // HIGH FIX: Initialize database before routes
 async function startServer() {
-  await initializeDatabase();
+  dbAvailable = await initializeDatabase();
 
   // Initialize dependency injection container AFTER database
   const container = dbAvailable ? Container.getInstance() : null;
