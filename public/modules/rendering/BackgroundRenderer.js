@@ -11,6 +11,13 @@ class BackgroundRenderer {
     this.gridCanvas = null;
     this.gridConfig = null;
     this.decorSeed = 0;
+    // Sky gradient cache: invalidated when config key or canvas size changes
+    this._skyGradient = null;
+    this._skyGradientKey = '';
+    this._skyCanvasH = 0;
+    // Moon glow gradient cache: keyed by moonX,moonY,radius
+    this._moonGradient = null;
+    this._moonGradientKey = '';
   }
 
   darkenColor(color, percent) {
@@ -529,17 +536,26 @@ class BackgroundRenderer {
 
     const { config, stars, moon } = dayNight;
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    // Cache sky gradient — recreate only when palette or canvas height changes
+    const skyKey = config.zenith.join(',') + '|' + config.horizon.join(',');
+    if (
+      this._skyGradient === null ||
+      this._skyGradientKey !== skyKey ||
+      this._skyCanvasH !== canvas.height
+    ) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      config.zenith.forEach((color, i) => {
+        gradient.addColorStop(i * 0.2, color);
+      });
+      config.horizon.forEach((color, i) => {
+        gradient.addColorStop(0.6 + i * 0.13, color);
+      });
+      this._skyGradient = gradient;
+      this._skyGradientKey = skyKey;
+      this._skyCanvasH = canvas.height;
+    }
 
-    config.zenith.forEach((color, i) => {
-      gradient.addColorStop(i * 0.2, color);
-    });
-
-    config.horizon.forEach((color, i) => {
-      gradient.addColorStop(0.6 + i * 0.13, color);
-    });
-
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = this._skyGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (stars && stars.length > 0) {
@@ -562,17 +578,23 @@ class BackgroundRenderer {
       const moonY = moon.y * canvas.height;
       const moonRadius = 40;
 
-      const moonGlow = ctx.createRadialGradient(
-        moonX,
-        moonY,
-        moonRadius * 0.5,
-        moonX,
-        moonY,
-        moonRadius * 2
-      );
-      moonGlow.addColorStop(0, 'rgba(220, 220, 255, 0.3)');
-      moonGlow.addColorStop(1, 'rgba(220, 220, 255, 0)');
-      ctx.fillStyle = moonGlow;
+      // Cache moon glow gradient — recreate only when moon position changes significantly
+      const moonKey = `${Math.round(moonX)}|${Math.round(moonY)}`;
+      if (this._moonGradient === null || this._moonGradientKey !== moonKey) {
+        const moonGlowGrad = ctx.createRadialGradient(
+          moonX,
+          moonY,
+          moonRadius * 0.5,
+          moonX,
+          moonY,
+          moonRadius * 2
+        );
+        moonGlowGrad.addColorStop(0, 'rgba(220, 220, 255, 0.3)');
+        moonGlowGrad.addColorStop(1, 'rgba(220, 220, 255, 0)');
+        this._moonGradient = moonGlowGrad;
+        this._moonGradientKey = moonKey;
+      }
+      ctx.fillStyle = this._moonGradient;
       ctx.fillRect(moonX - moonRadius * 2, moonY - moonRadius * 2, moonRadius * 4, moonRadius * 4);
 
       ctx.fillStyle = '#f0f0ff';
