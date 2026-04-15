@@ -209,11 +209,13 @@ class GameStateManager {
     const rawDelta = now - this.interpolation.lastFrameTime;
     this.interpolation.lastFrameTime = now;
 
-    // Frame-budget guard: if delta > 100ms (tab was hidden, GC pause, etc.)
+    // Frame-budget guard: if delta > 500ms (tab was hidden, GC pause, etc.)
     // skip extrapolation entirely to avoid post-stall teleports.
+    // 100ms was too aggressive — a single heavy GC tick or brief background tab
+    // would disable extrapolation for the next frame, causing a visible freeze.
     const deltaTime = Math.min(rawDelta, 100);
     this.interpolation.deltaTime = deltaTime;
-    const skipExtrapolation = rawDelta > 100;
+    const skipExtrapolation = rawDelta > 500;
 
     // smoothFactor kept for API compatibility (no longer used in _stepEntity
     // which uses the temporal buffer, but still accepted as a parameter).
@@ -322,9 +324,11 @@ class GameStateManager {
       return; // Position unchanged on server — skip update
     }
 
-    // Push snapshot into ringbuffer (max 4 entries)
+    // Push snapshot into ringbuffer (max 8 entries)
+    // 8 snaps @ 30Hz = ~267ms window — enough to cover 100ms interp delay with
+    // 4+ samples to interpolate between, vs. only 2 usable segments at 4 snaps.
     state.snapshots.push({ x: newX, y: newY, t: snapshotT });
-    if (state.snapshots.length > 4) {
+    if (state.snapshots.length > 8) {
       state.snapshots.shift();
     }
 
@@ -387,11 +391,22 @@ class GameStateManager {
     }
 
     // ── Case 2: renderTime is BEFORE the oldest snapshot (buffer just seeded) ─
+    // With only 1 snapshot, holding frozen is better than nothing but still causes
+    // a visible stutter. Extrapolate with the last known velocity so the entity
+    // keeps gliding until the next snapshot arrives.
     if (renderTime <= snaps[0].t) {
-      entity.x = snaps[0].x;
-      entity.y = snaps[0].y;
-      state.displayX = snaps[0].x;
-      state.displayY = snaps[0].y;
+      if (snaps.length === 1 && !skipExtrapolation) {
+        const overtime = Math.min(snaps[0].t - renderTime, MAX_EXTRAP_MS);
+        // Extrapolate *backward* (renderTime < snaps[0].t → negative dt)
+        const t = -overtime / 1000;
+        entity.x = snaps[0].x + state.velocityX * t;
+        entity.y = snaps[0].y + state.velocityY * t;
+      } else {
+        entity.x = snaps[0].x;
+        entity.y = snaps[0].y;
+      }
+      state.displayX = entity.x;
+      state.displayY = entity.y;
       return;
     }
 
