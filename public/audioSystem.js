@@ -978,6 +978,77 @@ class AdvancedAudioManager {
   setSoundsVolume(volume) {
     this.soundsVolume = Math.max(0, Math.min(1, volume));
   }
+
+  startLowHealthHeartbeat() {
+    if (this._heartbeatActive) {
+      return;
+    }
+    this._heartbeatActive = true;
+    this._beatPhase = 0;
+    this._scheduleHeartbeat();
+  }
+
+  stopLowHealthHeartbeat() {
+    this._heartbeatActive = false;
+  }
+
+  _scheduleHeartbeat() {
+    if (!this._heartbeatActive || !this.enabled || !this.soundsEnabled) {
+      return;
+    }
+    const ctx = this.context;
+    if (!ctx) {
+      return;
+    }
+    const now = ctx.currentTime;
+    const freq = this._beatPhase === 0 ? 80 : 60;
+    const dur = 0.06;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur);
+    const nextDelay = this._beatPhase === 0 ? 120 : 700;
+    this._beatPhase = this._beatPhase === 0 ? 1 : 0;
+    (window.setManagedTimeout || setTimeout)(() => {
+      this._scheduleHeartbeat();
+    }, nextDelay);
+  }
+
+  _initVisibilityGating() {
+    if (this._visibilityGatingInit) {
+      return;
+    }
+    this._visibilityGatingInit = true;
+    document.addEventListener('visibilitychange', () => {
+      if (!this.context) {
+        return;
+      }
+      if (document.hidden) {
+        this._wasPlayingBeforeHide = this.music && this.music.isPlaying;
+        this._themeBeforeHide = this.music ? this.music.currentTheme : 'combat';
+        if (this._wasPlayingBeforeHide) {
+          this.music.stop();
+        }
+        if (this.context.state === 'running') {
+          this.context.suspend();
+        }
+      } else {
+        if (this.context.state === 'suspended') {
+          this.context.resume().then(() => {
+            if (this._wasPlayingBeforeHide && this.musicEnabled) {
+              this.music.start(this._themeBeforeHide || 'combat');
+            }
+          });
+        }
+      }
+    });
+  }
 }
 
 // Export pour utilisation globale
