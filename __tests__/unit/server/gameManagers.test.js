@@ -2,9 +2,15 @@
  * Unit tests for server/gameManagers.js
  */
 
-const mockEM = jest.fn(function() { this._id = 'em'; });
-const mockCM = jest.fn(function() { this._id = 'cm'; });
-const mockNM = jest.fn(function() { this._id = 'nm'; });
+const mockEM = jest.fn(function() {
+ this._id = 'em';
+});
+const mockCM = jest.fn(function() {
+ this._id = 'cm';
+});
+const mockNM = jest.fn(function() {
+ this._id = 'nm';
+});
 const mockRM = jest.fn(function() {
   this._id = 'rm';
   this.checkWallCollision = jest.fn(() => false);
@@ -13,7 +19,9 @@ const mockMut = jest.fn(function() {
   this._id = 'mut';
   this.initialize = jest.fn();
 });
-const mockZM = jest.fn(function() { this._id = 'zm'; });
+const mockZM = jest.fn(function() {
+ this._id = 'zm';
+});
 
 jest.mock('../../../lib/server/EntityManager', () => mockEM);
 jest.mock('../../../contexts/weapons/CollisionManager', () => mockCM);
