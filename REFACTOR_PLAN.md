@@ -157,7 +157,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `updater/core.js` — updateZombies (171l cplx 37 → 18l cplx 2 via dispatch maps ABILITY_HANDLERS + BOSS_HANDLERS). SRP helpers: resolveTickContext, ensureStaggerOffset, applyFarFreeze, dispatchAbility, dispatchBoss, trackStuck, tickOneZombie. **Phase A 5/5 complete — ZombieUpdater.js lint-clean (0 warnings).**
 
 ### Coverage ratchet
-- [ ] zombie context 5% → 15% (ajouter tests sur wallCollision pure-functions)
+- [x] zombie context 5% → 18% (wallCollision 74%, separation 91%, randomWalk 74% — 22 nouveaux tests unitaires). Threshold ratchet 5→15%.
 - [ ] zombie context 15% → 30% (tests separation + movement après extraction)
 - [ ] zombie context 30% → 50%
 - [ ] weapons context 4% → 30%
