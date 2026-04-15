@@ -331,8 +331,13 @@ class CollisionManager {
    *   }
    */
   findClosestPlayerCached(zombieId, x, y, maxRange = Infinity, options = {}) {
+    // Include options in cache key to avoid returning stale results when options differ
+    // (e.g. ignoreSpawnProtection changes which players are eligible)
+    const optionsSuffix = options.ignoreSpawnProtection ? '_ignoreSP' : '';
+    const cacheKey = `${zombieId}${optionsSuffix}`;
+
     // Check cache first
-    const cached = this.pathfindingCache.get(zombieId);
+    const cached = this.pathfindingCache.get(cacheKey);
     if (cached && cached.frame >= this.currentFrame - this.cacheInvalidationInterval) {
       const player = this.gameState.players[cached.playerId];
       // Verify player still exists and is alive
@@ -346,7 +351,7 @@ class CollisionManager {
 
     // Store in cache
     if (closestPlayer && closestPlayer.id) {
-      this.pathfindingCache.set(zombieId, {
+      this.pathfindingCache.set(cacheKey, {
         playerId: closestPlayer.id,
         frame: this.currentFrame
       });
@@ -558,7 +563,11 @@ class CollisionManager {
     // Use spatial grid for zombie-candidate lookup (O(k), k = zombies in nearby cells).
     // BUG FIX: Utiliser une taille max pour le rayon de recherche
     // car les zombies ont des tailles variables (boss = 120px, normal = 25px)
-    const maxZombieSize = 120; // Taille max possible d'un zombie (boss)
+    // NOTE: gameState.maxZombieSize is not currently tracked at runtime.
+    // Using hardcoded 120 (boss size) as safe upper bound for broadphase.
+    // For non-boss zombies this over-queries slightly but correctness is preserved.
+    // TODO: track gameState.maxZombieSize dynamically to tighten this radius.
+    const maxZombieSize = this.gameState.maxZombieSize || 120;
     const candidates = this._zombieGrid.nearby(
       bullet.x,
       bullet.y,
@@ -593,99 +602,6 @@ class CollisionManager {
     }
 
     return hitZombies;
-  }
-
-  /**
-   * Detect all zombie-player collisions for damage and death processing
-   *
-   * @returns {Array<{zombie: Object, player: Object}>} Array of collision pairs
-   *
-   * @description
-   * Detects all active zombie-player collisions in the game:
-   * - Iterates through all zombies in gameState.zombies
-   * - Uses findPlayersInRadius() for efficient nearby player lookup
-   * - Search radius: ZOMBIE_SIZE + PLAYER_SIZE + 5 (small safety margin)
-   * - Filters out spawn-protected and invisible players
-   * - Performs exact circle collision check for remaining candidates
-   * - Returns array of {zombie, player} collision pairs
-   *
-   * Performance optimization:
-   * - Quadtree eliminates distant players per zombie
-   * - Only checks players within collision radius
-   * - Runs once per game loop tick for all zombies
-   * - Much faster than nested loop over all zombies × players
-   *
-   * Collision detection:
-   * - Uses circle-circle collision via MathUtils.circleCollision()
-   * - Compares (zombieSize + playerSize) vs actual distance
-   * - Filters out protected players before distance check
-   *
-   * Player protection filters:
-   * - Skips players with spawnProtection flag
-   * - Skips invisible players
-   * - Automatically handled by findPlayersInRadius() and filter logic
-   *
-   * Return format:
-   * - Array of {zombie, player} objects
-   * - Caller applies damage to each colliding pair
-   * - Allows batch processing of all collisions
-   *
-   * @example
-   *   // Process all zombie-player collisions
-   *   const collisions = collisionManager.checkZombiePlayerCollisions();
-   *   collisions.forEach(({zombie, player}) => {
-   *     if (!player.spawnProtection && !player.invisible) {
-   *       damagePlayer(player, zombie.damage);
-   *     }
-   *   });
-   *
-   * @example
-   *   // Count active threats
-   *   const collisions = collisionManager.checkZombiePlayerCollisions();
-   *   console.log(`${collisions.length} zombies attacking players`);
-   */
-  checkZombiePlayerCollisions() {
-    const collisions = [];
-
-    for (const zombieId in this.gameState.zombies) {
-      const zombie = this.gameState.zombies[zombieId];
-
-      // Chercher les joueurs proches
-      // BUG FIX: Utiliser zombie.size au lieu de config.ZOMBIE_SIZE
-      // pour tenir compte des zombies de tailles variables (boss, tank, etc.)
-      const zombieSize = zombie.size || this.config.ZOMBIE_SIZE;
-      const nearbyPlayers = this.findPlayersInRadius(
-        zombie.x,
-        zombie.y,
-        zombieSize + this.config.PLAYER_SIZE + 5
-      );
-
-      for (const player of nearbyPlayers) {
-        // Ignorer si protection active
-        if (player.spawnProtection || player.invisible) {
-          continue;
-        }
-
-        // Vérifier collision exacte
-        // BUG FIX: Utiliser zombie.size au lieu de config.ZOMBIE_SIZE
-        // car les zombies ont des tailles variables (boss, tank, etc.)
-        const exactZombieSize = zombie.size || this.config.ZOMBIE_SIZE;
-        if (
-          MathUtils.circleCollision(
-            zombie.x,
-            zombie.y,
-            exactZombieSize,
-            player.x,
-            player.y,
-            this.config.PLAYER_SIZE
-          )
-        ) {
-          collisions.push({ zombie, player });
-        }
-      }
-    }
-
-    return collisions;
   }
 
   /**
