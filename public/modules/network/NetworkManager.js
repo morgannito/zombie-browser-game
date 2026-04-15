@@ -571,6 +571,10 @@ class NetworkManager {
           window.screenEffects.onPlayerDamage(damagePercent);
         }
       }
+      // Stop heartbeat on death
+      if (!updatedPlayer.alive && window.advancedAudio) {
+        window.advancedAudio.stopLowHealthHeartbeat();
+      }
     }
 
     // Detect boss death for slow motion effect (SCREEN EFFECTS)

@@ -112,10 +112,50 @@ class ComboSystem {
     this.isMobile = isMobile;
   }
 
+  _playComboMilestoneCue(threshold) {
+    const audioCore = window.getAudioCore ? window.getAudioCore() : null;
+    if (!audioCore || !audioCore.audioContext) {
+      return;
+    }
+    const ctx = audioCore.audioContext;
+    let freqs, gain;
+    if (threshold >= 50) {
+      freqs = [1046.5, 1318.51, 1567.98]; gain = 0.28; // C6 E6 G6
+    } else if (threshold >= 30) {
+      freqs = [783.99, 987.77]; gain = 0.22; // G5 B5
+    } else if (threshold >= 15) {
+      freqs = [587.33]; gain = 0.18; // D5
+    } else {
+      freqs = [440]; gain = 0.14; // A4
+    }
+    const now = ctx.currentTime;
+    freqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gainNode.gain.setValueAtTime(0, now + i * 0.02);
+      gainNode.gain.linearRampToValueAtTime(gain, now + i * 0.02 + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + i * 0.02 + 0.18);
+      osc.connect(gainNode);
+      gainNode.connect(audioCore.masterGain || ctx.destination);
+      osc.start(now + i * 0.02);
+      osc.stop(now + i * 0.02 + 0.2);
+    });
+  }
+
   updateCombo(data) {
+    const prevCombo = this.combo;
     this.combo = data.combo ?? 0;
     this.multiplier = data.multiplier ?? 1;
     this.score = data.score ?? 0;
+    const milestones = [5, 15, 30, 50];
+    for (const threshold of milestones) {
+      if (prevCombo < threshold && this.combo >= threshold) {
+        this._playComboMilestoneCue(threshold);
+        break;
+      }
+    }
 
     // Afficher le combo
     if (this.combo > 1) {
