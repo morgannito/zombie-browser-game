@@ -33,11 +33,9 @@ validateAllConfigs();
 // IMPORTS - Infrastructure
 // ============================================
 const logger = require('./lib/infrastructure/Logger');
-const { dbManager, initializeDatabase } = require('./server/database');
-const Container = require('./lib/application/Container');
+const { dbManager } = require('./server/database');
 const MetricsCollector = require('./lib/infrastructure/MetricsCollector');
 const { createMemoryMonitor } = require('./server/memory');
-const JwtService = require('./lib/infrastructure/auth/JwtService');
 
 // ============================================
 // IMPORTS - Middleware
@@ -53,21 +51,14 @@ const {
 // ============================================
 // IMPORTS - Routes
 // ============================================
-// Route wiring extracted to server/routes.js (configureRoutes).
-const { configureRoutes } = require('./server/routes');
+// Route wiring + game managers + heartbeat are consumed by ./server/bootstrap.js.
 
 // ============================================
-// IMPORTS - Game Logic & Managers
+// IMPORTS - Game Logic
 // ============================================
-const { initializeGameState } = require('./game/gameState');
 const { gameLoop } = require('./game/gameLoop');
-const { initializeRooms } = require('./game/roomFunctions');
 
 const ConfigManager = require('./lib/server/ConfigManager');
-// Game managers factory (entity/collision/network/room/mutator/zombie).
-const { createGameManagers } = require('./server/gameManagers');
-// Heartbeat / inactivity cleanup interval factory.
-const { startHeartbeat } = require('./server/heartbeat');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -91,9 +82,7 @@ const server = http.createServer(app);
 const { createSocketIOServer } = require('./server/socketio');
 const io = createSocketIOServer(server);
 
-// Database init moved to server/database.js. dbAvailable is hydrated from the
-// factory's return value at the call site below.
-let dbAvailable = false;
+// Runtime state populated by the bootstrap orchestrator (see ./server/bootstrap.js).
 let gameState = null;
 let stopGameLoop = null; // cleanup function returned by startGameLoop
 let heartbeatTimer = null;
@@ -158,172 +147,35 @@ function startGameLoop(perfIntegration, tickFn) {
   };
 }
 
-// HIGH FIX: Initialize database before routes
-async function startServer() {
-  dbAvailable = await initializeDatabase();
-
-  // Initialize dependency injection container AFTER database
-  const container = dbAvailable ? Container.getInstance() : null;
-  if (container) {
-    container.initialize();
-  }
-
-  // Initialize JWT service
-  const jwtService = new JwtService(logger);
-  const requireAuth = jwtService.expressMiddleware();
-
-  // ============================================
-  // API ROUTES - Versioned (v1) + Legacy (backward compat)
-  // ============================================
-  configureRoutes(app, {
-    container,
-    jwtService,
-    requireAuth,
-    dbAvailable,
-    metricsCollector,
-    memoryMonitor,
-    dbManager,
-    perfIntegration
-  });
-
-  // ============================================
-  // GAME INITIALIZATION
-  // ============================================
-
-  // Initialize game state
-  gameState = initializeGameState();
-
-  // Initialize rooms (Rogue-like system)
-  initializeRooms(gameState, CONFIG);
-
-  // Initialize game managers (entity, collision, network, room, mutator, zombie).
-  const {
-    entityManager,
-    collisionManager,
-    networkManager,
-    roomManager,
-    zombieManager
-  } = createGameManagers({
-    gameState,
-    config: CONFIG,
-    zombieTypes: ZOMBIE_TYPES,
-    io
-  });
-
-  // Initialize progression integration (XP, skills, achievements)
-  if (dbAvailable) {
-    const ProgressionIntegration = require('./lib/server/ProgressionIntegration');
-    const progressionIntegration = new ProgressionIntegration(container, io);
-    gameState.progressionIntegration = progressionIntegration;
-    logger.info('Progression integration initialized');
-  } else {
-    logger.warn('Progression integration disabled (database unavailable)');
-  }
-
-  // Load first room after roomManager is initialized
-  const { loadRoom } = require('./game/roomFunctions');
-  loadRoom(0, roomManager);
-
-  // Start zombie spawner
-  zombieManager.startZombieSpawner();
-  logger.info('Zombie spawner started');
-
-  // Initialize admin commands (debug mode)
-  const AdminCommands = require('./game/modules/admin/AdminCommands');
-  const adminCommands = new AdminCommands(io, gameState, zombieManager);
-  gameState.adminCommands = adminCommands;
-  logger.info('Admin commands initialized (debug mode enabled)');
-
-  // BUG FIX: Start powerup spawner - was missing, powerups never spawned
-  const { spawnPowerup } = require('./game/lootFunctions');
-  powerupSpawnerTimer = setInterval(() => {
-    spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector);
-  }, CONFIG.POWERUP_SPAWN_INTERVAL);
-  logger.info(`Powerup spawner started (interval: ${CONFIG.POWERUP_SPAWN_INTERVAL}ms)`);
-
-  // ============================================
-  // GAME LOOP - setTimeout recursive with drift compensation
-  // ============================================
-
-  stopGameLoop = startGameLoop(perfIntegration, () => {
-    gameLoop(
-      gameState,
-      io,
-      metricsCollector,
-      perfIntegration,
-      collisionManager,
-      entityManager,
-      zombieManager,
-      logger
-    );
-
-    // Broadcast game state conditionally based on performance mode
-    if (perfIntegration.shouldBroadcast()) {
-      networkManager.emitGameState();
-    }
-  });
-
-  // Heartbeat / inactivity cleanup interval (orphan + timeout eviction).
-  const heartbeat = startHeartbeat({
-    gameState,
-    io,
-    networkManager,
-    metricsCollector,
-    inactivityTimeout: INACTIVITY_TIMEOUT,
-    interval: HEARTBEAT_CHECK_INTERVAL
-  });
-  heartbeatTimer = heartbeat.timer;
-
-  // ============================================
-  // SOCKET.IO HANDLERS
-  // ============================================
-
-  io.use(jwtService.socketMiddleware());
-  const socketHandler = initSocketHandlers(
-    io,
-    gameState,
-    entityManager,
-    roomManager,
-    metricsCollector,
-    perfIntegration,
-    dbAvailable ? container : null,
-    networkManager
-  );
-  io.on('connection', socketHandler);
-
-  // ============================================
-  // ERROR HANDLING
-  // ============================================
-
-  app.use(notFoundHandler);
-  app.use(apiErrorHandler); // Handle API errors with JSON responses
-  app.use(serverErrorHandler); // Handle HTML errors
-
-  // ============================================
-  // SERVER STARTUP
-  // ============================================
-
-  server.listen(PORT, () => {
-    logger.info(`🚀 Server running on port ${PORT}`);
-    logger.info(`📡 Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-    logger.info('🎮 Game server initialized');
-
-    if (dbAvailable) {
-      logger.info('🗄️  Database connected');
-    } else {
-      logger.warn('⚠️  Running in degraded mode - no database');
-    }
-  });
-}
-
-// Start server with database initialization
-startServer().catch(err => {
-  logger.error('❌ FATAL: Server initialization failed', {
-    error: err.message,
-    stack: err.stack
-  });
-  process.exit(1);
+// Bootstrap orchestrator: composes all factories into startServer().
+const { createBootstrap } = require('./server/bootstrap');
+const { startServer } = createBootstrap({
+  app, server, io,
+  config: CONFIG,
+  zombieTypes: ZOMBIE_TYPES,
+  allowedOrigins: ALLOWED_ORIGINS,
+  port: PORT,
+  metricsCollector, memoryMonitor, dbManager, perfIntegration,
+  initSocketHandlers, gameLoop, startGameLoop,
+  errorHandlers: { notFoundHandler, serverErrorHandler, apiErrorHandler },
+  inactivityTimeout: INACTIVITY_TIMEOUT,
+  heartbeatCheckInterval: HEARTBEAT_CHECK_INTERVAL
 });
+
+startServer()
+  .then(state => {
+    gameState = state.gameState;
+    stopGameLoop = state.stopGameLoop;
+    heartbeatTimer = state.heartbeatTimer;
+    powerupSpawnerTimer = state.powerupSpawnerTimer;
+  })
+  .catch(err => {
+    logger.error('❌ FATAL: Server initialization failed', {
+      error: err.message,
+      stack: err.stack
+    });
+    process.exit(1);
+  });
 
 // ============================================
 // GRACEFUL SHUTDOWN
