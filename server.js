@@ -100,52 +100,8 @@ const memoryMonitor = createMemoryMonitor();
 const { configureMiddleware } = require('./server/middleware');
 configureMiddleware(app);
 
-/**
- * Start game loop with setTimeout recursive pattern and drift compensation.
- * Unlike setInterval, this prevents tick overlap: the next tick is only
- * scheduled after the current one completes, with time compensation to
- * maintain the target frame rate.
- *
- * @param {Object} perfIntegration - Performance config (provides tickInterval)
- * @param {Function} tickFn - Function to execute each tick
- * @returns {Function} Cleanup function to stop the loop
- */
-function startGameLoop(perfIntegration, tickFn) {
-  const { performance: perf } = require('perf_hooks');
-  const tickInterval = perfIntegration.getTickInterval();
-  let tickTimeout = null;
-  let running = true;
-
-  function tick() {
-    if (!running) {
-      return;
-    }
-
-    const now = perf.now();
-
-    try {
-      tickFn();
-    } catch (err) {
-      logger.error('Game loop tick error', { error: err.message, stack: err.stack });
-    }
-
-    // Compensate for drift: subtract execution time from next delay
-    const elapsed = perf.now() - now;
-    const nextTick = Math.max(0, tickInterval - elapsed);
-    tickTimeout = setTimeout(tick, nextTick);
-  }
-
-  tick();
-
-  // Return cleanup function
-  return function stop() {
-    running = false;
-    if (tickTimeout !== null) {
-      clearTimeout(tickTimeout);
-      tickTimeout = null;
-    }
-  };
-}
+// Game loop (setTimeout-recursive with drift compensation) lives in server/timers.js.
+const { startGameLoop } = require('./server/timers');
 
 // Bootstrap orchestrator: composes all factories into startServer().
 const { createBootstrap } = require('./server/bootstrap');
