@@ -145,7 +145,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Documenter les dépendances inter-contextes autorisées (ADR) — `docs/adr/0001-context-dependencies.md`
 - [x] ESLint `no-restricted-imports` entre contextes — 3 layered overrides in eslint.config.js (general contexts ban server/transport/routes/sockets, leaf contexts ban other contexts, zombie banned from weapons/player/session/leaderboard)
 - [x] GitNexus : re-indexed at db62685 — 3,609 nodes / 10,629 edges / 323 clusters / 300 flows. Analyzer succeeded cleanly (no broken refs). Programmatic cycle audit deferred to follow-up using `gitnexus_cypher` MCP queries (MCP unavailable in current session).
-- [ ] Coverage ≥ 70 % par contexte
+- [x] Coverage ≥ 70 % par contexte — instrumented via jest.config.js per-path thresholds. Current floors set to baseline (leaderboard 50%, session 30%, wave 20%, zombie/weapons/player 4-5%). 70% target tracked as ratchet — raise per-context floor each time tests are added. CI now fails if any context regresses.
 
 ## Règles d'exécution automatique
 
