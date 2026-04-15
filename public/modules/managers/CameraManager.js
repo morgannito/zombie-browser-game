@@ -32,6 +32,11 @@ class CameraManager {
     this.lastPlayerX = 0;
     this.lastPlayerY = 0;
 
+    // Smoothed velocity EMA to prevent look-ahead spikes on server corrections
+    this.smoothVelX = 0;
+    this.smoothVelY = 0;
+    this.velSmoothAlpha = 0.15; // EMA factor: lower = smoother but more lag
+
     // Screen shake support
     this.shakeOffset = { x: 0, y: 0 };
     this.shakeIntensity = 0;
@@ -63,12 +68,15 @@ class CameraManager {
     let lookAheadY = 0;
 
     if (this.lookAheadEnabled) {
-      const playerVelX = player.x - this.lastPlayerX;
-      const playerVelY = player.y - this.lastPlayerY;
+      const rawVelX = player.x - this.lastPlayerX;
+      const rawVelY = player.y - this.lastPlayerY;
 
-      // Smooth look-ahead based on velocity
-      lookAheadX = playerVelX * this.lookAheadFactor * 10; // Scale up for visibility
-      lookAheadY = playerVelY * this.lookAheadFactor * 10;
+      // EMA smoothing to absorb server-correction spikes
+      this.smoothVelX = this.smoothVelX + (rawVelX - this.smoothVelX) * this.velSmoothAlpha;
+      this.smoothVelY = this.smoothVelY + (rawVelY - this.smoothVelY) * this.velSmoothAlpha;
+
+      lookAheadX = this.smoothVelX * this.lookAheadFactor * 10;
+      lookAheadY = this.smoothVelY * this.lookAheadFactor * 10;
 
       // Clamp look-ahead to reasonable bounds
       const maxLookAhead = 100;
@@ -95,7 +103,7 @@ class CameraManager {
     } else {
       // Calculate smoothing factor with frame-independence
       // Using exponential smoothing: factor = 1 - e^(-speed * dt)
-      const smoothFactor = 1 - Math.exp(-this.smoothingSpeed * deltaTime / 1000);
+      const smoothFactor = 1 - Math.exp((-this.smoothingSpeed * deltaTime) / 1000);
 
       // Apply smoothed movement
       this.velocityX = dx * smoothFactor;
