@@ -121,7 +121,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Créer `contexts/weapons/` : déplacer `game/modules/bullet/*` + `lib/server/CollisionManager.js`
 - [x] Créer `contexts/player/` : déplacer `game/modules/player/*` + `lib/server/PlayerManager.js`
 - [x] Créer `contexts/wave/` : déplacer `game/modules/wave/*` + `lib/server/RoomManager.js`
-- [ ] Créer `contexts/session/` : déplacer `sockets/sessionRecovery.js` + `sockets/playerStateFactory.js`
+- [x] Créer `contexts/session/` : déplacer `sockets/sessionRecovery.js` + `sockets/playerStateFactory.js`
 - [ ] Créer `contexts/leaderboard/` : déplacer submitScoreUseCase + `public/leaderboardSystem.js` (client)
 
 ### Phase 3 — Transport

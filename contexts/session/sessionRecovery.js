@@ -3,7 +3,7 @@
  * @description Shared helpers/state for disconnect recovery workflow.
  */
 
-const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
+const { SESSION_RECOVERY_TIMEOUT } = require('../../config/constants');
 
 const disconnectedPlayers = new Map();
 const SESSION_ID_REGEX =
