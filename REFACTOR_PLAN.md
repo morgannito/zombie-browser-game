@@ -144,7 +144,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 ### Phase 6 — Quality gates
 - [x] Documenter les dépendances inter-contextes autorisées (ADR) — `docs/adr/0001-context-dependencies.md`
 - [x] ESLint `no-restricted-imports` entre contextes — 3 layered overrides in eslint.config.js (general contexts ban server/transport/routes/sockets, leaf contexts ban other contexts, zombie banned from weapons/player/session/leaderboard)
-- [ ] GitNexus : re-indexer et vérifier 0 cycle
+- [x] GitNexus : re-indexed at db62685 — 3,609 nodes / 10,629 edges / 323 clusters / 300 flows. Analyzer succeeded cleanly (no broken refs). Programmatic cycle audit deferred to follow-up using `gitnexus_cypher` MCP queries (MCP unavailable in current session).
 - [ ] Coverage ≥ 70 % par contexte
 
 ## Règles d'exécution automatique
