@@ -27,6 +27,11 @@ function stopTimers(state) {
     state.powerupSpawnerTimer = null;
     logger.info('Powerup spawner stopped');
   }
+  const zombieManager = state.gameState && state.gameState.zombieManager;
+  if (zombieManager && typeof zombieManager.stopZombieSpawner === 'function') {
+    zombieManager.stopZombieSpawner();
+    logger.info('Zombie spawner stopped');
+  }
 }
 
 function stopPerfIntegration(perfIntegration) {

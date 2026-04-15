@@ -127,6 +127,16 @@ class CollisionManager {
   }
 
   /**
+   * Remove a single zombie's pathfinding cache entry on death.
+   * Prevents the Map from retaining references to despawned zombie IDs between
+   * periodic full-clears (every cacheInvalidationInterval frames).
+   * @param {string} zombieId
+   */
+  invalidatePathfindingCache(zombieId) {
+    this.pathfindingCache.delete(zombieId);
+  }
+
+  /**
    * Find the closest zombie to a point within maximum range using quadtree optimization
    *
    * @param {number} x - Search origin X coordinate

@@ -36,6 +36,8 @@ function createGameManagers({ gameState, config, zombieTypes, io }) {
 
   gameState.roomManager = roomManager;
   gameState.mutatorManager = mutatorManager;
+  gameState.collisionManager = collisionManager;
+  gameState.zombieManager = zombieManager;
   mutatorManager.initialize();
   logger.info('Run mutators initialized');
 

@@ -6,6 +6,8 @@
  */
 
 const logger = require('../infrastructure/logging/Logger');
+const MetricsCollector = require('../infrastructure/metrics/MetricsCollector');
+const { cleanupRateLimits } = require('../sockets/rateLimitStore');
 
 function isOrphan(player) {
   return !player || typeof player !== 'object';
@@ -33,11 +35,16 @@ socket.disconnect(true);
 }
 
 function evictPlayers(gameState, networkManager, ids) {
+  const metrics = MetricsCollector.getInstance();
   for (const playerId of ids) {
     delete gameState.players[playerId];
     if (networkManager) {
-networkManager.cleanupPlayer(playerId);
-}
+      networkManager.cleanupPlayer(playerId);
+    }
+    if (typeof metrics.clearViolations === 'function') {
+      metrics.clearViolations(playerId);
+    }
+    cleanupRateLimits(playerId);
   }
 }
 

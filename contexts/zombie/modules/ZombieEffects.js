@@ -109,6 +109,7 @@ function killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zomb
   createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
   createLoot(zombie.x, zombie.y, zombie.goldDrop, zombie.xpDrop, gameState);
   delete gameState.zombies[zombieId];
+  gameState.collisionManager?.invalidatePathfindingCache(zombieId);
   gameState.zombiesKilledThisWave++;
 
   // BUG FIX: Si c'était un boss, déclencher la nouvelle wave

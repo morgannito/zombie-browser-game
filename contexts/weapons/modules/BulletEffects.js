@@ -191,6 +191,7 @@ function handleChainKill(zombie, zombieId, bullet, gameState, entityManager) {
 
   createLoot(zombie.x, zombie.y, zombie.goldDrop, zombie.xpDrop, gameState);
   delete gameState.zombies[zombieId];
+  gameState.collisionManager?.invalidatePathfindingCache(zombieId);
   gameState.zombiesKilledThisWave++;
 }
 

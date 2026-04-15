@@ -216,6 +216,7 @@ function handleZombieDeath(
     // OPTIMIZATION: handleSplitterDeath imported at module level
     handleSplitterDeath(zombie, zombieId, gameState, entityManager);
     delete gameState.zombies[zombieId];
+    gameState.collisionManager?.invalidatePathfindingCache(zombieId);
     gameState.zombiesKilledThisWave++;
     return;
   }
@@ -228,6 +229,7 @@ function handleZombieDeath(
   cleanupZombieDamageTracking(zombieId, gameState);
 
   delete gameState.zombies[zombieId];
+  gameState.collisionManager?.invalidatePathfindingCache(zombieId);
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss) {
