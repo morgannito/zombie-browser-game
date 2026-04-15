@@ -92,7 +92,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 1 — Inventaire & quick wins (safe)
 - [x] Créer REFACTOR_PLAN.md (cette PR)
-- [ ] Extraire `socketHandlers.js` → `transport/websocket/handlers/` (sous-étapes):
+- [x] Extraire `socketHandlers.js` → `transport/websocket/handlers/` (sous-étapes):
   - [x] `ping.js` (latency monitoring)
   - [x] `respawn.js`
   - [x] `spawnProtection.js`
@@ -100,10 +100,10 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `shop.js` (déplacé depuis sockets/shopEvents.js via git mv + re-export back-compat)
   - [x] `playerMove.js`
   - [x] `shoot.js`
-  - [ ] `setNickname.js`
+  - [x] `setNickname.js` (extracted as part of PR #80 transport/websocket/index.js canonical entry-point)
   - [x] `disconnect.js`
   - [x] Dissoudre `sockets/socketHandlers.js` — canonical entry-point is now `transport/websocket/index.js` (re-export shim; bootstrap body migration deferred until setNickname/disconnect PRs land)
-- [ ] Extraire `server.js` setup block → `server/` (sous-étapes):
+- [x] Extraire `server.js` setup block → `server/` (sous-étapes):
   - [x] `server/socketio.js` — Socket.IO factory
   - [x] `server/memory.js` — MemoryMonitor init
   - [x] `server/database.js` — dbManager init
@@ -132,7 +132,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 ### Phase 4 — Client mirror
 - [x] `public/modules/network/` : network singleton (NetworkManager moved from modules/systems/). Delta handler split deferred to subsequent iteration if needed.
 - [x] `public/modules/state/` : GameStateManager + ZombieInterpolator
-- [ ] `public/modules/rendering/` : garder tel quel (déjà OK)
+- [x] `public/modules/rendering/` : garder tel quel (déjà OK — pas de changement nécessaire)
 - [x] `public/modules/ui/` : UIManager + NicknameManager regroupés. Découpe par écran (HUD, shop, level-up, gameover) reportée — UIManager 628 lignes mais cohérent, refactor par écran à faire en PR séparée si besoin.
 - [x] `public/modules/input/` : InputManager + PlayerController + MobileControlsManager
 
