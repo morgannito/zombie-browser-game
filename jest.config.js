@@ -29,7 +29,7 @@ if (process.env.CI) {
     // Per-context floors — see ADR 0001. These are realistic baselines based
     // on the current state, with a 70% aspirational target tracked in
     // REFACTOR_PLAN.md (Phase 6). Raise these as more tests land.
-    './contexts/leaderboard/': { lines: 50, statements: 50, functions: 35, branches: 40 },
+    './contexts/leaderboard/': { lines: 85, statements: 85, functions: 95, branches: 90 },
     './contexts/session/':     { lines: 85, statements: 85, functions: 95, branches: 70 },
     './contexts/wave/':        { lines: 85, statements: 85, functions: 90, branches: 75 },
     './contexts/zombie/':      { lines: 80, statements: 80, functions: 80, branches: 65 },
