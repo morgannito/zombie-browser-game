@@ -30,6 +30,9 @@ return;
       logger.error('Game loop tick error', { error: err.message, stack: err.stack });
     }
     const elapsed = perf.now() - now;
+    if (elapsed > tickInterval * 1.5) {
+      logger.warn('Slow tick detected', { elapsed: elapsed.toFixed(1), threshold: tickInterval });
+    }
     const nextTick = Math.max(0, tickInterval - elapsed);
     tickTimeout = setTimeout(tick, nextTick);
   }

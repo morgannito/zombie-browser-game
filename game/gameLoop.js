@@ -6,6 +6,7 @@
  * - Clear separation of concerns
  */
 
+const { performance: perf } = require('perf_hooks');
 const ConfigManager = require('../lib/server/ConfigManager');
 
 const { GAMEPLAY_CONSTANTS } = ConfigManager;
@@ -90,7 +91,7 @@ function gameLoop(
   logger
 ) {
   perfIntegration.incrementTick();
-  const now = Date.now();
+  const now = perf.now();
 
   // CRITICAL FIX: Calculate proper deltaTime for frame-rate independent updates
   if (lastTickTime === 0) {
@@ -162,7 +163,7 @@ function gameLoop(
   }
 
   gameLoopRunning = true;
-  const frameStart = Date.now();
+  const frameStart = perf.now();
 
   try {
     const now = frameStart;
@@ -237,7 +238,7 @@ function gameLoop(
     // metricsCollector.incrementError() doesn't exist on the current MetricsCollector;
     // skip silently rather than spamming a TypeError every frame.
   } finally {
-    const frameTime = Date.now() - frameStart;
+    const frameTime = perf.now() - frameStart;
     metricsCollector.recordFrameTime(frameTime);
     gameLoopRunning = false;
 
