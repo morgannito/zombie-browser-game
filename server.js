@@ -66,6 +66,8 @@ const { initializeRooms } = require('./game/roomFunctions');
 const ConfigManager = require('./lib/server/ConfigManager');
 // Game managers factory (entity/collision/network/room/mutator/zombie).
 const { createGameManagers } = require('./server/gameManagers');
+// Heartbeat / inactivity cleanup interval factory.
+const { startHeartbeat } = require('./server/heartbeat');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -261,102 +263,16 @@ async function startServer() {
     }
   });
 
-  // CRITICAL FIX: Heartbeat check with proper validation and cleanup tracking
-  // Uses a flag to prevent race conditions with game loop
-  let heartbeatInProgress = false;
-
-  heartbeatTimer = setInterval(() => {
-    // CRITICAL FIX: Prevent concurrent execution with game loop
-    if (heartbeatInProgress) {
-      return;
-    }
-    heartbeatInProgress = true;
-
-    try {
-      const now = Date.now();
-      // CRITICAL FIX: Take snapshot of player IDs to avoid iteration issues
-      const playerIds = Object.keys(gameState.players).slice();
-      let cleanedUp = 0;
-      let orphanedObjects = 0;
-
-      // CRITICAL FIX: Mark players for deletion instead of deleting during iteration
-      const playersToDelete = [];
-
-      for (const playerId of playerIds) {
-        const player = gameState.players[playerId];
-
-        // CRITICAL FIX: Safety check for orphaned/corrupted player objects
-        if (!player || typeof player !== 'object') {
-          logger.warn('Orphaned player object detected', { playerId });
-          playersToDelete.push(playerId);
-          orphanedObjects++;
-          cleanedUp++;
-          continue;
-        }
-
-        // CRITICAL FIX: Initialize lastActivityTime if missing (prevents undefined comparison)
-        if (!player.lastActivityTime || typeof player.lastActivityTime !== 'number') {
-          player.lastActivityTime = now;
-          logger.warn('Player missing lastActivityTime, initialized', {
-            playerId,
-            nickname: player.nickname
-          });
-          continue;
-        }
-
-        const inactiveDuration = now - player.lastActivityTime;
-
-        // Check if player is inactive for too long
-        if (inactiveDuration > INACTIVITY_TIMEOUT) {
-          logger.info('Player timeout', {
-            player: player.nickname || playerId,
-            inactiveDuration,
-            wasConnected: !!player.socketId
-          });
-
-          // Disconnect player socket if still connected
-          if (player.socketId) {
-            const socket = io.sockets.sockets.get(player.socketId);
-            if (socket) {
-              socket.disconnect(true);
-            }
-          }
-
-          playersToDelete.push(playerId);
-          cleanedUp++;
-        }
-      }
-
-      // CRITICAL FIX: Delete players after iteration to prevent race conditions
-      for (const playerId of playersToDelete) {
-        delete gameState.players[playerId];
-        // Also cleanup NetworkManager tracking data
-        if (networkManager) {
-          networkManager.cleanupPlayer(playerId);
-        }
-      }
-
-      // CRITICAL FIX: Log cleanup stats for monitoring
-      if (cleanedUp > 0) {
-        logger.info('Heartbeat cleanup completed', {
-          playersRemoved: cleanedUp,
-          orphanedObjects,
-          remainingPlayers: Object.keys(gameState.players).length,
-          timestamp: now
-        });
-
-        // Track cleanup metrics
-        if (metricsCollector) {
-          metricsCollector.recordCleanup({
-            playersRemoved: cleanedUp,
-            orphaned: orphanedObjects
-          });
-        }
-      }
-    } finally {
-      heartbeatInProgress = false;
-    }
-  }, HEARTBEAT_CHECK_INTERVAL);
+  // Heartbeat / inactivity cleanup interval (orphan + timeout eviction).
+  const heartbeat = startHeartbeat({
+    gameState,
+    io,
+    networkManager,
+    metricsCollector,
+    inactivityTimeout: INACTIVITY_TIMEOUT,
+    interval: HEARTBEAT_CHECK_INTERVAL
+  });
+  heartbeatTimer = heartbeat.timer;
 
   // ============================================
   // SOCKET.IO HANDLERS
