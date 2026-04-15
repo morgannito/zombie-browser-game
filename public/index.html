@@ -145,8 +145,12 @@
                         <span class="stat-label">Zombies tués</span>
                         <span class="stat-value" id="final-kills">0</span>
                     </div>
+                    <div class="stat-row" id="killed-by-row" style="display:none;">
+                        <span class="stat-label">Tué par</span>
+                        <span class="stat-value stat-value--killer" id="final-killed-by"></span>
+                    </div>
                 </div>
-                <button id="respawn-btn" aria-label="Respawn et continuer la partie">CONTINUER ?</button>
+                <button id="respawn-btn" aria-label="Respawn et continuer la partie" disabled>CONTINUER ?</button>
             </div>
         </div>
 
@@ -470,6 +474,13 @@
         </div>
     </div>
 
+    <!-- Portrait orientation hint (mobile only, shown via CSS when portrait + game-active) -->
+    <div id="portrait-hint" role="alert" aria-live="polite">
+        <span class="hint-icon">📱</span>
+        <span class="hint-text">Tournez votre appareil</span>
+        <span class="hint-sub">Ce jeu est optimisé en mode paysage</span>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js?v=ded7749"></script>
@@ -602,5 +613,27 @@
 
     <!-- Game Patch (must be loaded after game.js) -->
     <script src="gamePatch.js?v=ded7749"></script>
+
+    <!-- Portrait-hint body class: toggled on game start/over/death -->
+    <script>
+      (function () {
+        document.addEventListener('game_started', function () {
+          document.body.classList.add('game-active');
+        });
+        document.addEventListener('game_over', function () {
+          document.body.classList.remove('game-active');
+        });
+        // Also clear on nickname screen (page-reload edge case)
+        var nicknameScreen = document.getElementById('nickname-screen');
+        if (nicknameScreen) {
+          var obs = new MutationObserver(function () {
+            if (nicknameScreen.style.display !== 'none') {
+              document.body.classList.remove('game-active');
+            }
+          });
+          obs.observe(nicknameScreen, { attributes: true, attributeFilter: ['style'] });
+        }
+      }());
+    </script>
 </body>
 </html>

@@ -147,11 +147,23 @@ class MobileControlsManager {
     // Update stick visual position
     stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-    // Normalize vector for movement (-1 to 1)
-    this.joystickVector = {
-      dx: dx / maxDistance,
-      dy: dy / maxDistance
-    };
+    // Normalize vector for movement (-1 to 1), then apply deadzone.
+    // Inputs below DEADZONE are zeroed to prevent drift from finger tremor.
+    const DEADZONE = 0.12;
+    let ndx = dx / maxDistance;
+    let ndy = dy / maxDistance;
+    const norm = Math.sqrt(ndx * ndx + ndy * ndy);
+    if (norm < DEADZONE) {
+      ndx = 0;
+      ndy = 0;
+    } else {
+      // Re-scale so the usable range starts at 0 instead of DEADZONE
+      const scale = (norm - DEADZONE) / (1 - DEADZONE);
+      ndx = (ndx / norm) * scale;
+      ndy = (ndy / norm) * scale;
+    }
+
+    this.joystickVector = { dx: ndx, dy: ndy };
   }
 
   setupAutoShoot() {
