@@ -658,57 +658,8 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
   }
 }
 
-/**
- * Move zombie randomly when no player visible
- * FIX: Added deltaTime for frame-rate independent movement
- * FIX: Improved wall collision handling with smart direction change
- */
-function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
-  if (!zombie.randomMoveTimer || now - zombie.randomMoveTimer > 2000) {
-    zombie.randomAngle = Math.random() * Math.PI * 2;
-    zombie.randomMoveTimer = now;
-  }
-
-  // FIX: Apply deltaTime for consistent random movement
-  const frameSpeed = zombie.speed * deltaTime;
-  const newX = zombie.x + Math.cos(zombie.randomAngle) * frameSpeed;
-  const newY = zombie.y + Math.sin(zombie.randomAngle) * frameSpeed;
-
-  // FIX: Use resolveWallCollisions for consistent boundary handling
-  const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
-
-  // Calculate how much movement was blocked
-  const intendedMoveX = newX - zombie.x;
-  const intendedMovY = newY - zombie.y;
-  const actualMoveX = finalX - zombie.x;
-  const actualMoveY = finalY - zombie.y;
-
-  // Check if significantly blocked (less than 50% of intended movement)
-  const intendedDist = Math.sqrt(intendedMoveX * intendedMoveX + intendedMovY * intendedMovY);
-  const actualDist = Math.sqrt(actualMoveX * actualMoveX + actualMoveY * actualMoveY);
-  const wasBlocked = intendedDist > 0.1 && actualDist < intendedDist * 0.5;
-
-  zombie.x = finalX;
-  zombie.y = finalY;
-
-  if (wasBlocked) {
-    // Hit a wall - change direction intelligently
-    // Try to pick a direction that goes away from the wall
-    if (Math.abs(actualMoveX) < Math.abs(intendedMoveX) * 0.5) {
-      // X was blocked - move more in Y direction
-      zombie.randomAngle = actualMoveY >= 0 ? Math.PI / 2 : -Math.PI / 2;
-      zombie.randomAngle += ((Math.random() - 0.5) * Math.PI) / 2; // Add some variance
-    } else if (Math.abs(actualMoveY) < Math.abs(intendedMovY) * 0.5) {
-      // Y was blocked - move more in X direction
-      zombie.randomAngle = actualMoveX >= 0 ? 0 : Math.PI;
-      zombie.randomAngle += ((Math.random() - 0.5) * Math.PI) / 2; // Add some variance
-    } else {
-      // Both blocked (corner) - pick random new direction
-      zombie.randomAngle = Math.random() * Math.PI * 2;
-    }
-    zombie.randomMoveTimer = now;
-  }
-}
+// Random-walk logic extracted to ./updater/randomWalk.js for SRP + lint compliance.
+const { moveRandomly } = require('./updater/randomWalk');
 
 module.exports = {
   updateZombies,
