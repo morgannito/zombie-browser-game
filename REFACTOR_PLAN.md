@@ -126,7 +126,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 3 — Transport
 - [x] `transport/http/` : routes Express regroupées
-- [ ] `transport/websocket/index.js` : setup io + registry des handlers par contexte
+- [x] `transport/websocket/index.js` : setup io + registry des handlers par contexte
 - [x] `transport/websocket/events.js` : move shared/socketEvents.js ici
 
 ### Phase 4 — Client mirror
