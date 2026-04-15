@@ -243,12 +243,14 @@ class Renderer {
     this.effectsRenderer.renderWeather(this.ctx, this.camera, gameState.state.weather);
     this.entityRenderer.renderTargetIndicator(this.ctx, player);
 
-    // Check zombie damage for damage numbers
+    // Check zombie damage for damage numbers and hit markers
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
 
-    // Update and render damage numbers
+    // Update and render damage numbers + hit markers
     const deltaTime = 16;
     this.uiRenderer.updateDamageNumbers(deltaTime);
+    this.uiRenderer.updateHitMarkers();
+    this.uiRenderer.renderHitMarkers(this.ctx, this.camera);
     this.uiRenderer.renderDamageNumbers(this.ctx, this.camera);
 
     this.ctx.restore();
@@ -272,13 +274,14 @@ class Renderer {
 
     // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
     if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {
+      const pixelRatio = window.devicePixelRatio || 1;
       this.crosshairRenderer.render(
         this.ctx,
         window.inputManager.mouse.x,
         window.inputManager.mouse.y,
         gameState.state.zombies,
         this.camera.getPosition(),
-        window.devicePixelRatio || 1
+        pixelRatio
       );
     }
   }
