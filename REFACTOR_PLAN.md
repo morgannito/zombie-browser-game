@@ -101,7 +101,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `playerMove.js`
   - [x] `shoot.js`
   - [ ] `setNickname.js`
-  - [ ] `disconnect.js`
+  - [x] `disconnect.js`
   - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
 - [ ] Extraire `server.js` setup block (≈lignes 100-400) → `server/bootstrap.js`
 - [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
