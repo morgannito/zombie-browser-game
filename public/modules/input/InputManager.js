@@ -8,7 +8,14 @@
  */
 
 // Keys that must suppress browser default behaviour during gameplay.
-const GAMEPLAY_PREVENT_KEYS = new Set(['tab', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+const GAMEPLAY_PREVENT_KEYS = new Set([
+  'tab',
+  ' ',
+  'arrowup',
+  'arrowdown',
+  'arrowleft',
+  'arrowright'
+]);
 
 class InputManager {
   constructor() {
@@ -36,8 +43,8 @@ class InputManager {
 
     // Store handler references for cleanup
     this.handlers = {
-      keydown: (e) => this.handleKeyDown(e),
-      keyup: (e) => this.handleKeyUp(e),
+      keydown: e => this.handleKeyDown(e),
+      keyup: e => this.handleKeyUp(e),
       blur: () => this.handleBlur(),
       visibilitychange: () => this.handleVisibilityChange()
     };
@@ -74,8 +81,8 @@ class InputManager {
   _isInputFocused() {
     const el = document.activeElement;
     if (!el) {
-return false;
-}
+      return false;
+    }
     const tag = el.tagName;
     return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
   }
@@ -83,8 +90,8 @@ return false;
   handleKeyDown(e) {
     // Do not intercept keys while the user is typing in a form field.
     if (this._isInputFocused()) {
-return;
-}
+      return;
+    }
 
     const key = e.key.toLowerCase();
 
@@ -115,16 +122,6 @@ return;
     this.movementDirty = true;
     this.lastInputTime = performance.now();
     this.isIdle = false;
-
-    // Instant stop: if all WASD keys are now released, notify PlayerController
-    // so it can force-emit position immediately without waiting for the throttle.
-    const wasd = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
-    if (wasd.includes(key) && this.onMovementStop) {
-      const anyMoving = wasd.some(k => this.keys[k]);
-      if (!anyMoving) {
-        this.onMovementStop();
-      }
-    }
   }
 
   handleBlur() {
@@ -184,7 +181,7 @@ return;
    */
   updateIdleState() {
     const now = performance.now();
-    this.isIdle = (now - this.lastInputTime) > this.idleThreshold;
+    this.isIdle = now - this.lastInputTime > this.idleThreshold;
   }
 
   /**
@@ -196,8 +193,8 @@ return;
    */
   updateGamepad() {
     if (!navigator.getGamepads) {
-return;
-}
+      return;
+    }
 
     const gamepads = navigator.getGamepads();
     let gpDx = 0;
@@ -205,8 +202,8 @@ return;
 
     for (const gp of gamepads) {
       if (!gp || !gp.connected) {
-continue;
-}
+        continue;
+      }
       // Standard mapping: axes[0] = left stick X, axes[1] = left stick Y
       const ax = gp.axes[0] ?? 0;
       const ay = gp.axes[1] ?? 0;
