@@ -94,7 +94,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Créer REFACTOR_PLAN.md (cette PR)
 - [ ] Extraire `socketHandlers.js` → `transport/websocket/handlers/` (sous-étapes):
   - [x] `ping.js` (latency monitoring)
-  - [ ] `respawn.js`
+  - [x] `respawn.js`
   - [ ] `spawnProtection.js`
   - [ ] `selectUpgrade.js`
   - [ ] `shop.js` (déjà partiellement dans sockets/shopEvents.js — fusionner)

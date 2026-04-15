@@ -23,11 +23,6 @@ const {
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
 const {
-  savePlayerProgressionSnapshot,
-  resetPlayerRunState,
-  restorePlayerProgression
-} = require('../game/modules/player/RespawnHelpers');
-const {
   disconnectedPlayers,
   startSessionCleanupInterval,
   stopSessionCleanupInterval,
@@ -567,24 +562,8 @@ function registerShootHandler(socket, gameState, entityManager) {
 /**
  * Register respawn handler
  */
-function registerRespawnHandler(socket, gameState, entityManager) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.RESPAWN,
-    safeHandler('respawn', function () {
-      const player = gameState.players[socket.id];
-      if (player) {
-        player.lastActivityTime = Date.now();
-
-        const snapshot = savePlayerProgressionSnapshot(player);
-        const totalMaxHealth = CONFIG.PLAYER_MAX_HEALTH + (snapshot.upgrades.maxHealth || 0) * 20;
-
-        cleanupPlayerBullets(socket.id, gameState, entityManager);
-        resetPlayerRunState(player, CONFIG, totalMaxHealth);
-        restorePlayerProgression(player, snapshot);
-      }
-    })
-  );
-}
+// Respawn handler moved to transport/websocket/handlers/respawn.js
+const { registerRespawnHandler } = require('../transport/websocket/handlers/respawn');
 
 /**
  * Register selectUpgrade handler
