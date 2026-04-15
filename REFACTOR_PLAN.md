@@ -171,7 +171,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Divers
 - [ ] PR #36 `perf/server-zombie-ai` : rebase ou close (UNSTABLE >20 loops)
-- [ ] GitNexus cycle audit programmatique (via MCP `gitnexus_cypher`)
+- [x] GitNexus cycle audit programmatique — 0 cycles 2-hop, 0 cycles 3-hop, 0 violations cross-layer, 0 violations reverse-layer. Rapport complet : `docs/adr/0002-gitnexus-cycle-audit.md`
 - [ ] UIManager.js (628 lignes) split par écran (HUD/shop/levelup/gameover) si bug surface dans le refactor complete
 
 ## Règles d'exécution automatique
