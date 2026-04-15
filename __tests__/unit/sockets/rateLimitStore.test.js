@@ -1,8 +1,8 @@
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   warn: jest.fn()
 }));
 
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require('../../../infrastructure/logging/Logger');
 const { checkRateLimit, cleanupRateLimits } = require('../../../sockets/rateLimitStore');
 
 describe('rateLimitStore', () => {

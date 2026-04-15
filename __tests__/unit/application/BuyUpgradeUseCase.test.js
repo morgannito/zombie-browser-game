@@ -7,7 +7,7 @@ const BuyUpgradeUseCase = require('../../../lib/application/use-cases/BuyUpgrade
 const PermanentUpgrades = require('../../../lib/domain/entities/PermanentUpgrades');
 
 // Mock Logger
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   info: jest.fn(),
   debug: jest.fn(),
   warn: jest.fn(),

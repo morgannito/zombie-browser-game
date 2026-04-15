@@ -6,7 +6,7 @@
 const CreatePlayerUseCase = require('../../../lib/application/use-cases/CreatePlayerUseCase');
 
 // Mock the Logger to prevent actual logging during tests
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   info: jest.fn(),
   debug: jest.fn(),
   warn: jest.fn(),

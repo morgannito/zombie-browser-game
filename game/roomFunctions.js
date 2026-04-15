@@ -8,7 +8,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG } = ConfigManager;
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 
 /**
  * Génération procédurale de salle (Rogue-like)

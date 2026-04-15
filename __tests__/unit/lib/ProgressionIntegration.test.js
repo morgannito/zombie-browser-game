@@ -5,7 +5,7 @@
  * Domain logic: skill delegation, damage handling, second chance, berserker
  */
 
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   info: jest.fn(),
   debug: jest.fn(),
   error: jest.fn(),

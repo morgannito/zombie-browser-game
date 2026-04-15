@@ -7,7 +7,7 @@
  * - Other server errors
  */
 
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 const { AppError } = require('../lib/domain/errors/DomainErrors');
 const { buildHttpContext } = require('./httpContext');
 
