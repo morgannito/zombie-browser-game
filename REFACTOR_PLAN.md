@@ -125,7 +125,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Créer `contexts/leaderboard/` : déplacer SubmitScoreUseCase + GetLeaderboardUseCase (server). `public/leaderboardSystem.js` (client) reporté en Phase 4 (client mirror).
 
 ### Phase 3 — Transport
-- [ ] `transport/http/` : routes Express regroupées
+- [x] `transport/http/` : routes Express regroupées
 - [ ] `transport/websocket/index.js` : setup io + registry des handlers par contexte
 - [ ] `transport/websocket/events.js` : move shared/socketEvents.js ici
 

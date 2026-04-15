@@ -7,13 +7,13 @@
 const logger = require('../lib/infrastructure/Logger');
 const { requireMetricsToken } = require('../middleware/security');
 
-const initAuthRoutes = require('../routes/auth');
-const initHealthRoutes = require('../routes/health');
-const initMetricsRoutes = require('../routes/metrics');
-const initAdminStatsRoute = require('../routes/adminStats');
-const initLeaderboardRoutes = require('../routes/leaderboard');
-const initPlayersRoutes = require('../routes/players');
-const featuresRoutes = require('../routes/features');
+const initAuthRoutes = require("../transport/http/auth");
+const initHealthRoutes = require("../transport/http/health");
+const initMetricsRoutes = require("../transport/http/metrics");
+const initAdminStatsRoute = require("../transport/http/adminStats");
+const initLeaderboardRoutes = require("../transport/http/leaderboard");
+const initPlayersRoutes = require("../transport/http/players");
+const featuresRoutes = require("../transport/http/features");
 
 function mountAuthRoutes(app, container, jwtService) {
   const authRoutes = initAuthRoutes(container, jwtService);
@@ -24,8 +24,8 @@ function mountAuthRoutes(app, container, jwtService) {
 function mountDbRoutes(app, container, requireAuth) {
   const leaderboardRoutes = initLeaderboardRoutes(container, { requireAuth });
   const playerRoutes = initPlayersRoutes(container, { requireAuth });
-  const progressionRoutes = require('../routes/progression')(container, { requireAuth });
-  const achievementRoutes = require('../routes/achievements')(container, { requireAuth });
+  const progressionRoutes = require("../transport/http/progression")(container, { requireAuth });
+  const achievementRoutes = require("../transport/http/achievements")(container, { requireAuth });
 
   app.use('/api/v1/leaderboard', leaderboardRoutes);
   app.use('/api/v1/players', playerRoutes);

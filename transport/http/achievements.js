@@ -6,9 +6,9 @@
 
 const express = require('express');
 const router = express.Router();
-const logger = require('../lib/infrastructure/Logger');
-const { Joi, validateRequest } = require('../middleware/validation');
-const { requireSameUserInParam } = require('../middleware/authz');
+const logger = require("../../lib/infrastructure/Logger");
+const { Joi, validateRequest } = require("../../middleware/validation");
+const { requireSameUserInParam } = require("../../middleware/authz");
 
 /**
  * Initialize achievement routes
