@@ -5,15 +5,15 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require("../../../game/utilityFunctions");
-const { createParticles, createLoot } = require("../../../game/lootFunctions");
+const { distance } = require('../../../game/utilityFunctions');
+const { createParticles, createLoot } = require('../../../game/lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 // OPTIMIZATION: Pre-load all dependencies at module level instead of inside loops
 const { handleSplitterDeath } = require('../../zombie/modules/ZombieEffects');
-const { handleNewWave } = require("../../wave/modules/WaveManager");
-const { updatePlayerCombo } = require("../../player/modules/PlayerProgression");
+const { handleNewWave } = require('../../wave/modules/WaveManager');
+const { updatePlayerCombo } = require('../../player/modules/PlayerProgression');
 
 // OPTIMIZATION: Pre-load BulletEffects at module level
 const BulletEffects = require('./BulletEffects');
@@ -22,7 +22,7 @@ const BulletEffects = require('./BulletEffects');
 let handlePlayerDeathProgressionRef = null;
 function getHandlePlayerDeathProgression() {
   if (!handlePlayerDeathProgressionRef) {
-    handlePlayerDeathProgressionRef = require("../../../game/gameLoop").handlePlayerDeathProgression;
+    handlePlayerDeathProgressionRef = require('../../../game/gameLoop').handlePlayerDeathProgression;
   }
   return handlePlayerDeathProgressionRef;
 }
@@ -233,7 +233,7 @@ function handleZombieDeath(
  * Handle explosive zombie death
  */
 // OPTIMIZATION: createExplosion imported at module level via lootFunctions
-const { createExplosion } = require("../../../game/lootFunctions");
+const { createExplosion } = require('../../../game/lootFunctions');
 
 function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) {
   const explosiveType = ZOMBIE_TYPES.explosive;
