@@ -136,128 +136,13 @@ startServer()
 // ============================================
 // GRACEFUL SHUTDOWN
 // ============================================
-
-let isShuttingDown = false;
-
-function cleanupServer() {
-  // CRITICAL FIX: Prevent multiple simultaneous shutdowns
-  if (isShuttingDown) {
-    logger.warn('⚠️  Shutdown already in progress, ignoring signal');
-    return;
-  }
-  isShuttingDown = true;
-
-  logger.info('🛑 Server shutting down gracefully...');
-
-  // Stop game loop (setTimeout-based)
-  if (stopGameLoop) {
-    stopGameLoop();
-    stopGameLoop = null;
-    logger.info('Game loop stopped');
-  }
-  if (heartbeatTimer) {
-    clearInterval(heartbeatTimer);
-    heartbeatTimer = null;
-    logger.info('✅ Heartbeat timer stopped');
-  }
-  if (powerupSpawnerTimer) {
-    clearInterval(powerupSpawnerTimer);
-    powerupSpawnerTimer = null;
-    logger.info('Powerup spawner stopped');
-  }
-
-  // BUGFIX (memory leak): perfIntegration owns a gcTimer setInterval that
-  // was never cleared on shutdown — kept the singleton (and its config)
-  // alive forever in test runs and graceful-restart scenarios.
-  try {
-    if (perfIntegration && typeof perfIntegration.cleanup === 'function') {
-      perfIntegration.cleanup();
-      logger.info('Performance integration timers stopped');
-    }
-  } catch (e) {
-    logger.warn('perfIntegration.cleanup() failed', { error: e && e.message });
-  }
-
-  // Stop memory monitor
-  memoryMonitor.stop();
-  logger.info('Memory monitor stopped');
-
-  // MEMORY LEAK FIX: Stop session cleanup interval from socketHandlers
-  stopSessionCleanupInterval();
-  logger.info('Session cleanup interval stopped');
-
-  // MEDIUM FIX: Cleanup HazardManager
-  if (gameState && gameState.hazardManager) {
-    try {
-      gameState.hazardManager.clearAll();
-      logger.info('✅ HazardManager cleaned up');
-    } catch (err) {
-      logger.error('❌ Error cleaning up HazardManager', {
-        error: err.message,
-        stack: err.stack
-      });
-    }
-  }
-
-  // CRITICAL FIX: Promise-based cleanup sequence
-  // Close socket connections first
-  io.close(() => {
-    logger.info('✅ All socket connections closed');
-
-    // Then close HTTP server
-    server.close(() => {
-      logger.info('✅ HTTP server closed');
-
-      // Finally close database with proper promise handling
-      Promise.resolve(dbManager.close())
-        .then(() => {
-          logger.info('✅ Database connection closed');
-          process.exit(0);
-        })
-        .catch(err => {
-          logger.error('❌ Database closure error:', {
-            error: err.message,
-            stack: err.stack
-          });
-          process.exit(1);
-        });
-    });
-  });
-
-  // Force exit after 10 seconds if cleanup hangs
-  setTimeout(() => {
-    logger.error('❌ Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-}
-
-// Handle shutdown signals
-process.on('SIGTERM', cleanupServer);
-process.on('SIGINT', cleanupServer);
-
-// Handle uncaught errors — do NOT kill the server for non-fatal errors.
-// Active sessions must survive async bugs; we only shut down on true OS-level failures.
-const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
-
-process.on('uncaughtException', err => {
-  logger.error('Uncaught exception', {
-    error: err && err.message,
-    code: err && err.code,
-    stack: err && err.stack
-  });
-  if (err && FATAL_OS_CODES.has(err.code)) {
-    cleanupServer();
-  }
-});
-
-process.on('unhandledRejection', reason => {
-  const err = reason instanceof Error ? reason : new Error(String(reason));
-  logger.error('Unhandled promise rejection', {
-    error: err.message,
-    stack: err.stack
-  });
-  // Do not exit — keep active game sessions alive.
-});
+const { createCleanup } = require('./server/cleanup');
+createCleanup({
+  io, server, dbManager, perfIntegration, memoryMonitor, stopSessionCleanupInterval,
+  // Lexical capture: cleanup needs the latest values of the runtime state mutated
+  // by the bootstrap orchestrator's resolution (timers, gameState, ...).
+  getState: () => ({ gameState, stopGameLoop, heartbeatTimer, powerupSpawnerTimer })
+}).install();
 
 // Export for testing
 module.exports = { app, server, io };
