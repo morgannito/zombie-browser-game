@@ -113,7 +113,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
     - [x] `server/gameManagers.js` — entity/collision/network/room/zombie/mutator init
     - [x] `server/heartbeat.js` — inactivity cleanup interval
     - [x] `server/bootstrap.js` — final startServer orchestrator
-- [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
+- [x] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js` (heartbeat → server/heartbeat.js, powerup spawner → server/bootstrap.js, gameLoop → server/timers.js)
 - [ ] Extraire `server.js` shutdown → `server/cleanup.js`
 
 ### Phase 2 — Contextes domaine
