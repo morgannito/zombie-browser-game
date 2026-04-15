@@ -103,7 +103,13 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [ ] `setNickname.js`
   - [x] `disconnect.js`
   - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
-- [ ] Extraire `server.js` setup block (≈lignes 100-400) → `server/bootstrap.js`
+- [ ] Extraire `server.js` setup block → `server/` (sous-étapes):
+  - [x] `server/socketio.js` — Socket.IO factory
+  - [ ] `server/memory.js` — MemoryMonitor init
+  - [ ] `server/database.js` — dbManager init
+  - [ ] `server/middleware.js` — express middleware wiring
+  - [ ] `server/routes.js` — route mounting
+  - [ ] `server/bootstrap.js` — main startServer orchestrator
 - [ ] Extraire `server.js` timer block (gameLoop + heartbeat + powerup spawner) → `server/timers.js`
 - [ ] Extraire `server.js` shutdown → `server/cleanup.js`
 
