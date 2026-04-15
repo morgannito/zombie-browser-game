@@ -624,19 +624,23 @@ function registerSelectUpgradeHandler(socket, gameState) {
         return;
       }
 
-      // ANTI-CHEAT: Vérifier que le choix était parmi ceux proposés par le serveur
-      const pending = player.pendingUpgradeChoices || [];
-      const choiceIndex = pending.indexOf(validatedData.upgradeId);
-      if (choiceIndex === -1) {
+      // ANTI-CHEAT: Vérifier que le choix était parmi ceux proposés par le serveur.
+      // BUGFIX: pendingUpgradeChoices is now an array of batches (sub-arrays).
+      // Back-compat: detect flat-array legacy format and coerce to one batch.
+      const raw = player.pendingUpgradeChoices || [];
+      const batches = raw.length > 0 && !Array.isArray(raw[0]) ? [raw] : raw;
+      const batchIndex = batches.findIndex(b => b.includes(validatedData.upgradeId));
+      if (batchIndex === -1) {
         logger.warn('Anti-cheat: selectUpgrade not in pending choices', {
           player: player.nickname || socket.id,
           upgradeId: validatedData.upgradeId,
-          pending
+          pending: batches
         });
         return;
       }
-      // Consommer le choix (retirer toutes les entrées de ce batch)
-      player.pendingUpgradeChoices = [];
+      // Consume only the matching batch — preserves any later queued level-ups.
+      batches.splice(batchIndex, 1);
+      player.pendingUpgradeChoices = batches;
 
       // Appliquer l'effet de l'upgrade
       upgrade.effect(player);

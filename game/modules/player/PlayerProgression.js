@@ -146,11 +146,15 @@ function handlePlayerLevelUp(player, playerId, io) {
     const milestoneBonus = checkMilestoneBonus(player);
     const upgradeChoices = generateUpgradeChoices();
 
-    // ANTI-CHEAT: Store valid choices server-side so selectUpgrade can verify
+    // ANTI-CHEAT: Store valid choices server-side so selectUpgrade can verify.
+    // BUGFIX: store batches as grouped sub-arrays. Multiple level-ups in one
+    // XP grant previously flattened every batch into a single list; the first
+    // selection wiped everything, so subsequent selections fell into the
+    // anti-cheat reject path ('selectUpgrade not in pending choices').
     if (!Array.isArray(player.pendingUpgradeChoices)) {
       player.pendingUpgradeChoices = [];
     }
-    player.pendingUpgradeChoices.push(...upgradeChoices.map(u => u.id));
+    player.pendingUpgradeChoices.push(upgradeChoices.map(u => u.id));
 
     setInvisibilityForUpgrade(player);
     emitLevelUpEvent(player, playerId, upgradeChoices, milestoneBonus, io);
