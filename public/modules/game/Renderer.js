@@ -31,6 +31,14 @@ class Renderer {
     this.effectsRenderer = new window.EffectsRenderer();
     this.uiRenderer = new window.UIRenderer();
     this.minimapRenderer = new window.MinimapRenderer();
+    this.crosshairRenderer = window.CrosshairRenderer ? new window.CrosshairRenderer() : null;
+  }
+
+  // Proxy: notify crosshair of a shot (spread feedback)
+  onShoot() {
+    if (this.crosshairRenderer) {
+      this.crosshairRenderer.onShoot();
+    }
   }
 
   setCamera(camera) {
@@ -234,12 +242,14 @@ class Renderer {
     this.effectsRenderer.renderWeather(this.ctx, this.camera, gameState.state.weather);
     this.entityRenderer.renderTargetIndicator(this.ctx, player);
 
-    // Check zombie damage for damage numbers
+    // Check zombie damage for damage numbers and hit markers
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
 
-    // Update and render damage numbers
+    // Update and render damage numbers + hit markers
     const deltaTime = 16;
     this.uiRenderer.updateDamageNumbers(deltaTime);
+    this.uiRenderer.updateHitMarkers();
+    this.uiRenderer.renderHitMarkers(this.ctx, this.camera);
     this.uiRenderer.renderDamageNumbers(this.ctx, this.camera);
 
     this.ctx.restore();
@@ -260,6 +270,19 @@ class Renderer {
     this.uiRenderer.updateWaveProgress(gameState);
 
     this.ctx.restore(); // Restore pixelRatio scaling
+
+    // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
+    if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {
+      const pixelRatio = window.devicePixelRatio || 1;
+      this.crosshairRenderer.render(
+        this.ctx,
+        window.inputManager.mouse.x,
+        window.inputManager.mouse.y,
+        gameState.state.zombies,
+        this.camera.getPosition(),
+        pixelRatio
+      );
+    }
   }
 
   renderWaitingMessage() {
