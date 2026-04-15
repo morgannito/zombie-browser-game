@@ -130,7 +130,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `transport/websocket/events.js` : move shared/socketEvents.js ici
 
 ### Phase 4 — Client mirror
-- [ ] `public/modules/network/` : network singleton + delta handler split
+- [x] `public/modules/network/` : network singleton (NetworkManager moved from modules/systems/). Delta handler split deferred to subsequent iteration if needed.
 - [ ] `public/modules/state/` : GameStateManager + interpolation
 - [ ] `public/modules/rendering/` : garder tel quel (déjà OK)
 - [ ] `public/modules/ui/` : UIManager découpé par écran (HUD, shop, level-up, gameover)
