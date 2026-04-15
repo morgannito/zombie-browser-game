@@ -95,7 +95,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [ ] Extraire `socketHandlers.js` → `transport/websocket/handlers/` (sous-étapes):
   - [x] `ping.js` (latency monitoring)
   - [x] `respawn.js`
-  - [ ] `spawnProtection.js`
+  - [x] `spawnProtection.js`
   - [ ] `selectUpgrade.js`
   - [ ] `shop.js` (déjà partiellement dans sockets/shopEvents.js — fusionner)
   - [ ] `playerMove.js`

@@ -734,25 +734,8 @@ function registerSetNicknameHandler(socket, gameState, io, container) {
   );
 }
 
-/**
- * Register spawn protection handlers
- */
-function registerSpawnProtectionHandlers(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.END_SPAWN_PROTECTION,
-    safeHandler('endSpawnProtection', function () {
-      const player = gameState.players[socket.id];
-      if (!player || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      player.spawnProtection = false;
-      logger.info('Spawn protection ended', { player: player.nickname || socket.id });
-    })
-  );
-}
+// Spawn-protection handler moved to transport/websocket/handlers/spawnProtection.js
+const { registerSpawnProtectionHandlers } = require('../transport/websocket/handlers/spawnProtection');
 
 // Ping handler moved to transport/websocket/handlers/ping.js
 // Kept here as a re-export for backward compatibility during the refactor.
