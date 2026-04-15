@@ -264,9 +264,11 @@ class GameStateManager {
       return; // No real update
     }
     const elapsed = now - state.lastUpdateTime;
+    const dx = entity.x - state.serverX;
+    const dy = entity.y - state.serverY;
     if (elapsed > 0 && elapsed < 500) {
-      state.velocityX = (entity.x - state.serverX) / elapsed * 1000;
-      state.velocityY = (entity.y - state.serverY) / elapsed * 1000;
+      state.velocityX = dx / elapsed * 1000;
+      state.velocityY = dy / elapsed * 1000;
     } else {
       state.velocityX = 0;
       state.velocityY = 0;
@@ -276,6 +278,15 @@ class GameStateManager {
     state.targetX = entity.x;
     state.targetY = entity.y;
     state.lastUpdateTime = now;
+    // AOI re-entry fix: if the entity jumped far (>200px) after >500ms of
+    // silence (typical AOI re-entry after it left and came back), snap the
+    // display position instead of smoothing. Avoids visible "glide" artifact
+    // perceived as teleport.
+    const JUMP_PX_SQ = 200 * 200;
+    if (elapsed >= 500 && (dx * dx + dy * dy) > JUMP_PX_SQ) {
+      state.displayX = entity.x;
+      state.displayY = entity.y;
+    }
   }
 
   /**
