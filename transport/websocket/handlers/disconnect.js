@@ -6,16 +6,16 @@
  * Ninth slice of the socketHandlers split.
  */
 
-const { SOCKET_EVENTS } = require("../events");
+const { SOCKET_EVENTS } = require('../events');
 const { safeHandler } = require('../../../sockets/socketUtils');
 const { cleanupRateLimits } = require('../../../sockets/rateLimitStore');
 const { cleanupPlayerBullets } = require('../../../game/utilityFunctions');
 const {
   disconnectedPlayers,
   createRecoverablePlayerState
-} = require("../../../contexts/session/sessionRecovery");
-const logger = require("../../../infrastructure/logging/Logger");
-const MetricsCollector = require("../../../infrastructure/metrics/MetricsCollector");
+} = require('../../../contexts/session/sessionRecovery');
+const logger = require('../../../infrastructure/logging/Logger');
+const MetricsCollector = require('../../../infrastructure/metrics/MetricsCollector');
 const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
 
 function registerDisconnectHandler(

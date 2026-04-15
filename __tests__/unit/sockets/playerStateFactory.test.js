@@ -1,4 +1,4 @@
-const { createPlayerState } = require("../../../contexts/session/playerStateFactory");
+const { createPlayerState } = require('../../../contexts/session/playerStateFactory');
 
 describe('playerStateFactory', () => {
   afterEach(() => {

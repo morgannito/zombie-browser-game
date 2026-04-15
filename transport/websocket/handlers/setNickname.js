@@ -5,7 +5,7 @@
  *   creation in the player repository when an accountId is present.
  */
 
-const logger = require("../../../infrastructure/logging/Logger");
+const logger = require('../../../infrastructure/logging/Logger');
 const { SOCKET_EVENTS } = require('../events');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { safeHandler } = require('../../../sockets/socketUtils');

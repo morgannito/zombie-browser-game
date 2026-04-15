@@ -5,7 +5,7 @@
  * of the transport/websocket/ refactor (see REFACTOR_PLAN.md Phase 1).
  */
 
-const { SOCKET_EVENTS } = require("../events");
+const { SOCKET_EVENTS } = require('../events');
 const { safeHandler } = require('../../../sockets/socketUtils');
 
 /**

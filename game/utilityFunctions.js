@@ -9,7 +9,7 @@
 
 const ConfigManager = require('../lib/server/ConfigManager');
 const { LEVEL_UP_UPGRADES } = ConfigManager;
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 /**
  * Fonction utilitaire pour calculer la distance

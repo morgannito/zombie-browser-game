@@ -3,7 +3,7 @@
  * @description Isolated per-socket event rate limiter utilities.
  */
 
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 const MetricsCollector = require('../infrastructure/metrics/MetricsCollector');
 const { RATE_LIMIT_CONFIG } = require('../config/constants');
 

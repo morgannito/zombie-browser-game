@@ -5,12 +5,12 @@
  * Sixth slice of the socketHandlers.js split.
  */
 
-const { SOCKET_EVENTS } = require("../events");
+const { SOCKET_EVENTS } = require('../events');
 const { safeHandler } = require('../../../sockets/socketUtils');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { validateMovementData } = require('../../../game/validationFunctions');
-const logger = require("../../../infrastructure/logging/Logger");
-const MetricsCollector = require("../../../infrastructure/metrics/MetricsCollector");
+const logger = require('../../../infrastructure/logging/Logger');
+const MetricsCollector = require('../../../infrastructure/metrics/MetricsCollector');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 
 const { CONFIG } = ConfigManager;

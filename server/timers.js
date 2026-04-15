@@ -6,7 +6,7 @@
  */
 
 const { performance: perf } = require('perf_hooks');
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 /**
  * Start the recursive game loop. Returns a cleanup function.

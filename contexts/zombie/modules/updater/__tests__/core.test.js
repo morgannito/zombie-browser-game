@@ -93,7 +93,9 @@ describe('updateZombies orchestrator', () => {
     const gameState = { zombies: { z1: zombie }, players: {} };
     const handlers = makeHandlers({
       bossHandlers: {
-        bossRoi: (_z, id, ctx) => { delete ctx.gameState.zombies[id]; }
+        bossRoi: (_z, id, ctx) => {
+ delete ctx.gameState.zombies[id];
+}
       }
     });
     updateZombies(gameState, now, io, {}, entityManager, zombieManager, perfIntegration, handlers);

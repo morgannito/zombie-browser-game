@@ -8,7 +8,7 @@ jest.mock('../../../game/lootFunctions', () => ({
   createExplosion: jest.fn()
 }));
 
-jest.mock("../../../contexts/wave/modules/WaveManager", () => ({
+jest.mock('../../../contexts/wave/modules/WaveManager', () => ({
   handleNewWave: jest.fn()
 }));
 

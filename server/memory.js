@@ -4,7 +4,7 @@
  */
 
 const MemoryMonitor = require('../lib/infrastructure/MemoryMonitor');
-const logger = require("../infrastructure/logging/Logger");
+const logger = require('../infrastructure/logging/Logger');
 
 /**
  * Create and start the memory monitor.

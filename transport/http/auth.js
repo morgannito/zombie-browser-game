@@ -8,8 +8,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const logger = require("../../infrastructure/logging/Logger");
-const { configureAuthLimiter } = require("../../middleware/security");
+const logger = require('../../infrastructure/logging/Logger');
+const { configureAuthLimiter } = require('../../middleware/security');
 
 const authLimiter = configureAuthLimiter();
 

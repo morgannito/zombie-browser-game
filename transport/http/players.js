@@ -9,9 +9,9 @@
 
 const express = require('express');
 const router = express.Router();
-const { asyncHandler } = require("../../middleware/errorHandlers");
-const { Joi, validateRequest } = require("../../middleware/validation");
-const { requireSameUserInParam, requireSameUserInBody } = require("../../middleware/authz");
+const { asyncHandler } = require('../../middleware/errorHandlers');
+const { Joi, validateRequest } = require('../../middleware/validation');
+const { requireSameUserInParam, requireSameUserInBody } = require('../../middleware/authz');
 
 /**
  * Initialize player routes
