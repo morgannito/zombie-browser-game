@@ -56,4 +56,4 @@ function configureMiddleware(app) {
   mountStaticAssets(app);
 }
 
-module.exports = { configureMiddleware };
+module.exports = { configureMiddleware, mountStaticAssets };
