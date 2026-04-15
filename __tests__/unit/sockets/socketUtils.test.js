@@ -5,14 +5,14 @@
 
 /* global setImmediate */
 
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   error: jest.fn(),
   info: jest.fn(),
   warn: jest.fn()
 }));
 
 const { safeHandler, stringifyArgPreview } = require('../../../sockets/socketUtils');
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require('../../../infrastructure/logging/Logger');
 
 // ---------------------------------------------------------------------------
 // stringifyArgPreview

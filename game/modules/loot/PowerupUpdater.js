@@ -6,7 +6,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require("../../../infrastructure/logging/Logger");
 
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
 

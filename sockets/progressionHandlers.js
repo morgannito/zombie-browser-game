@@ -4,7 +4,7 @@
  * @version 1.0.0
  */
 
-const logger = require('../lib/infrastructure/Logger');
+const logger = require("../infrastructure/logging/Logger");
 
 /**
  * Initialize progression socket handlers

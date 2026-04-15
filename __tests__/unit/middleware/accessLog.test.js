@@ -1,10 +1,10 @@
 const { EventEmitter } = require('events');
 
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   info: jest.fn()
 }));
 
-const logger = require('../../../lib/infrastructure/Logger');
+const logger = require('../../../infrastructure/logging/Logger');
 const { accessLogMiddleware, shouldSkipRequest } = require('../../../middleware/accessLog');
 
 function createResponse({ statusCode = 200, contentLength = null } = {}) {

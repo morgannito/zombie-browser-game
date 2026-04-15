@@ -6,7 +6,7 @@
 const SubmitScoreUseCase = require("../../../contexts/leaderboard/SubmitScoreUseCase");
 
 // Mock Logger
-jest.mock('../../../lib/infrastructure/Logger', () => ({
+jest.mock('../../../infrastructure/logging/Logger', () => ({
   info: jest.fn(),
   debug: jest.fn(),
   warn: jest.fn(),
