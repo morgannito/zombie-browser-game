@@ -4,8 +4,8 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require("../../../game/utilityFunctions");
-const { createParticles } = require("../../../game/lootFunctions");
+const { distance } = require('../../../game/utilityFunctions');
+const { createParticles } = require('../../../game/lootFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
@@ -37,7 +37,7 @@ function moveZombieSafely(zombie, targetX, targetY, gameState) {
 let handlePlayerDeathProgressionRef = null;
 function getHandlePlayerDeathProgression() {
   if (!handlePlayerDeathProgressionRef) {
-    handlePlayerDeathProgressionRef = require("../../../game/gameLoop").handlePlayerDeathProgression;
+    handlePlayerDeathProgressionRef = require('../../../game/gameLoop').handlePlayerDeathProgression;
   }
   return handlePlayerDeathProgressionRef;
 }

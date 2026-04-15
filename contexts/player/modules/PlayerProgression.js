@@ -3,7 +3,7 @@
  * @description Handles level ups, combos, and milestone bonuses
  */
 
-const { getXPForLevel, generateUpgradeChoices } = require("../../../game/utilityFunctions");
+const { getXPForLevel, generateUpgradeChoices } = require('../../../game/utilityFunctions');
 
 /**
  * Update player combo on zombie kill

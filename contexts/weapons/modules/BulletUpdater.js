@@ -10,7 +10,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 
-const { createParticles } = require("../../../game/lootFunctions");
+const { createParticles } = require('../../../game/lootFunctions');
 
 const { CONFIG } = ConfigManager;
 

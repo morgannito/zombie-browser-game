@@ -4,7 +4,7 @@
 
 const { CONFIG, GAMEPLAY_CONSTANTS } = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
-const { createParticles } = require("../../../game/lootFunctions");
+const { createParticles } = require('../../../game/lootFunctions');
 
 /**
  * Update auto-turret for a player: find closest zombie and fire if cooldown elapsed.

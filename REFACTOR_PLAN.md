@@ -143,7 +143,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 6 — Quality gates
 - [x] Documenter les dépendances inter-contextes autorisées (ADR) — `docs/adr/0001-context-dependencies.md`
-- [ ] ESLint `no-restricted-imports` entre contextes
+- [x] ESLint `no-restricted-imports` entre contextes — 3 layered overrides in eslint.config.js (general contexts ban server/transport/routes/sockets, leaf contexts ban other contexts, zombie banned from weapons/player/session/leaderboard)
 - [ ] GitNexus : re-indexer et vérifier 0 cycle
 - [ ] Coverage ≥ 70 % par contexte
 
