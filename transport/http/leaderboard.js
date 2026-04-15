@@ -7,9 +7,9 @@
 
 const express = require('express');
 const router = express.Router();
-const { asyncHandler } = require('../middleware/errorHandlers');
-const { Joi, validateRequest } = require('../middleware/validation');
-const { requireSameUserInBody, requireSameUserInQuery } = require('../middleware/authz');
+const { asyncHandler } = require("../../middleware/errorHandlers");
+const { Joi, validateRequest } = require("../../middleware/validation");
+const { requireSameUserInBody, requireSameUserInQuery } = require("../../middleware/authz");
 
 /**
  * Initialize leaderboard routes

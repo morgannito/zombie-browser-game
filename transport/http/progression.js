@@ -6,9 +6,9 @@
 
 const express = require('express');
 const router = express.Router();
-const logger = require('../lib/infrastructure/Logger');
-const { Joi, validateRequest } = require('../middleware/validation');
-const { requireSameUserInParam } = require('../middleware/authz');
+const logger = require("../../lib/infrastructure/Logger");
+const { Joi, validateRequest } = require("../../middleware/validation");
+const { requireSameUserInParam } = require("../../middleware/authz");
 
 /**
  * Initialize progression routes
@@ -19,9 +19,9 @@ const { requireSameUserInParam } = require('../middleware/authz');
 function initProgressionRoutes(container, options = {}) {
   const requireAuth = options.requireAuth || ((_req, _res, next) => next());
   const db = container.get('database');
-  const SQLiteProgressionRepository = require('../lib/infrastructure/repositories/SQLiteProgressionRepository');
+  const SQLiteProgressionRepository = require("../../lib/infrastructure/repositories/SQLiteProgressionRepository");
   const progressionRepo = new SQLiteProgressionRepository(db);
-  const AccountProgression = require('../lib/domain/entities/AccountProgression');
+  const AccountProgression = require("../../lib/domain/entities/AccountProgression");
   const playerIdSchema = Joi.string().guid({ version: ['uuidv4', 'uuidv5'] });
 
   router.use(requireAuth);

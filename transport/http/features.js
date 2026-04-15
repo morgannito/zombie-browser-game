@@ -6,7 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { getAll } = require('../config/features');
+const { getAll } = require("../../config/features");
 
 /**
  * GET / - Return all feature flags
