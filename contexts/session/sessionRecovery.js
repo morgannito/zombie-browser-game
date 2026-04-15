@@ -116,7 +116,10 @@ function createRecoverablePlayerState(player) {
     thorns: player.thorns,
     lastRegenTick: player.lastRegenTick,
     autoTurrets: player.autoTurrets,
-    lastAutoShot: player.lastAutoShot
+    lastAutoShot: player.lastAutoShot,
+    pendingUpgradeChoices: Array.isArray(player.pendingUpgradeChoices)
+      ? player.pendingUpgradeChoices.map(b => (Array.isArray(b) ? [...b] : b))
+      : []
   };
 }
 
