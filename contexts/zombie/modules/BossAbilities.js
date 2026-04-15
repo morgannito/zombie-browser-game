@@ -9,6 +9,34 @@ const { distance } = require('../../../game/utilityFunctions');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
+// AOI constants — matches NetworkManager viewport filtering (2× viewport)
+const AOI_HALF_WIDTH = 1600;
+const AOI_HALF_HEIGHT = 900;
+
+/**
+ * Émet un event uniquement aux joueurs dans le viewport AOI du boss.
+ * Filtre par room si disponible, sinon itère tous les sockets.
+ * @param {Object} io - instance Socket.IO
+ * @param {string} event - nom de l'event
+ * @param {Object} payload - données
+ * @param {number} bossX - position X du boss
+ * @param {number} bossY - position Y du boss
+ * @param {Object} gameState - état du jeu (pour accéder aux players)
+ */
+function emitAOI(io, event, payload, bossX, bossY, gameState) {
+  const sockets = io.sockets.sockets;
+  for (const [socketId, socket] of sockets) {
+    const player = gameState.players[socketId];
+    if (!player || !player.alive) continue;
+    if (
+      Math.abs(player.x - bossX) <= AOI_HALF_WIDTH &&
+      Math.abs(player.y - bossY) <= AOI_HALF_HEIGHT
+    ) {
+      socket.emit(event, payload);
+    }
+  }
+}
+
 function clampToRoomBounds(zombie, x, y) {
   const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
   return {
@@ -108,11 +136,7 @@ function updateBossInfernal(
 
       createParticles(target.x, target.y, '#ff0000', 40, entityManager);
 
-      io.emit('bossMeteor', {
-        bossId: zombieId,
-        x: target.x,
-        y: target.y
-      });
+      emitAOI(io, 'bossMeteor', { bossId: zombieId, x: target.x, y: target.y }, target.x, target.y, gameState);
     }
   }
 
@@ -134,7 +158,7 @@ function updateBossInfernal(
     }
 
     createParticles(zombie.x, zombie.y, '#ff4500', 50, entityManager);
-    io.emit('bossFireMinions', { bossId: zombieId });
+    emitAOI(io, 'bossFireMinions', { bossId: zombieId }, zombie.x, zombie.y, gameState);
   }
 }
 
@@ -176,7 +200,7 @@ function updateBossCryos(
       createParticles(spikeX, spikeY, '#00bfff', 20, entityManager);
     }
 
-    io.emit('bossIceSpikes', { bossId: zombieId });
+    emitAOI(io, 'bossIceSpikes', { bossId: zombieId }, zombie.x, zombie.y, gameState);
   }
 
   // Ice clones (Phase 2+)
@@ -197,7 +221,7 @@ function updateBossCryos(
     }
 
     createParticles(zombie.x, zombie.y, '#00bfff', 60, entityManager);
-    io.emit('bossIceClones', { bossId: zombieId });
+    emitAOI(io, 'bossIceClones', { bossId: zombieId }, zombie.x, zombie.y, gameState);
   }
 
   // Freeze aura (passive Phase 3+)
@@ -228,10 +252,7 @@ function updateBossCryos(
     zombie.blizzardActive = true;
     zombie.blizzardEnd = now + 8000;
 
-    io.emit('bossBlizzard', {
-      bossId: zombieId,
-      duration: 8000
-    });
+    emitAOI(io, 'bossBlizzard', { bossId: zombieId, duration: 8000 }, zombie.x, zombie.y, gameState);
   }
 
   // Apply blizzard damage
@@ -421,7 +442,7 @@ function updateBossNexus(
     }
 
     createParticles(zombie.x, zombie.y, '#9400d3', 40, entityManager);
-    io.emit('bossVoidMinions', { bossId: zombieId });
+    emitAOI(io, 'bossVoidMinions', { bossId: zombieId }, zombie.x, zombie.y, gameState);
   }
 
   // Reality warp (Phase 3+) - Inversion contrôles temporaire
@@ -440,10 +461,7 @@ function updateBossNexus(
       createParticles(player.x, player.y, '#9400d3', 15, entityManager);
     }
 
-    io.emit('bossRealityWarp', {
-      bossId: zombieId,
-      duration: 5000
-    });
+    emitAOI(io, 'bossRealityWarp', { bossId: zombieId, duration: 5000 }, zombie.x, zombie.y, gameState);
   }
 }
 
@@ -503,7 +521,7 @@ function updateBossApocalypse(
       createParticles(player.x, player.y, '#00ffff', 20, entityManager);
     }
 
-    io.emit('bossIcePrison', { bossId: zombieId });
+    emitAOI(io, 'bossIcePrison', { bossId: zombieId }, zombie.x, zombie.y, gameState);
   }
 
   // Chain lightning (Phase 3+)
@@ -585,10 +603,7 @@ function updateBossApocalypse(
 
     createParticles(zombie.x, zombie.y, '#8b0000', 100, entityManager);
 
-    io.emit('bossApocalypse', {
-      bossId: zombieId,
-      message: 'APOCALYPSE FINALE!'
-    });
+    emitAOI(io, 'bossApocalypse', { bossId: zombieId, message: 'APOCALYPSE FINALE!' }, zombie.x, zombie.y, gameState);
   }
 }
 
