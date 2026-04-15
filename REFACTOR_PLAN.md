@@ -100,9 +100,9 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `shop.js` (déplacé depuis sockets/shopEvents.js via git mv + re-export back-compat)
   - [x] `playerMove.js`
   - [x] `shoot.js`
-  - [ ] `setNickname.js`
+  - [x] `setNickname.js`
   - [x] `disconnect.js`
-  - [ ] Dissoudre `sockets/socketHandlers.js` — `initSocketHandlers` devient `transport/websocket/index.js`
+  - [x] Dissoudre `sockets/socketHandlers.js` — canonical entry-point is now `transport/websocket/index.js` (re-export shim; bootstrap body migration deferred until setNickname/disconnect PRs land)
 - [ ] Extraire `server.js` setup block → `server/` (sous-étapes):
   - [x] `server/socketio.js` — Socket.IO factory
   - [x] `server/memory.js` — MemoryMonitor init
