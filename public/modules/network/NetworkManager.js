@@ -481,7 +481,20 @@ class NetworkManager {
             window.gameState.state[type][id].y = currentPos.y;
             window.gameState.state[type][id].angle = currentPos.angle;
           } else {
-            // For other entities: apply update normally
+            // For other entities: apply update normally.
+            // Stamp authoritative server coords before replacing the entity so
+            // _applyServerUpdate can distinguish a real server push from
+            // display-position drift written by _stepEntity.
+            // REGRESSION FIX: with baseSpeed=50 + 150ms extrapolation window,
+            // _stepEntity overwrites entity.x/y with the interpolated display
+            // position each frame. Without this stamp, on frames without a new
+            // delta _applyServerUpdate sees entity.x (display) ≠ state.serverX
+            // (target), computes a spurious backward velocity up to −120px/frame,
+            // and extrapolates the zombie backward → perceived teleport.
+            if (entity.x !== undefined) {
+              entity._serverX = entity.x;
+              entity._serverY = entity.y;
+            }
             window.gameState.state[type][id] = entity;
           }
           // Mark entity as seen to prevent orphan cleanup
