@@ -116,7 +116,9 @@ class GameStateManager {
     const INTERPOLATED = ['zombies', 'players'];
     for (const type of INTERPOLATED) {
       const entities = this.state[type];
-      if (!entities) continue;
+      if (!entities) {
+continue;
+}
       for (const id in entities) {
         const e = entities[id];
         if (e && e.x !== undefined) {
