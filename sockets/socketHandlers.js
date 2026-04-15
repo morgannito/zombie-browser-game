@@ -775,20 +775,9 @@ function registerSpawnProtectionHandlers(socket, gameState) {
   );
 }
 
-/**
- * Register ping handler for latency monitoring
- */
-function registerPingHandler(socket) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.PING,
-    safeHandler('ping', function (timestamp, callback) {
-      // Respond immediately to measure round-trip time
-      if (typeof callback === 'function') {
-        callback(Date.now());
-      }
-    })
-  );
-}
+// Ping handler moved to transport/websocket/handlers/ping.js
+// Kept here as a re-export for backward compatibility during the refactor.
+const { registerPingHandler } = require('../transport/websocket/handlers/ping');
 
 /**
  * Start a per-socket heartbeat to detect zombie clients.
