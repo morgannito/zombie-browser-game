@@ -131,7 +131,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 
 ### Phase 4 — Client mirror
 - [x] `public/modules/network/` : network singleton (NetworkManager moved from modules/systems/). Delta handler split deferred to subsequent iteration if needed.
-- [ ] `public/modules/state/` : GameStateManager + interpolation
+- [x] `public/modules/state/` : GameStateManager + ZombieInterpolator
 - [ ] `public/modules/rendering/` : garder tel quel (déjà OK)
 - [ ] `public/modules/ui/` : UIManager découpé par écran (HUD, shop, level-up, gameover)
 - [ ] `public/modules/input/` : InputManager + PlayerController + MobileControls
