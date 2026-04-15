@@ -12,11 +12,10 @@
 
 const crypto = require('crypto');
 const logger = require('../lib/infrastructure/Logger');
-const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
 const { SOCKET_EVENTS } = require('../shared/socketEvents');
 const ConfigManager = require('../lib/server/ConfigManager');
-const { cleanupPlayerBullets } = require('../game/utilityFunctions');
-// validateMovementData + validateShootData both now live in their extracted handlers
+// Handler bodies moved to transport/websocket/handlers/*; remaining code in
+// this file is only the bootstrap (initSocketHandlers) and legacy helpers.
 const { createPlayerState } = require('./playerStateFactory');
 const {
   disconnectedPlayers,
@@ -24,11 +23,9 @@ const {
   stopSessionCleanupInterval,
   normalizeSessionId,
   sanitizePlayersState,
-  createRecoverablePlayerState,
   restoreRecoverablePlayerState
 } = require('./sessionRecovery');
-const { checkRateLimit, cleanupRateLimits } = require('./rateLimitStore');
-const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
+const { checkRateLimit } = require('./rateLimitStore');
 const { safeHandler } = require('./socketUtils');
 const {
   registerBuyItemHandler,
@@ -375,78 +372,8 @@ function startZombieHeartbeat(socket) {
   return function noop() {};
 }
 
-/**
- * Register disconnect handler
- */
-function registerDisconnectHandler(
-  socket,
-  gameState,
-  entityManager,
-  sessionId,
-  accountId,
-  networkManager = null,
-  stopZombieHeartbeat = null
-) {
-  socket.on(
-    SOCKET_EVENTS.SYSTEM.DISCONNECT,
-    safeHandler('disconnect', function () {
-      // Stop zombie heartbeat timer to prevent dangling timers
-      if (stopZombieHeartbeat) {
-        stopZombieHeartbeat();
-      }
-
-      const player = gameState.players[socket.id];
-
-      logger.info('Player disconnected', {
-        socketId: socket.id,
-        sessionId: sessionId || 'none',
-        accountId: accountId || 'none'
-      });
-      MetricsCollector.getInstance().clearViolations(socket.id);
-
-      // SESSION RECOVERY: Save player state for recovery if session exists.
-      // BUGFIX: removed accountId requirement — anonymous sessions also need
-      // recovery, otherwise the next reconnect re-creates a player with the
-      // same nickname and CreatePlayerUseCase throws ConflictError, spamming
-      // 'Username already taken' in prod logs.
-      if (sessionId && player) {
-        // Only save state if player has actually started playing (has nickname)
-        if (player.hasNickname && player.alive) {
-          const playerStateCopy = createRecoverablePlayerState(player);
-
-          disconnectedPlayers.set(sessionId, {
-            playerState: playerStateCopy,
-            disconnectedAt: Date.now(),
-            previousSocketId: socket.id,
-            accountId
-          });
-
-          logger.info('Session state saved', {
-            player: player.nickname || 'Unknown',
-            level: player.level,
-            health: `${player.health}/${player.maxHealth}`,
-            gold: player.gold,
-            recoveryTimeout: SESSION_RECOVERY_TIMEOUT / 1000
-          });
-        }
-      }
-
-      // Nettoyer les balles orphelines appartenant à ce joueur
-      cleanupPlayerBullets(socket.id, gameState, entityManager);
-
-      // Remove from active players
-      delete gameState.players[socket.id];
-
-      // Nettoyer les rate limits
-      cleanupRateLimits(socket.id);
-
-      // Nettoyer les queues NetworkManager (memory leak fix)
-      if (networkManager) {
-        networkManager.cleanupPlayer(socket.id);
-      }
-    })
-  );
-}
+// Disconnect handler moved to transport/websocket/handlers/disconnect.js
+const { registerDisconnectHandler } = require('../transport/websocket/handlers/disconnect');
 
 module.exports = {
   initSocketHandlers,
