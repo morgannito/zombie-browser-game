@@ -6,7 +6,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
-const { handlePlayerLevelUp } = require('../player/PlayerProgression');
+const { handlePlayerLevelUp } = require('../../../contexts/player/modules/PlayerProgression');
 
 const { CONFIG } = ConfigManager;
 

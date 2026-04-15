@@ -12,7 +12,7 @@ const {
   savePlayerProgressionSnapshot,
   resetPlayerRunState,
   restorePlayerProgression
-} = require('../../../game/modules/player/RespawnHelpers');
+} = require('../../../contexts/player/modules/RespawnHelpers');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { CONFIG } = ConfigManager;
 
