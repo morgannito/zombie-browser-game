@@ -6,9 +6,10 @@
  *   - EffectsRenderer: particles, explosions, poison trails, weather, lighting
  *   - UIRenderer: HUD, boss health bar, kill feed, combo, damage numbers, wave info
  *   - MinimapRenderer: minimap overlay
+ *   - CrosshairRenderer: canvas crosshair with spread + zombie hover feedback
  * @module Renderer
  * @author Claude Code
- * @version 3.0.0
+ * @version 3.1.0
  */
 
 class Renderer {
