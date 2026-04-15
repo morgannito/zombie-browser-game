@@ -93,7 +93,7 @@ const { INACTIVITY_TIMEOUT, HEARTBEAT_CHECK_INTERVAL } = require('./config/const
 // ============================================
 // IMPORTS - Socket Handlers
 // ============================================
-const { initSocketHandlers, stopSessionCleanupInterval } = require('./sockets/socketHandlers');
+const { initSocketHandlers, stopSessionCleanupInterval } = require('./transport/websocket');
 
 // ============================================
 // SERVER INITIALIZATION
