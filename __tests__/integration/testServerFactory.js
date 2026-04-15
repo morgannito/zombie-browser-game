@@ -17,7 +17,7 @@ const EntityManager = require('../../lib/server/EntityManager');
 const RoomManager = require('../../lib/server/RoomManager');
 const MetricsCollector = require('../../lib/infrastructure/MetricsCollector');
 const perfIntegration = require('../../lib/server/PerformanceIntegration');
-const { initSocketHandlers, stopSessionCleanupInterval } = require('../../sockets/socketHandlers');
+const { initSocketHandlers, stopSessionCleanupInterval } = require('../../transport/websocket');
 
 const { CONFIG } = ConfigManager;
 
