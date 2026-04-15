@@ -563,71 +563,8 @@ function moveZombie(
   }
 }
 
-/**
- * Apply separation force between zombies to prevent stacking
- * FIX: Prevents zombie-zombie overlap that causes blocking
- */
-function applyZombieSeparation(zombie, zombieId, collisionManager) {
-  const separationRadius = zombie.size * 2;
-  const nearbyZombies = collisionManager.findZombiesInRadius(
-    zombie.x,
-    zombie.y,
-    separationRadius,
-    zombieId
-  );
-
-  if (nearbyZombies.length === 0) {
-    return;
-  }
-
-  let separationX = 0;
-  let separationY = 0;
-  const separationForce = 0.5; // Strength of push-apart force
-
-  for (const other of nearbyZombies) {
-    if (!other || other.id === zombie.id) {
-      continue;
-    }
-
-    const dx = zombie.x - other.x;
-    const dy = zombie.y - other.y;
-    const distSq = dx * dx + dy * dy;
-    const minDist = (zombie.size + other.size) * 0.8; // 80% of combined sizes
-    const minDistSq = minDist * minDist;
-
-    if (distSq < minDistSq && distSq > 0.01) {
-      const dist = Math.sqrt(distSq);
-      const overlap = minDist - dist;
-      // Push away from overlapping zombie
-      separationX += (dx / dist) * overlap * separationForce;
-      separationY += (dy / dist) * overlap * separationForce;
-    }
-  }
-
-  // Apply separation WITH wall collision check
-  if (separationX !== 0 || separationY !== 0) {
-    const roomManager = collisionManager.gameState?.roomManager;
-    const candidateX = zombie.x + separationX;
-    const candidateY = zombie.y + separationY;
-
-    if (roomManager && roomManager.checkWallCollision(candidateX, candidateY, zombie.size)) {
-      // Try axes separately
-      if (!roomManager.checkWallCollision(candidateX, zombie.y, zombie.size)) {
-        zombie.x = candidateX;
-      }
-      if (!roomManager.checkWallCollision(zombie.x, candidateY, zombie.size)) {
-        zombie.y = candidateY;
-      }
-    } else {
-      zombie.x = candidateX;
-      zombie.y = candidateY;
-    }
-
-    const clamped = clampToRoomBounds(zombie, zombie.x, zombie.y);
-    zombie.x = clamped.finalX;
-    zombie.y = clamped.finalY;
-  }
-}
+// Separation logic extracted to ./updater/separation.js for SRP + lint compliance.
+const { applyZombieSeparation } = require('./updater/separation');
 
 /**
  * Move zombie towards closest player
