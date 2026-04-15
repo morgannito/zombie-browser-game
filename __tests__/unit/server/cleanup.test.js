@@ -44,7 +44,9 @@ describe('stopPerfIntegration', () => {
   });
 
   test('swallows cleanup errors', () => {
-    const perf = { cleanup: jest.fn(() => { throw new Error('boom'); }) };
+    const perf = { cleanup: jest.fn(() => {
+ throw new Error('boom');
+}) };
     expect(() => stopPerfIntegration(perf)).not.toThrow();
   });
 
@@ -71,7 +73,9 @@ describe('stopHazards', () => {
 
   test('swallows clearAll errors', () => {
     const gameState = {
-      hazardManager: { clearAll: jest.fn(() => { throw new Error('boom'); }) }
+      hazardManager: { clearAll: jest.fn(() => {
+ throw new Error('boom');
+}) }
     };
     expect(() => stopHazards(gameState)).not.toThrow();
   });
