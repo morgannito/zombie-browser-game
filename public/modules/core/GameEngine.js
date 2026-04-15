@@ -288,7 +288,7 @@ class GameEngine {
     this.playerController.update(window.innerWidth, window.innerHeight, deltaTime);
   }
 
-  render() {
+  render(deltaTime = 16) {
     const _t0 = performance.now();
 
     // Apply visual interpolation for smooth movement BEFORE rendering
@@ -300,7 +300,7 @@ class GameEngine {
       window.gameState.updateDebugStats();
     }
 
-    this.renderer.render(window.gameState, window.gameState.playerId);
+    this.renderer.render(window.gameState, window.gameState.playerId, deltaTime);
     const _tRender = performance.now();
 
     // Render debug overlay if enabled
@@ -417,12 +417,14 @@ continue;
       window.performanceSettings.getTargetFrameTime() : (1000 / 60);
 
     const deltaTime = timestamp - this.lastFrameTime;
+    const renderDeltaTime = this._lastTimestamp ? timestamp - this._lastTimestamp : 16;
+    this._lastTimestamp = timestamp;
 
     // Only update/render if enough time has passed
     if (deltaTime >= targetFrameTime) {
       try {
         this.update(deltaTime);
-        this.render();
+        this.render(renderDeltaTime);
 
         // Notify performance settings for FPS counting
         if (window.performanceSettings) {
