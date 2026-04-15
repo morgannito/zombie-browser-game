@@ -16,8 +16,8 @@ class UIRenderer {
     // Hit markers system
     this.hitMarkers = [];
     this.HIT_MARKER_DURATION = 150; // ms
-    this.HIT_MARKER_SIZE = 10;      // half-arm length in px
-    this.HIT_MARKER_GAP = 3;        // gap from center in px
+    this.HIT_MARKER_SIZE = 10; // half-arm length in px
+    this.HIT_MARKER_GAP = 3; // gap from center in px
 
     // Pickup label popups system
     this.pickupLabels = [];
@@ -509,7 +509,11 @@ class UIRenderer {
 
     const countInterval = 10;
     if (++this._zombieCountFrame >= countInterval) {
-      const currentZombieCount = Object.keys(gameState.state.zombies).length;
+      // Avoid Object.keys() allocation — count with for-in loop
+      let currentZombieCount = 0;
+      for (const _k in gameState.state.zombies) {
+        currentZombieCount++;
+      }
       if (currentZombieCount < this.lastZombieCount) {
         this.addKillFeedItem(player.nickname || 'Player', 'Zombie');
       }
@@ -523,7 +527,7 @@ class UIRenderer {
   addKillFeedItem(killer, victim, type) {
     type = type || 'normal';
 
-    const feedEl = document.getElementById('kill-feed');
+    const feedEl = this.getUiElement('kill-feed', 'kill-feed');
     if (!feedEl) {
       return;
     }
