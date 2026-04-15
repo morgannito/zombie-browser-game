@@ -4,7 +4,7 @@
  */
 
 const logger = require("../infrastructure/logging/Logger");
-const MetricsCollector = require('../lib/infrastructure/MetricsCollector');
+const MetricsCollector = require('../infrastructure/metrics/MetricsCollector');
 const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 const rateLimits = new Map();

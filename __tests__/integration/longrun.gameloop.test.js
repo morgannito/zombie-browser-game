@@ -19,7 +19,7 @@ const ConfigManager = require('../../lib/server/ConfigManager');
 const CollisionManager = require('../../contexts/weapons/CollisionManager');
 const EntityManager = require('../../lib/server/EntityManager');
 const ZombieManager = require('../../contexts/zombie/ZombieManager');
-const MetricsCollector = require('../../lib/infrastructure/MetricsCollector');
+const MetricsCollector = require('../../infrastructure/metrics/MetricsCollector');
 const perfIntegration = require('../../lib/server/PerformanceIntegration');
 
 const { CONFIG } = ConfigManager;

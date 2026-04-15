@@ -164,10 +164,10 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [ ] player context 5% → 30%
 
 ### Shim cleanup (migrer les ~22 call sites restants)
-- [ ] Migrer `lib/infrastructure/Logger` consumers → `infrastructure/logging/Logger`
-- [ ] Migrer `lib/infrastructure/MetricsCollector` consumers → `infrastructure/metrics/MetricsCollector`
-- [ ] Migrer `lib/database/DatabaseManager` consumers → `infrastructure/database/DatabaseManager`
-- [ ] Supprimer les 3 shims quand 0 consommateurs
+- [x] Migrer `lib/infrastructure/Logger` consumers → `infrastructure/logging/Logger` + suppression shim (PR #101)
+- [x] Migrer `lib/infrastructure/MetricsCollector` consumers → `infrastructure/metrics/MetricsCollector` + suppression shim
+- [x] Migrer `lib/database/DatabaseManager` consumers → `infrastructure/database/DatabaseManager` + suppression shim
+- [x] Supprimer les 3 shims quand 0 consommateurs
 
 ### Divers
 - [ ] PR #36 `perf/server-zombie-ai` : rebase ou close (UNSTABLE >20 loops)
