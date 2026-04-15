@@ -35,31 +35,27 @@ class ScreenFlash {
   }
 
   /**
-   * Flash rouge quand le joueur prend des dégâts
-   * @param {number} intensity - Intensité du flash (0-1)
+   * Flash rouge quand le joueur prend des dégâts.
+   * CSS class-based edge vignette (220 ms), no JS timeout needed.
+   * @param {number} _intensity - Kept for API compat (ignored)
    */
-  flashDamage(intensity = 0.3) {
-    if (!this.overlay) {
+  flashDamage(_intensity = 0.3) {
+    const canvas = document.getElementById('gameCanvas');
+    if (!canvas) {
       return;
     }
 
-    // Clamp intensity entre 0 et 1
-    intensity = Math.max(0, Math.min(1, intensity));
+    // Remove then re-add to restart the animation on rapid hits
+    canvas.classList.remove('damage-flash');
+    // Force reflow so the animation restarts cleanly
+    void canvas.offsetWidth;
+    canvas.classList.add('damage-flash');
 
-    // Flash rouge
-    this.overlay.style.background = `radial-gradient(circle, rgba(255,0,0,${intensity * 0.3}) 0%, rgba(255,0,0,${intensity * 0.6}) 100%)`;
-    this.overlay.style.opacity = '1';
-
-    // Fade out rapide
-    if (window.timerManager) {
-      window.timerManager.setTimeout(() => {
-        this.overlay.style.opacity = '0';
-      }, 50);
-    } else {
-      setTimeout(() => {
-        this.overlay.style.opacity = '0';
-      }, 50);
-    }
+    canvas.addEventListener(
+      'animationend',
+      () => canvas.classList.remove('damage-flash'),
+      { once: true }
+    );
   }
 
   /**
