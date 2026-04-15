@@ -519,5 +519,14 @@ module.exports = {
   // Exported for unit tests
   isZombieFarFromAllPlayers,
   getNearestPlayer,
-  resolveLockedTarget
+  resolveLockedTarget,
+  processHealerAbility,
+  processSlowerAbility,
+  processShooterAbility,
+  processPoisonTrail,
+  calculateEffectiveSpeed,
+  calculateNewPosition,
+  checkPlayerCollisions,
+  applyPlayerDamage,
+  moveTowardsPlayer
 };
