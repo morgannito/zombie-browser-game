@@ -49,10 +49,10 @@ jest.mock('../../../lib/application/use-cases/RecoverSessionUseCase', () =>
 jest.mock('../../../lib/application/use-cases/DisconnectSessionUseCase', () =>
   jest.fn().mockImplementation(() => ({ _type: 'disconnectSessionUseCase' }))
 );
-jest.mock('../../../lib/application/use-cases/SubmitScoreUseCase', () =>
+jest.mock('../../../contexts/leaderboard/SubmitScoreUseCase', () =>
   jest.fn().mockImplementation(() => ({ _type: 'submitScoreUseCase' }))
 );
-jest.mock('../../../lib/application/use-cases/GetLeaderboardUseCase', () =>
+jest.mock('../../../contexts/leaderboard/GetLeaderboardUseCase', () =>
   jest.fn().mockImplementation(() => ({ _type: 'getLeaderboardUseCase' }))
 );
 jest.mock('../../../lib/application/use-cases/BuyUpgradeUseCase', () =>
@@ -110,10 +110,10 @@ beforeEach(() => {
   jest.mock('../../../lib/application/use-cases/DisconnectSessionUseCase', () =>
     jest.fn().mockImplementation(() => ({ _type: 'disconnectSessionUseCase' }))
   );
-  jest.mock('../../../lib/application/use-cases/SubmitScoreUseCase', () =>
+  jest.mock('../../../contexts/leaderboard/SubmitScoreUseCase', () =>
     jest.fn().mockImplementation(() => ({ _type: 'submitScoreUseCase' }))
   );
-  jest.mock('../../../lib/application/use-cases/GetLeaderboardUseCase', () =>
+  jest.mock('../../../contexts/leaderboard/GetLeaderboardUseCase', () =>
     jest.fn().mockImplementation(() => ({ _type: 'getLeaderboardUseCase' }))
   );
   jest.mock('../../../lib/application/use-cases/BuyUpgradeUseCase', () =>
