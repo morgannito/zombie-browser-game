@@ -42,11 +42,8 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 // ============================================
 // IMPORTS - Middleware
 // ============================================
-// Middleware wiring now lives in server/middleware.js (configureMiddleware).
-// Only metrics-token guard is still needed inline for metrics routes.
-const {
-  requireMetricsToken
-} = require('./middleware/security');
+// Middleware wiring now lives in server/middleware.js (configureMiddleware);
+// route mounting lives in server/routes.js (configureRoutes).
 const {
   notFoundHandler,
   serverErrorHandler,
@@ -56,13 +53,8 @@ const {
 // ============================================
 // IMPORTS - Routes
 // ============================================
-const initAuthRoutes = require('./routes/auth');
-const initHealthRoutes = require('./routes/health');
-const initMetricsRoutes = require('./routes/metrics');
-const initAdminStatsRoute = require('./routes/adminStats');
-const initLeaderboardRoutes = require('./routes/leaderboard');
-const initPlayersRoutes = require('./routes/players');
-const featuresRoutes = require('./routes/features');
+// Route wiring extracted to server/routes.js (configureRoutes).
+const { configureRoutes } = require('./server/routes');
 
 // ============================================
 // IMPORTS - Game Logic & Managers
@@ -185,48 +177,16 @@ async function startServer() {
   // ============================================
   // API ROUTES - Versioned (v1) + Legacy (backward compat)
   // ============================================
-
-  const authRoutes = initAuthRoutes(container, jwtService);
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/api/auth', authRoutes);
-
-  if (dbAvailable) {
-    const leaderboardRoutes = initLeaderboardRoutes(container, { requireAuth });
-    const playerRoutes = initPlayersRoutes(container, { requireAuth });
-    const progressionRoutes = require('./routes/progression')(container, { requireAuth });
-    const achievementRoutes = require('./routes/achievements')(container, { requireAuth });
-
-    // Versioned API (v1)
-    app.use('/api/v1/leaderboard', leaderboardRoutes);
-    app.use('/api/v1/players', playerRoutes);
-    app.use('/api/v1/progression', progressionRoutes);
-    app.use('/api/v1/achievements', achievementRoutes);
-
-    // Legacy (non-versioned, keep for backward compatibility)
-    app.use('/api/leaderboard', leaderboardRoutes);
-    app.use('/api/players', playerRoutes);
-    app.use('/api/progression', progressionRoutes);
-    app.use('/api/achievements', achievementRoutes);
-
-    logger.info('Database-dependent routes initialized (v1 + legacy)');
-  } else {
-    logger.warn('Database-dependent routes disabled');
-  }
-
-  // Always available routes
-  const metricsRoutes = initMetricsRoutes(metricsCollector);
-  app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
-  app.use('/api/metrics', requireMetricsToken, metricsRoutes);
-  app.use('/api/v1/features', featuresRoutes);
-  app.use('/api/features', featuresRoutes);
-  // /admin/stats — debug dashboard, requires METRICS_TOKEN (admin auth)
-  app.use(
-    '/admin/stats',
-    requireMetricsToken,
-    initAdminStatsRoute(metricsCollector, memoryMonitor)
-  );
-  // /health must remain unauthenticated so load balancers / k8s liveness probes can reach it.
-  app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
+  configureRoutes(app, {
+    container,
+    jwtService,
+    requireAuth,
+    dbAvailable,
+    metricsCollector,
+    memoryMonitor,
+    dbManager,
+    perfIntegration
+  });
 
   // ============================================
   // GAME INITIALIZATION
