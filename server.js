@@ -46,7 +46,7 @@ const JwtService = require('./lib/infrastructure/auth/JwtService');
 const { requestIdMiddleware } = require('./middleware/requestId');
 const { httpsRedirect } = require('./middleware/httpsRedirect');
 const { accessLogMiddleware } = require('./middleware/accessLog');
-const { getSocketIOCorsConfig } = require('./middleware/cors');
+// getSocketIOCorsConfig now encapsulated in server/socketio.js
 const {
   configureHelmet,
   configureApiLimiter,
@@ -103,29 +103,10 @@ const { initSocketHandlers, stopSessionCleanupInterval } = require('./sockets/so
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO with CORS configuration
-const io = require('socket.io')(server, {
-  cors: getSocketIOCorsConfig(),
-  // Transport configuration for better WebSocket support
-  transports: ['websocket', 'polling'],
-  allowUpgrades: true,
-  // Ping/pong settings for connection health monitoring.
-  // pingTimeout was 5s — too aggressive on mobile / unstable wifi: a single
-  // dropped pong would disconnect the player. 20s gives enough margin while
-  // still detecting truly dead sockets quickly.
-  pingInterval: 10000,
-  pingTimeout: 20000,
-  // Connection settings
-  connectTimeout: 45000,
-  // perMessageDeflate disabled: Cloudflare strips the WS extension headers
-  // and the upgrade handshake then fails with HTTP 400 from the edge.
-  // Re-enable only if the deployment is direct or behind a CDN that supports
-  // websocket extensions cleanly.
-  perMessageDeflate: false,
-  httpCompression: true,
-  // 1MB buffer — matches rate limiting, defensive against large payloads
-  maxHttpBufferSize: 1e6
-});
+// Initialize Socket.IO via the dedicated factory (see server/socketio.js
+// for protocol tuning rationale).
+const { createSocketIOServer } = require('./server/socketio');
+const io = createSocketIOServer(server);
 
 // HIGH FIX: Async database initialization with error handling
 const dbManager = DatabaseManager.getInstance();
