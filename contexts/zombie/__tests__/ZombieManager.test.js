@@ -272,12 +272,15 @@ describe('spawnSingleZombie', () => {
     const gs = makeGameState({ wave: 200 });
     const zm = new ZombieManager(gs, CONFIG, ZOMBIE_TYPES, noCollision);
     zm.spawnManager.selectZombieType.mockReturnValue('normal');
+    // Force non-elite path (wave>=5 has 5% elite chance that doubles health)
+    const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
 
     zm.spawnSingleZombie();
 
     const zombie = Object.values(gs.zombies)[0];
     const multiplier = 1 + (130 - 1) * 0.15;
     expect(zombie.health).toBe(Math.floor(100 * multiplier));
+    randSpy.mockRestore();
   });
 
   test('initialises type-specific attributes for healer type', () => {
