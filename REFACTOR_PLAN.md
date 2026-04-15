@@ -96,7 +96,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
   - [x] `ping.js` (latency monitoring)
   - [x] `respawn.js`
   - [x] `spawnProtection.js`
-  - [ ] `selectUpgrade.js`
+  - [x] `selectUpgrade.js`
   - [ ] `shop.js` (déjà partiellement dans sockets/shopEvents.js — fusionner)
   - [ ] `playerMove.js`
   - [ ] `shoot.js`

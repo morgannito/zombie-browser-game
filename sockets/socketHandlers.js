@@ -18,8 +18,7 @@ const ConfigManager = require('../lib/server/ConfigManager');
 const { cleanupPlayerBullets } = require('../game/utilityFunctions');
 const {
   validateMovementData,
-  validateShootData,
-  validateUpgradeData
+  validateShootData
 } = require('../game/validationFunctions');
 const { createPlayerState } = require('./playerStateFactory');
 const {
@@ -36,8 +35,7 @@ const { SESSION_RECOVERY_TIMEOUT } = require('../config/constants');
 const { safeHandler } = require('./socketUtils');
 const { registerBuyItemHandler, registerShopHandlers } = require('./shopEvents');
 
-const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, LEVEL_UP_UPGRADES, SHOP_ITEMS } =
-  ConfigManager;
+const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS } = ConfigManager;
 
 // MEMORY LEAK FIX: Auto-start the interval when module loads
 startSessionCleanupInterval(logger);
@@ -565,77 +563,8 @@ function registerShootHandler(socket, gameState, entityManager) {
 // Respawn handler moved to transport/websocket/handlers/respawn.js
 const { registerRespawnHandler } = require('../transport/websocket/handlers/respawn');
 
-/**
- * Register selectUpgrade handler
- */
-function registerSelectUpgradeHandler(socket, gameState) {
-  socket.on(
-    SOCKET_EVENTS.CLIENT.SELECT_UPGRADE,
-    safeHandler('selectUpgrade', function (data) {
-      // VALIDATION: Vérifier et sanitize les données d'entrée
-      const validatedData = validateUpgradeData(data);
-      if (!validatedData) {
-        logger.warn('Invalid upgrade data received', { socketId: socket.id, data });
-        socket.emit(SOCKET_EVENTS.SERVER.ERROR, {
-          message: 'Upgrade invalide',
-          code: 'INVALID_UPGRADE'
-        });
-        return;
-      }
-
-      // Rate limiting
-      if (!checkRateLimit(socket.id, 'selectUpgrade')) {
-        return;
-      }
-
-      const player = gameState.players[socket.id];
-      if (!player || !player.alive || !player.hasNickname) {
-        return;
-      }
-
-      player.lastActivityTime = Date.now(); // Mettre à jour l'activité
-
-      const upgrade = LEVEL_UP_UPGRADES[validatedData.upgradeId];
-
-      // Double vérification (déjà fait dans validateUpgradeData, mais par sécurité)
-      if (!upgrade) {
-        logger.error('Upgrade validation failed', { upgradeId: validatedData.upgradeId });
-        return;
-      }
-
-      // ANTI-CHEAT: Vérifier que le choix était parmi ceux proposés par le serveur.
-      // BUGFIX: pendingUpgradeChoices is now an array of batches (sub-arrays).
-      // Back-compat: detect flat-array legacy format and coerce to one batch.
-      const raw = player.pendingUpgradeChoices || [];
-      const batches = raw.length > 0 && !Array.isArray(raw[0]) ? [raw] : raw;
-      const batchIndex = batches.findIndex(b => b.includes(validatedData.upgradeId));
-      if (batchIndex === -1) {
-        logger.warn('Anti-cheat: selectUpgrade not in pending choices', {
-          player: player.nickname || socket.id,
-          upgradeId: validatedData.upgradeId,
-          pending: batches
-        });
-        return;
-      }
-      // Consume only the matching batch — preserves any later queued level-ups.
-      batches.splice(batchIndex, 1);
-      player.pendingUpgradeChoices = batches;
-
-      // Appliquer l'effet de l'upgrade
-      upgrade.effect(player);
-
-      // Désactiver l'invisibilité - le joueur redevient visible dès qu'il choisit une amélioration
-      player.invisible = false;
-      player.invisibleEndTime = 0;
-
-      socket.emit(SOCKET_EVENTS.SERVER.UPGRADE_SELECTED, {
-        success: true,
-        upgradeId: validatedData.upgradeId
-      });
-    })
-  );
-}
-
+/* SELECTUPGRADE handler moved to transport/websocket/handlers/selectUpgrade.js */
+const { registerSelectUpgradeHandler } = require('../transport/websocket/handlers/selectUpgrade');
 /**
  * Register setNickname handler
  */
