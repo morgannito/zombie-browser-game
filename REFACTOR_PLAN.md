@@ -154,7 +154,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] `updater/separation.js` — applyZombieSeparation split en 3 SRP (accumulateSeparation, computeSeparationForce, applyWithWallCheck + orchestrator)
 - [x] `updater/movement.js` — moveZombie dispatcher (53→16 lignes avec deps injection, complexity 13→2)
 - [x] `updater/randomWalk.js` — moveRandomly split en 6 SRP helpers (shouldRefreshHeading, initRandomHeading, computeIntendedPosition, wasMovementBlocked, pickHeadingAfterBlock, applyDeflection + orchestrator)
-- [ ] `updater/core.js` — updateZombies (171 lignes, complexity 37) — le gros morceau
+- [x] `updater/core.js` — updateZombies (171l cplx 37 → 18l cplx 2 via dispatch maps ABILITY_HANDLERS + BOSS_HANDLERS). SRP helpers: resolveTickContext, ensureStaggerOffset, applyFarFreeze, dispatchAbility, dispatchBoss, trackStuck, tickOneZombie. **Phase A 5/5 complete — ZombieUpdater.js lint-clean (0 warnings).**
 
 ### Coverage ratchet
 - [ ] zombie context 5% → 15% (ajouter tests sur wallCollision pure-functions)
