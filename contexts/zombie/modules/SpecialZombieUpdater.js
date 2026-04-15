@@ -4,8 +4,8 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require('../../utilityFunctions');
-const { createParticles } = require('../../lootFunctions');
+const { distance } = require("../../../game/utilityFunctions");
+const { createParticles } = require("../../../game/lootFunctions");
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 

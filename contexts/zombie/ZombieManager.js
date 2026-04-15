@@ -11,7 +11,7 @@
  * @version 2.0.0 - Intelligent spawn system integration
  */
 
-const ZombieSpawnManager = require('../../game/modules/zombie/ZombieSpawnManager');
+const ZombieSpawnManager = require('./modules/ZombieSpawnManager');
 
 class ZombieManager {
   constructor(gameState, config, zombieTypes, checkWallCollision, io = null) {

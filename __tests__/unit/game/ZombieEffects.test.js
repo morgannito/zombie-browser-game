@@ -20,7 +20,7 @@ const {
   updatePoisonedZombies,
   updateFrozenSlowedZombies,
   handleSplitterDeath
-} = require('../../../game/modules/zombie/ZombieEffects');
+} = require('../../../contexts/zombie/modules/ZombieEffects');
 
 // ---------------------------------------------------------------------------
 // Helpers

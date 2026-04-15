@@ -117,7 +117,7 @@ src/                         # (renommage symbolique — ou on reste racine + co
 - [x] Extraire `server.js` shutdown → `server/cleanup.js`
 
 ### Phase 2 — Contextes domaine
-- [ ] Créer `contexts/zombie/` : déplacer `game/modules/zombie/*` + `lib/server/ZombieManager.js` + `lib/server/SpatialGrid.js`
+- [x] Créer `contexts/zombie/` : déplacer `game/modules/zombie/*` + `lib/server/ZombieManager.js` + `lib/server/SpatialGrid.js`
 - [ ] Créer `contexts/weapons/` : déplacer `game/modules/bullet/*` + `lib/server/CollisionManager.js`
 - [ ] Créer `contexts/player/` : déplacer `game/modules/player/*` + `lib/server/PlayerManager.js`
 - [ ] Créer `contexts/wave/` : déplacer `game/modules/wave/*` + `lib/server/RoomManager.js`

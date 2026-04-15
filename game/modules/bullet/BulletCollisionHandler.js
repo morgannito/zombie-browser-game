@@ -11,7 +11,7 @@ const { createParticles, createLoot } = require('../../lootFunctions');
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 // OPTIMIZATION: Pre-load all dependencies at module level instead of inside loops
-const { handleSplitterDeath } = require('../zombie/ZombieEffects');
+const { handleSplitterDeath } = require('../../../contexts/zombie/modules/ZombieEffects');
 const { handleNewWave } = require('../wave/WaveManager');
 const { updatePlayerCombo } = require('../player/PlayerProgression');
 
