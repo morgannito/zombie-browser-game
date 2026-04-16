@@ -26,12 +26,16 @@ const {
  * Must be registered BEFORE express.static to intercept GET /.
  */
 function mountMsgpackMetaRoute(app) {
-  if (process.env.ENABLE_MSGPACK !== 'true') return;
+  if (process.env.ENABLE_MSGPACK !== 'true') {
+return;
+}
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
   app.get(['/', '/index.html'], function (req, res) {
     fs.readFile(indexPath, 'utf8', function (err, html) {
-      if (err) return res.status(500).send('Internal Server Error');
-      var patched = html.replace(
+      if (err) {
+return res.status(500).send('Internal Server Error');
+}
+      const patched = html.replace(
         '<meta charset="UTF-8">',
         '<meta charset="UTF-8">\n    <meta name="msgpack" content="1">'
       );
@@ -42,7 +46,6 @@ function mountMsgpackMetaRoute(app) {
 }
 
 function mountStaticAssets(app) {
-  const isProduction = process.env.NODE_ENV === 'production';
   // Note: /shared/socketEvents.js was server-only; events moved to
   // transport/websocket/events.js. Mount removed (no remaining shared assets).
   // CACHES DESACTIVES : tous les assets sont servis avec no-store pour garantir

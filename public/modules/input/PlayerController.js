@@ -172,7 +172,9 @@ class PlayerController {
    * Falls back to a plain playerMove if the network layer doesn't support batching.
    */
   _flushBatch() {
-    if (this._inputBatch.length === 0) return;
+    if (this._inputBatch.length === 0) {
+return;
+}
     if (this.network.playerMoveBatch) {
       this.network.playerMoveBatch(this._inputBatch);
     } else {
@@ -217,7 +219,9 @@ class PlayerController {
       timeSinceLastUpdate >= networkInterval &&
       (positionDelta > this.positionThreshold || angleDelta > this.angleThreshold);
 
-    if (!shouldQueue) return;
+    if (!shouldQueue) {
+return;
+}
 
     // Delta-encode relative to last sent position so the server can reconstruct
     // absolute coordinates by accumulating deltas from player.x/player.y.

@@ -201,17 +201,39 @@ class AddictionIntegration {
   setupEventListeners() {
     this._listeners = [];
 
-    this._onGameStarted = () => { this.onGameStart(); };
-    this._onGameOver = (e) => { this.onGameOver(e.detail); };
-    this._onZombieKilled = (e) => { this.onZombieKilled(e.detail); };
-    this._onLevelUp = (e) => { this.onLevelUp(e.detail); };
-    this._onUpgradeObtained = (e) => { this.onUpgradeObtained(e.detail); };
-    this._onBossDefeated = (e) => { this.onBossDefeated(e.detail); };
-    this._onGoldCollected = (e) => { this.onGoldCollected(e.detail); };
-    this._onCriticalHit = () => { this.onCriticalHit(); };
-    this._onDodge = () => { this.onDodge(); };
-    this._onWaveChanged = (e) => { this.onWaveChanged(e.detail); };
-    this._onRoomChanged = (e) => { this.onRoomChanged(e.detail); };
+    this._onGameStarted = () => {
+ this.onGameStart();
+};
+    this._onGameOver = (e) => {
+ this.onGameOver(e.detail);
+};
+    this._onZombieKilled = (e) => {
+ this.onZombieKilled(e.detail);
+};
+    this._onLevelUp = (e) => {
+ this.onLevelUp(e.detail);
+};
+    this._onUpgradeObtained = (e) => {
+ this.onUpgradeObtained(e.detail);
+};
+    this._onBossDefeated = (e) => {
+ this.onBossDefeated(e.detail);
+};
+    this._onGoldCollected = (e) => {
+ this.onGoldCollected(e.detail);
+};
+    this._onCriticalHit = () => {
+ this.onCriticalHit();
+};
+    this._onDodge = () => {
+ this.onDodge();
+};
+    this._onWaveChanged = (e) => {
+ this.onWaveChanged(e.detail);
+};
+    this._onRoomChanged = (e) => {
+ this.onRoomChanged(e.detail);
+};
     this._onMissionRewardGold = (_e) => {
       if (window.gameEngine) { /* Sera géré par le jeu principal */ }
     };
@@ -232,7 +254,7 @@ class AddictionIntegration {
       ['wave_changed', this._onWaveChanged],
       ['room_changed', this._onRoomChanged],
       ['mission_reward_gold', this._onMissionRewardGold],
-      ['mission_reward_xp', this._onMissionRewardXp],
+      ['mission_reward_xp', this._onMissionRewardXp]
     ];
 
     for (const [event, handler] of pairs) {

@@ -27,7 +27,9 @@ function emitAOI(io, event, payload, bossX, bossY, gameState) {
   const sockets = io.sockets.sockets;
   for (const [socketId, socket] of sockets) {
     const player = gameState.players[socketId];
-    if (!player || !player.alive) continue;
+    if (!player || !player.alive) {
+continue;
+}
     if (
       Math.abs(player.x - bossX) <= AOI_HALF_WIDTH &&
       Math.abs(player.y - bossY) <= AOI_HALF_HEIGHT

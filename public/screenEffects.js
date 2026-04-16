@@ -266,7 +266,9 @@ class SlowMotionEffect {
     this.callbacks.push(callback);
     return () => {
       const idx = this.callbacks.indexOf(callback);
-      if (idx !== -1) { this.callbacks.splice(idx, 1); }
+      if (idx !== -1) {
+ this.callbacks.splice(idx, 1);
+}
     };
   }
 

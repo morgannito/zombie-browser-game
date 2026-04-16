@@ -80,17 +80,6 @@ function handlePlayerBulletCollisions(
 ) {
   const hitZombies = collisionManager.checkBulletZombieCollisions(bullet);
 
-  // DEBUG: log bullet-zombie interaction
-  if (!globalThis.__bulletDebugCount) globalThis.__bulletDebugCount = 0;
-  if (globalThis.__bulletDebugCount < 40) {
-    globalThis.__bulletDebugCount++;
-    console.log('[BULLET-DBG]', {
-      bulletId, bx: bullet.x.toFixed(0), by: bullet.y.toFixed(0),
-      dmg: bullet.damage, hits: hitZombies.length,
-      zombieCount: Object.keys(gameState.zombies).length
-    });
-  }
-
   for (const { id: zombieId, zombie } of hitZombies) {
     // FIX: Check if bullet was destroyed (e.g., by exceeding pierce limit)
     if (!gameState.bullets[bulletId]) {

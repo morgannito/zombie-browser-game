@@ -29,7 +29,9 @@ function startGameLoop(perfIntegration, tickFn) {
   let nextTickNs = process.hrtime.bigint();
 
   function scheduleNext() {
-    if (!running) return;
+    if (!running) {
+return;
+}
 
     const nowNs = process.hrtime.bigint();
     const remainingNs = nextTickNs - nowNs;
@@ -45,7 +47,9 @@ function startGameLoop(perfIntegration, tickFn) {
   }
 
   function tick() {
-    if (!running) return;
+    if (!running) {
+return;
+}
 
     // Advance anchor by exactly one tick interval (drift-free)
     nextTickNs += tickIntervalNs;

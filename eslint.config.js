@@ -32,7 +32,10 @@ module.exports = [
         clearInterval: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
-        performance: 'readonly'
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
+        performance: 'readonly',
+        globalThis: 'readonly'
       }
     },
     rules: {

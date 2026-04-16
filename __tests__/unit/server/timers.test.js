@@ -55,7 +55,9 @@ describe('startGameLoop', () => {
     let count = 0;
     const tickFn = jest.fn(() => {
       count++;
-      if (count === 1) throw new Error('boom');
+      if (count === 1) {
+throw new Error('boom');
+}
     });
     const stop = startGameLoop({ getTickInterval: () => 50 }, tickFn);
     await flushImmediates(); // first tick (throws)

@@ -508,7 +508,9 @@ class NetworkManager {
       if (entity.x !== undefined) {
         entity._serverX = entity.x;
         entity._serverY = entity.y;
-        if (packetServerTime !== undefined) entity._serverTime = packetServerTime;
+        if (packetServerTime !== undefined) {
+entity._serverTime = packetServerTime;
+}
       }
       window.gameState.state[type][id] = entity;
     } else {
@@ -518,7 +520,9 @@ class NetworkManager {
       if (hadPosition) {
         entity._serverX = entity.x;
         entity._serverY = entity.y;
-        if (packetServerTime !== undefined) entity._serverTime = packetServerTime;
+        if (packetServerTime !== undefined) {
+entity._serverTime = packetServerTime;
+}
       }
     }
   }
@@ -994,7 +998,9 @@ class NetworkManager {
    * @param {Array<{dx: number, dy: number, angle: number}>} batch
    */
   playerMoveBatch(batch) {
-    if (!batch || batch.length === 0) return;
+    if (!batch || batch.length === 0) {
+return;
+}
     this.socket.emit('playerMoveBatch', batch);
   }
 
