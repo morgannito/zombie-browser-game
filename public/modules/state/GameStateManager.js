@@ -58,8 +58,10 @@ class GameStateManager {
         zombies: new Map(),
         players: new Map()
       },
-      // Performance tracking
-      lastFrameTime: performance.now(),
+      // Performance tracking — base epoch (Date.now + serverTimeOffset once available)
+      // so that lastFrameTime shares the same time base as snapshot timestamps
+      // (server Date.now()) and renderTime in _stepEntity.
+      lastFrameTime: Date.now(),
       deltaTime: 16.67
     };
 
@@ -229,7 +231,13 @@ class GameStateManager {
       return;
     }
 
-    const now = performance.now();
+    // CRITICAL FIX (zombie freeze on player move):
+    // Snapshots are stamped with server `Date.now()` (Unix epoch ~1.7e12 ms)
+    // via entity._serverTime. Previously `now = performance.now()` (page-load
+    // relative, ~60000 ms) → renderTime was ALWAYS <= snaps[0].t → Case 2
+    // held every zombie at the oldest buffered snapshot. Align now on the
+    // estimated server clock so renderTime and snapshot.t share the same base.
+    const now = this.getEstimatedServerTime();
     const rawDelta = now - this.interpolation.lastFrameTime;
     this.interpolation.lastFrameTime = now;
 
@@ -326,7 +334,7 @@ class GameStateManager {
   /**
    * @param {Object} state
    * @param {Object} entity
-   * @param {number} now - performance.now()
+   * @param {number} now - estimated server epoch (Date.now + serverTimeOffset)
    * @param {number} [serverTime] - authoritative server timestamp (ms); falls back to now
    */
   _applyServerUpdate(state, entity, now, _serverTime) {
@@ -402,7 +410,7 @@ class GameStateManager {
    *
    * @param {Object} state
    * @param {Object} entity - written back (.x, .y updated)
-   * @param {number} now - performance.now()
+   * @param {number} now - estimated server epoch (matches snapshot.t time base)
    * @param {number} _smoothFactor - unused (kept for API compat)
    * @param {boolean} skipExtrapolation
    */
@@ -543,9 +551,11 @@ class GameStateManager {
       if (id === this.playerId) {
         // Apply smooth lerp correction if one was queued by handlePositionCorrection.
         // This avoids the visible teleport of a hard snap for small isolated corrections.
+        // Uses Date.now() (not `now` which is server-epoch) to stay on the same time
+        // base as ct.startTime, written by NetworkManager with Date.now().
         if (player._correctionTarget) {
           const ct = player._correctionTarget;
-          const elapsed = now - ct.startTime;
+          const elapsed = Date.now() - ct.startTime;
           if (elapsed >= ct.duration) {
             player.x = ct.x;
             player.y = ct.y;
