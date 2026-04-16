@@ -15,6 +15,11 @@ const dbManager = DatabaseManager.getInstance();
  * @returns {Promise<boolean>} dbAvailable
  */
 async function initializeDatabase() {
+  // Bench / test harness bypass — don't touch sqlite when DB_SKIP=1.
+  if (process.env.DB_SKIP === '1') {
+    logger.warn('DB_SKIP=1 — running in no-db mode (bench/test only)');
+    return false;
+  }
   try {
     await Promise.resolve(dbManager.initialize());
     logger.info('✅ Database connected successfully');

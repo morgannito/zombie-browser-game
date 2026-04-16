@@ -69,9 +69,16 @@ class MetricsCollector {
     // Histogrammes Prometheus (buckets en ms)
     this.histograms = {
       fps: { buckets: [10, 20, 30, 45, 60, 90, 120], counts: {}, sum: 0, count: 0 },
-      latency: { buckets: [1, 5, 10, 25, 50, 100, 250, 500], counts: {}, sum: 0, count: 0 }
+      latency: { buckets: [1, 5, 10, 25, 50, 100, 250, 500], counts: {}, sum: 0, count: 0 },
+      // emitGameState full duration (ms) — covers filter + clone + delta + emit.
+      broadcast_ms: { buckets: [1, 2, 5, 10, 20, 50, 100], counts: {}, sum: 0, count: 0 },
+      // Total bytes emitted per tick across all sockets.
+      broadcast_bytes: { buckets: [1024, 4096, 16384, 65536, 262144, 1048576], counts: {}, sum: 0, count: 0 },
+      // V8 GC pause durations (ms) via PerformanceObserver.
+      gc_pause_ms: { buckets: [1, 5, 10, 25, 50, 100, 250], counts: {}, sum: 0, count: 0 }
     };
     this._initHistogramBuckets();
+    this._installGcObserver();
 
     // Violation tracker per player for auto-disconnect
     // Structure: Map<socketId, { count: number, windowStart: number }>
@@ -110,6 +117,42 @@ class MetricsCollector {
 
   recordLatency(ms) {
     this._recordHistogram('latency', ms);
+  }
+
+  recordBroadcastDuration(ms) {
+    this._recordHistogram('broadcast_ms', ms);
+  }
+
+  recordBroadcastBytes(bytes) {
+    this._recordHistogram('broadcast_bytes', bytes);
+  }
+
+  recordGcPause(ms) {
+    this._recordHistogram('gc_pause_ms', ms);
+  }
+
+  /**
+   * Subscribe to V8 GC events so every major/minor pause is captured in
+   * the gc_pause_ms histogram. Lazy-loaded — PerformanceObserver may not
+   * exist in older Node runtimes; failure is logged but non-fatal.
+   */
+  _installGcObserver() {
+    try {
+      const { PerformanceObserver, constants } = require('perf_hooks');
+      this._gcObserver = new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          // entry.duration is in ms; guard against negative/NaN defensively.
+          if (Number.isFinite(entry.duration) && entry.duration > 0) {
+            this.recordGcPause(entry.duration);
+          }
+        }
+      });
+      this._gcObserver.observe({ entryTypes: ['gc'], buffered: false });
+      // Keep reference so node doesn't GC the observer itself.
+      this._gcKinds = constants;
+    } catch (e) {
+      logger.warn('[MetricsCollector] GC observer unavailable', { err: e.message });
+    }
   }
 
   _prometheusHistogram(metricName, help, hist) {
@@ -412,6 +455,27 @@ class MetricsCollector {
         'zombie_request_latency_ms',
         'HTTP request latency in ms',
         this.histograms.latency
+      )
+    );
+    lines.push(
+      this._prometheusHistogram(
+        'zombie_broadcast_ms',
+        'emitGameState wall-clock duration (ms)',
+        this.histograms.broadcast_ms
+      )
+    );
+    lines.push(
+      this._prometheusHistogram(
+        'zombie_broadcast_bytes',
+        'Total bytes emitted per tick across all sockets',
+        this.histograms.broadcast_bytes
+      )
+    );
+    lines.push(
+      this._prometheusHistogram(
+        'zombie_gc_pause_ms',
+        'V8 GC pause duration (ms) captured via PerformanceObserver',
+        this.histograms.gc_pause_ms
       )
     );
 
