@@ -50,29 +50,38 @@ function attachTraceContext(socket) {
 
 function tryRecoverSession(socket, sessionId, accountId, gameState) {
   if (!sessionId || !disconnectedPlayers.has(sessionId)) {
-return false;
-}
+    return false;
+  }
   const savedData = disconnectedPlayers.get(sessionId);
   const elapsed = Date.now() - savedData.disconnectedAt;
   if (accountId && savedData.accountId && savedData.accountId !== accountId) {
     logger.warn('Session recovery refused - account mismatch', {
-      sessionId, accountId, savedAccountId: savedData.accountId
+      sessionId,
+      accountId,
+      savedAccountId: savedData.accountId
     });
     return false;
   }
   logger.info('Session recovery found', {
-    sessionId, disconnectedSecs: Math.round(elapsed / 1000)
+    sessionId,
+    disconnectedSecs: Math.round(elapsed / 1000)
   });
   const restoredAccountId = accountId || savedData.accountId || null;
   const restoredPlayer = restoreRecoverablePlayerState(
-    savedData.playerState, socket.id, sessionId, restoredAccountId
+    savedData.playerState,
+    socket.id,
+    sessionId,
+    restoredAccountId
   );
   gameState.players[socket.id] = restoredPlayer;
   disconnectedPlayers.delete(sessionId);
   logger.info('Player session restored', {
-    sessionId, nickname: restoredPlayer.nickname || 'Unknown',
-    level: restoredPlayer.level, health: restoredPlayer.health,
-    maxHealth: restoredPlayer.maxHealth, gold: restoredPlayer.gold
+    sessionId,
+    nickname: restoredPlayer.nickname || 'Unknown',
+    level: restoredPlayer.level,
+    health: restoredPlayer.health,
+    maxHealth: restoredPlayer.maxHealth,
+    gold: restoredPlayer.gold
   });
   return true;
 }
@@ -80,14 +89,15 @@ return false;
 function rejectIfServerFull(socket, perfIntegration, gameState) {
   const playerCount = Object.keys(gameState.players).length;
   if (perfIntegration.canAcceptPlayer(playerCount)) {
-return false;
-}
+    return false;
+  }
   logger.warn('Player connection rejected - server full', {
     currentPlayers: playerCount,
     maxPlayers: perfIntegration.perfConfig.current.maxPlayers
   });
   socket.emit(SOCKET_EVENTS.SERVER.SERVER_FULL, {
-    message: 'Serveur complet. Réessayez plus tard.', currentPlayers: playerCount
+    message: 'Serveur complet. Réessayez plus tard.',
+    currentPlayers: playerCount
   });
   socket.disconnect();
   return true;
@@ -95,34 +105,46 @@ return false;
 
 function spawnNewPlayer(socket, sessionId, accountId, gameState, perfIntegration) {
   if (rejectIfServerFull(socket, perfIntegration, gameState)) {
-return false;
-}
-  gameState.players[socket.id] = createPlayerState(
-    CONFIG, socket.id, sessionId || null, accountId
-  );
+    return false;
+  }
+  gameState.players[socket.id] = createPlayerState(CONFIG, socket.id, sessionId || null, accountId);
   return true;
 }
 
 function applySkillBonuses(socket, accountId, gameState) {
   const player = gameState.players[socket.id];
   if (!accountId || !player || !gameState.progressionIntegration) {
-return;
-}
+    return;
+  }
   gameState.progressionIntegration
     .applySkillBonusesOnSpawn(player, accountId, CONFIG)
-    .then(() => logger.info('Skill bonuses applied', {
-      socketId: socket.id, accountId, health: player.health, maxHealth: player.maxHealth
-    }))
-    .catch(error => logger.error('Failed to apply skill bonuses', {
-      socketId: socket.id, accountId, error: error.message
-    }));
+    .then(() =>
+      logger.info('Skill bonuses applied', {
+        socketId: socket.id,
+        accountId,
+        health: player.health,
+        maxHealth: player.maxHealth
+      })
+    )
+    .catch(error =>
+      logger.error('Failed to apply skill bonuses', {
+        socketId: socket.id,
+        accountId,
+        error: error.message
+      })
+    );
 }
 
 function emitInitSnapshot(socket, gameState, recovered) {
   socket.emit(SOCKET_EVENTS.SERVER.INIT, {
-    playerId: socket.id, config: CONFIG, weapons: WEAPONS,
-    powerupTypes: POWERUP_TYPES, zombieTypes: ZOMBIE_TYPES, shopItems: SHOP_ITEMS,
-    walls: gameState.walls, rooms: gameState.rooms.length,
+    playerId: socket.id,
+    config: CONFIG,
+    weapons: WEAPONS,
+    powerupTypes: POWERUP_TYPES,
+    zombieTypes: ZOMBIE_TYPES,
+    shopItems: SHOP_ITEMS,
+    walls: gameState.walls,
+    rooms: gameState.rooms.length,
     currentRoom: gameState.currentRoom,
     mutators: gameState.activeMutators || [],
     mutatorEffects: gameState.mutatorEffects || null,
@@ -131,18 +153,32 @@ function emitInitSnapshot(socket, gameState, recovered) {
   });
   socket.emit(SOCKET_EVENTS.SERVER.GAME_STATE, {
     players: sanitizePlayersState(gameState.players),
-    zombies: gameState.zombies, bullets: gameState.bullets,
-    particles: gameState.particles, poisonTrails: gameState.poisonTrails,
-    explosions: gameState.explosions, powerups: gameState.powerups,
-    loot: gameState.loot, wave: gameState.wave, walls: gameState.walls,
-    currentRoom: gameState.currentRoom, bossSpawned: gameState.bossSpawned,
+    zombies: gameState.zombies,
+    bullets: gameState.bullets,
+    particles: gameState.particles,
+    poisonTrails: gameState.poisonTrails,
+    explosions: gameState.explosions,
+    powerups: gameState.powerups,
+    loot: gameState.loot,
+    wave: gameState.wave,
+    walls: gameState.walls,
+    currentRoom: gameState.currentRoom,
+    bossSpawned: gameState.bossSpawned,
     full: true
   });
 }
 
 function registerAllHandlers(socket, deps) {
-  const { gameState, io, entityManager, roomManager, container,
-    networkManager, sessionId, accountId } = deps;
+  const {
+    gameState,
+    io,
+    entityManager,
+    roomManager,
+    container,
+    networkManager,
+    sessionId,
+    accountId
+  } = deps;
   registerPlayerMoveHandler(socket, gameState, roomManager);
   registerShootHandler(socket, gameState, entityManager);
   registerRespawnHandler(socket, gameState, entityManager);
@@ -156,8 +192,13 @@ function registerAllHandlers(socket, deps) {
   // kick legitimate clients after 10s. Stub kept for disconnect signature.
   const stopZombieHeartbeat = () => {};
   registerDisconnectHandler(
-    socket, gameState, entityManager, sessionId, accountId,
-    networkManager, stopZombieHeartbeat
+    socket,
+    gameState,
+    entityManager,
+    sessionId,
+    accountId,
+    networkManager,
+    stopZombieHeartbeat
   );
   if (gameState.adminCommands) {
     gameState.adminCommands.registerCommands(socket);
@@ -165,32 +206,58 @@ function registerAllHandlers(socket, deps) {
 }
 
 function initSocketHandlers(
-  io, gameState, entityManager, roomManager,
-  metricsCollector, perfIntegration, container = null, networkManager = null
+  io,
+  gameState,
+  entityManager,
+  roomManager,
+  metricsCollector,
+  perfIntegration,
+  container = null,
+  networkManager = null
 ) {
   return socket => {
     const sessionId = normalizeSessionId(socket.handshake.auth?.sessionId);
     const accountId = socket.userId || null;
     const traceId = attachTraceContext(socket);
     logger.info('Player connected', {
-      socketId: socket.id, sessionId: sessionId || 'none',
-      accountId: accountId || 'none', traceId
+      socketId: socket.id,
+      sessionId: sessionId || 'none',
+      accountId: accountId || 'none',
+      traceId
     });
+
+    // Evict any existing socket sharing the same sessionId (multi-tab guard).
+    if (sessionId) {
+      for (const [id, s] of io.sockets.sockets) {
+        if (id !== socket.id && s.sessionId === sessionId) {
+          s.emit('sessionReplaced', { reason: 'another tab connected' });
+          s.disconnect(true);
+          break;
+        }
+      }
+    }
+    socket.sessionId = sessionId || null;
 
     const recovered = tryRecoverSession(socket, sessionId, accountId, gameState);
     if (!recovered) {
       logger.info('Creating new player', { socketId: socket.id });
       const ok = spawnNewPlayer(socket, sessionId, accountId, gameState, perfIntegration);
       if (!ok) {
-return;
-}
+        return;
+      }
       metricsCollector.incrementTotalPlayers();
     }
     applySkillBonuses(socket, accountId, gameState);
     emitInitSnapshot(socket, gameState, recovered);
     registerAllHandlers(socket, {
-      gameState, io, entityManager, roomManager, container,
-      networkManager, sessionId, accountId
+      gameState,
+      io,
+      entityManager,
+      roomManager,
+      container,
+      networkManager,
+      sessionId,
+      accountId
     });
   };
 }

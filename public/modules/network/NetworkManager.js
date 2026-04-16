@@ -345,6 +345,7 @@ class NetworkManager {
     this.on('comboUpdate', data => this.handleComboUpdate(data));
     this.on('comboReset', () => this.handleComboReset());
     this.on('sessionTimeout', data => this.handleSessionTimeout(data));
+    this.on('sessionReplaced', data => this.handleSessionReplaced(data));
     this.on('mutatorsUpdated', data => this.handleMutatorsUpdated(data));
   }
 
@@ -818,6 +819,17 @@ class NetworkManager {
   handleComboReset() {
     if (window.comboSystem) {
       window.comboSystem.resetCombo();
+    }
+  }
+
+  handleSessionReplaced(data) {
+    console.warn('[Socket.IO] Session replaced by another tab:', data.reason);
+    if (window.toastManager) {
+      window.toastManager.show(
+        '⚠️ Connexion fermée : un autre onglet a pris le relais.',
+        'error',
+        4000
+      );
     }
   }
 
