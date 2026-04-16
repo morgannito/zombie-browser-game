@@ -120,11 +120,7 @@
         stage.progress = stage.target;
         stage.completed = true;
         if (window.toastManager) {
-          window.toastManager.show(
-            `🎯 Contrat termine: Etape ${this.contract.currentStage + 1}`,
-            'success',
-            3000
-          );
+          window.toastManager.show({ message: `🎯 Contrat termine: Etape ${this.contract.currentStage + 1}`, type: 'success', duration: 3000 });
         }
         this.playSound('reward');
       }
@@ -153,10 +149,10 @@
       if (this.contract.currentStage < this.contract.stages.length - 1) {
         this.contract.currentStage += 1;
         if (window.toastManager) {
-          window.toastManager.show('📜 Nouvelle etape debloquee!', 'info', 2500);
+          window.toastManager.show({ message: '📜 Nouvelle etape debloquee!', type: 'info', duration: 2500 });
         }
       } else if (window.toastManager) {
-        window.toastManager.show('🏁 Contrat complete!', 'success', 3500);
+        window.toastManager.show({ message: '🏁 Contrat complete!', type: 'success', duration: 3500 });
       }
 
       this.safeSave();

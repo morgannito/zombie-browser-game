@@ -1,7 +1,7 @@
 /**
  * @fileoverview Route mounting — extracted from server.js setup block.
- * @description Centralises all Express route wiring (versioned v1 + legacy
- *   aliases). Keeps server.js free of per-route require() noise.
+ * @description Centralises all HTTP route wiring under /api/v1/*.
+ *   Legacy /api/* aliases were removed once all clients migrated.
  */
 
 const logger = require('../infrastructure/logging/Logger');
@@ -19,7 +19,6 @@ const featuresRoutes = require('../transport/http/features');
 function mountAuthRoutes(app, container, jwtService) {
   const authRoutes = initAuthRoutes(container, jwtService);
   app.use('/api/v1/auth', authRoutes);
-  app.use('/api/auth', authRoutes);
 }
 
 function mountDbRoutes(app, container, requireAuth) {
@@ -33,26 +32,18 @@ function mountDbRoutes(app, container, requireAuth) {
   app.use('/api/v1/progression', progressionRoutes);
   app.use('/api/v1/achievements', achievementRoutes);
 
-  app.use('/api/leaderboard', leaderboardRoutes);
-  app.use('/api/players', playerRoutes);
-  app.use('/api/progression', progressionRoutes);
-  app.use('/api/achievements', achievementRoutes);
-
-  logger.info('Database-dependent routes initialized (v1 + legacy)');
+  logger.info('Database-dependent routes initialized (v1)');
 }
 
 function mountSystemRoutes(app, deps) {
   const { metricsCollector, memoryMonitor, dbManager, perfIntegration } = deps;
   const metricsRoutes = initMetricsRoutes(metricsCollector);
   app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
-  app.use('/api/metrics', requireMetricsToken, metricsRoutes);
   app.use('/api/v1/features', featuresRoutes);
-  app.use('/api/features', featuresRoutes);
   // Client error ingestion — unauthenticated (clients need to report even
   // pre-auth crashes) but rate-limited inside the route itself.
   const clientErrorRoutes = initClientErrorRoutes();
   app.use('/api/v1/client-error', clientErrorRoutes);
-  app.use('/api/client-error', clientErrorRoutes);
   app.use(
     '/admin/stats',
     requireMetricsToken,

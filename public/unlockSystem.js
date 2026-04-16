@@ -159,11 +159,7 @@ class UnlockSystem {
   // Afficher notification de déblocage
   showUnlockNotification(weapon) {
     if (window.toastManager) {
-      window.toastManager.show(
-        `🔓 ARME DÉBLOQUÉE!\n${weapon.icon} ${weapon.name}`,
-        'unlock',
-        5000
-      );
+      window.toastManager.show({ message: `🔓 ARME DÉBLOQUÉE!\n${weapon.icon} ${weapon.name}`, type: 'unlock', duration: 5000 });
     }
 
     // Créer popup spéciale

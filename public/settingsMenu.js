@@ -187,7 +187,7 @@ class SettingsMenu {
 
     // Show confirmation toast (if ToastManager exists)
     if (typeof ToastManager !== 'undefined') {
-      ToastManager.show('Paramètres sauvegardés', '✓', 'success');
+      ToastManager.show({ message: 'Paramètres sauvegardés', type: '✓', duration: 'success' });
     }
   }
 
@@ -198,7 +198,7 @@ class SettingsMenu {
 
     // Show confirmation toast
     if (typeof ToastManager !== 'undefined') {
-      ToastManager.show('Paramètres réinitialisés', '🔄', 'info');
+      ToastManager.show({ message: 'Paramètres réinitialisés', type: '🔄', duration: 'info' });
     }
   }
 

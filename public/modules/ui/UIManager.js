@@ -73,7 +73,7 @@ class UIManager {
       if (!window.networkManager) {
         console.error('[Shop] NetworkManager not available');
         if (window.toastManager) {
-          window.toastManager.show('❌ Connexion non disponible', 'error', 2000);
+          window.toastManager.show({ message: '❌ Connexion non disponible', type: 'error', duration: 2000 });
         }
         return;
       }
@@ -90,7 +90,7 @@ class UIManager {
 
       // Show feedback that request was sent
       if (window.toastManager) {
-        window.toastManager.show("⏳ Traitement de l'achat...", 'info', 1000);
+        window.toastManager.show({ message: "⏳ Traitement de l'achat...", type: 'info', duration: 1000 });
       }
     };
 
@@ -446,11 +446,11 @@ class UIManager {
           logger.debug('[Shop] Button is disabled, ignoring click');
           if (isMaxed) {
             if (window.toastManager) {
-              window.toastManager.show('⚠️ Niveau maximum atteint', 'warning', 2000);
+              window.toastManager.show({ message: '⚠️ Niveau maximum atteint', type: 'warning', duration: 2000 });
             }
           } else {
             if (window.toastManager) {
-              window.toastManager.show('⚠️ Or insuffisant', 'warning', 2000);
+              window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
             }
           }
           return;
@@ -512,7 +512,7 @@ class UIManager {
         if (btn.disabled) {
           logger.debug('[Shop] Button is disabled, ignoring click');
           if (window.toastManager) {
-            window.toastManager.show('⚠️ Or insuffisant', 'warning', 2000);
+            window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
           }
           return;
         }

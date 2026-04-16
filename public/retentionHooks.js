@@ -324,11 +324,7 @@ class RetentionHooksSystem {
     localStorage.setItem('revenge_bonus', 'true');
 
     if (window.toastManager) {
-      window.toastManager.show(
-        '💪 REVENGE BONUS ACTIVÉ!\n+10% dégâts pour cette run',
-        'bonus',
-        5000
-      );
+      window.toastManager.show({ message: '💪 REVENGE BONUS ACTIVÉ!\n+10% dégâts pour cette run', type: 'bonus', duration: 5000 });
     }
   }
 

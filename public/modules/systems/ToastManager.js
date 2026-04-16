@@ -12,19 +12,14 @@ class ToastManager {
     this.toasts = [];
   }
 
-  show(msgOrOptions, legacyType, legacyDuration) {
-    const opts =
-      typeof msgOrOptions === 'string'
-        ? { message: msgOrOptions, type: legacyType, duration: legacyDuration }
-        : msgOrOptions || {};
-
+  show(options) {
     const {
       title = '',
       message = '',
       type = 'info',
       icon = this.getDefaultIcon(type),
       duration = 3000
-    } = opts;
+    } = options || {};
 
     // Create toast element
     const toast = document.createElement('div');

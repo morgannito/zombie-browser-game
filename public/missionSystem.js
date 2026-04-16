@@ -137,11 +137,7 @@ class MissionSystem {
   // Afficher notifications des nouvelles missions
   showMissionNotifications() {
     if (window.toastManager) {
-      window.toastManager.show(
-        `🎯 ${this.currentMissions.length} nouvelle${this.currentMissions.length > 1 ? 's' : ''} mission${this.currentMissions.length > 1 ? 's' : ''}!`,
-        'mission',
-        4000
-      );
+      window.toastManager.show({ message: `🎯 ${this.currentMissions.length} nouvelle${this.currentMissions.length > 1 ? 's' : ''} mission${this.currentMissions.length > 1 ? 's' : ''}!`, type: 'mission', duration: 4000 });
     }
 
     // Créer une notification spéciale pour chaque mission
@@ -385,11 +381,7 @@ class MissionSystem {
   // Afficher notification de mission complétée
   showMissionComplete(mission) {
     if (window.toastManager) {
-      window.toastManager.show(
-        `✅ MISSION COMPLÉTÉE!\n${mission.name}`,
-        'mission',
-        5000
-      );
+      window.toastManager.show({ message: `✅ MISSION COMPLÉTÉE!\n${mission.name}`, type: 'mission', duration: 5000 });
     }
 
     // Popup spéciale

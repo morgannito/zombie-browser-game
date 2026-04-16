@@ -413,11 +413,7 @@ class AchievementSystem {
         legendary: '🏆'
       };
 
-      window.toastManager.show(
-        `${rarityEmoji[achievement.rarity]} ACHIEVEMENT DÉBLOQUÉ!\n${achievement.name}`,
-        'achievement',
-        5000
-      );
+      window.toastManager.show({ message: `${rarityEmoji[achievement.rarity]} ACHIEVEMENT DÉBLOQUÉ!\n${achievement.name}`, type: 'achievement', duration: 5000 });
     }
 
     // Créer une notification visuelle spéciale

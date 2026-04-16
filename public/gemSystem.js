@@ -27,7 +27,7 @@ class GemSystem {
 
     // Notifier le joueur
     if (window.toastManager && amount > 0) {
-      window.toastManager.show(`💎 +${amount} Gems!\n${source}`, 'gems', 3000);
+      window.toastManager.show({ message: `💎 +${amount} Gems!\n${source}`, type: 'gems', duration: 3000 });
     }
 
     this.updateGemDisplay();
@@ -189,7 +189,7 @@ class GemSystem {
     this.recordPurchase(itemId);
 
     if (window.toastManager) {
-      window.toastManager.show(`✅ ${item.name} achete!`, 'purchase', 3000);
+      window.toastManager.show({ message: `✅ ${item.name} achete!`, type: 'purchase', duration: 3000 });
     }
 
     return { success: true, item };
@@ -274,7 +274,7 @@ class GemSystem {
     storageManager.set('active_boosts', activeBoosts);
 
     if (window.toastManager) {
-      window.toastManager.show(`⏰ ${boost.type.toUpperCase()} Boost termine`, 'info', 3000);
+      window.toastManager.show({ message: `⏰ ${boost.type.toUpperCase()} Boost termine`, type: 'info', duration: 3000 });
     }
   }
 
@@ -531,7 +531,7 @@ class GemSystem {
       }
     } else {
       if (window.toastManager) {
-        window.toastManager.show(`❌ ${result.error}`, 'error', 3000);
+        window.toastManager.show({ message: `❌ ${result.error}`, type: 'error', duration: 3000 });
       }
     }
   }

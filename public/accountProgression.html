@@ -303,11 +303,11 @@
         const headers = getAuthHeaders();
 
         // Fetch progression
-        const progressionRes = await fetch(`/api/progression/${playerId}`, { headers });
+        const progressionRes = await fetch(`/api/v1/progression/${playerId}`, { headers });
         const progressionData = await progressionRes.json();
 
         // Fetch skill tree
-        const skillsRes = await fetch('/api/progression/skills/all', { headers });
+        const skillsRes = await fetch('/api/v1/progression/skills/all', { headers });
         const skillsData = await skillsRes.json();
 
         if (progressionData.success && skillsData.success) {
@@ -411,7 +411,7 @@
       try {
         const playerId = localStorage.getItem('playerId') || 'test-player';
 
-        const res = await fetch(`/api/progression/${playerId}/unlock-skill`, {
+        const res = await fetch(`/api/v1/progression/${playerId}/unlock-skill`, {
           method: 'POST',
           headers: getAuthHeaders(true),
           body: JSON.stringify({ skillId })
@@ -440,7 +440,7 @@
       try {
         const playerId = localStorage.getItem('playerId') || 'test-player';
 
-        const res = await fetch(`/api/progression/${playerId}/prestige`, {
+        const res = await fetch(`/api/v1/progression/${playerId}/prestige`, {
           method: 'POST',
           headers: getAuthHeaders()
         });

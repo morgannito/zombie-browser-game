@@ -273,11 +273,7 @@ class DailyChallengeSystem {
     if (rewards[this.loginStreak]) {
       const reward = rewards[this.loginStreak];
       if (window.toastManager) {
-        window.toastManager.show(
-          `🔥 ${this.loginStreak} JOURS DE SUITE!\n+${reward.gold} Or | +${reward.gems} Gems`,
-          'streak',
-          5000
-        );
+        window.toastManager.show({ message: `🔥 ${this.loginStreak} JOURS DE SUITE!\n+${reward.gold} Or | +${reward.gems} Gems`, type: 'streak', duration: 5000 });
       }
       this.applyReward(reward, `Streak ${this.loginStreak} jours`);
       return reward;
@@ -342,11 +338,7 @@ class DailyChallengeSystem {
   // Afficher notification de défi complété
   showChallengeComplete(challenge, period) {
     if (window.toastManager) {
-      window.toastManager.show(
-        `✅ DÉFI ${period === 'daily' ? 'QUOTIDIEN' : 'HEBDOMADAIRE'} COMPLÉTÉ!\n${challenge.name}`,
-        'challenge',
-        5000
-      );
+      window.toastManager.show({ message: `✅ DÉFI ${period === 'daily' ? 'QUOTIDIEN' : 'HEBDOMADAIRE'} COMPLÉTÉ!\n${challenge.name}`, type: 'challenge', duration: 5000 });
     }
 
     // Créer popup spéciale
@@ -486,7 +478,7 @@ class DailyChallengeSystem {
   rerollDailyChallenge() {
     if (!this.canRerollDaily()) {
       if (window.toastManager) {
-        window.toastManager.show('🎲 Reroll déjà utilisé aujourd\'hui', 'info', 3000);
+        window.toastManager.show({ message: '🎲 Reroll déjà utilisé aujourd\'hui', type: 'info', duration: 3000 });
       }
       return false;
     }
@@ -494,7 +486,7 @@ class DailyChallengeSystem {
     const replaceIndex = this.dailyChallenges.findIndex(challenge => !challenge.completed);
     if (replaceIndex === -1) {
       if (window.toastManager) {
-        window.toastManager.show('✅ Tous les défis sont déjà complétés', 'info', 3000);
+        window.toastManager.show({ message: '✅ Tous les défis sont déjà complétés', type: 'info', duration: 3000 });
       }
       return false;
     }
@@ -503,7 +495,7 @@ class DailyChallengeSystem {
     const pool = this.availableDailyChallenges.filter(challenge => !currentIds.has(challenge.id));
     if (pool.length === 0) {
       if (window.toastManager) {
-        window.toastManager.show('🎯 Aucun défi disponible pour reroll', 'info', 3000);
+        window.toastManager.show({ message: '🎯 Aucun défi disponible pour reroll', type: 'info', duration: 3000 });
       }
       return false;
     }
@@ -522,7 +514,7 @@ class DailyChallengeSystem {
     this.refreshPanel();
 
     if (window.toastManager) {
-      window.toastManager.show('🎲 Défi reroll avec succès!', 'success', 2500);
+      window.toastManager.show({ message: '🎲 Défi reroll avec succès!', type: 'success', duration: 2500 });
     }
 
     return true;
@@ -557,12 +549,12 @@ class DailyChallengeSystem {
       const unlocked = window.skinManager.unlockPlayerSkin(reward.skin) ||
         window.skinManager.unlockWeaponSkin(reward.skin);
       if (unlocked && window.toastManager) {
-        window.toastManager.show(`🎨 Nouveau skin débloqué: ${reward.skin}`, 'success', 4000);
+        window.toastManager.show({ message: `🎨 Nouveau skin débloqué: ${reward.skin}`, type: 'success', duration: 4000 });
       }
     }
 
     if (reward.title && window.toastManager) {
-      window.toastManager.show(`🎖️ Nouveau titre: ${reward.title}`, 'success', 4000);
+      window.toastManager.show({ message: `🎖️ Nouveau titre: ${reward.title}`, type: 'success', duration: 4000 });
     }
   }
 

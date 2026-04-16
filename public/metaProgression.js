@@ -111,8 +111,8 @@
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         const fetchOpts = { headers, signal: controller.signal };
         const [progressionRes, skillsRes] = await Promise.all([
-          fetch(`/api/progression/${this.playerId}`, fetchOpts),
-          fetch('/api/progression/skills/all', fetchOpts)
+          fetch(`/api/v1/progression/${this.playerId}`, fetchOpts),
+          fetch('/api/v1/progression/skills/all', fetchOpts)
         ]);
         clearTimeout(timeoutId);
 
@@ -231,7 +231,7 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const res = await fetch(`/api/progression/${this.playerId}/unlock-skill`, {
+        const res = await fetch(`/api/v1/progression/${this.playerId}/unlock-skill`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ skillId })
@@ -243,13 +243,13 @@
         }
 
         if (window.toastManager) {
-          window.toastManager.show('✨ Compétence débloquée!', 'success', 2500);
+          window.toastManager.show({ message: '✨ Compétence débloquée!', type: 'success', duration: 2500 });
         }
         await this.loadData();
       } catch (error) {
         console.error('Unlock failed', error);
         if (window.toastManager) {
-          window.toastManager.show('❌ Déblocage impossible', 'error', 2500);
+          window.toastManager.show({ message: '❌ Déblocage impossible', type: 'error', duration: 2500 });
         }
       }
     }
@@ -266,7 +266,7 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const res = await fetch(`/api/progression/${this.playerId}/prestige`, {
+        const res = await fetch(`/api/v1/progression/${this.playerId}/prestige`, {
           method: 'POST',
           headers
         });
@@ -276,13 +276,13 @@
         }
 
         if (window.toastManager) {
-          window.toastManager.show('🌟 Prestige activé!', 'success', 3000);
+          window.toastManager.show({ message: '🌟 Prestige activé!', type: 'success', duration: 3000 });
         }
         await this.loadData();
       } catch (error) {
         console.error('Prestige failed', error);
         if (window.toastManager) {
-          window.toastManager.show('⚠️ Prestige indisponible', 'warning', 2500);
+          window.toastManager.show({ message: '⚠️ Prestige indisponible', type: 'warning', duration: 2500 });
         }
       }
     }

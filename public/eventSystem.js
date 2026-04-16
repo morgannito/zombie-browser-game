@@ -255,11 +255,7 @@ class EventSystem {
 
     // Toast aussi
     if (window.toastManager) {
-      window.toastManager.show(
-        `${event.icon} ÉVÉNEMENT: ${event.name}`,
-        'event',
-        7000
-      );
+      window.toastManager.show({ message: `${event.icon} ÉVÉNEMENT: ${event.name}`, type: 'event', duration: 7000 });
     }
   }
 

@@ -92,7 +92,7 @@ function initCameraRecenter() {
     if (!window.gameEngine) {
       console.error('[Camera Recenter] gameEngine not found');
       if (window.toastManager) {
-        window.toastManager.show('❌ Jeu non initialisé', 'error', 2000);
+        window.toastManager.show({ message: '❌ Jeu non initialisé', type: 'error', duration: 2000 });
       }
       return;
     }
@@ -100,7 +100,7 @@ function initCameraRecenter() {
     if (!window.gameEngine.camera) {
       console.error('[Camera Recenter] camera not found');
       if (window.toastManager) {
-        window.toastManager.show('❌ Caméra non disponible', 'error', 2000);
+        window.toastManager.show({ message: '❌ Caméra non disponible', type: 'error', duration: 2000 });
       }
       return;
     }
@@ -108,7 +108,7 @@ function initCameraRecenter() {
     if (!window.gameState) {
       console.error('[Camera Recenter] gameState not found');
       if (window.toastManager) {
-        window.toastManager.show('❌ État de jeu non disponible', 'error', 2000);
+        window.toastManager.show({ message: '❌ État de jeu non disponible', type: 'error', duration: 2000 });
       }
       return;
     }
@@ -117,7 +117,7 @@ function initCameraRecenter() {
     if (!player) {
       console.warn('[Camera Recenter] Player not found');
       if (window.toastManager) {
-        window.toastManager.show('⚠️ Joueur non trouvé', 'warning', 2000);
+        window.toastManager.show({ message: '⚠️ Joueur non trouvé', type: 'warning', duration: 2000 });
       }
       return;
     }
@@ -139,7 +139,7 @@ function initCameraRecenter() {
 
     // Toast notification
     if (window.toastManager) {
-      window.toastManager.show('🎯 Caméra recentrée', 'success', 1500);
+      window.toastManager.show({ message: '🎯 Caméra recentrée', type: 'success', duration: 1500 });
     }
   });
 

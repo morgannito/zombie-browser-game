@@ -230,7 +230,7 @@
       this.activeChallenge = null;
       this.updateStatus();
       if (window.toastManager) {
-        window.toastManager.show(`💥 Pacte échoué: ${failedTitle}`, 'warning', 3000);
+        window.toastManager.show({ message: `💥 Pacte échoué: ${failedTitle}`, type: 'warning', duration: 3000 });
       }
     }
 
@@ -245,7 +245,7 @@
       }
 
       if (window.toastManager) {
-        window.toastManager.show(`🎉 Pacte rempli: ${challenge.title}`, 'success', 3500);
+        window.toastManager.show({ message: `🎉 Pacte rempli: ${challenge.title}`, type: 'success', duration: 3500 });
       }
 
       this.playSound('reward');

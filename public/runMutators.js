@@ -117,7 +117,7 @@
       if (rewardSummary.gems > 0 && window.gemSystem) {
         window.gemSystem.addGems(rewardSummary.gems, 'Mutateurs de run');
         if (window.toastManager) {
-          window.toastManager.show(`✨ Bonus mutateurs: +${rewardSummary.gems} gems`, 'success', 3500);
+          window.toastManager.show({ message: `✨ Bonus mutateurs: +${rewardSummary.gems} gems`, type: 'success', duration: 3500 });
         }
       }
 
@@ -143,7 +143,7 @@
           state.completed = true;
           state.progress = mutator.goal.target;
           if (window.toastManager) {
-            window.toastManager.show(`✅ Mutateur réussi: ${mutator.name}`, 'success', 2500);
+            window.toastManager.show({ message: `✅ Mutateur réussi: ${mutator.name}`, type: 'success', duration: 2500 });
           }
         }
 
@@ -166,7 +166,7 @@
           state.failed = true;
           changed = true;
           if (window.toastManager) {
-            window.toastManager.show(`❌ Mutateur échoué: ${mutator.name}`, 'warning', 2500);
+            window.toastManager.show({ message: `❌ Mutateur échoué: ${mutator.name}`, type: 'warning', duration: 2500 });
           }
         }
       });
@@ -242,7 +242,7 @@
 
       if (window.toastManager && metadata.wave && metadata.wave > 1) {
         const names = this.activeMutators.map((mutator) => mutator.name).join(' • ');
-        window.toastManager.show(`⚙️ Mutateurs actifs: ${names}`, 'info', 3000);
+        window.toastManager.show({ message: `⚙️ Mutateurs actifs: ${names}`, type: 'info', duration: 3000 });
       }
     }
 

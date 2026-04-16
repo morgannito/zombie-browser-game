@@ -6,7 +6,7 @@
 const logger = require('../infrastructure/logging/Logger');
 const { buildHttpContext } = require('./httpContext');
 
-const SKIPPED_PATH_PREFIXES = ['/health', '/api/metrics', '/api/v1/metrics'];
+const SKIPPED_PATH_PREFIXES = ['/health', '/api/v1/metrics'];
 
 function shouldSkipRequest(path) {
   if (!path || typeof path !== 'string') {

@@ -256,11 +256,7 @@ class SynergySystem {
   // Afficher notification de synergie
   showSynergyNotification(synergy) {
     if (window.toastManager) {
-      window.toastManager.show(
-        `⚡ SYNERGIE ACTIVÉE!\n${synergy.icon} ${synergy.name}`,
-        'synergy',
-        6000
-      );
+      window.toastManager.show({ message: `⚡ SYNERGIE ACTIVÉE!\n${synergy.icon} ${synergy.name}`, type: 'synergy', duration: 6000 });
     }
 
     // Créer popup spéciale

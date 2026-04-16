@@ -26,9 +26,9 @@ describe('accessLog middleware', () => {
 
   test('shouldSkipRequest supports health and metrics paths', () => {
     expect(shouldSkipRequest('/health')).toBe(true);
-    expect(shouldSkipRequest('/api/metrics')).toBe(true);
+    expect(shouldSkipRequest('/api/v1/metrics')).toBe(true);
     expect(shouldSkipRequest('/api/v1/metrics?full=true')).toBe(true);
-    expect(shouldSkipRequest('/api/players')).toBe(false);
+    expect(shouldSkipRequest('/api/v1/players')).toBe(false);
   });
 
   test('skips logging for health requests', () => {

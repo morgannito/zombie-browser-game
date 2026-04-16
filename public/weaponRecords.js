@@ -77,10 +77,10 @@
 
       if (window.toastManager) {
         if ((stats.wave || 0) > (prevBestWave || 0)) {
-          window.toastManager.show(`🏆 Record de vague avec ${this.formatWeapon(weapon)}!`, 'success', 3000);
+          window.toastManager.show({ message: `🏆 Record de vague avec ${this.formatWeapon(weapon)}!`, type: 'success', duration: 3000 });
           this.highlightRecords();
         } else if ((stats.score || 0) > (prevBestScore || 0)) {
-          window.toastManager.show(`✨ Nouveau record de score avec ${this.formatWeapon(weapon)}!`, 'success', 3000);
+          window.toastManager.show({ message: `✨ Nouveau record de score avec ${this.formatWeapon(weapon)}!`, type: 'success', duration: 3000 });
           this.highlightRecords();
         }
       }

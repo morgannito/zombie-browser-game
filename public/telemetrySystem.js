@@ -47,7 +47,7 @@
       safeAdd(document, 'boss_spawned', () => {
         const now = Date.now();
         if (now - this.lastBossToast > 15000 && window.toastManager) {
-          window.toastManager.show('⚔️ Boss en approche, restez focus!', 'warning', 2500);
+          window.toastManager.show({ message: '⚔️ Boss en approche, restez focus!', type: 'warning', duration: 2500 });
           this.lastBossToast = now;
         }
       });
@@ -64,14 +64,14 @@
 
       if (!this.recordHinted && wave >= record.bestWave - 2 && wave < record.bestWave) {
         if (window.toastManager) {
-          window.toastManager.show(`🔥 Plus que ${record.bestWave - wave} vagues pour battre votre record!`, 'info', 2500);
+          window.toastManager.show({ message: `🔥 Plus que ${record.bestWave - wave} vagues pour battre votre record!`, type: 'info', duration: 2500 });
         }
         this.recordHinted = true;
       }
 
       if (!this.recordBeatenNotified && wave > record.bestWave) {
         if (window.toastManager) {
-          window.toastManager.show('🏆 Nouveau record de vague en vue!', 'success', 2500);
+          window.toastManager.show({ message: '🏆 Nouveau record de vague en vue!', type: 'success', duration: 2500 });
         }
         this.recordBeatenNotified = true;
       }
@@ -99,7 +99,7 @@
       });
 
       if (near) {
-        window.toastManager.show(`⚡ Synergie proche: ${near.name}`, 'info', 2200);
+        window.toastManager.show({ message: `⚡ Synergie proche: ${near.name}`, type: 'info', duration: 2200 });
       }
     }
 
@@ -109,14 +109,14 @@
       }
 
       if (detail.isBoss) {
-        window.toastManager.show('💀 Boss éliminé! Faites monter la pression.', 'success', 2500);
+        window.toastManager.show({ message: '💀 Boss éliminé! Faites monter la pression.', type: 'success', duration: 2500 });
         return;
       }
 
       if (detail.isElite) {
         const now = Date.now();
         if (now - this.lastEliteToast > 8000) {
-          window.toastManager.show('⚡ Elite éliminé! Continuez la série.', 'info', 2000);
+          window.toastManager.show({ message: '⚡ Elite éliminé! Continuez la série.', type: 'info', duration: 2000 });
           this.lastEliteToast = now;
         }
       }

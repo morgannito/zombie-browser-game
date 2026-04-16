@@ -1,6 +1,7 @@
 /**
  * Unit tests for server/routes.js
- * Focus: mount-path wiring, legacy alias support, dbAvailable gate.
+ * Focus: mount-path wiring, dbAvailable gate. /api/v1/* only since legacy
+ * aliases were removed after client migration.
  */
 
 jest.mock('../../../infrastructure/logging/Logger', () => ({
@@ -34,17 +35,17 @@ function makeApp() {
 }
 
 describe('mountAuthRoutes', () => {
-  test('mounts v1 + legacy alias on auth router', () => {
+  test('mounts auth router under /api/v1', () => {
     const app = makeApp();
     mountAuthRoutes(app, {}, 'jwt');
     const paths = app.use.mock.calls.map(c => c[0]);
     expect(paths).toContain('/api/v1/auth');
-    expect(paths).toContain('/api/auth');
+    expect(paths).not.toContain('/api/auth');
   });
 });
 
 describe('mountDbRoutes', () => {
-  test('mounts all 4 db-dependent routes under v1 + legacy', () => {
+  test('mounts all 4 db-dependent routes under /api/v1', () => {
     const app = makeApp();
     mountDbRoutes(app, {}, () => {});
     const paths = app.use.mock.calls.map(c => c[0]);
@@ -52,8 +53,8 @@ describe('mountDbRoutes', () => {
     expect(paths).toContain('/api/v1/players');
     expect(paths).toContain('/api/v1/progression');
     expect(paths).toContain('/api/v1/achievements');
-    expect(paths).toContain('/api/leaderboard');
-    expect(paths).toContain('/api/players');
+    expect(paths).not.toContain('/api/leaderboard');
+    expect(paths).not.toContain('/api/players');
   });
 });
 
@@ -78,14 +79,14 @@ describe('mountSystemRoutes', () => {
     expect(healthCall[1]).not.toBe(mockRequireMetricsToken);
   });
 
-  test('features available on v1 and legacy paths', () => {
+  test('features mounted under /api/v1 only', () => {
     const app = makeApp();
     mountSystemRoutes(app, {
       metricsCollector: {}, memoryMonitor: {}, dbManager: {}, perfIntegration: {}
     });
     const paths = app.use.mock.calls.map(c => c[0]);
     expect(paths).toContain('/api/v1/features');
-    expect(paths).toContain('/api/features');
+    expect(paths).not.toContain('/api/features');
   });
 });
 

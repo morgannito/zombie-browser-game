@@ -248,7 +248,7 @@ class NetworkManager {
         this._resetReconnectBackoff();
         if (window.toastManager) {
           const quality = this.getConnectionQuality();
-          window.toastManager.show(`✅ Connected (${quality.text})`, 'success');
+          window.toastManager.show({ message: `✅ Connected (${quality.text})`, type: 'success' });
         }
       } else {
         // Manual reconnect path (backoff via _scheduleReconnect → socket.connect())
@@ -266,7 +266,7 @@ class NetworkManager {
           }
         }
         if (window.toastManager) {
-          window.toastManager.show('✅ Reconnected to server', 'success');
+          window.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
         }
         // Re-sync: request full authoritative state. Silent no-op if server does not support it.
         this._syncFullState();
@@ -276,14 +276,14 @@ class NetworkManager {
     this.on('connect_error', error => {
       console.error('[Socket.IO] Connection error:', error);
       if (window.toastManager) {
-        window.toastManager.show('⚠️ Connection error. Retrying...', 'warning');
+        window.toastManager.show({ message: '⚠️ Connection error. Retrying...', type: 'warning' });
       }
     });
 
     this.on('disconnect', reason => {
       console.log('[Socket.IO] Disconnected:', reason);
       if (window.toastManager) {
-        window.toastManager.show('🔌 Connexion perdue. Reconnexion en cours...', 'error');
+        window.toastManager.show({ message: '🔌 Connexion perdue. Reconnexion en cours...', type: 'error' });
       }
       // Invalidate the server-time offset: clocks may have drifted while the
       // socket was down (long suspends, OS clock change). The next server
@@ -313,7 +313,7 @@ class NetworkManager {
         }
       }
       if (window.toastManager) {
-        window.toastManager.show('✅ Reconnected to server', 'success');
+        window.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
       }
       // Re-sync: request full authoritative state. Silent no-op if server does not support it.
       this._syncFullState();
@@ -322,10 +322,7 @@ class NetworkManager {
     this.on('reconnect_attempt', attemptNumber => {
       console.log('[Socket.IO] Reconnection attempt', attemptNumber);
       if (window.toastManager) {
-        window.toastManager.show(
-          `🔄 Reconnexion en cours... (tentative ${attemptNumber})`,
-          'warning'
-        );
+        window.toastManager.show({ message: `🔄 Reconnexion en cours... (tentative ${attemptNumber})`, type: 'warning' });
       }
     });
 
@@ -336,7 +333,7 @@ class NetworkManager {
     this.on('reconnect_failed', () => {
       console.error('[Socket.IO] Reconnection failed');
       if (window.toastManager) {
-        window.toastManager.show('❌ Failed to reconnect. Please refresh.', 'error');
+        window.toastManager.show({ message: '❌ Failed to reconnect. Please refresh.', type: 'error' });
       }
       // Fall back to manual exponential backoff
       this._scheduleReconnect();
@@ -391,10 +388,7 @@ class NetworkManager {
 
     // Show notification if session was recovered
     if (data.recovered && window.toastManager) {
-      window.toastManager.show(
-        '🔄 Session restaurée ! Votre progression a été récupérée.',
-        'success'
-      );
+      window.toastManager.show({ message: '🔄 Session restaurée ! Votre progression a été récupérée.', type: 'success' });
       console.log('[Session] State successfully recovered');
     }
   }
@@ -808,7 +802,7 @@ class NetworkManager {
       }
 
       if (window.toastManager && correctionDistance > 50) {
-        window.toastManager.show('⚠️ Position corrected', 'warning');
+        window.toastManager.show({ message: '⚠️ Position corrected', type: 'warning' });
       }
     }
   }
@@ -907,7 +901,7 @@ class NetworkManager {
     if (data.success) {
       // Show success message
       if (window.toastManager) {
-        window.toastManager.show('✅ Achat réussi !', 'success', 2000);
+        window.toastManager.show({ message: '✅ Achat réussi !', type: 'success', duration: 2000 });
       }
 
       // Refresh shop if open
@@ -918,7 +912,7 @@ class NetworkManager {
       // Show error message
       if (window.toastManager) {
         const message = data.message || 'Achat impossible';
-        window.toastManager.show(`❌ ${message}`, 'error', 2500);
+        window.toastManager.show({ message: `❌ ${message}`, type: 'error', duration: 2500 });
       }
       console.warn('[Shop] Purchase failed:', data.message);
     }
@@ -939,11 +933,7 @@ class NetworkManager {
   handleSessionReplaced(data) {
     console.warn('[Socket.IO] Session replaced by another tab:', data.reason);
     if (window.toastManager) {
-      window.toastManager.show(
-        '⚠️ Connexion fermée : un autre onglet a pris le relais.',
-        'error',
-        4000
-      );
+      window.toastManager.show({ message: '⚠️ Connexion fermée : un autre onglet a pris le relais.', type: 'error', duration: 4000 });
     }
   }
 
@@ -952,10 +942,10 @@ class NetworkManager {
 
     // Show error message to user
     if (window.toastManager) {
-      window.toastManager.show(
-        '⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'),
-        'error'
-      );
+      window.toastManager.show({
+        message: '⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'),
+        type: 'error'
+      });
     }
 
     // Show alert with option to reload

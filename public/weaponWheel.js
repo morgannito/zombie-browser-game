@@ -194,7 +194,7 @@ return;
         } else {
           // Show locked message
           if (typeof ToastManager !== 'undefined') {
-            ToastManager.show('Arme verrouillée', '🔒', 'warning');
+            ToastManager.show({ message: 'Arme verrouillée', type: '🔒', duration: 'warning' });
           }
         }
       });
@@ -288,7 +288,7 @@ return;
 
     // Show toast
     if (typeof ToastManager !== 'undefined') {
-      ToastManager.show(`${weapon.icon} ${weapon.name}`, '✓', 'success');
+      ToastManager.show({ message: `${weapon.icon} ${weapon.name}`, type: '✓', duration: 'success' });
     }
 
     this.updateCurrentDisplay(index);
@@ -319,7 +319,7 @@ return;
       this.renderWeapons();
 
       if (typeof ToastManager !== 'undefined') {
-        ToastManager.show(`${weapon.icon} ${weapon.name} débloqué!`, '🔓', 'success');
+        ToastManager.show({ message: `${weapon.icon} ${weapon.name} débloqué!`, type: '🔓', duration: 'success' });
       }
     }
   }
