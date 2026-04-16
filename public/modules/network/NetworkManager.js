@@ -509,8 +509,8 @@ class NetworkManager {
         entity._serverX = entity.x;
         entity._serverY = entity.y;
         if (packetServerTime !== undefined) {
-entity._serverTime = packetServerTime;
-}
+          entity._serverTime = packetServerTime;
+        }
       }
       window.gameState.state[type][id] = entity;
     } else {
@@ -521,8 +521,8 @@ entity._serverTime = packetServerTime;
         entity._serverX = entity.x;
         entity._serverY = entity.y;
         if (packetServerTime !== undefined) {
-entity._serverTime = packetServerTime;
-}
+          entity._serverTime = packetServerTime;
+        }
       }
     }
   }
@@ -999,8 +999,8 @@ entity._serverTime = packetServerTime;
    */
   playerMoveBatch(batch) {
     if (!batch || batch.length === 0) {
-return;
-}
+      return;
+    }
     this.socket.emit('playerMoveBatch', batch);
   }
 

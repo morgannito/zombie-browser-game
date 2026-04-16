@@ -11,7 +11,18 @@ class GameEngine {
     // Store handler references for cleanup
     this.handlers = {
       resize: () => this.resizeCanvas(),
-      mousemove: null
+      mousemove: null,
+      // Debug mode toggle (F3). Stored on `this.handlers` so cleanup() can
+      // detach it — anonymous closures can't be removed.
+      debugKeydown: e => {
+        if (e.key === 'F3' && !e.repeat) {
+          if (!document.querySelector('input:focus')) {
+            e.preventDefault();
+            window.gameState.toggleDebug();
+          }
+        }
+      },
+      beforeunload: () => this.cleanup()
     };
 
     this.animationFrameId = null; // Store requestAnimationFrame ID for cleanup
@@ -26,18 +37,8 @@ class GameEngine {
     this.initializeManagers();
     this.start();
 
-    // Debug mode toggle (press F3) — was 'D' which conflicted with right-movement
-    window.addEventListener('keydown', e => {
-      if (e.key === 'F3' && !e.repeat) {
-        if (!document.querySelector('input:focus')) {
-          e.preventDefault();
-          window.gameState.toggleDebug();
-        }
-      }
-    });
-
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => this.cleanup());
+    window.addEventListener('keydown', this.handlers.debugKeydown);
+    window.addEventListener('beforeunload', this.handlers.beforeunload);
   }
 
   setupCanvas() {
@@ -146,25 +147,30 @@ class GameEngine {
     const parserOption =
       window.__msgpackEnabled && window.msgpackParser ? { parser: window.msgpackParser } : {};
 
-    const socket = io(Object.assign({
-      transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
-      upgrade: true, // Allow upgrade to WebSocket from polling (important for stability)
-      autoConnect: false, // Connect after auth/session is ready
-      reconnection: true,
-      reconnectionDelay: 500, // Faster initial reconnection
-      reconnectionDelayMax: 3000, // Reduced max delay
-      reconnectionAttempts: 10, // More attempts with shorter delays
-      timeout: 30000, // 30s timeout (balance between speed and stability)
-      auth: {
-        sessionId: window.sessionManager.getSessionId(),
-        token: window.authManager ? window.authManager.getToken() : null
-      },
-      // Enable ping/pong for latency monitoring
-      pingInterval: 10000, // Check connection every 10s
-      pingTimeout: 5000, // Wait 5s for pong response
-      rememberUpgrade: true, // Remember successful WebSocket upgrade
-      forceNew: false // Reuse existing connection when possible
-    }, parserOption));
+    const socket = io(
+      Object.assign(
+        {
+          transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+          upgrade: true, // Allow upgrade to WebSocket from polling (important for stability)
+          autoConnect: false, // Connect after auth/session is ready
+          reconnection: true,
+          reconnectionDelay: 500, // Faster initial reconnection
+          reconnectionDelayMax: 3000, // Reduced max delay
+          reconnectionAttempts: 10, // More attempts with shorter delays
+          timeout: 30000, // 30s timeout (balance between speed and stability)
+          auth: {
+            sessionId: window.sessionManager.getSessionId(),
+            token: window.authManager ? window.authManager.getToken() : null
+          },
+          // Enable ping/pong for latency monitoring
+          pingInterval: 10000, // Check connection every 10s
+          pingTimeout: 5000, // Wait 5s for pong response
+          rememberUpgrade: true, // Remember successful WebSocket upgrade
+          forceNew: false // Reuse existing connection when possible
+        },
+        parserOption
+      )
+    );
 
     // Fallback: if msgpack parser causes a handshake error, reconnect without it.
     if (parserOption.parser) {
@@ -521,6 +527,8 @@ class GameEngine {
     // Remove resize and orientation change event listeners
     window.removeEventListener('resize', this.handlers.resize);
     window.removeEventListener('orientationchange', this.handlers.resize);
+    window.removeEventListener('keydown', this.handlers.debugKeydown);
+    window.removeEventListener('beforeunload', this.handlers.beforeunload);
 
     // Remove mouse event listeners (if desktop)
     if (this.handlers.mousemove) {

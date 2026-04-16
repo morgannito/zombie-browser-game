@@ -76,6 +76,10 @@ class GameStateManager {
     // FIX: Server time synchronization for latency compensation
     this.serverTimeOffset = 0; // (serverTime - clientTime) when packet was received
     this.lastServerTime = 0; // Last received server timestamp
+    // Set true on first updateServerTime() call. Guards interpolation against
+    // running before the offset is known — otherwise renderTime is computed on
+    // raw client time while snapshots use server time, freezing entities.
+    this._serverTimeSynced = false;
 
     // CLIENT-SIDE PREDICTION: Predicted bullets for instant visual feedback
     this.predictedBullets = {};
@@ -192,10 +196,12 @@ class GameStateManager {
     const newOffset = serverTime - clientTime;
 
     // Use exponential moving average for stability (avoid jitter from network variance)
-    // Blend factor 0.2 means 20% new value, 80% old (smooth but responsive)
-    if (this.serverTimeOffset === 0) {
-      // First measurement - use directly
+    // Blend factor 0.2 means 20% new value, 80% old (smooth but responsive).
+    // Use a dedicated flag rather than `=== 0` — a near-zero offset on LAN or a
+    // post-reconnect reset would otherwise re-trigger the unsmoothed path.
+    if (!this._serverTimeSynced) {
       this.serverTimeOffset = newOffset;
+      this._serverTimeSynced = true;
     } else {
       this.serverTimeOffset = this.serverTimeOffset * 0.8 + newOffset * 0.2;
     }
@@ -228,6 +234,13 @@ class GameStateManager {
    */
   applyInterpolation() {
     if (!this.interpolation.enabled) {
+      return;
+    }
+
+    // Skip until first server time sync — otherwise getEstimatedServerTime()
+    // returns raw Date.now() while snapshots use server-stamped time, so
+    // renderTime falls outside the buffer and entities freeze on the boot frame.
+    if (!this._serverTimeSynced) {
       return;
     }
 
