@@ -76,6 +76,10 @@ class GameStateManager {
     // FIX: Server time synchronization for latency compensation
     this.serverTimeOffset = 0; // (serverTime - clientTime) when packet was received
     this.lastServerTime = 0; // Last received server timestamp
+    // Set true on first updateServerTime() call. Guards interpolation against
+    // running before the offset is known — otherwise renderTime is computed on
+    // raw client time while snapshots use server time, freezing entities.
+    this._serverTimeSynced = false;
 
     // CLIENT-SIDE PREDICTION: Predicted bullets for instant visual feedback
     this.predictedBullets = {};
@@ -192,10 +196,12 @@ class GameStateManager {
     const newOffset = serverTime - clientTime;
 
     // Use exponential moving average for stability (avoid jitter from network variance)
-    // Blend factor 0.2 means 20% new value, 80% old (smooth but responsive)
-    if (this.serverTimeOffset === 0) {
-      // First measurement - use directly
+    // Blend factor 0.2 means 20% new value, 80% old (smooth but responsive).
+    // Use a dedicated flag rather than `=== 0` — a near-zero offset on LAN or a
+    // post-reconnect reset would otherwise re-trigger the unsmoothed path.
+    if (!this._serverTimeSynced) {
       this.serverTimeOffset = newOffset;
+      this._serverTimeSynced = true;
     } else {
       this.serverTimeOffset = this.serverTimeOffset * 0.8 + newOffset * 0.2;
     }
@@ -228,6 +234,13 @@ class GameStateManager {
    */
   applyInterpolation() {
     if (!this.interpolation.enabled) {
+      return;
+    }
+
+    // Skip until first server time sync — otherwise getEstimatedServerTime()
+    // returns raw Date.now() while snapshots use server-stamped time, so
+    // renderTime falls outside the buffer and entities freeze on the boot frame.
+    if (!this._serverTimeSynced) {
       return;
     }
 
@@ -416,102 +429,102 @@ class GameStateManager {
    */
   _stepEntity(state, entity, now, _smoothFactor, skipExtrapolation) {
     // Adaptive interp delay: 100ms on stable link, 200ms when jitter > 50ms.
-    const INTERP_DELAY = this._adaptiveInterpDelay();
-    const MAX_EXTRAP_MS = 75; // cap on extrapolation when buffer is ahead of renderTime
-    // Gap threshold: if two consecutive snapshots are >200ms apart, extrapolate
-    // by velocity instead of freezing on the earlier keyframe.
-    const GAP_EXTRAP_THRESHOLD_MS = 200;
-
-    const renderTime = now - INTERP_DELAY;
+    const renderTime = now - this._adaptiveInterpDelay();
     const snaps = state.snapshots;
 
-    // ── Case 1: not enough snapshots yet — fall back to target directly ──────
+    // Buffer-empty → fall back to whatever displayX/Y we last wrote.
     if (snaps.length === 0) {
       entity.x = state.displayX;
       entity.y = state.displayY;
       return;
     }
 
-    // ── Min-buffer guard: wait for ≥3 snapshots to avoid extrapolation-only ──
-    // rendering during the first ~200ms of entity lifetime. If we have fewer,
-    // hold the last known position — far less jarring than a single-frame glide.
-    if (snaps.length < 3 && renderTime > snaps[snaps.length - 1].t) {
-      entity.x = snaps[snaps.length - 1].x;
-      entity.y = snaps[snaps.length - 1].y;
-      state.displayX = entity.x;
-      state.displayY = entity.y;
+    const newest = snaps[snaps.length - 1];
+
+    // Min-buffer guard: with <3 snapshots and renderTime past the newest one,
+    // hold position — single-frame extrapolation is more jarring than a freeze.
+    if (snaps.length < 3 && renderTime > newest.t) {
+      this._commitStep(state, entity, newest.x, newest.y);
       return;
     }
 
-    // ── Case 2: renderTime is BEFORE the oldest snapshot (buffer just seeded) ─
-    // With only 1 snapshot, holding frozen is better than nothing but still causes
-    // a visible stutter. Extrapolate with the last known velocity so the entity
-    // keeps gliding until the next snapshot arrives.
+    // renderTime is BEFORE the oldest snapshot (buffer just seeded).
     if (renderTime <= snaps[0].t) {
-      if (snaps.length === 1 && !skipExtrapolation) {
-        const overtime = Math.min(snaps[0].t - renderTime, MAX_EXTRAP_MS);
-        // Extrapolate *backward* (renderTime < snaps[0].t → negative dt)
-        const t = -overtime / 1000;
-        entity.x = snaps[0].x + state.velocityX * t;
-        entity.y = snaps[0].y + state.velocityY * t;
-      } else {
-        entity.x = snaps[0].x;
-        entity.y = snaps[0].y;
-      }
-      state.displayX = entity.x;
-      state.displayY = entity.y;
+      this._stepBeforeBuffer(state, entity, snaps, renderTime, skipExtrapolation);
       return;
     }
 
-    const last = snaps[snaps.length - 1];
-
-    // ── Case 3: renderTime is AFTER the newest snapshot — extrapolate ─────────
-    if (renderTime >= last.t) {
-      if (skipExtrapolation) {
-        entity.x = last.x;
-        entity.y = last.y;
-        state.displayX = last.x;
-        state.displayY = last.y;
-        return;
-      }
-      // Cap extrapolation to MAX_EXTRAP_MS beyond the last snapshot
-      const overtime = Math.min(renderTime - last.t, MAX_EXTRAP_MS);
-      const t = overtime / 1000;
-      entity.x = last.x + state.velocityX * t;
-      entity.y = last.y + state.velocityY * t;
-      state.displayX = entity.x;
-      state.displayY = entity.y;
+    // renderTime is AFTER the newest snapshot → extrapolate or hold.
+    if (renderTime >= newest.t) {
+      this._stepAfterBuffer(state, entity, newest, renderTime, skipExtrapolation);
       return;
     }
 
-    // ── Case 4: renderTime sits between two snapshots — interpolate ───────────
+    // renderTime sits between two snapshots — interpolate (or extrapolate
+    // across a gap, which is how we dodge the "zombie teleports on reappearance"
+    // freeze).
+    this._stepWithinBuffer(state, entity, snaps, renderTime, skipExtrapolation, newest);
+  }
+
+  _commitStep(state, entity, x, y) {
+    entity.x = x;
+    entity.y = y;
+    state.displayX = x;
+    state.displayY = y;
+  }
+
+  _stepBeforeBuffer(state, entity, snaps, renderTime, skipExtrapolation) {
+    const MAX_EXTRAP_MS = 75;
+    const first = snaps[0];
+    if (snaps.length === 1 && !skipExtrapolation) {
+      const overtime = Math.min(first.t - renderTime, MAX_EXTRAP_MS);
+      // Extrapolate *backward* (renderTime < first.t → negative dt)
+      const t = -overtime / 1000;
+      this._commitStep(state, entity, first.x + state.velocityX * t, first.y + state.velocityY * t);
+    } else {
+      this._commitStep(state, entity, first.x, first.y);
+    }
+  }
+
+  _stepAfterBuffer(state, entity, newest, renderTime, skipExtrapolation) {
+    if (skipExtrapolation) {
+      this._commitStep(state, entity, newest.x, newest.y);
+      return;
+    }
+    const MAX_EXTRAP_MS = 75;
+    const overtime = Math.min(renderTime - newest.t, MAX_EXTRAP_MS);
+    const t = overtime / 1000;
+    this._commitStep(state, entity, newest.x + state.velocityX * t, newest.y + state.velocityY * t);
+  }
+
+  _stepWithinBuffer(state, entity, snaps, renderTime, skipExtrapolation, newest) {
+    const MAX_EXTRAP_MS = 75;
+    const GAP_EXTRAP_THRESHOLD_MS = 200;
     for (let i = 1; i < snaps.length; i++) {
       const a = snaps[i - 1];
       const b = snaps[i];
-      if (renderTime >= a.t && renderTime < b.t) {
-        const span = b.t - a.t;
-        // Gap >200ms: extrapolate by velocity from 'a' instead of lerping into
-        // a stale keyframe — avoids the "zombie teleports on reappearance" freeze.
-        if (span > GAP_EXTRAP_THRESHOLD_MS && !skipExtrapolation) {
-          const elapsed = Math.min(renderTime - a.t, MAX_EXTRAP_MS);
-          entity.x = a.x + state.velocityX * (elapsed / 1000);
-          entity.y = a.y + state.velocityY * (elapsed / 1000);
-        } else {
-          const alpha = span > 0 ? (renderTime - a.t) / span : 0;
-          entity.x = a.x + (b.x - a.x) * alpha;
-          entity.y = a.y + (b.y - a.y) * alpha;
-        }
-        state.displayX = entity.x;
-        state.displayY = entity.y;
-        return;
+      if (renderTime < a.t || renderTime >= b.t) {
+        continue;
       }
+      const span = b.t - a.t;
+      // Gap >200ms: extrapolate from 'a' instead of lerping into a stale
+      // keyframe.
+      if (span > GAP_EXTRAP_THRESHOLD_MS && !skipExtrapolation) {
+        const elapsed = Math.min(renderTime - a.t, MAX_EXTRAP_MS) / 1000;
+        this._commitStep(
+          state,
+          entity,
+          a.x + state.velocityX * elapsed,
+          a.y + state.velocityY * elapsed
+        );
+      } else {
+        const alpha = span > 0 ? (renderTime - a.t) / span : 0;
+        this._commitStep(state, entity, a.x + (b.x - a.x) * alpha, a.y + (b.y - a.y) * alpha);
+      }
+      return;
     }
-
-    // Fallback (should not be reached)
-    entity.x = last.x;
-    entity.y = last.y;
-    state.displayX = last.x;
-    state.displayY = last.y;
+    // Fallback (should not be reached): pin to newest.
+    this._commitStep(state, entity, newest.x, newest.y);
   }
 
   /**

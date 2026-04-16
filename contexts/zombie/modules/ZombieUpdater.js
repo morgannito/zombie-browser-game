@@ -17,17 +17,10 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
-
-// Lazy-loaded reference for circular dependency (gameLoop <-> ZombieUpdater).
-// Static require at module top yielded undefined because gameLoop.js requires
-// this module before its own exports are populated.
-let _handlePlayerDeathProgression = null;
-function handlePlayerDeathProgression(...args) {
-  if (!_handlePlayerDeathProgression) {
-    _handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
-  }
-  return _handlePlayerDeathProgression(...args);
-}
+// Direct import — DeathProgressionHandler is a leaf module (only depends on
+// ConfigManager) so no cycle is possible here. gameLoop re-exports it, which
+// is what previously forced the lazy-load workaround.
+const { handlePlayerDeathProgression } = require('../../player/modules/DeathProgressionHandler');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 

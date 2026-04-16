@@ -3,7 +3,10 @@
  */
 
 jest.mock('../../../infrastructure/logging/Logger', () => ({
-  info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
 }));
 
 // Mock AccountProgression — constructor + domain methods
@@ -41,10 +44,12 @@ describe('AddAccountXPUseCase.execute', () => {
     await expect(uc.execute({ xpEarned: 100 })).rejects.toThrow('Player ID is required');
   });
 
-  test('throws when xpEarned is zero/negative', async () => {
+  test('returns noop when xpEarned is zero/negative (clamped, no throw)', async () => {
     const uc = new AddAccountXPUseCase(repo());
-    await expect(uc.execute({ playerId: 'p1', xpEarned: 0 })).rejects.toThrow('Valid XP amount');
-    await expect(uc.execute({ playerId: 'p1', xpEarned: -5 })).rejects.toThrow('Valid XP amount');
+    const zero = await uc.execute({ playerId: 'p1', xpEarned: 0 });
+    expect(zero).toEqual(expect.objectContaining({ success: true, levelsGained: 0, noop: true }));
+    const negative = await uc.execute({ playerId: 'p1', xpEarned: -5 });
+    expect(negative).toEqual(expect.objectContaining({ success: true, noop: true }));
   });
 
   test('creates new progression when none exists', async () => {
@@ -90,12 +95,12 @@ describe('AddAccountXPUseCase.calculateXPFromGameStats (static)', () => {
 
   test('aggregates kills, wave, level, survival, boss, combo', () => {
     const xp = AddAccountXPUseCase.calculateXPFromGameStats({
-      kills: 50,           // +500
-      wave: 5,             // +400 (wave-1 * 100)
-      level: 3,            // +100 (level-1 * 50)
+      kills: 50, // +500
+      wave: 5, // +400 (wave-1 * 100)
+      level: 3, // +100 (level-1 * 50)
       survivalTimeSeconds: 60, // +6
-      bossKills: 2,        // +1000
-      comboMax: 20         // +100
+      bossKills: 2, // +1000
+      comboMax: 20 // +100
     });
     expect(xp).toBe(100 + 500 + 400 + 100 + 6 + 1000 + 100);
   });
@@ -134,7 +139,9 @@ describe('CreatePlayerUseCase', () => {
     const r = repo();
     r.findByUsername.mockResolvedValue({ id: 'other' });
     const uc = new CreatePlayerUseCase(r);
-    await expect(uc.execute({ id: 'uuid', username: 'bob' })).rejects.toThrow('Username already taken');
+    await expect(uc.execute({ id: 'uuid', username: 'bob' })).rejects.toThrow(
+      'Username already taken'
+    );
   });
 
   test('creates player when valid + unused', async () => {
@@ -149,24 +156,30 @@ describe('CreatePlayerUseCase', () => {
 describe('BuyUpgradeUseCase', () => {
   function upgradesRepo() {
     return {
-      getOrCreate: jest.fn(() => Promise.resolve({
-        isMaxLevel: jest.fn(() => false),
-        upgrade: jest.fn(),
-        getLevel: jest.fn(() => 1)
-      })),
+      getOrCreate: jest.fn(() =>
+        Promise.resolve({
+          isMaxLevel: jest.fn(() => false),
+          upgrade: jest.fn(),
+          getLevel: jest.fn(() => 1)
+        })
+      ),
       update: jest.fn(() => Promise.resolve())
     };
   }
 
   test('rejects invalid upgrade names', async () => {
     const uc = new BuyUpgradeUseCase(upgradesRepo());
-    await expect(uc.execute({ playerId: 'p1', upgradeName: 'unknown' })).rejects.toThrow('Invalid upgrade name');
+    await expect(uc.execute({ playerId: 'p1', upgradeName: 'unknown' })).rejects.toThrow(
+      'Invalid upgrade name'
+    );
   });
 
   test('accepts the 4 valid upgrade names', async () => {
     const uc = new BuyUpgradeUseCase(upgradesRepo());
     for (const name of ['maxHealth', 'damage', 'speed', 'fireRate']) {
-      await expect(uc.execute({ playerId: 'p1', upgradeName: name, cost: 10 })).resolves.toBeDefined();
+      await expect(
+        uc.execute({ playerId: 'p1', upgradeName: name, cost: 10 })
+      ).resolves.toBeDefined();
     }
   });
 
@@ -178,7 +191,9 @@ describe('BuyUpgradeUseCase', () => {
       getLevel: jest.fn(() => 10)
     });
     const uc = new BuyUpgradeUseCase(r);
-    await expect(uc.execute({ playerId: 'p1', upgradeName: 'damage' })).rejects.toThrow('already at max level');
+    await expect(uc.execute({ playerId: 'p1', upgradeName: 'damage' })).rejects.toThrow(
+      'already at max level'
+    );
   });
 
   test('applies upgrade and persists', async () => {

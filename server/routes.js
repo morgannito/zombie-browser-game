@@ -13,6 +13,7 @@ const initMetricsRoutes = require('../transport/http/metrics');
 const initAdminStatsRoute = require('../transport/http/adminStats');
 const initLeaderboardRoutes = require('../transport/http/leaderboard');
 const initPlayersRoutes = require('../transport/http/players');
+const initClientErrorRoutes = require('../transport/http/clientError');
 const featuresRoutes = require('../transport/http/features');
 
 function mountAuthRoutes(app, container, jwtService) {
@@ -47,6 +48,11 @@ function mountSystemRoutes(app, deps) {
   app.use('/api/metrics', requireMetricsToken, metricsRoutes);
   app.use('/api/v1/features', featuresRoutes);
   app.use('/api/features', featuresRoutes);
+  // Client error ingestion — unauthenticated (clients need to report even
+  // pre-auth crashes) but rate-limited inside the route itself.
+  const clientErrorRoutes = initClientErrorRoutes();
+  app.use('/api/v1/client-error', clientErrorRoutes);
+  app.use('/api/client-error', clientErrorRoutes);
   app.use(
     '/admin/stats',
     requireMetricsToken,

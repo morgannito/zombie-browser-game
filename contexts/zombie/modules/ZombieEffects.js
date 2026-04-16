@@ -6,25 +6,12 @@
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
-
-// Lazy-loaded references for circular deps — static top-level requires yielded
-// undefined because gameLoop and WaveManager require this module before their
-// own exports are populated.
-let _handlePlayerDeathProgression = null;
-function handlePlayerDeathProgression(...args) {
-  if (!_handlePlayerDeathProgression) {
-    _handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
-  }
-  return _handlePlayerDeathProgression(...args);
-}
-
-let _handleNewWave = null;
-function handleNewWave(...args) {
-  if (!_handleNewWave) {
-    _handleNewWave = require('../../wave/modules/WaveManager').handleNewWave;
-  }
-  return _handleNewWave(...args);
-}
+// Direct imports — DeathProgressionHandler and WaveManager are both leaf
+// modules (only depend on ConfigManager), so no cycle is possible here.
+// gameLoop re-exports handlePlayerDeathProgression, which previously forced
+// the lazy-load workaround.
+const { handlePlayerDeathProgression } = require('../../player/modules/DeathProgressionHandler');
+const { handleNewWave } = require('../../wave/modules/WaveManager');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
