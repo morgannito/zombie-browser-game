@@ -33,6 +33,7 @@ const { registerSetNicknameHandler } = require('./handlers/setNickname');
 const { registerSpawnProtectionHandlers } = require('./handlers/spawnProtection');
 const { registerPingHandler } = require('./handlers/ping');
 const { registerDisconnectHandler } = require('./handlers/disconnect');
+const { registerRequestFullStateHandler } = require('./handlers/requestFullState');
 
 const { CONFIG, WEAPONS, POWERUP_TYPES, ZOMBIE_TYPES, SHOP_ITEMS } = ConfigManager;
 
@@ -188,6 +189,7 @@ function registerAllHandlers(socket, deps) {
   registerSpawnProtectionHandlers(socket, gameState);
   registerShopHandlers(socket, gameState);
   registerPingHandler(socket);
+  registerRequestFullStateHandler(socket, gameState, emitInitSnapshot);
   // socket.io has its own ping/pong; the legacy custom heartbeat used to
   // kick legitimate clients after 10s. Stub kept for disconnect signature.
   const stopZombieHeartbeat = () => {};
@@ -262,4 +264,4 @@ function initSocketHandlers(
   };
 }
 
-module.exports = { initSocketHandlers, stopSessionCleanupInterval };
+module.exports = { initSocketHandlers, stopSessionCleanupInterval, emitInitSnapshot };

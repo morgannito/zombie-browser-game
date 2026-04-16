@@ -26,6 +26,7 @@ const SOCKET_EVENTS = {
     END_SPAWN_PROTECTION: 'endSpawnProtection',
     PING: 'app:ping', // BUGFIX: namespaced to avoid Socket.IO heartbeat collision
     ADMIN_COMMAND: 'adminCommand',
+    REQUEST_FULL_STATE: 'requestFullState',
     // Leaderboard (public client)
     REQUEST_LEADERBOARD: 'request_leaderboard',
     SUBMIT_SCORE: 'submit_score'
