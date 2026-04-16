@@ -138,10 +138,10 @@ describe('GET /health', () => {
   });
 });
 
-describe('GET /api/metrics', () => {
+describe('GET /api/v1/metrics', () => {
   test('test_metrics_endpoint_not_500', async () => {
     // Arrange
-    const url = `${BASE_URL}/api/metrics`;
+    const url = `${BASE_URL}/api/v1/metrics`;
 
     // Act
     const { status } = await httpGet(url);
@@ -152,7 +152,7 @@ describe('GET /api/metrics', () => {
 
   test('test_metrics_endpoint_returns_200_or_401', async () => {
     // Arrange
-    const url = `${BASE_URL}/api/metrics`;
+    const url = `${BASE_URL}/api/v1/metrics`;
 
     // Act
     const { status } = await httpGet(url);
