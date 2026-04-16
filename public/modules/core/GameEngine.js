@@ -42,13 +42,9 @@ class GameEngine {
 
   setupCanvas() {
     this.canvas = document.getElementById('gameCanvas');
-    // willReadFrequently: false — we never call getImageData on the main canvas,
-    // so the browser should keep it GPU-accelerated (avoids software fallback).
-    this.ctx = this.canvas.getContext('2d', { willReadFrequently: false });
-    // Pixel-art sprites: disable bilinear interpolation for crisp rendering.
-    this.ctx.imageSmoothingEnabled = false;
+    this.ctx = this.canvas.getContext('2d');
     this.minimapCanvas = document.getElementById('minimap');
-    this.minimapCtx = this.minimapCanvas.getContext('2d', { willReadFrequently: false });
+    this.minimapCtx = this.minimapCanvas.getContext('2d');
 
     // Resize canvas
     this.resizeCanvas();
@@ -75,11 +71,6 @@ class GameEngine {
     // Set actual size in memory (scaled for Retina/high-DPI displays + performance)
     this.canvas.width = window.innerWidth * pixelRatio;
     this.canvas.height = window.innerHeight * pixelRatio;
-
-    // Re-apply after resize (canvas resize resets all context state)
-    if (this.ctx) {
-      this.ctx.imageSmoothingEnabled = false;
-    }
 
     // Note: Pixel ratio scaling is applied in the render() method to avoid accumulation
 

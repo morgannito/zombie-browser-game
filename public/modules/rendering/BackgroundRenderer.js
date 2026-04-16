@@ -52,7 +52,7 @@ class BackgroundRenderer {
     this.gridCanvas = document.createElement('canvas');
     this.gridCanvas.width = config.ROOM_WIDTH;
     this.gridCanvas.height = config.ROOM_HEIGHT;
-    const gridCtx = this.gridCanvas.getContext('2d', { willReadFrequently: false });
+    const gridCtx = this.gridCanvas.getContext('2d');
 
     gridCtx.strokeStyle = '#252541';
     gridCtx.lineWidth = 1;
