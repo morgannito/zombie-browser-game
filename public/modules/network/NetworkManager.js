@@ -3,8 +3,13 @@
  * Handles Socket.IO communication with the game server
  * @module NetworkManager
  * @author Claude Code
- * @version 2.0.0
+ * @version 2.1.0 — perf/network-manager-overhaul
  */
+
+// Angle dequantisation constant: byte (0-255) → radians.
+// Matches server quantiseAngle: byte = round(normalised / 2π × 255).
+// Defined once at module level — not re-created on every delta handler call.
+const ANGLE_TO_RAD = (Math.PI * 2) / 255;
 
 class NetworkManager {
   constructor(socket) {
@@ -473,6 +478,51 @@ class NetworkManager {
     }
   }
 
+  /**
+   * Apply a delta patch for the local player (client-prediction path).
+   * Never overwrites x/y/angle — those stay client-predicted.
+   * @private
+   */
+  _applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState) {
+    if (isNew) {
+      window.gameState.state[type][id] = patch;
+    } else {
+      Object.assign(window.gameState.state[type][id] || {}, patch);
+    }
+    // Always restore client-predicted position/angle
+    const e = window.gameState.state[type][id];
+    e.x = localPlayerState.x;
+    e.y = localPlayerState.y;
+    e.angle = localPlayerState.angle;
+  }
+
+  /**
+   * Apply a delta patch for a non-local entity (merge or init).
+   * Stamps _serverX/_serverY/_serverTime when position changes (for interpolation).
+   * @private
+   */
+  _applyEntityPatch(type, id, patch, isNew, packetServerTime) {
+    if (isNew || !window.gameState.state[type][id]) {
+      const entity = Object.assign({}, patch);
+      delete entity._new;
+      if (entity.x !== undefined) {
+        entity._serverX = entity.x;
+        entity._serverY = entity.y;
+        if (packetServerTime !== undefined) entity._serverTime = packetServerTime;
+      }
+      window.gameState.state[type][id] = entity;
+    } else {
+      const entity = window.gameState.state[type][id];
+      const hadPosition = patch.x !== undefined;
+      Object.assign(entity, patch);
+      if (hadPosition) {
+        entity._serverX = entity.x;
+        entity._serverY = entity.y;
+        if (packetServerTime !== undefined) entity._serverTime = packetServerTime;
+      }
+    }
+  }
+
   handleGameStateDelta(delta) {
     // Track previous health for damage detection (SCREEN EFFECTS)
     let prevHealth = null;
@@ -501,17 +551,15 @@ class NetworkManager {
     // snapshot gets a consistent authoritative timestamp.
     const packetServerTime = delta.serverTime || undefined;
 
-    // Angle dequantisation constant: byte (0-255) → radians
-    // Matches server quantiseAngle: byte = round(normalised / 2π × 255)
-    const ANGLE_TO_RAD = (Math.PI * 2) / 255;
-
-    // Apply delta updates
+    // Apply delta updates — for...in avoids Object.entries array allocations
     if (delta.updated) {
-      Object.entries(delta.updated).forEach(([type, entities]) => {
+      for (const type in delta.updated) {
         if (!window.gameState.state[type]) {
           window.gameState.state[type] = {};
         }
-        Object.entries(entities).forEach(([id, patch]) => {
+        const entities = delta.updated[type];
+        for (const id in entities) {
+          const patch = entities[id];
           // Dequantise angle if present (server sends 0-255 byte)
           // Do this before merging so the stored value is always in radians
           if (patch.angle !== undefined) {
@@ -523,62 +571,26 @@ class NetworkManager {
           // For local player: only update non-position attributes (health, etc.)
           // Position is handled by client prediction
           if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
-            if (isNew) {
-              // Full replace on first appearance — then restore predicted position
-              window.gameState.state[type][id] = patch;
-            } else {
-              // Partial merge: only apply the changed fields
-              Object.assign(window.gameState.state[type][id] || {}, patch);
-            }
-            // Always restore client-predicted position/angle
-            window.gameState.state[type][id].x = localPlayerState.x;
-            window.gameState.state[type][id].y = localPlayerState.y;
-            window.gameState.state[type][id].angle = localPlayerState.angle;
+            this._applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState);
           } else {
-            // For other entities: merge patch into existing state (or init from patch)
-            if (isNew || !window.gameState.state[type][id]) {
-              // First time: full replace — remove internal _new flag
-              const entity = Object.assign({}, patch);
-              delete entity._new;
-              // Stamp authoritative server coords for interpolation
-              if (entity.x !== undefined) {
-                entity._serverX = entity.x;
-                entity._serverY = entity.y;
-                if (packetServerTime !== undefined) {
-                  entity._serverTime = packetServerTime;
-                }
-              }
-              window.gameState.state[type][id] = entity;
-            } else {
-              // Partial merge: apply only changed fields
-              const entity = window.gameState.state[type][id];
-              // Track if position changed (for interpolation stamp)
-              const hadPosition = patch.x !== undefined;
-              Object.assign(entity, patch);
-              if (hadPosition) {
-                entity._serverX = entity.x;
-                entity._serverY = entity.y;
-                if (packetServerTime !== undefined) {
-                  entity._serverTime = packetServerTime;
-                }
-              }
-            }
+            this._applyEntityPatch(type, id, patch, isNew, packetServerTime);
           }
           // Mark entity as seen to prevent orphan cleanup
           window.gameState.markEntitySeen(type, id);
-        });
-      });
+        }
+      }
     }
 
-    // Remove deleted entities
+    // Remove deleted entities — for...in avoids Object.entries array allocations
     if (delta.removed) {
-      Object.entries(delta.removed).forEach(([type, ids]) => {
+      for (const type in delta.removed) {
         if (window.gameState.state[type]) {
-          ids.forEach(id => {
-            delete window.gameState.state[type][id];
-          });
+          const ids = delta.removed[type];
+          for (let i = 0; i < ids.length; i++) {
+            delete window.gameState.state[type][ids[i]];
+          }
         }
-      });
+      }
     }
 
     // Update metadata
