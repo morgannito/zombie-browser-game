@@ -29,7 +29,7 @@ function makeGameState(players, zombies = {}) {
 }
 
 function makeMockIo(sockets = []) {
-  const socketMap = new Map(sockets.map((s) => [s.id, s]));
+  const socketMap = new Map(sockets.map(s => [s.id, s]));
   return {
     emit: jest.fn(),
     sockets: {
@@ -53,12 +53,29 @@ const PLAYER_B_ID = 'playerB';
 const playerA = { id: PLAYER_A_ID, x: 0, y: 0, health: 100 };
 const playerB = { id: PLAYER_B_ID, x: 10000, y: 10000, health: 100 };
 
+// AOI filtering only activates with ≥5 concurrent players (small-lobby fast-path
+// bypasses it). Pad with three idle players parked off-grid so they do not
+// influence A/B AOI windows.
+const PADDING_PLAYERS = {
+  pad1: { id: 'pad1', x: -50000, y: -50000, health: 100 },
+  pad2: { id: 'pad2', x: -50000, y: 50000, health: 100 },
+  pad3: { id: 'pad3', x: 50000, y: -50000, health: 100 }
+};
+
 // z1: near player A (within AOI)
 const z1 = { id: 'z1', x: 100, y: 100, health: 50 };
 // z2: near player B (far from A)
 const z2 = { id: 'z2', x: 10100, y: 10100, health: 50 };
 // z3: far from both
 const z3 = { id: 'z3', x: 50000, y: 50000, health: 50 };
+
+function makePlayersFixture() {
+  return {
+    [PLAYER_A_ID]: playerA,
+    [PLAYER_B_ID]: playerB,
+    ...PADDING_PLAYERS
+  };
+}
 
 // ---------------------------------------------------------------------------
 // AOI constant exports
@@ -84,10 +101,7 @@ describe('_buildPublicStateForPlayer', () => {
   let nm;
 
   beforeEach(() => {
-    const gameState = makeGameState(
-      { [PLAYER_A_ID]: playerA, [PLAYER_B_ID]: playerB },
-      { z1, z2, z3 }
-    );
+    const gameState = makeGameState(makePlayersFixture(), { z1, z2, z3 });
     nm = new NetworkManager(makeMockIo(), gameState);
   });
 
@@ -146,13 +160,13 @@ describe('emitGameState — per-player AOI filtering', () => {
 
     socketA = makeSocket(PLAYER_A_ID);
     socketB = makeSocket(PLAYER_B_ID);
+    const padSocket1 = makeSocket('pad1');
+    const padSocket2 = makeSocket('pad2');
+    const padSocket3 = makeSocket('pad3');
 
-    const gameState = makeGameState(
-      { [PLAYER_A_ID]: playerA, [PLAYER_B_ID]: playerB },
-      { z1, z2, z3 }
-    );
+    const gameState = makeGameState(makePlayersFixture(), { z1, z2, z3 });
 
-    mockIo = makeMockIo([socketA, socketB]);
+    mockIo = makeMockIo([socketA, socketB, padSocket1, padSocket2, padSocket3]);
     nm = new NetworkManager(mockIo, gameState);
     // Force full state on first call
     nm.fullStateCounter = nm.FULL_STATE_INTERVAL - 1;
@@ -206,14 +220,14 @@ describe('emitGameState — per-player AOI filtering', () => {
     nm.gameState.zombies.z1 = { ...z1, x: 110 };
 
     nm.emitGameState(); // delta tick
-    const deltaCall = socketA.emit.mock.calls.find((c) => c[0] === 'gameStateDelta');
+    const deltaCall = socketA.emit.mock.calls.find(c => c[0] === 'gameStateDelta');
     expect(deltaCall).toBeDefined();
   });
 
   test('cleanupPlayer removes per-player previous state', () => {
     nm.emitGameState();
-    expect(nm.playerPreviousStates[PLAYER_A_ID]).toBeDefined();
+    expect(nm.playerPreviousStates.get(PLAYER_A_ID)).toBeDefined();
     nm.cleanupPlayer(PLAYER_A_ID);
-    expect(nm.playerPreviousStates[PLAYER_A_ID]).toBeUndefined();
+    expect(nm.playerPreviousStates.get(PLAYER_A_ID)).toBeUndefined();
   });
 });

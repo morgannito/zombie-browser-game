@@ -285,6 +285,13 @@ class NetworkManager {
       if (window.toastManager) {
         window.toastManager.show('🔌 Connexion perdue. Reconnexion en cours...', 'error');
       }
+      // Invalidate the server-time offset: clocks may have drifted while the
+      // socket was down (long suspends, OS clock change). The next server
+      // packet after reconnect will re-prime via updateServerTime().
+      if (window.gameState && typeof window.gameState === 'object') {
+        window.gameState._serverTimeSynced = false;
+        window.gameState.serverTimeOffset = 0;
+      }
       // Trigger backoff reconnect when socket won't auto-reconnect
       const noAutoReconnect = ['io server disconnect', 'transport close', 'transport error'];
       if (noAutoReconnect.includes(reason)) {
@@ -527,175 +534,189 @@ class NetworkManager {
     }
   }
 
-  handleGameStateDelta(delta) {
-    // Track previous health for damage detection (SCREEN EFFECTS)
-    let prevHealth = null;
-    let prevMaxHealth = null;
-
-    // ALWAYS save local player position for client prediction (except right after reconnect)
-    let localPlayerState = null;
+  /**
+   * Capture local player pre-delta snapshot for client prediction + damage detect.
+   * Returns null when there's no local player yet or right after a reconnect
+   * (position must come from server in that case).
+   * @returns {{localPlayerState: ?{x,y,angle}, prevHealth: ?number, prevMaxHealth: ?number}}
+   */
+  _captureLocalPlayerSnapshot() {
+    const snapshot = { localPlayerState: null, prevHealth: null, prevMaxHealth: null };
     if (
-      !this.justReconnected &&
-      window.gameState.state &&
-      window.gameState.state.players &&
-      window.gameState.state.players[window.gameState.playerId]
+      this.justReconnected ||
+      !window.gameState.state ||
+      !window.gameState.state.players ||
+      !window.gameState.state.players[window.gameState.playerId]
     ) {
-      const localPlayer = window.gameState.state.players[window.gameState.playerId];
-      localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
-      prevHealth = localPlayer.health;
-      prevMaxHealth = localPlayer.maxHealth;
+      return snapshot;
     }
+    const localPlayer = window.gameState.state.players[window.gameState.playerId];
+    snapshot.localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
+    snapshot.prevHealth = localPlayer.health;
+    snapshot.prevMaxHealth = localPlayer.maxHealth;
+    return snapshot;
+  }
+
+  /**
+   * Apply all updated-entity patches from the delta, respecting the local-player
+   * prediction carve-out and dequantising angles.
+   */
+  _applyDeltaUpdates(updatedByType, localPlayerState, packetServerTime) {
+    if (!updatedByType) {
+      return;
+    }
+    for (const type in updatedByType) {
+      if (!window.gameState.state[type]) {
+        window.gameState.state[type] = {};
+      }
+      const entities = updatedByType[type];
+      for (const id in entities) {
+        const patch = entities[id];
+        // Dequantise angle if present (server sends 0-255 byte)
+        // Do this before merging so the stored value is always in radians
+        if (patch.angle !== undefined) {
+          patch.angle = patch.angle * ANGLE_TO_RAD;
+        }
+        const isNew = patch._new === true;
+        if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
+          this._applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState);
+        } else {
+          this._applyEntityPatch(type, id, patch, isNew, packetServerTime);
+        }
+        window.gameState.markEntitySeen(type, id);
+      }
+    }
+  }
+
+  _applyDeltaRemovals(removedByType) {
+    if (!removedByType) {
+      return;
+    }
+    for (const type in removedByType) {
+      if (!window.gameState.state[type]) {
+        continue;
+      }
+      const ids = removedByType[type];
+      for (let i = 0; i < ids.length; i++) {
+        delete window.gameState.state[type][ids[i]];
+      }
+    }
+  }
+
+  _applyDeltaMetadata(meta) {
+    if (!meta) {
+      return;
+    }
+    if (meta.wave !== undefined) {
+      window.gameState.state.wave = meta.wave;
+    }
+    if (meta.walls !== undefined) {
+      window.gameState.state.walls = meta.walls;
+    }
+    if (meta.currentRoom !== undefined) {
+      window.gameState.state.currentRoom = meta.currentRoom;
+    }
+    if (meta.bossSpawned !== undefined) {
+      window.gameState.state.bossSpawned = meta.bossSpawned;
+    }
+  }
+
+  /**
+   * Warn on >500px desync but NEVER snap — anti-cheat uses positionCorrection.
+   */
+  _checkLocalPlayerDesync(delta, localPlayerState) {
+    if (
+      !localPlayerState ||
+      !delta.updated ||
+      !delta.updated.players ||
+      !delta.updated.players[window.gameState.playerId]
+    ) {
+      return;
+    }
+    const serverPlayer = delta.updated.players[window.gameState.playerId];
+    const dx = localPlayerState.x - serverPlayer.x;
+    const dy = localPlayerState.y - serverPlayer.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance > 500) {
+      console.warn(
+        '[DESYNC] distance=' +
+          distance.toFixed(0) +
+          'px local=(' +
+          localPlayerState.x.toFixed(0) +
+          ',' +
+          localPlayerState.y.toFixed(0) +
+          ') server=(' +
+          serverPlayer.x.toFixed(0) +
+          ',' +
+          serverPlayer.y.toFixed(0) +
+          ') — ignored, keeping client prediction'
+      );
+    }
+  }
+
+  /**
+   * Emit screen-flash on damage and stop heartbeat on death.
+   */
+  _detectLocalPlayerDamage(prevHealth, prevMaxHealth) {
+    if (
+      prevHealth === null ||
+      prevMaxHealth === null ||
+      !window.gameState.state.players ||
+      !window.gameState.state.players[window.gameState.playerId]
+    ) {
+      return;
+    }
+    const updatedPlayer = window.gameState.state.players[window.gameState.playerId];
+    if (updatedPlayer.health < prevHealth && updatedPlayer.alive && window.screenEffects) {
+      const damageAmount = prevHealth - updatedPlayer.health;
+      window.screenEffects.onPlayerDamage(damageAmount / prevMaxHealth);
+    }
+    if (!updatedPlayer.alive && window.advancedAudio) {
+      window.advancedAudio.stopLowHealthHeartbeat();
+    }
+  }
+
+  _detectBossDeath(delta) {
+    if (!window.screenEffects) {
+      return;
+    }
+    if (
+      delta.meta &&
+      delta.meta.bossSpawned === false &&
+      window.gameState.state.bossSpawned === true
+    ) {
+      window.screenEffects.onBossDeath();
+    }
+  }
+
+  handleGameStateDelta(delta) {
+    const { localPlayerState, prevHealth, prevMaxHealth } = this._captureLocalPlayerSnapshot();
 
     // FIX: Update server time offset for latency compensation
     if (delta.serverTime) {
       window.gameState.updateServerTime(delta.serverTime);
     }
-
     // Capture serverTime once for the whole delta batch so each entity
     // snapshot gets a consistent authoritative timestamp.
     const packetServerTime = delta.serverTime || undefined;
 
-    // Apply delta updates — for...in avoids Object.entries array allocations
-    if (delta.updated) {
-      for (const type in delta.updated) {
-        if (!window.gameState.state[type]) {
-          window.gameState.state[type] = {};
-        }
-        const entities = delta.updated[type];
-        for (const id in entities) {
-          const patch = entities[id];
-          // Dequantise angle if present (server sends 0-255 byte)
-          // Do this before merging so the stored value is always in radians
-          if (patch.angle !== undefined) {
-            patch.angle = patch.angle * ANGLE_TO_RAD;
-          }
-
-          const isNew = patch._new === true;
-
-          // For local player: only update non-position attributes (health, etc.)
-          // Position is handled by client prediction
-          if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
-            this._applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState);
-          } else {
-            this._applyEntityPatch(type, id, patch, isNew, packetServerTime);
-          }
-          // Mark entity as seen to prevent orphan cleanup
-          window.gameState.markEntitySeen(type, id);
-        }
-      }
-    }
-
-    // Remove deleted entities — for...in avoids Object.entries array allocations
-    if (delta.removed) {
-      for (const type in delta.removed) {
-        if (window.gameState.state[type]) {
-          const ids = delta.removed[type];
-          for (let i = 0; i < ids.length; i++) {
-            delete window.gameState.state[type][ids[i]];
-          }
-        }
-      }
-    }
-
-    // Update metadata
-    if (delta.meta) {
-      if (delta.meta.wave !== undefined) {
-        window.gameState.state.wave = delta.meta.wave;
-      }
-      if (delta.meta.walls !== undefined) {
-        window.gameState.state.walls = delta.meta.walls;
-      }
-      if (delta.meta.currentRoom !== undefined) {
-        window.gameState.state.currentRoom = delta.meta.currentRoom;
-      }
-      if (delta.meta.bossSpawned !== undefined) {
-        window.gameState.state.bossSpawned = delta.meta.bossSpawned;
-      }
-    }
+    this._applyDeltaUpdates(delta.updated, localPlayerState, packetServerTime);
+    this._applyDeltaRemovals(delta.removed);
+    this._applyDeltaMetadata(delta.meta);
 
     if (window.biomeSystem && window.biomeSystem.applyToGameState) {
       window.biomeSystem.applyToGameState();
     }
 
-    // Server reconciliation: check if server position differs significantly.
-    // If the server echoes lastAckSequence, replay unacknowledged inputs on top
-    // of the server position to get a reconciled position (client-side prediction).
-    if (
-      localPlayerState &&
-      delta.updated &&
-      delta.updated.players &&
-      delta.updated.players[window.gameState.playerId]
-    ) {
-      const serverPlayer = delta.updated.players[window.gameState.playerId];
-      const dx = localPlayerState.x - serverPlayer.x;
-      const dy = localPlayerState.y - serverPlayer.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+    this._checkLocalPlayerDesync(delta, localPlayerState);
 
-      // Never snap to server on delta — anti-cheat uses positionCorrection event.
-      if (distance > 500) {
-        console.warn(
-          '[DESYNC] distance=' +
-            distance.toFixed(0) +
-            'px local=(' +
-            localPlayerState.x.toFixed(0) +
-            ',' +
-            localPlayerState.y.toFixed(0) +
-            ') server=(' +
-            serverPlayer.x.toFixed(0) +
-            ',' +
-            serverPlayer.y.toFixed(0) +
-            ') — ignored, keeping client prediction'
-        );
-      }
-      // All delta cases trust client prediction for the local player.
-    }
-
-    // Clear reconnection flag after first delta update
     if (this.justReconnected) {
       console.log('[Socket.IO] Position resynchronized after reconnection (delta)');
       this.justReconnected = false;
     }
 
-    // Detect damage to player and trigger screen flash (SCREEN EFFECTS)
-    if (
-      prevHealth !== null &&
-      prevMaxHealth !== null &&
-      window.gameState.state.players &&
-      window.gameState.state.players[window.gameState.playerId]
-    ) {
-      const updatedPlayer = window.gameState.state.players[window.gameState.playerId];
-      if (updatedPlayer.health < prevHealth && updatedPlayer.alive) {
-        const damageAmount = prevHealth - updatedPlayer.health;
-        const damagePercent = damageAmount / prevMaxHealth;
-        if (window.screenEffects) {
-          window.screenEffects.onPlayerDamage(damagePercent);
-        }
-      }
-      // Stop heartbeat on death
-      if (!updatedPlayer.alive && window.advancedAudio) {
-        window.advancedAudio.stopLowHealthHeartbeat();
-      }
-    }
-
-    // Detect boss death for slow motion effect (SCREEN EFFECTS)
-    if (delta.removed && delta.removed.zombies && window.screenEffects) {
-      // Check if any removed zombie was a boss
-      delta.removed.zombies.forEach(_zombieId => {
-        // We need to check if it was a boss before removal
-        // The server should send a specific event for boss death, but we can also detect it here
-        // For now, we'll rely on the bossSpawned meta flag change
-      });
-    }
-
-    // Detect boss death via bossSpawned flag change
-    if (
-      delta.meta &&
-      delta.meta.bossSpawned === false &&
-      window.gameState.state.bossSpawned === true &&
-      window.screenEffects
-    ) {
-      window.screenEffects.onBossDeath();
-    }
+    this._detectLocalPlayerDamage(prevHealth, prevMaxHealth);
+    this._detectBossDeath(delta);
 
     if (window.gameUI) {
       window.gameUI.update();

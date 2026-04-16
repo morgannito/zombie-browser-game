@@ -34,8 +34,8 @@ describe('createSocketIOServer', () => {
     createSocketIOServer({});
     const [, opts] = mockIoFactory.mock.calls[0];
     expect(opts.perMessageDeflate).toBe(false);
-    expect(opts.transports).toEqual(['websocket', 'polling']);
-    expect(opts.allowUpgrades).toBe(true);
+    expect(opts.transports).toEqual(['websocket']);
+    expect(opts.allowUpgrades).toBe(false);
   });
 
   test('uses tuned ping settings (20s timeout)', () => {

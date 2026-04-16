@@ -67,7 +67,7 @@ describe('ConfigManager', () => {
       expect(ConfigManager.GAMEPLAY_CONSTANTS.REGENERATION_TICK_INTERVAL).toBe(1000);
       expect(ConfigManager.GAMEPLAY_CONSTANTS.AUTO_TURRET_BASE_COOLDOWN).toBe(600);
       expect(ConfigManager.GAMEPLAY_CONSTANTS.AUTO_TURRET_RANGE).toBe(500);
-      expect(ConfigManager.GAMEPLAY_CONSTANTS.SLOW_FRAME_WARNING_THRESHOLD).toBe(100);
+      expect(ConfigManager.GAMEPLAY_CONSTANTS.SLOW_FRAME_WARNING_THRESHOLD).toBe(33);
       expect(ConfigManager.GAMEPLAY_CONSTANTS.FAILED_DEATH_QUEUE_MAX_SIZE).toBe(100);
       expect(ConfigManager.GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER).toBe(1000);
     });

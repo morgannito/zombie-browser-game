@@ -10,8 +10,9 @@ const { getSocketIOCorsConfig } = require('../middleware/cors');
 /**
  * Build the Socket.IO server bound to an http.Server instance.
  *
- * - `transports: ['websocket', 'polling']` + `allowUpgrades: true` — WS
- *   preferred, polling as fallback.
+ * - `transports: ['websocket']` + `allowUpgrades: false` — WS only; polling
+ *   fallback was dropped to cut handshake latency (~50-200ms) and avoid the
+ *   bandwidth double-cost when CF strips the upgrade.
  * - `pingInterval` / `pingTimeout` tuned for mobile/wifi volatility (20s
  *   timeout vs the default 5s that was causing spurious disconnects).
  * - `perMessageDeflate: false` — Cloudflare strips the extension headers
@@ -27,9 +28,7 @@ function createSocketIOServer(httpServer) {
   // Optional: MessagePack binary parser (40-60% smaller packets).
   // Activate with ENABLE_MSGPACK=true. Client must load /lib/msgpack-parser.js first.
   const parserOption =
-    process.env.ENABLE_MSGPACK === 'true'
-      ? { parser: require('socket.io-msgpack-parser') }
-      : {};
+    process.env.ENABLE_MSGPACK === 'true' ? { parser: require('socket.io-msgpack-parser') } : {};
 
   const io = require('socket.io')(httpServer, {
     cors: getSocketIOCorsConfig(),

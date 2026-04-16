@@ -42,30 +42,42 @@ describe('mountStaticAssets', () => {
     expect(paths).toContain('/assets');
   });
 
-  test('production sets immutable + 7d maxAge for /assets', () => {
+  // Caches are intentionally disabled in every environment (no-store) so
+  // each deploy is immediately effective. See server/middleware.js.
+  test('serves /assets with no-cache headers in production', () => {
     const prevEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
       mountStaticAssets(makeApp());
       const assetsOpts = mockStatic.mock.calls[0][1];
-      expect(assetsOpts.maxAge).toBe('7d');
-      expect(assetsOpts.immutable).toBe(true);
+      expect(assetsOpts.maxAge).toBe(0);
+      expect(assetsOpts.etag).toBe(false);
+      expect(typeof assetsOpts.setHeaders).toBe('function');
     } finally {
       process.env.NODE_ENV = prevEnv;
     }
   });
 
-  test('dev disables maxAge', () => {
+  test('serves /assets with no-cache headers in development', () => {
     const prevEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
     try {
       mountStaticAssets(makeApp());
       const assetsOpts = mockStatic.mock.calls[0][1];
       expect(assetsOpts.maxAge).toBe(0);
-      expect(assetsOpts.immutable).toBe(false);
+      expect(assetsOpts.etag).toBe(false);
     } finally {
       process.env.NODE_ENV = prevEnv;
     }
+  });
+
+  test('setHeaders writes no-store Cache-Control', () => {
+    mountStaticAssets(makeApp());
+    const assetsOpts = mockStatic.mock.calls[0][1];
+    const res = { setHeader: jest.fn() };
+    assetsOpts.setHeaders(res);
+    const cacheCtrl = res.setHeader.mock.calls.find(c => c[0] === 'Cache-Control');
+    expect(cacheCtrl[1]).toMatch(/no-store/);
   });
 });
 
