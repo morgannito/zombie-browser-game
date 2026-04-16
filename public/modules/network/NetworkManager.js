@@ -347,6 +347,24 @@ class NetworkManager {
     this.on('sessionTimeout', data => this.handleSessionTimeout(data));
     this.on('sessionReplaced', data => this.handleSessionReplaced(data));
     this.on('mutatorsUpdated', data => this.handleMutatorsUpdated(data));
+
+    // Batched events: server flushes multiple queued events as a single 'batchedEvents' message.
+    // Dispatch each {event, data} pair directly to the already-registered socket listeners
+    // to avoid triggering outbound emit and to preserve handler semantics.
+    this.on('batchedEvents', batch => {
+      if (!Array.isArray(batch)) {
+        return;
+      }
+      for (const { event, data } of batch) {
+        if (!event) {
+          continue;
+        }
+        const fns = this.socket.listeners(event);
+        for (const fn of fns) {
+          fn(data);
+        }
+      }
+    });
   }
 
   handleInit(data) {
@@ -667,30 +685,58 @@ class NetworkManager {
       const dy = data.y - oldY;
       const correctionDistance = Math.sqrt(dx * dx + dy * dy);
 
-      // Smart interpolation based on correction size
+      // Smart interpolation based on correction size and frequency.
       // FIX(tp): raised smooth threshold 30 → 100px. Anti-cheat leaky-bucket
       // rejections under lag spikes typically correct by 40-80px — applying
       // a hard snap in that range was the main source of perceived player TP.
       // True desyncs (>100px) still hard-correct.
-      if (correctionDistance < 100) {
-        // Smooth interpolation for small corrections
-        const interpolationFactor = 0.5;
-        player.x += dx * interpolationFactor;
-        player.y += dy * interpolationFactor;
+      //
+      // FIX(oscillation): if multiple corrections arrive within 200ms, hard-snap
+      // instead of lerping. Repeated 0.5-lerps compound (0.5^N) and each
+      // intermediate position triggers a new server correction → rubber-band loop.
+      const now = Date.now();
+      const timeSinceLast = now - (this._lastCorrectionTime || 0);
+      const isRapidCorrection = timeSinceLast < 200;
+
+      if (isRapidCorrection) {
+        this._correctionCount = (this._correctionCount || 0) + 1;
+      } else if (timeSinceLast > 500) {
+        this._correctionCount = 0;
+      }
+      this._lastCorrectionTime = now;
+
+      const shouldHardSnap = correctionDistance >= 100 || isRapidCorrection;
+
+      if (shouldHardSnap) {
+        // Hard snap: large desync OR rapid consecutive corrections
+        player.x = data.x;
+        player.y = data.y;
+        console.log(
+          '[Socket.IO] Hard snap correction. Distance:',
+          correctionDistance.toFixed(1),
+          'px, rapid:',
+          isRapidCorrection,
+          'count:',
+          this._correctionCount
+        );
+      } else {
+        // Smooth interpolation for isolated small corrections
+        player.x += dx * 0.5;
+        player.y += dy * 0.5;
         console.log(
           '[Socket.IO] Small correction interpolated. Distance:',
           correctionDistance.toFixed(1),
           'px'
         );
-      } else {
-        // Immediate correction for large differences (anti-cheat, desync)
-        player.x = data.x;
-        player.y = data.y;
-        console.log(
-          '[Socket.IO] Large correction applied immediately. Distance:',
-          correctionDistance.toFixed(1),
-          'px'
-        );
+      }
+
+      // Reset lastSentPosition to the corrected position so the next
+      // _maybeEmitMove does not compute a huge delta from the stale value,
+      // which would immediately trigger another server correction.
+      const playerController = window.playerController || window.gameState?.playerController;
+      if (playerController?.lastSentPosition) {
+        playerController.lastSentPosition.x = player.x;
+        playerController.lastSentPosition.y = player.y;
       }
 
       if (window.toastManager && correctionDistance > 50) {
