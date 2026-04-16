@@ -35,14 +35,11 @@ function startGameLoop(perfIntegration, tickFn) {
     const remainingNs = nextTickNs - nowNs;
 
     if (remainingNs <= 0n) {
-      // We're already late — fire immediately via setImmediate (yields event loop)
       immediateHandle = setImmediate(tick);
     } else if (remainingNs < NS_PER_MS) {
-      // Less than 1ms left — spin with setImmediate for sub-ms precision
       immediateHandle = setImmediate(scheduleNext);
     } else {
-      // More than 1ms remaining — sleep via setTimeout, then switch to spin
-      const sleepMs = Number(remainingNs / NS_PER_MS) - 1; // wake 1ms early
+      const sleepMs = Number(remainingNs / NS_PER_MS) - 1;
       timeoutHandle = setTimeout(scheduleNext, Math.max(0, sleepMs));
     }
   }

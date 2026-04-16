@@ -60,7 +60,7 @@ function makeTickFn(deps) {
     );
     // PERF: Decouple broadcast from sim tick — schedule as setImmediate tail so
     // the tick returns to the event loop first, reducing measured tick duration.
-    // This is the primary fix for "Slow tick detected 25-26ms" warnings.
+    // Primary fix for "Slow tick detected 25-26ms" warnings.
     if (perfIntegration.shouldBroadcast()) {
       setImmediate(() => networkManager.emitGameState());
     }
