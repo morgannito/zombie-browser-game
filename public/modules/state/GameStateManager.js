@@ -541,7 +541,22 @@ class GameStateManager {
 
     for (const [id, player] of Object.entries(this.state.players)) {
       if (id === this.playerId) {
-        continue; // Skip local player (client prediction handles it)
+        // Apply smooth lerp correction if one was queued by handlePositionCorrection.
+        // This avoids the visible teleport of a hard snap for small isolated corrections.
+        if (player._correctionTarget) {
+          const ct = player._correctionTarget;
+          const elapsed = now - ct.startTime;
+          if (elapsed >= ct.duration) {
+            player.x = ct.x;
+            player.y = ct.y;
+            delete player._correctionTarget;
+          } else {
+            const t = elapsed / ct.duration;
+            player.x += (ct.x - player.x) * t;
+            player.y += (ct.y - player.y) * t;
+          }
+        }
+        continue; // Skip remote interpolation for local player
       }
       const state = this._getOrInitState(map, id, player, now);
       this._applyServerUpdate(state, player, now, player._serverTime);

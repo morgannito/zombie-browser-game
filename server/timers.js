@@ -1,28 +1,58 @@
 /**
  * @fileoverview Server-level timers: game loop with drift compensation.
- * @description Extracted from server.js. setTimeout-recursive pattern prevents
- *   tick overlap (vs setInterval) and compensates for tick execution time so
- *   the effective frame rate stays close to the configured target.
+ * @description High-resolution scheduler using process.hrtime.bigint() + setImmediate.
+ *   - Sub-ms precision: avoids setTimeout's ~1ms jitter floor
+ *   - Drift compensation: next wakeup anchored to wall-clock, not elapsed time
+ *   - setImmediate spin-wait only in the last <1ms window to avoid CPU waste
  */
 
 const { performance: perf } = require('perf_hooks');
 const logger = require('../infrastructure/logging/Logger');
 
+// Nanoseconds per millisecond
+const NS_PER_MS = 1_000_000n;
+
 /**
- * Start the recursive game loop. Returns a cleanup function.
+ * Start the high-resolution game loop. Returns a cleanup function.
  * @param {{getTickInterval: () => number}} perfIntegration
  * @param {() => void} tickFn
  * @returns {() => void} stop()
  */
 function startGameLoop(perfIntegration, tickFn) {
   const tickInterval = perfIntegration.getTickInterval();
-  let tickTimeout = null;
+  const tickIntervalNs = BigInt(Math.round(tickInterval * 1_000_000)); // ms → ns
   let running = true;
+  let immediateHandle = null;
+  let timeoutHandle = null;
+
+  // Wall-clock anchor for drift-free scheduling (ns)
+  let nextTickNs = process.hrtime.bigint();
+
+  function scheduleNext() {
+    if (!running) return;
+
+    const nowNs = process.hrtime.bigint();
+    const remainingNs = nextTickNs - nowNs;
+
+    if (remainingNs <= 0n) {
+      // We're already late — fire immediately via setImmediate (yields event loop)
+      immediateHandle = setImmediate(tick);
+    } else if (remainingNs < NS_PER_MS) {
+      // Less than 1ms left — spin with setImmediate for sub-ms precision
+      immediateHandle = setImmediate(scheduleNext);
+    } else {
+      // More than 1ms remaining — sleep via setTimeout, then switch to spin
+      const sleepMs = Number(remainingNs / NS_PER_MS) - 1; // wake 1ms early
+      timeoutHandle = setTimeout(scheduleNext, Math.max(0, sleepMs));
+    }
+  }
 
   function tick() {
-    if (!running) {
-return;
-}
+    if (!running) return;
+
+    // Advance anchor by exactly one tick interval (drift-free)
+    nextTickNs += tickIntervalNs;
+
     const now = perf.now();
     try {
       tickFn();
@@ -33,17 +63,22 @@ return;
     if (elapsed > tickInterval * 1.5) {
       logger.warn('Slow tick detected', { elapsed: elapsed.toFixed(1), threshold: tickInterval });
     }
-    const nextTick = Math.max(0, tickInterval - elapsed);
-    tickTimeout = setTimeout(tick, nextTick);
+
+    scheduleNext();
   }
 
-  tick();
+  // Kick off immediately
+  immediateHandle = setImmediate(tick);
 
   return function stop() {
     running = false;
-    if (tickTimeout !== null) {
-      clearTimeout(tickTimeout);
-      tickTimeout = null;
+    if (immediateHandle !== null) {
+      clearImmediate(immediateHandle);
+      immediateHandle = null;
+    }
+    if (timeoutHandle !== null) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = null;
     }
   };
 }

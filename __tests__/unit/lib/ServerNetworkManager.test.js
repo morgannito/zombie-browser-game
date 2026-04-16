@@ -5,7 +5,13 @@
 const NetworkManager = require('../../../lib/server/NetworkManager');
 
 function makeIo(emitFn = jest.fn()) {
-  return { emit: emitFn, to: jest.fn(() => ({ emit: jest.fn() })) };
+  return {
+    emit: emitFn,
+    to: jest.fn(() => ({ emit: jest.fn() })),
+    // fallback path uses io.compress(false).emit(...)
+    compress: jest.fn(() => ({ emit: emitFn })),
+    sockets: null
+  };
 }
 
 function makeGameState() {
