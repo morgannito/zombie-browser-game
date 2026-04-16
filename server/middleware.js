@@ -5,6 +5,8 @@
  *   parser, extra headers), and static asset mounts.
  */
 
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const compression = require('compression');
 const { requestIdMiddleware } = require('../middleware/requestId');
@@ -16,6 +18,28 @@ const {
   configureBodyParser,
   additionalSecurityHeaders
 } = require('../middleware/security');
+
+/**
+ * When ENABLE_MSGPACK=true, serve index.html with an injected
+ * <meta name="msgpack" content="1"> so the client loader knows to
+ * activate the binary parser before connecting to Socket.IO.
+ * Must be registered BEFORE express.static to intercept GET /.
+ */
+function mountMsgpackMetaRoute(app) {
+  if (process.env.ENABLE_MSGPACK !== 'true') return;
+  const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  app.get(['/', '/index.html'], function (req, res) {
+    fs.readFile(indexPath, 'utf8', function (err, html) {
+      if (err) return res.status(500).send('Internal Server Error');
+      var patched = html.replace(
+        '<meta charset="UTF-8">',
+        '<meta charset="UTF-8">\n    <meta name="msgpack" content="1">'
+      );
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(patched);
+    });
+  });
+}
 
 function mountStaticAssets(app) {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -53,6 +77,8 @@ function configureMiddleware(app) {
   app.use('/api/', configureApiLimiter());
   app.use(...configureBodyParser());
   app.use(additionalSecurityHeaders);
+  // Inject msgpack meta tag before static files intercept GET /.
+  mountMsgpackMetaRoute(app);
   mountStaticAssets(app);
 }
 

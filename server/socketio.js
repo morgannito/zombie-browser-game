@@ -23,6 +23,14 @@ const { getSocketIOCorsConfig } = require('../middleware/cors');
  */
 function createSocketIOServer(httpServer) {
   // Lazy-load to avoid circular init when tests mock the module.
+
+  // Optional: MessagePack binary parser (40-60% smaller packets).
+  // Activate with ENABLE_MSGPACK=true. Client must load /lib/msgpack-parser.js first.
+  const parserOption =
+    process.env.ENABLE_MSGPACK === 'true'
+      ? { parser: require('socket.io-msgpack-parser') }
+      : {};
+
   const io = require('socket.io')(httpServer, {
     cors: getSocketIOCorsConfig(),
     // WS-only: supprime le fallback polling qui ajoute 50-200ms au handshake et double la bande passante en cas de fallback.
@@ -36,7 +44,8 @@ function createSocketIOServer(httpServer) {
     // Activer avec ENABLE_WS_COMPRESSION=true uniquement si proxy direct (sans CF).
     perMessageDeflate: process.env.ENABLE_WS_COMPRESSION === 'true' ? { threshold: 1024 } : false,
     httpCompression: true,
-    maxHttpBufferSize: 1e6
+    maxHttpBufferSize: 1e6,
+    ...parserOption
   });
   return io;
 }
