@@ -114,7 +114,9 @@ class Renderer {
     const timestamp = performance.now();
     const dateNow = Date.now();
 
-    const pixelRatio = window.devicePixelRatio || 1;
+    // Effective ratio accounts for performance resolutionScale (devicePixelRatio × scale).
+    // Derived from actual buffer vs CSS size to stay in sync with resizeCanvas.
+    const pixelRatio = this.canvas.width / (this.canvas.clientWidth || window.innerWidth);
     this.ctx.save();
     this.ctx.scale(pixelRatio, pixelRatio);
 
@@ -279,7 +281,8 @@ class Renderer {
     this.ctx.restore(); // Restore pixelRatio scaling
 
     // Boss offscreen indicators — CSS-pixel screen space
-    const pixelRatioForIndicators = window.devicePixelRatio || 1;
+    const pixelRatioForIndicators =
+      this.canvas.width / (this.canvas.clientWidth || window.innerWidth);
     this.ctx.save();
     this.ctx.scale(pixelRatioForIndicators, pixelRatioForIndicators);
     this.uiRenderer.renderBossOffscreenIndicators(
@@ -293,16 +296,22 @@ class Renderer {
 
     // Crosshair — drawn in CSS-pixel screen space (after all transforms restored)
     if (this.crosshairRenderer && window.inputManager && !window.mobileControls?.isMobile) {
-      const pixelRatio = window.devicePixelRatio || 1;
+      // Use EFFECTIVE pixelRatio (devicePixelRatio * resolutionScale) computed
+      // from canvas.width/CSS width, not window.devicePixelRatio alone.
+      // Mismatch between the two caused crosshair offset when user had a
+      // performance preset lowering resolutionScale, while shots (which use
+      // world coords via camera) still landed correctly under the cursor.
+      const effectivePixelRatio =
+        this.canvas.width / (this.canvas.clientWidth || window.innerWidth);
       this.ctx.save();
-      this.ctx.scale(pixelRatio, pixelRatio);
+      this.ctx.scale(effectivePixelRatio, effectivePixelRatio);
       this.crosshairRenderer.render(
         this.ctx,
         window.inputManager.mouse.x,
         window.inputManager.mouse.y,
         gameState.state.zombies,
         this.camera.getPosition(),
-        pixelRatio
+        effectivePixelRatio
       );
       this.ctx.restore();
     }
