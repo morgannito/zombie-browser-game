@@ -16,37 +16,9 @@ jest.mock('../BulletCollisionHandler', () => ({
   handlePlayerBulletCollisions: jest.fn()
 }));
 
-const {
-  updateBullets,
-  _updateBulletPosition,
-  shouldDestroyBullet,
-  updatePlasmaTrail
-} = require('../BulletUpdater');
+const { updateBullets, shouldDestroyBullet, updatePlasmaTrail } = require('../BulletUpdater');
 
 const { createParticles } = require('../../../../game/lootFunctions');
-
-describe('_updateBulletPosition', () => {
-  test('advances position by velocity components', () => {
-    const bullet = { x: 10, y: 10, vx: 3, vy: -2 };
-    _updateBulletPosition(bullet, 0);
-    expect(bullet.x).toBe(13);
-    expect(bullet.y).toBe(8);
-  });
-
-  test('applies gravity to vy each tick', () => {
-    const bullet = { x: 0, y: 0, vx: 0, vy: 0, gravity: 0.5 };
-    _updateBulletPosition(bullet, 0);
-    expect(bullet.vy).toBe(0.5);
-    _updateBulletPosition(bullet, 0);
-    expect(bullet.vy).toBe(1);
-  });
-
-  test('does not apply gravity when flag absent / zero', () => {
-    const bullet = { x: 0, y: 0, vx: 0, vy: 0 };
-    _updateBulletPosition(bullet, 0);
-    expect(bullet.vy).toBe(0);
-  });
-});
 
 describe('shouldDestroyBullet', () => {
   test('destroys after lifetime elapsed', () => {

@@ -235,19 +235,6 @@ function checkBulletCollisionAtPosition(
 }
 
 /**
- * Legacy update bullet position (kept for reference)
- * @deprecated Use updateBulletPositionWithCollision instead
- */
-function _updateBulletPosition(bullet, _now) {
-  bullet.x += bullet.vx;
-  bullet.y += bullet.vy;
-
-  if (bullet.gravity && bullet.gravity > 0) {
-    bullet.vy += bullet.gravity;
-  }
-}
-
-/**
  * Check if bullet should be destroyed
  */
 function shouldDestroyBullet(bullet, now, roomManager) {
@@ -298,7 +285,6 @@ function updatePlasmaTrail(bullet, entityManager) {
 module.exports = {
   updateBullets,
   // Exported for unit tests
-  _updateBulletPosition,
   shouldDestroyBullet,
   updatePlasmaTrail
 };
