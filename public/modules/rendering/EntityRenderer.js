@@ -103,7 +103,8 @@ class EntityRenderer {
       offscreen.width = canvasSize;
       offscreen.height = canvasSize;
     }
-    const oc = offscreen.getContext('2d');
+    const oc = offscreen.getContext('2d', { willReadFrequently: false });
+    oc.imageSmoothingEnabled = false;
 
     // Body
     const bodyW = 18 * baseSize * scale;
