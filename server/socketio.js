@@ -25,8 +25,10 @@ function createSocketIOServer(httpServer) {
   // Lazy-load to avoid circular init when tests mock the module.
   const io = require('socket.io')(httpServer, {
     cors: getSocketIOCorsConfig(),
-    transports: ['websocket', 'polling'],
-    allowUpgrades: true,
+    // WS-only: supprime le fallback polling qui ajoute 50-200ms au handshake et double la bande passante en cas de fallback.
+    // Les navigateurs modernes + CF supportent WS nativement.
+    transports: ['websocket'],
+    allowUpgrades: false,
     pingInterval: 10000,
     pingTimeout: 20000,
     connectTimeout: 45000,

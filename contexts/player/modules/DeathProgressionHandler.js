@@ -74,19 +74,23 @@ function _markPlayerDead(player, gameState, now, isBoss, playerId, logger) {
  * Build session stats snapshot at time of death
  */
 function _buildSessionStats(player, gameState, now, isBoss) {
+  const startedAt = typeof player.survivalStartedAt === 'number'
+    ? player.survivalStartedAt
+    : (typeof player.survivalTime === 'number' && player.survivalTime > 1e12 ? player.survivalTime : now);
+  const multiplier = GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER || 1000;
+  const survivalSeconds = Math.max(0, Math.min(Math.floor((now - startedAt) / multiplier), 86_400));
+
   player.wave = gameState.wave;
   player.maxCombo = player.highestCombo || player.combo || 0;
-  player.survivalTime = Math.floor(
-    (now - player.survivalTime) / GAMEPLAY_CONSTANTS.SURVIVAL_TIME_MULTIPLIER
-  );
   player.bossKills = isBoss ? 1 : 0;
+  player.survivalStartedAt = startedAt;
 
   return {
-    wave: gameState.wave || 1,
-    level: player.level || 1,
-    kills: player.zombiesKilled || player.kills || 0,
-    survivalTimeSeconds: typeof player.survivalTime === 'number' ? player.survivalTime : 0,
-    comboMax: player.maxCombo,
+    wave: Math.max(1, gameState.wave || 1),
+    level: Math.max(1, player.level || 1),
+    kills: Math.max(0, player.zombiesKilled || player.kills || 0),
+    survivalTimeSeconds: survivalSeconds,
+    comboMax: Math.max(0, player.maxCombo || 0),
     bossKills: player.bossKills
   };
 }

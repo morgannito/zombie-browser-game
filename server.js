@@ -75,6 +75,8 @@ const { initSocketHandlers, stopSessionCleanupInterval } = require('./transport/
 
 // Initialize Express app
 const app = express();
+// Behind Nginx + Cloudflare: trust the first proxy for X-Forwarded-For (fixes rate-limit validation spam).
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 // Initialize Socket.IO via the dedicated factory (see server/socketio.js
