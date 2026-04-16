@@ -45,20 +45,29 @@ function mountStaticAssets(app) {
   const isProduction = process.env.NODE_ENV === 'production';
   // Note: /shared/socketEvents.js was server-only; events moved to
   // transport/websocket/events.js. Mount removed (no remaining shared assets).
+  // CACHES DESACTIVES : tous les assets sont servis avec no-store pour garantir
+  // que chaque deploy soit immédiatement effectif (no stale JS/CSS/HTML).
+  const noCache = (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  };
   app.use(
     '/assets',
     express.static('assets', {
-      maxAge: isProduction ? '7d' : 0,
-      etag: true,
-      immutable: isProduction,
-      fallthrough: false
+      maxAge: 0,
+      etag: false,
+      lastModified: false,
+      fallthrough: false,
+      setHeaders: noCache
     })
   );
   app.use(
     express.static('public', {
-      maxAge: isProduction ? '1d' : 0,
-      etag: true,
-      lastModified: true
+      maxAge: 0,
+      etag: false,
+      lastModified: false,
+      setHeaders: noCache
     })
   );
 }
