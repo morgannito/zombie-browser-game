@@ -125,7 +125,7 @@ describe('makeTickFn', () => {
     expect(networkManager.emitGameState).not.toHaveBeenCalled();
   });
 
-  test('emits game state when shouldBroadcast returns true', () => {
+  test('emits game state when shouldBroadcast returns true', done => {
     const networkManager = { emitGameState: jest.fn() };
     const perfIntegration = { shouldBroadcast: jest.fn(() => true) };
     const tick = makeTickFn({
@@ -134,7 +134,11 @@ describe('makeTickFn', () => {
       zombieManager: {}, networkManager
     });
     tick();
-    expect(networkManager.emitGameState).toHaveBeenCalled();
+    // emitGameState is deferred via setImmediate — wait one event-loop turn
+    setImmediate(() => {
+      expect(networkManager.emitGameState).toHaveBeenCalled();
+      done();
+    });
   });
 });
 
@@ -142,7 +146,7 @@ describe('wireSocketHandlers', () => {
   test('registers middleware and connection handler', () => {
     const socketHandler = jest.fn();
     const initSocketHandlers = jest.fn(() => socketHandler);
-    const io = { use: jest.fn(), on: jest.fn() };
+    const io = { use: jest.fn(), on: jest.fn(), engine: { on: jest.fn() } };
     const jwtService = { socketMiddleware: jest.fn(() => 'mw') };
     wireSocketHandlers({
       io, jwtService, initSocketHandlers, gameState: {}, entityManager: {},
@@ -156,7 +160,7 @@ describe('wireSocketHandlers', () => {
 
   test('passes null container when db unavailable', () => {
     const initSocketHandlers = jest.fn(() => jest.fn());
-    const io = { use: jest.fn(), on: jest.fn() };
+    const io = { use: jest.fn(), on: jest.fn(), engine: { on: jest.fn() } };
     wireSocketHandlers({
       io, jwtService: { socketMiddleware: () => 'mw' },
       initSocketHandlers, gameState: {}, entityManager: {}, roomManager: {},

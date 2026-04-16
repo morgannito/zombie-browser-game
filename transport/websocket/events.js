@@ -16,6 +16,7 @@ const SOCKET_EVENTS = {
   // =========================================
   CLIENT: {
     PLAYER_MOVE: 'playerMove',
+    PLAYER_MOVE_BATCH: 'playerMoveBatch',
     SHOOT: 'shoot',
     RESPAWN: 'respawn',
     SET_NICKNAME: 'setNickname',

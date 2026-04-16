@@ -501,40 +501,68 @@ class NetworkManager {
     // snapshot gets a consistent authoritative timestamp.
     const packetServerTime = delta.serverTime || undefined;
 
+    // Angle dequantisation constant: byte (0-255) → radians
+    // Matches server quantiseAngle: byte = round(normalised / 2π × 255)
+    const ANGLE_TO_RAD = (Math.PI * 2) / 255;
+
     // Apply delta updates
     if (delta.updated) {
       Object.entries(delta.updated).forEach(([type, entities]) => {
         if (!window.gameState.state[type]) {
           window.gameState.state[type] = {};
         }
-        Object.entries(entities).forEach(([id, entity]) => {
+        Object.entries(entities).forEach(([id, patch]) => {
+          // Dequantise angle if present (server sends 0-255 byte)
+          // Do this before merging so the stored value is always in radians
+          if (patch.angle !== undefined) {
+            patch.angle = patch.angle * ANGLE_TO_RAD;
+          }
+
+          const isNew = patch._new === true;
+
           // For local player: only update non-position attributes (health, etc.)
           // Position is handled by client prediction
           if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
-            // Preserve local position/angle but update other attributes
-            const currentPos = {
-              x: localPlayerState.x,
-              y: localPlayerState.y,
-              angle: localPlayerState.angle
-            };
-            window.gameState.state[type][id] = entity;
-            window.gameState.state[type][id].x = currentPos.x;
-            window.gameState.state[type][id].y = currentPos.y;
-            window.gameState.state[type][id].angle = currentPos.angle;
+            if (isNew) {
+              // Full replace on first appearance — then restore predicted position
+              window.gameState.state[type][id] = patch;
+            } else {
+              // Partial merge: only apply the changed fields
+              Object.assign(window.gameState.state[type][id] || {}, patch);
+            }
+            // Always restore client-predicted position/angle
+            window.gameState.state[type][id].x = localPlayerState.x;
+            window.gameState.state[type][id].y = localPlayerState.y;
+            window.gameState.state[type][id].angle = localPlayerState.angle;
           } else {
-            // For other entities: apply update normally.
-            // Stamp authoritative server coords + serverTime before replacing
-            // the entity so _applyServerUpdate can distinguish a real server
-            // push from display-position drift written by _stepEntity, and so
-            // the temporal interpolation buffer gets a proper timestamp.
-            if (entity.x !== undefined) {
-              entity._serverX = entity.x;
-              entity._serverY = entity.y;
-              if (packetServerTime !== undefined) {
-                entity._serverTime = packetServerTime;
+            // For other entities: merge patch into existing state (or init from patch)
+            if (isNew || !window.gameState.state[type][id]) {
+              // First time: full replace — remove internal _new flag
+              const entity = Object.assign({}, patch);
+              delete entity._new;
+              // Stamp authoritative server coords for interpolation
+              if (entity.x !== undefined) {
+                entity._serverX = entity.x;
+                entity._serverY = entity.y;
+                if (packetServerTime !== undefined) {
+                  entity._serverTime = packetServerTime;
+                }
+              }
+              window.gameState.state[type][id] = entity;
+            } else {
+              // Partial merge: apply only changed fields
+              const entity = window.gameState.state[type][id];
+              // Track if position changed (for interpolation stamp)
+              const hadPosition = patch.x !== undefined;
+              Object.assign(entity, patch);
+              if (hadPosition) {
+                entity._serverX = entity.x;
+                entity._serverY = entity.y;
+                if (packetServerTime !== undefined) {
+                  entity._serverTime = packetServerTime;
+                }
               }
             }
-            window.gameState.state[type][id] = entity;
           }
           // Mark entity as seen to prevent orphan cleanup
           window.gameState.markEntitySeen(type, id);
@@ -711,6 +739,8 @@ class NetworkManager {
         // Hard snap: large desync OR rapid consecutive corrections
         player.x = data.x;
         player.y = data.y;
+        // Clear any pending lerp correction so it doesn't fight the hard snap.
+        delete player._correctionTarget;
         console.log(
           '[Socket.IO] Hard snap correction. Distance:',
           correctionDistance.toFixed(1),
@@ -720,11 +750,12 @@ class NetworkManager {
           this._correctionCount
         );
       } else {
-        // Smooth interpolation for isolated small corrections
-        player.x += dx * 0.5;
-        player.y += dy * 0.5;
+        // Smooth lerp correction over ~150ms: store the target so the render
+        // loop (GameStateManager.interpolate) can gradually blend toward it
+        // without a visible teleport. Falls back to immediate if no render loop.
+        player._correctionTarget = { x: data.x, y: data.y, startTime: now, duration: 150 };
         console.log(
-          '[Socket.IO] Small correction interpolated. Distance:',
+          '[Socket.IO] Small correction queued for smooth lerp. Distance:',
           correctionDistance.toFixed(1),
           'px'
         );
@@ -941,6 +972,18 @@ class NetworkManager {
     // Bypass microtask queue for movement — emit synchronously to minimize
     // perceived input lag. Shop/progression events keep using _queueEmit.
     this.socket.emit('playerMove', { x, y, angle });
+  }
+
+  /**
+   * Emit a batch of compressed moves in a single WS frame.
+   * Each item uses delta encoding {dx, dy, angle} relative to the position
+   * before that move was applied (server reconstructs absolute coords).
+   * Reduces frame overhead from N small frames to 1 larger frame.
+   * @param {Array<{dx: number, dy: number, angle: number}>} batch
+   */
+  playerMoveBatch(batch) {
+    if (!batch || batch.length === 0) return;
+    this.socket.emit('playerMoveBatch', batch);
   }
 
   shoot(angle) {
