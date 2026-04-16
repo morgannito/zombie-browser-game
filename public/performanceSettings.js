@@ -28,7 +28,7 @@ class PerformanceSettingsManager {
     this.frameCount = 0;
     this.lastFPSUpdate = Date.now();
     this.fpsHistory = [];
-    this.autoAdjust = true;
+    this.autoAdjust = false; // Disabled: web game must keep full 60fps
 
     // MEMORY LEAK FIX: Track FPS monitoring interval
     this.fpsMonitoringInterval = null;
