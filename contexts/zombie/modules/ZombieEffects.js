@@ -6,8 +6,25 @@
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
-const { handleNewWave } = require('../../wave/modules/WaveManager');
-const { handlePlayerDeathProgression } = require('../../../game/gameLoop');
+
+// Lazy-loaded references for circular deps — static top-level requires yielded
+// undefined because gameLoop and WaveManager require this module before their
+// own exports are populated.
+let _handlePlayerDeathProgression = null;
+function handlePlayerDeathProgression(...args) {
+  if (!_handlePlayerDeathProgression) {
+    _handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
+  }
+  return _handlePlayerDeathProgression(...args);
+}
+
+let _handleNewWave = null;
+function handleNewWave(...args) {
+  if (!_handleNewWave) {
+    _handleNewWave = require('../../wave/modules/WaveManager').handleNewWave;
+  }
+  return _handleNewWave(...args);
+}
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
@@ -34,9 +51,7 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
       continue;
     }
 
-    const nearbyPlayers = collisionManager.findPlayersInRadius(
-      trail.x, trail.y, trail.radius
-    );
+    const nearbyPlayers = collisionManager.findPlayersInRadius(trail.x, trail.y, trail.radius);
 
     for (const player of nearbyPlayers) {
       if (player.spawnProtection || player.invisible) {

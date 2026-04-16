@@ -16,8 +16,18 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
 const { distance } = require('../../../game/utilityFunctions');
-const { handlePlayerDeathProgression } = require('../../../game/gameLoop');
 const { createParticles } = require('../../../game/lootFunctions');
+
+// Lazy-loaded reference for circular dependency (gameLoop <-> ZombieUpdater).
+// Static require at module top yielded undefined because gameLoop.js requires
+// this module before its own exports are populated.
+let _handlePlayerDeathProgression = null;
+function handlePlayerDeathProgression(...args) {
+  if (!_handlePlayerDeathProgression) {
+    _handlePlayerDeathProgression = require('../../../game/gameLoop').handlePlayerDeathProgression;
+  }
+  return _handlePlayerDeathProgression(...args);
+}
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
@@ -154,52 +164,165 @@ const { updateZombies: _updateZombiesCore } = require('./updater/core');
 const ABILITY_HANDLERS = {
   healer: (zombie, zombieId, ctx) =>
     processHealerAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
-  slower: (zombie, _zombieId, ctx) =>
-    processSlowerAbility(zombie, ctx.now, ctx.collisionManager),
+  slower: (zombie, _zombieId, ctx) => processSlowerAbility(zombie, ctx.now, ctx.collisionManager),
   shooter: (zombie, zombieId, ctx) =>
     processShooterAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
   poison: (zombie, _zombieId, ctx) =>
     processPoisonTrail(zombie, ctx.now, ctx.gameState, ctx.entityManager),
   teleporter: (zombie, zombieId, ctx) =>
-    updateTeleporterZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+    updateTeleporterZombie(
+      zombie,
+      zombieId,
+      ctx.now,
+      ctx.collisionManager,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   summoner: (zombie, zombieId, ctx) =>
-    updateSummonerZombie(zombie, zombieId, ctx.now, ctx.zombieManager, ctx.entityManager, ctx.gameState),
+    updateSummonerZombie(
+      zombie,
+      zombieId,
+      ctx.now,
+      ctx.zombieManager,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   berserker: (zombie, zombieId, ctx) =>
-    updateBerserkerZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+    updateBerserkerZombie(
+      zombie,
+      zombieId,
+      ctx.now,
+      ctx.collisionManager,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   necromancer: (zombie, zombieId, ctx) =>
     updateNecromancerZombie(zombie, zombieId, ctx.now, ctx.entityManager, ctx.gameState),
   brute: (zombie, zombieId, ctx) =>
-    updateBruteZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState),
+    updateBruteZombie(
+      zombie,
+      zombieId,
+      ctx.now,
+      ctx.collisionManager,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   mimic: (zombie, zombieId, ctx) =>
-    updateMimicZombie(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager, ctx.gameState)
+    updateMimicZombie(
+      zombie,
+      zombieId,
+      ctx.now,
+      ctx.collisionManager,
+      ctx.entityManager,
+      ctx.gameState
+    )
 };
 
 const BOSS_HANDLERS = {
   bossCharnier: (zombie, _id, ctx) =>
-    updateBossCharnier(zombie, ctx.now, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+    updateBossCharnier(
+      zombie,
+      ctx.now,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   bossInfect: (zombie, _id, ctx) =>
     updateBossInfect(zombie, ctx.now, ctx.entityManager, ctx.gameState),
   bossColosse: (zombie, id, ctx) =>
     updateBossColosse(zombie, id, ctx.now, ctx.io, ctx.entityManager),
   bossRoi: (zombie, id, ctx) =>
-    updateBossRoi(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+    updateBossRoi(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState,
+      ctx.collisionManager
+    ),
   bossOmega: (zombie, id, ctx) =>
-    updateBossOmega(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+    updateBossOmega(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState,
+      ctx.collisionManager
+    ),
   bossInfernal: (zombie, id, ctx) =>
-    updateBossInfernal(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+    updateBossInfernal(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   bossCryos: (zombie, id, ctx) =>
-    updateBossCryos(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState),
+    updateBossCryos(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState
+    ),
   bossVortex: (zombie, id, ctx) =>
     updateBossVortex(zombie, id, ctx.now, ctx.io, ctx.entityManager, ctx.gameState),
   bossNexus: (zombie, id, ctx) =>
-    updateBossNexus(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager),
+    updateBossNexus(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState,
+      ctx.collisionManager
+    ),
   bossApocalypse: (zombie, id, ctx) =>
-    updateBossApocalypse(zombie, id, ctx.now, ctx.io, ctx.zombieManager, ctx.perfIntegration, ctx.entityManager, ctx.gameState, ctx.collisionManager)
+    updateBossApocalypse(
+      zombie,
+      id,
+      ctx.now,
+      ctx.io,
+      ctx.zombieManager,
+      ctx.perfIntegration,
+      ctx.entityManager,
+      ctx.gameState,
+      ctx.collisionManager
+    )
 };
 
-function updateZombies(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration) {
+function updateZombies(
+  gameState,
+  now,
+  io,
+  collisionManager,
+  entityManager,
+  zombieManager,
+  perfIntegration
+) {
   return _updateZombiesCore(
-    gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration,
+    gameState,
+    now,
+    io,
+    collisionManager,
+    entityManager,
+    zombieManager,
+    perfIntegration,
     {
       abilityHandlers: ABILITY_HANDLERS,
       bossHandlers: BOSS_HANDLERS,
@@ -371,7 +494,14 @@ function moveZombie(
   players = {}
 ) {
   return _moveZombieDispatch(
-    zombie, zombieId, collisionManager, gameState, now, tick, pathfindingRate, players,
+    zombie,
+    zombieId,
+    collisionManager,
+    gameState,
+    now,
+    tick,
+    pathfindingRate,
+    players,
     { getNearestPlayer, resolveLockedTarget, moveTowardsPlayer, moveRandomly }
   );
 }
@@ -456,7 +586,6 @@ function calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime = 1) {
     newY: zombie.y + MathUtils.fastSin(angle) * frameSpeed
   };
 }
-
 
 /**
  * Check and handle player collisions
