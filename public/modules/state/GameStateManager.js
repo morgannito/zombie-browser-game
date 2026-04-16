@@ -67,6 +67,10 @@ class GameStateManager {
     this.networkLatency = 50; // Initial estimate in ms
     this.serverTickRate = 20; // Expected server updates per second
 
+    // Jitter tracking for adaptive interp delay
+    this._jitter = 0; // Smoothed jitter estimate in ms
+    this._lastPingMs = 50; // Last raw latency sample for jitter delta
+
     // FIX: Server time synchronization for latency compensation
     this.serverTimeOffset = 0; // (serverTime - clientTime) when packet was received
     this.lastServerTime = 0; // Last received server timestamp
@@ -156,6 +160,20 @@ class GameStateManager {
   updateNetworkLatency(latency) {
     // Exponential moving average for smooth latency tracking
     this.networkLatency = this.networkLatency * 0.8 + latency * 0.2;
+
+    // Track jitter (variation between successive samples)
+    const delta = Math.abs(latency - this._lastPingMs);
+    this._jitter = this._jitter * 0.85 + delta * 0.15;
+    this._lastPingMs = latency;
+  }
+
+  /**
+   * Compute the adaptive interpolation delay.
+   * Base 100ms; bumped to 200ms when jitter > 50ms (unstable link).
+   * @returns {number} delay in ms
+   */
+  _adaptiveInterpDelay() {
+    return this._jitter > 50 ? 200 : 100;
   }
 
   /**
@@ -389,8 +407,12 @@ class GameStateManager {
    * @param {boolean} skipExtrapolation
    */
   _stepEntity(state, entity, now, _smoothFactor, skipExtrapolation) {
-    const INTERP_DELAY = 100; // ms behind "now" to sample
+    // Adaptive interp delay: 100ms on stable link, 200ms when jitter > 50ms.
+    const INTERP_DELAY = this._adaptiveInterpDelay();
     const MAX_EXTRAP_MS = 75; // cap on extrapolation when buffer is ahead of renderTime
+    // Gap threshold: if two consecutive snapshots are >200ms apart, extrapolate
+    // by velocity instead of freezing on the earlier keyframe.
+    const GAP_EXTRAP_THRESHOLD_MS = 200;
 
     const renderTime = now - INTERP_DELAY;
     const snaps = state.snapshots;
@@ -399,6 +421,17 @@ class GameStateManager {
     if (snaps.length === 0) {
       entity.x = state.displayX;
       entity.y = state.displayY;
+      return;
+    }
+
+    // ── Min-buffer guard: wait for ≥3 snapshots to avoid extrapolation-only ──
+    // rendering during the first ~200ms of entity lifetime. If we have fewer,
+    // hold the last known position — far less jarring than a single-frame glide.
+    if (snaps.length < 3 && renderTime > snaps[snaps.length - 1].t) {
+      entity.x = snaps[snaps.length - 1].x;
+      entity.y = snaps[snaps.length - 1].y;
+      state.displayX = entity.x;
+      state.displayY = entity.y;
       return;
     }
 
@@ -449,9 +482,17 @@ class GameStateManager {
       const b = snaps[i];
       if (renderTime >= a.t && renderTime < b.t) {
         const span = b.t - a.t;
-        const alpha = span > 0 ? (renderTime - a.t) / span : 0;
-        entity.x = a.x + (b.x - a.x) * alpha;
-        entity.y = a.y + (b.y - a.y) * alpha;
+        // Gap >200ms: extrapolate by velocity from 'a' instead of lerping into
+        // a stale keyframe — avoids the "zombie teleports on reappearance" freeze.
+        if (span > GAP_EXTRAP_THRESHOLD_MS && !skipExtrapolation) {
+          const elapsed = Math.min(renderTime - a.t, MAX_EXTRAP_MS);
+          entity.x = a.x + state.velocityX * (elapsed / 1000);
+          entity.y = a.y + state.velocityY * (elapsed / 1000);
+        } else {
+          const alpha = span > 0 ? (renderTime - a.t) / span : 0;
+          entity.x = a.x + (b.x - a.x) * alpha;
+          entity.y = a.y + (b.y - a.y) * alpha;
+        }
         state.displayX = entity.x;
         state.displayY = entity.y;
         return;

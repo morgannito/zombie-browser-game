@@ -119,6 +119,9 @@ class Renderer {
     const pixelRatio = this.canvas.width / (this.canvas.clientWidth || window.innerWidth);
     this.ctx.save();
     this.ctx.scale(pixelRatio, pixelRatio);
+    // Pixel-art sprites: keep crisp rendering after save/scale (ctx state is inherited
+    // from the save stack, but re-assert here in case the context was re-created).
+    this.ctx.imageSmoothingEnabled = false;
 
     const player = gameState.state.players[playerId];
     if (!player) {
