@@ -149,7 +149,9 @@ class NetworkManager {
     const doPing = () => {
       if (this.socket.connected) {
         const start = performance.now();
-        this.socket.emit('app:ping', start, _ack => {
+        // Report last-measured latency alongside the ping so the server can
+        // maintain per-socket latency for adaptive broadcast throttling.
+        this.socket.emit('app:ping', start, this.latency || 0, _ack => {
           const latency = Math.round(performance.now() - start);
           this.updateLatency(latency);
         });

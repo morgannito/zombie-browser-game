@@ -269,18 +269,17 @@ function updateMetrics(gameState, metricsCollector) {
  */
 function updateParticles(gameState, deltaMultiplier = 1) {
   const particles = gameState.particles;
-  const particleIds = Object.keys(particles);
-
-  for (let i = 0; i < particleIds.length; i++) {
-    const particle = particles[particleIds[i]];
+  const gravityStep = 0.1 * deltaMultiplier;
+  // PERF: for-in — direct hash walk, no Object.keys() array allocation.
+  // Particles spike to 200+ during boss explosions — this runs every tick.
+  for (const id in particles) {
+    const particle = particles[id];
     if (!particle) {
       continue;
-    } // Fast path: destroyed
-
-    // CRITICAL FIX: Apply deltaMultiplier for consistent particle speed
+    }
     particle.x += particle.vx * deltaMultiplier;
     particle.y += particle.vy * deltaMultiplier;
-    particle.vy += 0.1 * deltaMultiplier; // Gravity also scaled
+    particle.vy += gravityStep;
   }
 }
 

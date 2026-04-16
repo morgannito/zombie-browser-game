@@ -67,9 +67,10 @@ const { resolveWallCollisions } = require('./updater/wallCollision');
  * @returns {boolean}
  */
 function isZombieFarFromAllPlayers(zombie, players) {
-  const ids = Object.keys(players);
-  for (let i = 0; i < ids.length; i++) {
-    const p = players[ids[i]];
+  // PERF: for-in avoids Object.keys() allocation in a hot path called
+  // for every zombie on every tick.
+  for (const id in players) {
+    const p = players[id];
     if (!p || !p.alive) {
       continue;
     }
@@ -103,10 +104,10 @@ function getNearestPlayer(zombie, players, tick) {
 
   let minDistSq = Infinity;
   let nearest = null;
-  const ids = Object.keys(players);
 
-  for (let i = 0; i < ids.length; i++) {
-    const p = players[ids[i]];
+  // PERF: for-in avoids Object.keys() allocation on this hot path.
+  for (const id in players) {
+    const p = players[id];
     if (!p || !p.alive) {
       continue;
     }
