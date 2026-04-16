@@ -250,6 +250,16 @@ class NetworkManager {
         console.log(`[Socket.IO] Reconnected (manual backoff path, transport: ${transport})`);
         this.justReconnected = true;
         this._resetReconnectBackoff();
+        // Reset PlayerController's lastSentPosition so the first post-reconnect
+        // playerMove doesn't compute a huge delta from a stale pre-disconnect
+        // reference, which the server anti-cheat would reject → teleport.
+        if (window.playerController) {
+          const p = window.gameState?.state?.players?.[window.gameState.playerId];
+          if (p) {
+            window.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
+            window.playerController.lastNetworkUpdate = performance.now();
+          }
+        }
         if (window.toastManager) {
           window.toastManager.show('✅ Reconnected to server', 'success');
         }
@@ -282,6 +292,14 @@ class NetworkManager {
       // Set flag to disable client prediction temporarily
       this.justReconnected = true;
       this._resetReconnectBackoff();
+      // Reset lastSentPosition to prevent huge delta → anti-cheat reject on first move
+      if (window.playerController) {
+        const p = window.gameState?.state?.players?.[window.gameState.playerId];
+        if (p) {
+          window.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
+          window.playerController.lastNetworkUpdate = performance.now();
+        }
+      }
       if (window.toastManager) {
         window.toastManager.show('✅ Reconnected to server', 'success');
       }
@@ -744,6 +762,11 @@ class NetworkManager {
   }
 
   handleRoomChanged(data) {
+    // Apply new room walls immediately so client collision doesn't use stale
+    // walls from the previous room (caused walk-through + teleport-back bugs).
+    if (data.walls && window.gameState && window.gameState.state) {
+      window.gameState.state.walls = data.walls;
+    }
     if (window.gameUI) {
       window.gameUI.showRoomAnnouncement(data.roomIndex + 1, data.totalRooms);
     }

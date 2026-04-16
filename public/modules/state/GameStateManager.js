@@ -141,6 +141,12 @@ class GameStateManager {
     this.powerupTypes = data.powerupTypes;
     this.zombieTypes = data.zombieTypes;
     this.shopItems = data.shopItems;
+    // Walls arrive in init — copy them immediately so client wall-collision
+    // has the map data before the first movement frame (prevents walking
+    // through walls + teleport-correction combo during the 16ms init gap).
+    if (data.walls) {
+      this.state.walls = data.walls;
+    }
   }
 
   /**

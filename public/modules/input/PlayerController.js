@@ -25,7 +25,7 @@ class PlayerController {
     this.lastNetworkUpdate = 0;
     this.networkUpdateIntervalIdle = 1000 / 20; // 20 Hz when idle
     this.networkUpdateIntervalMoving = 1000 / 30; // 30 Hz when moving (60Hz triggered anti-cheat budget rejections)
-    // networkUpdateIntervalFast stays at 60 Hz for direction changes (same rate, instant burst still used)
+    this.networkUpdateIntervalFast = 1000 / 60; // 60 Hz on direction change (burst)
 
     // Movement state for adaptive rate
     this.lastMovementVector = { dx: 0, dy: 0 };

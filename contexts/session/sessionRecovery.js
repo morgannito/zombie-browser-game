@@ -124,13 +124,19 @@ function createRecoverablePlayerState(player) {
 }
 
 function restoreRecoverablePlayerState(savedState, socketId, sessionId, accountId) {
+  const now = Date.now();
   return {
     ...savedState,
     id: socketId,
     socketId,
     sessionId,
     accountId,
-    lastActivityTime: Date.now()
+    lastActivityTime: now,
+    // Reset anti-cheat state on recovery: without this, first post-reconnect
+    // playerMove sees timeDelta=0 and accrues 0px budget, rejecting a legit
+    // move that carries prediction from during the disconnect → teleport back.
+    moveBudget: undefined, // forces re-init to MAX_BUDGET on first move
+    lastMoveTime: now
   };
 }
 

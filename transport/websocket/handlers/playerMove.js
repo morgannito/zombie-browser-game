@@ -19,20 +19,34 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE,
     safeHandler('playerMove', function (data) {
+      // Resolve player first so we can always emit a positionCorrection
+      // instead of silently dropping moves (silent drops cause client prediction
+      // to drift far ahead → visible teleportation when server finally syncs).
+      const player = gameState.players[socket.id];
+
       // VALIDATION: Vérifier et sanitize les données d'entrée
       const validatedData = validateMovementData(data);
       if (!validatedData) {
         logger.warn('Invalid movement data received', { socketId: socket.id, data });
+        if (player) {
+          socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+        }
         return;
       }
 
-      // Rate limiting
+      // Rate limiting — emit correction so client can snap back instead of drifting
       if (!checkRateLimit(socket.id, 'playerMove')) {
+        if (player) {
+          socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+        }
         return;
       }
 
-      const player = gameState.players[socket.id];
       if (!player || !player.alive || !player.hasNickname) {
+        // During respawn or pre-nickname window: tell client to hold position
+        if (player) {
+          socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+        }
         return;
       } // Pas de mouvement sans pseudo
 
@@ -113,8 +127,9 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
       const boostMultiplier = hasSpeedBoost ? 2 : 1;
 
       // Accrue budget
-      // Allow 20% tolerance for clock drift, network jitter, and diagonal movement approximation
-      const ACCRUAL_FACTOR = 1.2;
+      // 50% tolerance: diagonal movement real speed is √2 ≈ 1.414× base speed.
+      // 1.2 was below √2 → budget drained on sustained diagonal → false rejections → teleportation.
+      const ACCRUAL_FACTOR = 1.5;
       const accrued =
         timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR;
 
@@ -154,46 +169,40 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
         player.moveBudget = -100;
       }
 
-      // Vérifier collision avec les murs
-      // BUG FIX: Utiliser 0.8x au lieu de 0.5x pour éviter que le joueur traverse les murs
-      // La valeur 0.5x était trop petite et permettait au joueur de passer à travers
-      // La valeur 0.8x donne une légère tolérance pour le sliding tout en empêchant le passage
-      if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE * 0.8)) {
+      // Wall collision check. Use PLAYER_SIZE (full hitbox) matching client
+      // to avoid server accepting moves that client blocks, which caused the
+      // player to walk through walls visually then teleport back on next sync.
+      if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
         player.x = newX;
         player.y = newY;
       } else {
-        // BUG FIX: Essayer le sliding (mouvement sur un seul axe) avant de rejeter
-        // Cela évite que le joueur reste "collé" aux murs
+        // Try sliding (single-axis movement) before rejecting
         let slideX = player.x;
         let slideY = player.y;
 
-        // Essayer de glisser sur l'axe X
-        if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE * 0.8)) {
+        if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE)) {
           slideX = newX;
         }
-        // Essayer de glisser sur l'axe Y
-        if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE * 0.8)) {
+        if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE)) {
           slideY = newY;
         }
 
-        // Appliquer le sliding si on a pu bouger
         if (slideX !== player.x || slideY !== player.y) {
           player.x = slideX;
           player.y = slideY;
-        } else {
-          // Collision totale - envoyer correction de position au client
-          // BUG FIX: Réduire le seuil de 20px à 10px pour une meilleure synchronisation
-          const clientDistance = Math.sqrt(
-            Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2)
+          // Even when sliding works, tell client the corrected (slid) position
+          // so it doesn't keep predicting into the wall. 50px threshold absorbs
+          // sliding/rounding noise but catches real desync.
+          const clientDiff = Math.sqrt(
+            Math.pow(validatedData.x - player.x, 2) + Math.pow(validatedData.y - player.y, 2)
           );
-          // FIX(tp): raise wall-collision correction threshold 10 → 30px.
-          // Sub-30px diffs are almost always sliding/rounding noise that the
-          // client has already resolved locally — forcing a POSITION_CORRECTION
-          // triggers visible jitter on every wall brush.
-          if (clientDistance > 30) {
-            MetricsCollector.getInstance().recordMovementCorrection();
+          if (clientDiff > 50) {
             socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
           }
+        } else {
+          // Full collision: always emit correction so client can't keep predicting into wall
+          MetricsCollector.getInstance().recordMovementCorrection();
+          socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
         }
       }
 
