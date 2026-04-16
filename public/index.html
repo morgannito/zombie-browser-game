@@ -485,136 +485,142 @@
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js?v=ded7749"></script>
-    <!-- Performance patches (MUST run before any canvas code) -->
-    <script src="perfPatches.js?v=ded7749"></script>
-    <!-- Memory Leak Prevention (MUST be loaded first) -->
-    <script src="EventListenerManager.js?v=ded7749"></script>
-    <script src="TimerManager.js?v=ded7749"></script>
-    <!-- Conditional Logger -->
-    <script src="lib/ClientLogger.js?v=ded7749"></script>
-    <!-- Performance & Math Utilities -->
-    <script src="lib/MathUtils.js?v=ded7749"></script>
-    <script src="lib/PerformanceUtils.js?v=ded7749"></script>
-    <!-- Storage Abstraction (must load before systems using localStorage) -->
-    <script src="lib/StorageManager.js?v=ded7749"></script>
-    <!-- Asset Management -->
-    <script src="assetManager.js?v=ded7749"></script>
-    <script src="professionalAssetGenerator.js?v=ded7749"></script>
-    <script src="demoAssetGenerator.js?v=ded7749"></script>
-    <script src="assetIntegration.js?v=ded7749"></script>
-    <!-- New Enhanced Systems -->
-    <script src="visualEffects.js?v=ded7749"></script>
-    <script src="screenEffects.js?v=ded7749"></script>
-    <!-- Optimized Audio System (must load before other audio scripts) -->
-    <script src="modules/audio/OptimizedAudioCore.js?v=ded7749"></script>
-    <script src="modules/audio/OptimizedSoundEffects.js?v=ded7749"></script>
-    <script src="weaponAudioSystem.js?v=ded7749"></script>
-    <script src="audioSystem.js?v=ded7749"></script>
-    <script src="skinSystem.js?v=ded7749"></script>
-    <script src="enhancedUI.js?v=ded7749"></script>
-    <script src="performanceSettings.js?v=ded7749"></script>
-    <script src="gameIntegration.js?v=ded7749"></script>
-    <!-- Addiction Systems (Phase 1-3) -->
-    <script src="achievementSystem.js?v=ded7749"></script>
-    <script src="dailyChallenges.js?v=ded7749"></script>
-    <!-- leaderboardSystem.js removed - LeaderboardSystem is now in game.js -->
-    <script src="unlockSystem.js?v=ded7749"></script>
-    <script src="synergySystem.js?v=ded7749"></script>
-    <script src="synergyTracker.js?v=ded7749"></script>
-    <script src="missionSystem.js?v=ded7749"></script>
-    <script src="lifetimeStats.js?v=ded7749"></script>
-    <script src="gemSystem.js?v=ded7749"></script>
-    <script src="retentionHooks.js?v=ded7749"></script>
-    <script src="eventSystem.js?v=ded7749"></script>
-    <script src="contracts.js?v=ded7749"></script>
-    <script src="runMutators.js?v=ded7749"></script>
-    <script src="riskRewardSystem.js?v=ded7749"></script>
-    <script src="telemetrySystem.js?v=ded7749"></script>
-    <script src="weaponRecords.js?v=ded7749"></script>
-    <script src="metaProgression.js?v=ded7749"></script>
-    <script src="biomeSystem.js?v=ded7749"></script>
-    <!-- Integration Layer -->
-    <script src="addictionIntegration.js?v=ded7749"></script>
-    <!-- JWT Authentication -->
-    <script src="auth.js?v=ded7749"></script>
+    <!-- MessagePack parser: loaded only when ENABLE_MSGPACK=true (injected by server as <meta name="msgpack" content="1">) -->
+    <script>
+      (function () {
+        var meta = document.querySelector('meta[name="msgpack"]');
+        if (meta && meta.getAttribute('content') === '1') {
+          var s = document.createElement('script');
+          s.src = '/lib/msgpack-parser.js';
+          s.async = false;
+          document.head.appendChild(s);
+          window.__msgpackEnabled = true;
+        }
+      })();
+    </script>
 
-    <!-- Game Modules (refactored from game.js) -->
-    <!-- Core modules -->
-    <script src="modules/core/Constants.js?v=ded7749"></script>
-    <script src="modules/core/SessionManager.js?v=ded7749"></script>
+    <!-- ============================================================
+         BUNDLE LOADER
+         If app.bundle.js exists (built via `npm run build`), load it.
+         Otherwise fall back to the original 82 individual scripts.
+         To activate bundled mode: run `npm run build` on the server.
+         ============================================================ -->
+    <script>
+      (function () {
+        var BUNDLE_VERSION = 'ded7749';
+        var head = document.head || document.getElementsByTagName('head')[0];
 
-    <!-- Managers -->
-    <script src="modules/state/GameStateManager.js?v=ded7749"></script>
-    <script src="modules/input/InputManager.js?v=ded7749"></script>
-    <script src="modules/managers/AudioManager.js?v=ded7749"></script>
-    <script src="modules/input/MobileControlsManager.js?v=ded7749"></script>
-    <script src="modules/managers/CameraManager.js?v=ded7749"></script>
-    <script src="modules/ui/UIManager.js?v=ded7749"></script>
-    <script src="modules/ui/NicknameManager.js?v=ded7749"></script>
+        function loadScript(src, onload) {
+          var s = document.createElement('script');
+          s.src = src;
+          if (onload) s.onload = onload;
+          document.body.appendChild(s);
+        }
 
-    <!-- Systems -->
-    <script src="modules/systems/ComboSystem.js?v=ded7749"></script>
-    <script src="modules/systems/ToastManager.js?v=ded7749"></script>
-    <script src="modules/systems/LeaderboardSystem.js?v=ded7749"></script>
-    <script src="modules/network/NetworkManager.js?v=ded7749"></script>
-    <script src="modules/systems/AccountProgressionManager.js?v=ded7749"></script>
-
-    <!-- Entities -->
-    <script src="modules/entities/DestructibleObstacles.js?v=ded7749"></script>
-    <script src="modules/entities/StaticProps.js?v=ded7749"></script>
-    <script src="modules/entities/DynamicProps.js?v=ded7749"></script>
-
-    <!-- Environment -->
-    <script src="modules/environment/WeatherSystem.js?v=2"></script>
-    <script src="modules/environment/DayNightCycle.js?v=2"></script>
-    <script src="modules/environment/LightingSystem.js?v=2"></script>
-    <script src="modules/environment/ParallaxBackground.js?v=2"></script>
-    <script src="modules/environment/EnvironmentalParticles.js?v=2"></script>
-
-    <!-- Audio -->
-    <script src="modules/audio/AmbientAudioSystem.js?v=ded7749"></script>
-
-    <!-- Performance Optimizations -->
-    <script src="modules/rendering/FrustumCuller.js?v=ded7749"></script>
-
-    <!-- Rendering Sub-modules (must be before Renderer.js) -->
-    <script src="modules/rendering/BackgroundRenderer.js?v=ded7749"></script>
-    <script src="modules/rendering/EntityRenderer.js?v=ded7749"></script>
-    <script src="modules/rendering/EffectsRenderer.js?v=ded7749"></script>
-    <script src="modules/rendering/MinimapRenderer.js?v=ded7749"></script>
-    <script src="modules/rendering/UIRenderer.js?v=ded7749"></script>
-    <script src="modules/rendering/CrosshairRenderer.js?v=ded7749"></script>
-
-    <!-- Game Logic -->
-    <script src="modules/input/PlayerController.js?v=ded7749"></script>
-    <script src="modules/game/Renderer.js?v=ded7749"></script>
-
-    <!-- Game Engine (must be after all dependencies) -->
-    <script src="modules/core/GameEngine.js?v=ded7749"></script>
-
-    <!-- Utilities -->
-    <script src="modules/utils/initHelpers.js?v=ded7749"></script>
-
-    <!-- Tutorial System -->
-    <script src="tutorialSystem.js?v=ded7749"></script>
-
-    <!-- Settings Menu (must be loaded before game.js) -->
-    <script src="settingsMenu.js?v=ded7749"></script>
-
-    <!-- Pause Menu -->
-    <script src="pauseMenu.js?v=ded7749"></script>
-
-    <!-- Weapon Wheel -->
-    <script src="weaponWheel.js?v=ded7749"></script>
-
-    <!-- Enemy Markers -->
-    <script src="enemyMarkers.js?v=ded7749"></script>
-
-    <!-- Main Game Initialization -->
-    <script src="game.js?v=ded7749"></script>
-
-    <!-- Game Patch (must be loaded after game.js) -->
-    <script src="gamePatch.js?v=ded7749"></script>
+        // Try bundle first via HEAD probe
+        var xhr = new XMLHttpRequest();
+        xhr.open('HEAD', '/app.bundle.js', true);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4) return;
+          if (xhr.status === 200) {
+            // Bundle available — load single file
+            loadScript('/app.bundle.js?v=' + BUNDLE_VERSION);
+          } else {
+            // Fallback: load 82 scripts in order
+            var scripts = [
+              'perfPatches.js',
+              'EventListenerManager.js',
+              'TimerManager.js',
+              'lib/ClientLogger.js',
+              'lib/MathUtils.js',
+              'lib/PerformanceUtils.js',
+              'lib/StorageManager.js',
+              'assetManager.js',
+              'professionalAssetGenerator.js',
+              'demoAssetGenerator.js',
+              'assetIntegration.js',
+              'visualEffects.js',
+              'screenEffects.js',
+              'modules/audio/OptimizedAudioCore.js',
+              'modules/audio/OptimizedSoundEffects.js',
+              'weaponAudioSystem.js',
+              'audioSystem.js',
+              'skinSystem.js',
+              'enhancedUI.js',
+              'performanceSettings.js',
+              'gameIntegration.js',
+              'achievementSystem.js',
+              'dailyChallenges.js',
+              'unlockSystem.js',
+              'synergySystem.js',
+              'synergyTracker.js',
+              'missionSystem.js',
+              'lifetimeStats.js',
+              'gemSystem.js',
+              'retentionHooks.js',
+              'eventSystem.js',
+              'contracts.js',
+              'runMutators.js',
+              'riskRewardSystem.js',
+              'telemetrySystem.js',
+              'weaponRecords.js',
+              'metaProgression.js',
+              'biomeSystem.js',
+              'addictionIntegration.js',
+              'auth.js',
+              'modules/core/Constants.js',
+              'modules/core/SessionManager.js',
+              'modules/state/GameStateManager.js',
+              'modules/input/InputManager.js',
+              'modules/managers/AudioManager.js',
+              'modules/input/MobileControlsManager.js',
+              'modules/managers/CameraManager.js',
+              'modules/ui/UIManager.js',
+              'modules/ui/NicknameManager.js',
+              'modules/systems/ComboSystem.js',
+              'modules/systems/ToastManager.js',
+              'modules/systems/LeaderboardSystem.js',
+              'modules/network/NetworkManager.js',
+              'modules/systems/AccountProgressionManager.js',
+              'modules/entities/DestructibleObstacles.js',
+              'modules/entities/StaticProps.js',
+              'modules/entities/DynamicProps.js',
+              'modules/environment/WeatherSystem.js',
+              'modules/environment/DayNightCycle.js',
+              'modules/environment/LightingSystem.js',
+              'modules/environment/ParallaxBackground.js',
+              'modules/environment/EnvironmentalParticles.js',
+              'modules/audio/AmbientAudioSystem.js',
+              'modules/rendering/FrustumCuller.js',
+              'modules/rendering/BackgroundRenderer.js',
+              'modules/rendering/EntityRenderer.js',
+              'modules/rendering/EffectsRenderer.js',
+              'modules/rendering/MinimapRenderer.js',
+              'modules/rendering/UIRenderer.js',
+              'modules/rendering/CrosshairRenderer.js',
+              'modules/input/PlayerController.js',
+              'modules/game/Renderer.js',
+              'modules/core/GameEngine.js',
+              'modules/utils/initHelpers.js',
+              'tutorialSystem.js',
+              'settingsMenu.js',
+              'pauseMenu.js',
+              'weaponWheel.js',
+              'enemyMarkers.js',
+              'game.js',
+              'gamePatch.js',
+            ];
+            var i = 0;
+            function next() {
+              if (i >= scripts.length) return;
+              loadScript(scripts[i++] + '?v=' + BUNDLE_VERSION, next);
+            }
+            next();
+          }
+        };
+        xhr.send();
+      }());
+    </script>
 
     <!-- Portrait-hint body class: toggled on game start/over/death -->
     <script>

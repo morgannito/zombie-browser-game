@@ -53,3 +53,7 @@ server.js.backup
 .game.pid
 .gitnexus
 public/index.html.bak
+
+# Generated bundle (built via `npm run build`, not committed)
+public/app.bundle.js
+public/app.bundle.concat.js
