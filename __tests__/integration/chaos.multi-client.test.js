@@ -40,7 +40,7 @@ function spamEvents(client, count) {
   const moveData = { x: 300 + Math.random() * 200, y: 200 + Math.random() * 200, angle: 0 };
   for (let i = 0; i < count; i++) {
     client.emit('shoot', shootData);
-    client.emit('playerMove', moveData);
+    client.emit('playerMoveBatch', [moveData]);
   }
 }
 

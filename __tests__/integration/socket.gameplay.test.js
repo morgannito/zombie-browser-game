@@ -156,7 +156,7 @@ describe('selectUpgrade', () => {
     const { client, playerId } = await spawnPlayer('UpgradeCheat');
     const player = ctx.gameState.players[playerId];
     // pendingUpgradeChoices is empty by default — inject a different valid id
-    player.pendingUpgradeChoices = ['damageBoost'];
+    player.pendingUpgradeChoices = [['damageBoost']];
 
     // Act — send an id NOT in the pending choices
     client.emit('selectUpgrade', { upgradeId: 'speedBoost' });
@@ -172,7 +172,7 @@ describe('selectUpgrade', () => {
     // Assert
     expect(result).toBe('not_received');
     // pendingChoices untouched — server consumed nothing
-    expect(player.pendingUpgradeChoices).toEqual(['damageBoost']);
+    expect(player.pendingUpgradeChoices).toEqual([['damageBoost']]);
 
     client.disconnect();
   });
@@ -181,7 +181,7 @@ describe('selectUpgrade', () => {
     // Arrange
     const { client, playerId } = await spawnPlayer('UpgraderLegit');
     const player = ctx.gameState.players[playerId];
-    player.pendingUpgradeChoices = ['healthBoost', 'damageBoost', 'speedBoost'];
+    player.pendingUpgradeChoices = [['healthBoost', 'damageBoost', 'speedBoost']];
     const initialHealth = player.maxHealth;
 
     // Act

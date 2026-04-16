@@ -51,7 +51,7 @@ class LeaderboardSystem {
 
       const entry = {
         nickname: player.nickname || 'Anonyme',
-        score: player.totalScore || player.score || 0,
+        score: player.totalScore || 0,
         kills: player.zombiesKilled || player.kills || 0,
         gold: player.gold || 0,
         survivalTime: survivalTime,

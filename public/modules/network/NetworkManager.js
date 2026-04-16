@@ -995,12 +995,6 @@ class NetworkManager {
     this.socket.emit('endSpawnProtection');
   }
 
-  playerMove(x, y, angle) {
-    // Bypass microtask queue for movement — emit synchronously to minimize
-    // perceived input lag. Shop/progression events keep using _queueEmit.
-    this.socket.emit('playerMove', { x, y, angle });
-  }
-
   /**
    * Emit a batch of compressed moves in a single WS frame.
    * Each item uses delta encoding {dx, dy, angle} relative to the position

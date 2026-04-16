@@ -52,9 +52,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
       }
 
       // ANTI-CHEAT: pendingUpgradeChoices is an array of batches (sub-arrays).
-      // Back-compat: detect flat-array legacy format and coerce to one batch.
-      const raw = player.pendingUpgradeChoices || [];
-      const batches = raw.length > 0 && !Array.isArray(raw[0]) ? [raw] : raw;
+      const batches = player.pendingUpgradeChoices || [];
       const batchIndex = batches.findIndex(b => b.includes(validatedData.upgradeId));
       if (batchIndex === -1) {
         logger.warn('Anti-cheat: selectUpgrade not in pending choices', {

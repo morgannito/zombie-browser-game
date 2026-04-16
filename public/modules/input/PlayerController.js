@@ -169,23 +169,12 @@ class PlayerController {
 
   /**
    * Flush the accumulated input batch as a single playerMoveBatch WS frame.
-   * Falls back to a plain playerMove if the network layer doesn't support batching.
    */
   _flushBatch() {
     if (this._inputBatch.length === 0) {
-return;
-}
-    if (this.network.playerMoveBatch) {
-      this.network.playerMoveBatch(this._inputBatch);
-    } else {
-      // Fallback: legacy clients or test stubs — send last move only
-      const last = this._inputBatch[this._inputBatch.length - 1];
-      this.network.playerMove(
-        this.lastSentPosition.x,
-        this.lastSentPosition.y,
-        last.angle
-      );
+      return;
     }
+    this.network.playerMoveBatch(this._inputBatch);
     this._inputBatch = [];
   }
 

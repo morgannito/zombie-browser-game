@@ -43,7 +43,6 @@ function createPlayerState(config, socketId, sessionId = null, accountId = null)
     level: 1,
     xp: 0,
     gold: 0,
-    score: 0,
     alive: true,
     angle: 0,
     weapon: 'pistol',

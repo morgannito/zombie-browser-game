@@ -85,7 +85,6 @@ function createRecoverablePlayerState(player) {
     level: player.level,
     xp: player.xp,
     gold: player.gold,
-    score: player.score,
     alive: player.alive,
     angle: player.angle,
     weapon: player.weapon,

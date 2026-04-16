@@ -181,7 +181,6 @@ describe('playtest — session recovery apres reconnexion', () => {
         level: 3,
         gold: 300,
         xp: 0,
-        score: 0,
         angle: 0,
         weapon: 'pistol',
         lastShot: 0,

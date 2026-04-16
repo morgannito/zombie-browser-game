@@ -63,7 +63,6 @@ function resetPlayerRunState(player, config, totalMaxHealth) {
   player.maxHealth = totalMaxHealth;
   player.alive = true;
   player.gold = 0;
-  player.score = 0;
   player.weapon = 'pistol';
   player.speedBoost = null;
   player.weaponTimer = null;

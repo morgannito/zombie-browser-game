@@ -189,11 +189,13 @@ describe('parametric — 100 random playerMove events via socket', () => {
     const rand = seededRand(99);
     // Act — emit 100 events with out-of-bounds coords (validation rejects them)
     for (let i = 0; i < 100; i++) {
-      client.emit('playerMove', {
-        x: ROOM_W + rand() * 500 + 1, // always out of bounds → rejected
-        y: ROOM_H + rand() * 500 + 1,
-        angle: TWO_PI + rand() * 5 + 0.1
-      });
+      client.emit('playerMoveBatch', [
+        {
+          x: ROOM_W + rand() * 500 + 1, // always out of bounds → rejected
+          y: ROOM_H + rand() * 500 + 1,
+          angle: TWO_PI + rand() * 5 + 0.1
+        }
+      ]);
     }
     await new Promise(r => setTimeout(r, 400));
     client.disconnect();
@@ -220,11 +222,13 @@ describe('parametric — 100 random playerMove events via socket', () => {
     for (let i = 0; i < 100; i++) {
       const dx = (rand() - 0.5) * 10; // ±5 pixels
       const dy = (rand() - 0.5) * 10;
-      client.emit('playerMove', {
-        x: Math.max(1, Math.min(ROOM_W - 1, spawnX + dx)),
-        y: Math.max(1, Math.min(ROOM_H - 1, spawnY + dy)),
-        angle: rand() * TWO_PI - Math.PI
-      });
+      client.emit('playerMoveBatch', [
+        {
+          x: Math.max(1, Math.min(ROOM_W - 1, spawnX + dx)),
+          y: Math.max(1, Math.min(ROOM_H - 1, spawnY + dy)),
+          angle: rand() * TWO_PI - Math.PI
+        }
+      ]);
     }
     await new Promise(r => setTimeout(r, 400));
 

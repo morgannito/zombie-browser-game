@@ -51,7 +51,7 @@ describe('playtest — connect, spawn, move, disconnect', () => {
     ];
 
     for (const pos of positions) {
-      client.emit('playerMove', { x: pos.x, y: pos.y, angle: 0 });
+      client.emit('playerMoveBatch', [{ x: pos.x, y: pos.y, angle: 0 }]);
       await new Promise(r => setTimeout(r, 50));
     }
 

@@ -37,7 +37,7 @@ async function runScenario() {
     const shopResult = await waitForEvent(client, 'shopUpdate');
 
     // Step 3 — move
-    client.emit('playerMove', { x: 350, y: 250, angle: 0.5 });
+    client.emit('playerMoveBatch', [{ x: 350, y: 250, angle: 0.5 }]);
     await new Promise(r => setTimeout(r, 80));
 
     const snapshot = {

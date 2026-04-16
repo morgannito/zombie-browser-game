@@ -192,7 +192,7 @@ clearInterval(moveTimer);
       // Emit playerMove at MOVE_HZ, collect ack latency
       moveTimer = setInterval(() => {
         const t0 = Date.now();
-        socket.emit('playerMove', { x: targetX, y: targetY }, () => {
+        socket.emit('playerMoveBatch', [{ x: targetX, y: targetY, angle: 0 }], () => {
           stats.ackLatencies.push(Date.now() - t0);
         });
       }, MOVE_INTERVAL_MS);

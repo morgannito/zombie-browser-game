@@ -60,7 +60,6 @@ describe('resetPlayerRunState', () => {
     expect(player.hasNickname).toBe(false);
     expect(player.alive).toBe(true);
     expect(player.gold).toBe(0);
-    expect(player.score).toBe(0);
     expect(player.weapon).toBe('pistol');
     expect(player.combo).toBe(0);
     expect(player.health).toBe(250);

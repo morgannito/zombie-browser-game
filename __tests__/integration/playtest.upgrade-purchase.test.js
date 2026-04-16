@@ -103,7 +103,7 @@ describe('playtest — achat upgrade valide', () => {
     // Arrange
     const { client, playerId } = await spawnPlayer('Upgrader01');
     const player = ctx.gameState.players[playerId];
-    player.pendingUpgradeChoices = ['healthBoost', 'damageBoost', 'speedBoost'];
+    player.pendingUpgradeChoices = [['healthBoost', 'damageBoost', 'speedBoost']];
     const healthBefore = player.maxHealth;
 
     // Act

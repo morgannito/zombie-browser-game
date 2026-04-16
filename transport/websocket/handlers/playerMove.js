@@ -181,16 +181,9 @@ function _processSingleMove(socket, gameState, roomManager, data) {
 }
 
 function registerPlayerMoveHandler(socket, gameState, roomManager) {
-  // Legacy single-move event — kept for backward compat with older clients.
-  socket.on(
-    SOCKET_EVENTS.CLIENT.PLAYER_MOVE,
-    safeHandler('playerMove', function (data) {
-      _processSingleMove(socket, gameState, roomManager, data);
-    })
-  );
-
-  // Batched move event: array of up to 4 moves accumulated client-side.
-  // Replaying them sequentially keeps anti-cheat leaky-bucket semantics intact.
+  // Batched move event: array of up to 8 moves accumulated client-side.
+  // Items may be absolute {x,y,angle} or delta {dx,dy,angle}. Replaying
+  // sequentially preserves anti-cheat leaky-bucket semantics.
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE_BATCH,
     safeHandler('playerMoveBatch', function (batch) {

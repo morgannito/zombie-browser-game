@@ -113,7 +113,7 @@ describe('playerMove', () => {
     const targetY = 300;
 
     // Act
-    client.emit('playerMove', { x: targetX, y: targetY, angle: 0 });
+    client.emit('playerMoveBatch', [{ x: targetX, y: targetY, angle: 0 }]);
 
     // Small wait to let server process the event
     await new Promise(r => setTimeout(r, 80));
@@ -135,7 +135,7 @@ describe('playerMove', () => {
     const initialX = ctx.gameState.players[playerId]?.x;
 
     // Act
-    client.emit('playerMove', { x: 999, y: 999, angle: 0 });
+    client.emit('playerMoveBatch', [{ x: 999, y: 999, angle: 0 }]);
     await new Promise(r => setTimeout(r, 80));
 
     // Assert — position must not have changed

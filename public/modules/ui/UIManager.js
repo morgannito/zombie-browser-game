@@ -154,10 +154,8 @@ class UIManager {
       }
     }
 
-    // Stats — server increments `totalScore` on kills (combo-multiplied);
-    // `player.score` is a legacy field kept at 0. Fall back to score for
-    // any client built before the server rename.
-    els.scoreValue.textContent = (player.totalScore || player.score || 0).toLocaleString();
+    // Stats — server increments `totalScore` on kills (combo-multiplied).
+    els.scoreValue.textContent = (player.totalScore || 0).toLocaleString();
     els.waveValue.textContent = `${this.gameState.state.wave || 1}`;
     els.goldValue.textContent = player.gold || 0;
 
@@ -179,7 +177,7 @@ class UIManager {
         }
       }
 
-      els.finalScore.textContent = (player.totalScore || player.score || 0).toLocaleString();
+      els.finalScore.textContent = (player.totalScore || 0).toLocaleString();
       els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
       els.finalLevel.textContent = player.level || 1;
       els.finalGold.textContent = (player.gold || 0).toLocaleString();
@@ -196,7 +194,7 @@ class UIManager {
       if (!this.gameOverDispatched) {
         const killedBy = player.lastKillerType || null;
         const gameOverStats = {
-          score: player.totalScore || player.score || 0,
+          score: player.totalScore || 0,
           wave: this.gameState.state.wave || 1,
           level: player.level || 1,
           gold: player.gold || 0,

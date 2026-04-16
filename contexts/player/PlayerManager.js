@@ -365,7 +365,6 @@ class PlayerManager {
       highestCombo: 0,
       totalScore: 0,
       survivalTime: Date.now(),
-      score: 0,
       // Upgrades permanents (shop)
       upgrades: {
         maxHealth: 0,
