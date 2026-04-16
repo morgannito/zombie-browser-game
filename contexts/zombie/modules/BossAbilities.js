@@ -24,7 +24,10 @@ const AOI_HALF_HEIGHT = 900;
  * @param {Object} gameState - état du jeu (pour accéder aux players)
  */
 function emitAOI(io, event, payload, bossX, bossY, gameState) {
-  const sockets = io.sockets.sockets;
+  const sockets = io && io.sockets && io.sockets.sockets;
+  if (!sockets) {
+    return;
+  }
   for (const [socketId, socket] of sockets) {
     const player = gameState.players[socketId];
     if (!player || !player.alive) {
