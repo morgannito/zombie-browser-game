@@ -27,17 +27,26 @@ const {
  */
 function mountMsgpackMetaRoute(app) {
   if (process.env.ENABLE_MSGPACK !== 'true') {
-return;
-}
+    return;
+  }
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
   app.get(['/', '/index.html'], function (req, res) {
     fs.readFile(indexPath, 'utf8', function (err, html) {
       if (err) {
-return res.status(500).send('Internal Server Error');
-}
+        return res.status(500).send('Internal Server Error');
+      }
+      // Inject BOTH the meta tag AND a blocking <script> reference to the
+      // parser. The meta tag is what GameEngine reads; the script tag ensures
+      // window.msgpackParser is set BEFORE any subsequent inline script runs
+      // (previously the dynamic injection raced the bundle loader and io()
+      // was called without the parser, while the server decoded every packet
+      // as msgpack → garbage → instant "transport close").
       const patched = html.replace(
         '<meta charset="UTF-8">',
-        '<meta charset="UTF-8">\n    <meta name="msgpack" content="1">'
+        '<meta charset="UTF-8">\n' +
+          '    <meta name="msgpack" content="1">\n' +
+          '    <script src="/lib/msgpack-parser.js"></script>\n' +
+          '    <script>window.__msgpackEnabled = true;</script>'
       );
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(patched);

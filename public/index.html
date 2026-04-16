@@ -485,19 +485,10 @@
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js?v=ded7749"></script>
-    <!-- MessagePack parser: loaded only when ENABLE_MSGPACK=true (injected by server as <meta name="msgpack" content="1">) -->
-    <script>
-      (function () {
-        var meta = document.querySelector('meta[name="msgpack"]');
-        if (meta && meta.getAttribute('content') === '1') {
-          var s = document.createElement('script');
-          s.src = '/lib/msgpack-parser.js';
-          s.async = false;
-          document.head.appendChild(s);
-          window.__msgpackEnabled = true;
-        }
-      })();
-    </script>
+    <!-- MessagePack parser is injected server-side by mountMsgpackMetaRoute
+         when ENABLE_MSGPACK=true — it writes a blocking <script src="/lib/
+         msgpack-parser.js"> right after <head> so window.msgpackParser is set
+         before any subsequent inline script runs. Nothing to do here. -->
 
     <!-- ============================================================
          BUNDLE LOADER
