@@ -130,7 +130,14 @@ class GameEngine {
     // Socket.IO client configuration optimized for low latency and stability
     // Try WebSocket first but allow polling fallback for reliability
     // Include sessionId for reconnection recovery
-    const socket = io({
+
+    // Use msgpack binary parser when server has enabled it (40-60% smaller packets).
+    // window.__msgpackEnabled is set by the inline loader in index.html when the
+    // server injects <meta name="msgpack" content="1"> (ENABLE_MSGPACK=true).
+    const parserOption =
+      window.__msgpackEnabled && window.msgpackParser ? { parser: window.msgpackParser } : {};
+
+    const socket = io(Object.assign({
       transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
       upgrade: true, // Allow upgrade to WebSocket from polling (important for stability)
       autoConnect: false, // Connect after auth/session is ready
@@ -148,7 +155,19 @@ class GameEngine {
       pingTimeout: 5000, // Wait 5s for pong response
       rememberUpgrade: true, // Remember successful WebSocket upgrade
       forceNew: false // Reuse existing connection when possible
-    });
+    }, parserOption));
+
+    // Fallback: if msgpack parser causes a handshake error, reconnect without it.
+    if (parserOption.parser) {
+      socket.once('connect_error', function (err) {
+        if (!socket.connected) {
+          console.warn('[msgpack] parser handshake failed, falling back to JSON:', err.message);
+          window.__msgpackEnabled = false;
+          socket.io.opts.parser = undefined;
+          socket.connect();
+        }
+      });
+    }
 
     window.socket = socket;
     window.networkManager = new NetworkManager(socket);
