@@ -125,7 +125,7 @@ describe('makeTickFn', () => {
     expect(networkManager.emitGameState).not.toHaveBeenCalled();
   });
 
-  test('emits game state when shouldBroadcast returns true', () => {
+  test('emits game state when shouldBroadcast returns true', done => {
     const networkManager = { emitGameState: jest.fn() };
     const perfIntegration = { shouldBroadcast: jest.fn(() => true) };
     const tick = makeTickFn({
@@ -134,7 +134,11 @@ describe('makeTickFn', () => {
       zombieManager: {}, networkManager
     });
     tick();
-    expect(networkManager.emitGameState).toHaveBeenCalled();
+    // emitGameState is deferred via setImmediate — wait one turn
+    setImmediate(() => {
+      expect(networkManager.emitGameState).toHaveBeenCalled();
+      done();
+    });
   });
 });
 

@@ -58,8 +58,9 @@ function makeTickFn(deps) {
       gameState, io, metricsCollector, perfIntegration,
       collisionManager, entityManager, zombieManager, logger
     );
+    // PERF: Decouple broadcast from sim tick — runs after tick returns to event loop
     if (perfIntegration.shouldBroadcast()) {
-      networkManager.emitGameState();
+      setImmediate(() => networkManager.emitGameState());
     }
   };
 }
