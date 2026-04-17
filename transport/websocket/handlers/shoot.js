@@ -15,7 +15,58 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 
 const { CONFIG, WEAPONS } = ConfigManager;
 
-function registerShootHandler(socket, gameState, entityManager) {
+// LAG COMPENSATION:
+// Clients render remote entities ~150ms behind server time (interpolation
+// buffer). When a player shoots, their crosshair is aligned with THAT past
+// state, but by the time the bullet lands the zombie has moved (latency +
+// interp_delay) ms forward. Bullets "visually hit" but server sees a miss.
+// We advance the bullet spawn position by (latency + interp_delay) of travel,
+// clamped to a safe maximum, and stopped at walls to avoid warping through.
+const TARGET_FRAME_MS = 1000 / 60;
+const CLIENT_INTERP_DELAY_MS = 150;
+const MAX_LAG_COMPENSATION_MS = 250;
+const COMPENSATION_SUBSTEP = 15;
+
+function _lagCompensateSpawn(startX, startY, vx, vy, compensationMs, roomManager) {
+  const framesAhead = compensationMs / TARGET_FRAME_MS;
+  const advanceX = vx * framesAhead;
+  const advanceY = vy * framesAhead;
+  const distance = Math.hypot(advanceX, advanceY);
+  if (distance <= COMPENSATION_SUBSTEP) {
+    // Single step is enough, just check destination.
+    const tx = startX + advanceX;
+    const ty = startY + advanceY;
+    if (
+      tx < 0 || tx > CONFIG.ROOM_WIDTH || ty < 0 || ty > CONFIG.ROOM_HEIGHT ||
+      (roomManager && roomManager.checkWallCollision &&
+        roomManager.checkWallCollision(tx, ty, CONFIG.BULLET_SIZE))
+    ) {
+      return { x: startX, y: startY };
+    }
+    return { x: tx, y: ty };
+  }
+  const steps = Math.ceil(distance / COMPENSATION_SUBSTEP);
+  const stepX = advanceX / steps;
+  const stepY = advanceY / steps;
+  let cx = startX;
+  let cy = startY;
+  for (let i = 0; i < steps; i++) {
+    const nx = cx + stepX;
+    const ny = cy + stepY;
+    if (
+      nx < 0 || nx > CONFIG.ROOM_WIDTH || ny < 0 || ny > CONFIG.ROOM_HEIGHT ||
+      (roomManager && roomManager.checkWallCollision &&
+        roomManager.checkWallCollision(nx, ny, CONFIG.BULLET_SIZE))
+    ) {
+      break;
+    }
+    cx = nx;
+    cy = ny;
+  }
+  return { x: cx, y: cy };
+}
+
+function registerShootHandler(socket, gameState, entityManager, roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.SHOOT,
     safeHandler('shoot', function (data) {
@@ -82,6 +133,10 @@ function registerShootHandler(socket, gameState, entityManager) {
       }
       const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
+      // LAG COMPENSATION: advance bullet spawn to counter client interp delay + RTT.
+      const latencyMs = Math.min(Math.max(player.latency || 0, 0), MAX_LAG_COMPENSATION_MS);
+      const compensationMs = latencyMs + CLIENT_INTERP_DELAY_MS;
+
       // Créer les balles selon l'arme (OPTIMISÉ avec Object Pool)
       for (let i = 0; i < safeBulletCount; i++) {
         const spreadAngle = validatedData.angle + (Math.random() - 0.5) * weapon.spread;
@@ -105,12 +160,16 @@ function registerShootHandler(socket, gameState, entityManager) {
         const weaponPiercing = weapon.piercing || weapon.plasmaPiercing || 0;
         const totalPiercing = (player.bulletPiercing || 0) + weaponPiercing;
 
+        const vx = Math.cos(spreadAngle) * weapon.bulletSpeed;
+        const vy = Math.sin(spreadAngle) * weapon.bulletSpeed;
+        const spawn = _lagCompensateSpawn(player.x, player.y, vx, vy, compensationMs, roomManager);
+
         // CORRECTION: Utilisation du pool d'objets au lieu de création manuelle
         entityManager.createBullet({
-          x: player.x,
-          y: player.y,
-          vx: Math.cos(spreadAngle) * weapon.bulletSpeed,
-          vy: Math.sin(spreadAngle) * weapon.bulletSpeed,
+          x: spawn.x,
+          y: spawn.y,
+          vx,
+          vy,
           playerId: socket.id,
           damage: damage,
           color: isCritical ? '#ff0000' : weapon.color,

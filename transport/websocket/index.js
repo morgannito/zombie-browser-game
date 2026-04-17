@@ -181,14 +181,14 @@ function registerAllHandlers(socket, deps) {
     accountId
   } = deps;
   registerPlayerMoveHandler(socket, gameState, roomManager);
-  registerShootHandler(socket, gameState, entityManager);
+  registerShootHandler(socket, gameState, entityManager, roomManager);
   registerRespawnHandler(socket, gameState, entityManager);
   registerSelectUpgradeHandler(socket, gameState);
   registerBuyItemHandler(socket, gameState);
   registerSetNicknameHandler(socket, gameState, io, container);
   registerSpawnProtectionHandlers(socket, gameState);
   registerShopHandlers(socket, gameState);
-  registerPingHandler(socket, networkManager);
+  registerPingHandler(socket, networkManager, gameState);
   registerRequestFullStateHandler(socket, gameState, emitInitSnapshot);
   // socket.io has its own ping/pong; the legacy custom heartbeat used to
   // kick legitimate clients after 10s. Stub kept for disconnect signature.

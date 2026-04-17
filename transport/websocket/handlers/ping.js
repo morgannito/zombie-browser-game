@@ -17,7 +17,7 @@ const { safeHandler } = require('../../../sockets/socketUtils');
  * @param {import('socket.io').Socket} socket
  * @param {object} [networkManager] — lib/server/NetworkManager instance (optional)
  */
-function registerPingHandler(socket, networkManager) {
+function registerPingHandler(socket, networkManager, gameState) {
   socket.on(
     SOCKET_EVENTS.CLIENT.PING,
     safeHandler('ping', function (_timestamp, reportedLatency, callback) {
@@ -27,15 +27,23 @@ function registerPingHandler(socket, networkManager) {
         reportedLatency = null;
       }
       if (
-        networkManager &&
         typeof reportedLatency === 'number' &&
         reportedLatency >= 0 &&
         reportedLatency < 10000
       ) {
-        networkManager.playerLatencies[socket.id] = {
-          latency: reportedLatency,
-          lastPing: Date.now()
-        };
+        if (networkManager) {
+          networkManager.playerLatencies[socket.id] = {
+            latency: reportedLatency,
+            lastPing: Date.now()
+          };
+        }
+        // Mirror on the player object so non-network handlers (shoot, etc.)
+        // can access latency without a NetworkManager reference — used for
+        // bullet-spawn lag compensation.
+        const player = gameState && gameState.players && gameState.players[socket.id];
+        if (player) {
+          player.latency = reportedLatency;
+        }
       }
       if (typeof callback === 'function') {
         callback(Date.now());
