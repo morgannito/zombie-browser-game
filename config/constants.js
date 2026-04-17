@@ -48,11 +48,14 @@ const API_LIMITER_CONFIG = {
   legacyHeaders: false
 };
 
-// Auth rate limiter — stricter than global API limiter (brute-force protection)
+// Auth rate limiter — stricter than global API limiter (brute-force protection).
+// `message` is passed as an OBJECT so express-rate-limit responds with
+// Content-Type: application/json — otherwise the client gets an HTML/text
+// body on 429 and auth.js throws "Unexpected token '<'" when parsing.
 const AUTH_LIMITER_CONFIG = {
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 login attempts per IP per 15 minutes
-  message: 'Too many login attempts, please try again later',
+  max: 30, // 30 attempts / 15 min / IP — 10 was too tight for dev + reloads
+  message: { error: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false
 };
