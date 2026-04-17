@@ -151,7 +151,7 @@ function updateBossInfernal(
 
     // Spawn 5 fire minions (inferno zombies) around boss
     for (let i = 0; i < 5; i++) {
-      const zombieCount = Object.keys(gameState.zombies).length;
+      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
       if (perfIntegration.canSpawnZombie(zombieCount)) {
         const angle = (Math.PI * 2 * i) / 5;
         const dist = 150;
@@ -214,7 +214,7 @@ function updateBossCryos(
 
     // Spawn 3 ice clones (glacier zombies) around boss
     for (let i = 0; i < 3; i++) {
-      const zombieCount = Object.keys(gameState.zombies).length;
+      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
       if (perfIntegration.canSpawnZombie(zombieCount)) {
         const angle = (Math.PI * 2 * i) / 3;
         const dist = 120;
@@ -434,7 +434,7 @@ function updateBossNexus(
     // Spawn 4 voidwalkers + 4 shadowfiends
     const voidTypes = ['voidwalker', 'shadowfiend'];
     for (let i = 0; i < 8; i++) {
-      const zombieCount = Object.keys(gameState.zombies).length;
+      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
       if (perfIntegration.canSpawnZombie(zombieCount)) {
         const angle = (Math.PI * 2 * i) / 8;
         const dist = 180;

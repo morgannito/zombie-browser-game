@@ -10,6 +10,13 @@ const DEFAULT_PATHFINDING_RATE = 10;
 const STUCK_MOVE_THRESHOLD = 0.5;
 const STUCK_DESPAWN_FRAMES = 600;
 
+// Scratch object reused every tick to avoid allocating a new literal.
+const _tickState = {
+  gameState: null, now: 0, io: null, collisionManager: null,
+  entityManager: null, zombieManager: null, perfIntegration: null,
+  players: null, tick: 0, pathfindingRate: 0
+};
+
 function resolveTickContext(perfIntegration) {
   const tick = perfIntegration ? perfIntegration.tickCounter : 0;
   const rate = Math.max(
@@ -99,22 +106,29 @@ function updateZombies(
   gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration, handlers
 ) {
   const zombies = gameState.zombies;
-  const zombieIds = Object.keys(zombies);
   const { tick, pathfindingRate } = resolveTickContext(perfIntegration);
   const players = gameState.players;
 
-  const tickState = {
-    gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration,
-    players, tick, pathfindingRate
-  };
+  // PERF: reuse a module-scoped scratch object instead of allocating a new
+  // tickState literal (~9 props) on every tick (60 Hz).
+  _tickState.gameState = gameState;
+  _tickState.now = now;
+  _tickState.io = io;
+  _tickState.collisionManager = collisionManager;
+  _tickState.entityManager = entityManager;
+  _tickState.zombieManager = zombieManager;
+  _tickState.perfIntegration = perfIntegration;
+  _tickState.players = players;
+  _tickState.tick = tick;
+  _tickState.pathfindingRate = pathfindingRate;
 
-  for (let i = 0; i < zombieIds.length; i++) {
-    const zombieId = zombieIds[i];
+  // PERF: for-in avoids Object.keys() array allocation.
+  for (const zombieId in zombies) {
     const zombie = zombies[zombieId];
     if (!zombie) {
- continue;
-}
-    tickOneZombie(zombie, zombieId, tickState, handlers);
+      continue;
+    }
+    tickOneZombie(zombie, zombieId, _tickState, handlers);
   }
 }
 

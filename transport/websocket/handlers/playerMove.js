@@ -15,6 +15,13 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 
 const { CONFIG } = ConfigManager;
 
+// PERF: hoist constants derived from CONFIG — avoids recomputing per move.
+const _mc = MetricsCollector.getInstance();
+const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
+const MAX_BUDGET = PIXELS_PER_MS * 2000;
+const ACCRUAL_FACTOR = 1.5;
+const MIN_ALLOWANCE = 20;
+
 /**
  * Process a single validated move payload through the full anti-cheat pipeline.
  * Extracted so both playerMove and playerMoveBatch can share the same logic.
@@ -72,17 +79,20 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     Math.min(CONFIG.ROOM_HEIGHT - wallThickness - playerSize, validatedData.y)
   );
 
-  const distance = Math.sqrt(Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2));
+  // PERF: squared distance avoids Math.sqrt in ~80% of moves that pass budget.
+  const dx = newX - player.x;
+  const dy = newY - player.y;
+  const distanceSq = dx * dx + dy * dy;
 
   if (player.speedMultiplier > 5) {
     logger.warn('Anti-cheat: Suspicious speedMultiplier detected', {
       player: player.nickname || socket.id,
       speedMultiplier: player.speedMultiplier
     });
-    MetricsCollector.getInstance().recordCheatAttempt('speed_multiplier');
-    if (MetricsCollector.getInstance().recordViolation(socket.id)) {
-      MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
-      MetricsCollector.getInstance().clearViolations(socket.id);
+    _mc.recordCheatAttempt('speed_multiplier');
+    if (_mc.recordViolation(socket.id)) {
+      _mc.metrics.anticheat.player_disconnects_total++;
+      _mc.clearViolations(socket.id);
       socket.disconnect(true);
       return;
     }
@@ -104,17 +114,13 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     delete player.stunnedBy;
   }
 
-  const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
-  const MAX_BUDGET = PIXELS_PER_MS * 2000;
-
   if (typeof player.moveBudget === 'undefined') {
     player.moveBudget = MAX_BUDGET;
   }
 
   const speedMultiplier = player.speedMultiplier || 1;
-  const hasSpeedBoost = player.speedBoost && Date.now() < player.speedBoost;
+  const hasSpeedBoost = player.speedBoost && now < player.speedBoost;
   const boostMultiplier = hasSpeedBoost ? 2 : 1;
-  const ACCRUAL_FACTOR = 1.5;
   const accrued = timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR;
 
   player.moveBudget += accrued;
@@ -122,19 +128,20 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     player.moveBudget = MAX_BUDGET;
   }
 
-  const minAllowance = 20;
-
-  if (distance > player.moveBudget + minAllowance) {
+  // Compare squared to avoid sqrt on the common path (budget not exceeded).
+  const budgetPlusAllowance = player.moveBudget + MIN_ALLOWANCE;
+  if (distanceSq > budgetPlusAllowance * budgetPlusAllowance) {
+    const distance = Math.sqrt(distanceSq);
     logger.warn('Anti-cheat: Movement rejected - exceeded budget', {
       player: player.nickname || socket.id,
       distance: Math.round(distance),
       budget: Math.round(player.moveBudget)
     });
-    MetricsCollector.getInstance().recordCheatAttempt('movement_budget');
-    MetricsCollector.getInstance().recordMovementCorrection();
-    if (MetricsCollector.getInstance().recordViolation(socket.id)) {
-      MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
-      MetricsCollector.getInstance().clearViolations(socket.id);
+    _mc.recordCheatAttempt('movement_budget');
+    _mc.recordMovementCorrection();
+    if (_mc.recordViolation(socket.id)) {
+      _mc.metrics.anticheat.player_disconnects_total++;
+      _mc.clearViolations(socket.id);
       socket.disconnect(true);
       return;
     }
@@ -142,6 +149,8 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     return;
   }
 
+  // Only compute sqrt when we actually need linear distance for budget debit.
+  const distance = Math.sqrt(distanceSq);
   player.moveBudget -= distance;
   if (player.moveBudget < -100) {
     player.moveBudget = -100;

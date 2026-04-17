@@ -457,28 +457,30 @@ class EntityRenderer {
       return;
     }
 
-    const bulletsByColor = new Map();
+    // PERF: reuse instance-level Map + clear per frame instead of new Map() per frame.
+    if (!this._bulletsByColor) {
+      this._bulletsByColor = new Map();
+    }
+    const bulletsByColor = this._bulletsByColor;
+    bulletsByColor.clear();
     const defaultColor = '#ffff00';
     const defaultSize = config.BULLET_SIZE || 5;
 
-    // for-in avoids Object.keys() intermediate array allocation
     for (const id in bullets) {
       const bullet = bullets[id];
-
       if (!bullet || !Number.isFinite(bullet.x) || !Number.isFinite(bullet.y)) {
         continue;
       }
-
-      // Cull before touching any other bullet fields
       if (!camera.isInViewport(bullet.x, bullet.y, 50)) {
         continue;
       }
-
       const color = bullet.color || defaultColor;
-      if (!bulletsByColor.has(color)) {
-        bulletsByColor.set(color, []);
+      let arr = bulletsByColor.get(color);
+      if (!arr) {
+        arr = [];
+        bulletsByColor.set(color, arr);
       }
-      bulletsByColor.get(color).push(bullet);
+      arr.push(bullet);
     }
 
     // One beginPath + N arc() + one fill per color group
