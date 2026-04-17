@@ -1028,8 +1028,8 @@ class NetworkManager {
     }
   }
 
-  shoot(angle) {
-    this._queueEmit('shoot', { angle });
+  shoot(angle, x, y) {
+    this._queueEmit('shoot', { angle, x, y });
   }
 
   respawn() {

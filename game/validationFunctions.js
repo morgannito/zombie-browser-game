@@ -71,7 +71,14 @@ function validateShootData(data) {
     return null;
   }
 
-  return { angle: data.angle };
+  const out = { angle: data.angle };
+  // Optional client-supplied origin (player's predicted position). Shoot
+  // handler caps it to MAX_CLIENT_OFFSET from the server's player position.
+  if (isValidNumber(data.x, 0, 10000) && isValidNumber(data.y, 0, 10000)) {
+    out.x = data.x;
+    out.y = data.y;
+  }
+  return out;
 }
 
 /**

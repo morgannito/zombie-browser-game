@@ -282,7 +282,11 @@ class PlayerController {
       this.gameState.createPredictedBullet(player.x, player.y, angle, player.weapon || 'pistol');
     }
 
-    this.network.shoot(angle);
+    // Include client-predicted position so the server can spawn the bullet
+    // from where the player visually sees themselves — otherwise long-range
+    // shots miss because the server uses its own (slightly different) player
+    // position and the angle + server origin ≠ the visual crosshair target.
+    this.network.shoot(angle, player.x, player.y);
   }
 
   respawn() {

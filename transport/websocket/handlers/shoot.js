@@ -113,10 +113,23 @@ function registerShootHandler(socket, gameState, entityManager, roomManager) {
         const vx = Math.cos(spreadAngle) * weapon.bulletSpeed;
         const vy = Math.sin(spreadAngle) * weapon.bulletSpeed;
 
-        // CORRECTION: Utilisation du pool d'objets au lieu de création manuelle
+        // Prefer the client-supplied origin so long-range shots hit what the
+        // player's crosshair saw. Fall back to server player position if the
+        // client didn't send coords (legacy clients or grossly-invalid payload).
+        const MAX_CLIENT_OFFSET = 300; // px sanity cap (would-be-desync ceiling)
+        let originX = player.x, originY = player.y;
+        if (
+          typeof validatedData.x === 'number' &&
+          typeof validatedData.y === 'number' &&
+          Math.hypot(validatedData.x - player.x, validatedData.y - player.y) <= MAX_CLIENT_OFFSET
+        ) {
+          originX = validatedData.x;
+          originY = validatedData.y;
+        }
+
         entityManager.createBullet({
-          x: player.x,
-          y: player.y,
+          x: originX,
+          y: originY,
           vx,
           vy,
           // Consumed on first BulletUpdater tick — advances bullet through full
