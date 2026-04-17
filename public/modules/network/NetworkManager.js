@@ -1039,17 +1039,24 @@ class NetworkManager {
   }
 
   /**
-   * Emit a batch of compressed moves in a single WS frame.
-   * Each item uses delta encoding {dx, dy, angle} relative to the position
-   * before that move was applied (server reconstructs absolute coords).
-   * Reduces frame overhead from N small frames to 1 larger frame.
-   * @param {Array<{dx: number, dy: number, angle: number}>} batch
+   * Emit a single absolute player move to the server.
+   * @param {{x:number,y:number,angle:number,seq:number}} move
+   */
+  playerMove(move) {
+    if (!move) return;
+    this.socket.emit('playerMove', move);
+  }
+
+  /**
+   * Legacy batch API kept for backward compat with older call-sites; now
+   * fans out individual playerMove events.
+   * @param {Array<{dx:number,dy:number,angle:number,seq:number}>} batch
    */
   playerMoveBatch(batch) {
-    if (!batch || batch.length === 0) {
-      return;
+    if (!batch || batch.length === 0) return;
+    for (const item of batch) {
+      this.socket.emit('playerMove', item);
     }
-    this.socket.emit('playerMoveBatch', batch);
   }
 
   shoot(angle) {

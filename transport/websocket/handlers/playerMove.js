@@ -199,9 +199,18 @@ function _processSingleMove(socket, gameState, roomManager, data) {
 }
 
 function registerPlayerMoveHandler(socket, gameState, roomManager) {
-  // Batched move event: array of up to 8 moves accumulated client-side.
-  // Items may be absolute {x,y,angle} or delta {dx,dy,angle}. Replaying
-  // sequentially preserves anti-cheat leaky-bucket semantics.
+  // Canonical single-move event — absolute {x, y, angle, seq}. 30Hz throttle
+  // on the client. No batching, no reconciliation: the broadcast stream is
+  // the source of truth for remote clients.
+  socket.on(
+    SOCKET_EVENTS.CLIENT.PLAYER_MOVE,
+    safeHandler('playerMove', function (data) {
+      if (!data || typeof data !== 'object') return;
+      _processSingleMove(socket, gameState, roomManager, data);
+    })
+  );
+
+  // Legacy batch entry-point kept for any old clients still buffering locally.
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE_BATCH,
     safeHandler('playerMoveBatch', function (batch) {
@@ -212,8 +221,6 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
       for (const move of batch) {
         _processSingleMove(socket, gameState, roomManager, move);
       }
-      // ACK the last processed seq so the client can prune acknowledged inputs
-      // and perform proper prediction reconciliation.
       const player = gameState.players[socket.id];
       if (player && typeof player.lastMoveSeq === 'number') {
         socket.emit(SOCKET_EVENTS.SERVER.MOVE_ACK, {
