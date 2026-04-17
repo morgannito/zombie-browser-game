@@ -124,6 +124,7 @@ class GameStateManager {
     // drift written back by _stepEntity (full-state path; delta path stamps in
     // NetworkManager.handleGameStateDelta).
     const INTERPOLATED = ['zombies', 'players'];
+    const nowMs = Date.now();
     for (const type of INTERPOLATED) {
       const entities = this.state[type];
       if (!entities) {
@@ -142,6 +143,10 @@ class GameStateManager {
           if (packetServerTime !== undefined) {
             e._serverTime = packetServerTime;
           }
+          // Refresh _lastSeen on full-state too: without this, zombies present
+          // only in full-state frames (every 5 ticks) would go stale and get
+          // hidden by the renderer's STALE_MS guard.
+          e._lastSeen = nowMs;
         }
       }
     }
@@ -656,22 +661,25 @@ class GameStateManager {
    */
   cleanupOrphanedEntities() {
     const now = Date.now();
-    const ORPHAN_TIMEOUT = 10000; // 10 seconds (increased to handle lag)
+    // Split timeouts: zombies go silent on AOI exit, so purge them fast to
+    // avoid 10s of ghosted frozen sprites. Other entities (bullets, loot)
+    // may legitimately have gaps — keep the generous window.
+    const ORPHAN_TIMEOUT_ZOMBIES = 2000;
+    const ORPHAN_TIMEOUT_DEFAULT = 10000;
 
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(
       type => {
         if (!this.state[type]) {
           return;
         }
+        const timeout = type === 'zombies' ? ORPHAN_TIMEOUT_ZOMBIES : ORPHAN_TIMEOUT_DEFAULT;
 
         for (const [id, entity] of Object.entries(this.state[type])) {
           if (!entity._lastSeen) {
             entity._lastSeen = now;
           }
 
-          // Remove if not updated recently
-          if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
-            console.log(`[CLEANUP] Removing orphaned ${type} entity:`, id);
+          if (now - entity._lastSeen > timeout) {
             delete this.state[type][id];
           }
         }
