@@ -24,9 +24,14 @@ const { handlePlayerDeathProgression } = require('../../player/modules/DeathProg
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
-// AOI bounds (mirror of NetworkManager constants — kept local to avoid circular dep)
-const AOI_HALF_WIDTH = 1600;
-const AOI_HALF_HEIGHT = 900;
+// AOI bounds for far-freeze optimization.
+// FIX: must be >= NetworkManager's broadcast AOI (1600+400 bucket = 2000 × 900+400 = 1300)
+// otherwise the server broadcasts entities to the client that it has frozen
+// itself — they show up visually but never move (the bug players saw).
+// Slight extra margin (2100 × 1400) absorbs player mid-tick movement between
+// the AOI bucket recomputation and the zombie tick.
+const AOI_HALF_WIDTH = 2100;
+const AOI_HALF_HEIGHT = 1400;
 
 // LATENCY OPTIMIZATION: Cache boss/special updaters to avoid repeated requires
 const {
