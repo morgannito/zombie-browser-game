@@ -48,16 +48,19 @@ const API_LIMITER_CONFIG = {
   legacyHeaders: false
 };
 
-// Auth rate limiter — stricter than global API limiter (brute-force protection).
-// `message` is passed as an OBJECT so express-rate-limit responds with
-// Content-Type: application/json — otherwise the client gets an HTML/text
-// body on 429 and auth.js throws "Unexpected token '<'" when parsing.
+// Auth rate limiter — kept permissive while the game is in active development.
+// `message` is an OBJECT so express-rate-limit responds with JSON (prevents
+// the "Unexpected token <" / "pattern" error clients saw on 429).
+// Raise `max` back down and harden this once the game opens publicly.
 const AUTH_LIMITER_CONFIG = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 attempts / 15 min / IP — 10 was too tight for dev + reloads
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
   message: { error: 'Too many login attempts, please try again later' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  // `skip: () => true` would fully bypass; we keep the shell but effectively
+  // disable throttling via a very high cap.
+  skip: () => process.env.DISABLE_AUTH_RATE_LIMIT === '1'
 };
 
 // Internal monitoring token — required in production for /metrics and /health
