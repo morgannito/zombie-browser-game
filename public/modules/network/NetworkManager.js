@@ -58,6 +58,7 @@ class NetworkManager {
     console.log(
       `[Network] Scheduling reconnect in ${delay}ms (attempt ${this._reconnectAttempts})`
     );
+    this._showReconnectOverlay(this._reconnectAttempts, Math.round(delay / 1000));
 
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null;
@@ -73,6 +74,41 @@ class NetworkManager {
     if (this._reconnectTimer) {
       clearTimeout(this._reconnectTimer);
       this._reconnectTimer = null;
+    }
+    this._hideReconnectOverlay();
+  }
+
+  /** Display the reconnection banner (idempotent). Built with DOM APIs only. */
+  _showReconnectOverlay(attempt, seconds) {
+    let el = document.getElementById('reconnect-overlay');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'reconnect-overlay';
+      el.className = 'reconnect-overlay';
+      const spinner = document.createElement('div');
+      spinner.className = 'reconnect-spinner';
+      const msg = document.createElement('div');
+      msg.className = 'reconnect-message';
+      msg.textContent = 'Connexion perdue. Reconnexion…';
+      const detail = document.createElement('div');
+      detail.className = 'reconnect-detail';
+      detail.id = 'reconnect-detail';
+      el.appendChild(spinner);
+      el.appendChild(msg);
+      el.appendChild(detail);
+      document.body.appendChild(el);
+    }
+    const detail = document.getElementById('reconnect-detail');
+    if (detail) {
+      detail.textContent = `Tentative ${attempt} — retry dans ${seconds}s`;
+    }
+    el.style.display = 'flex';
+  }
+
+  _hideReconnectOverlay() {
+    const el = document.getElementById('reconnect-overlay');
+    if (el) {
+      el.style.display = 'none';
     }
   }
 
@@ -347,8 +383,8 @@ class NetworkManager {
     this.on('gameStateDelta', delta => this.handleGameStateDelta(delta));
     this.on('positionCorrection', data => this.handlePositionCorrection(data));
     this.on('moveAck', data => {
-      if (window.playerController && data && typeof data.seq === 'number') {
-        window.playerController.lastAcknowledgedSequence = data.seq;
+      if (window.playerController && typeof window.playerController.reconcileWithServer === 'function') {
+        window.playerController.reconcileWithServer(data);
       }
     });
     this.on('bossSpawned', data => this.handleBossSpawned(data));

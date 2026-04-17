@@ -52,6 +52,48 @@ class PlayerController {
     this._inputBatch = [];
     this._batchSize = 3; // flush after accumulating 3 moves (≈100ms at 30Hz)
     this._lastBatchFlush = 0;
+
+    // Reconciliation ring: inputs awaiting server ACK. On moveAck we snap to
+    // the authoritative position then replay the still-unacked inputs to
+    // reconstruct the client-predicted pose — eliminates visible rollbacks
+    // on small server corrections.
+    this._pendingInputs = []; // [{seq, dx, dy}]
+    this.RECONCILE_MAX_DIVERGENCE_PX = 50;
+  }
+
+  /**
+   * Called by NetworkManager.handleMoveAck. Reconciles client prediction
+   * against the authoritative server position for the acked input sequence,
+   * then replays still-unacked inputs locally.
+   */
+  reconcileWithServer(ack) {
+    if (!ack || typeof ack.seq !== 'number') {
+      return;
+    }
+    this.lastAcknowledgedSequence = ack.seq;
+    this._pendingInputs = this._pendingInputs.filter(i => i.seq > ack.seq);
+
+    const player = this.gameState.state.players[this.gameState.playerId];
+    if (!player || !player.alive) {
+      return;
+    }
+
+    // Safety: if divergence is huge (>50px), let the server's explicit
+    // positionCorrection handler take over rather than snapping here.
+    const dxCurr = player.x - ack.x;
+    const dyCurr = player.y - ack.y;
+    if (Math.hypot(dxCurr, dyCurr) > this.RECONCILE_MAX_DIVERGENCE_PX) {
+      return;
+    }
+
+    // Snap to server-authoritative position, then re-apply unacked inputs.
+    player.x = ack.x;
+    player.y = ack.y;
+    for (const inp of this._pendingInputs) {
+      const resolved = this._resolveCollision(player, player.x + inp.dx, player.y + inp.dy);
+      player.x = resolved.finalX;
+      player.y = resolved.finalY;
+    }
   }
 
   setNickname(nickname) {
@@ -200,9 +242,16 @@ class PlayerController {
       finalY - this.lastSentPosition.y
     );
     const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
-    const networkInterval = directionChanged
+    // Adaptive rate: degrade to 20Hz when latency is high to avoid congesting
+    // the uplink pipe and compounding the delay the player already feels.
+    const netLatency = window.networkManager && window.networkManager.latency ? window.networkManager.latency : 0;
+    const highLatency = netLatency > 200;
+    let networkInterval = directionChanged
       ? this.networkUpdateIntervalFast
       : this.networkUpdateIntervalMoving;
+    if (highLatency && !directionChanged) {
+      networkInterval = 1000 / 20;
+    }
     const timeSinceLastUpdate = now - this.lastNetworkUpdate;
 
     const shouldQueue =
@@ -217,7 +266,12 @@ return;
     // absolute coordinates by accumulating deltas from player.x/player.y.
     const dx = finalX - this.lastSentPosition.x;
     const dy = finalY - this.lastSentPosition.y;
-    this._inputBatch.push({ dx, dy, angle, seq: this._nextSeq++ });
+    const inputSeq = this._nextSeq++;
+    this._inputBatch.push({ dx, dy, angle, seq: inputSeq });
+    this._pendingInputs.push({ seq: inputSeq, dx, dy });
+    if (this._pendingInputs.length > 64) {
+      this._pendingInputs.shift();
+    }
     this.lastNetworkUpdate = now;
     this.lastSentPosition = { x: finalX, y: finalY, angle };
 

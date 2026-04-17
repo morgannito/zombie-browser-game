@@ -186,6 +186,18 @@ class GameStateManager {
    * Base 100ms; bumped to 200ms when jitter > 50ms (unstable link).
    * @returns {number} delay in ms
    */
+  /**
+   * Extrapolation cap scales with latency: more latency = longer extrap
+   * leash before an entity freezes on its last snapshot. Capped to avoid
+   * runaway hallucinated motion.
+   * @returns {number} cap in ms
+   */
+  _adaptiveExtrapCap() {
+    if (this.networkLatency > 250) return 140;
+    if (this.networkLatency > 100) return 100;
+    return 75;
+  }
+
   _adaptiveInterpDelay() {
     // Base: 100ms stable link, 200ms on jitter.
     // High-latency boost: when network RTT > 200ms the server throttles
@@ -498,7 +510,7 @@ class GameStateManager {
   }
 
   _stepBeforeBuffer(state, entity, snaps, renderTime, skipExtrapolation) {
-    const MAX_EXTRAP_MS = 75;
+    const MAX_EXTRAP_MS = this._adaptiveExtrapCap();
     const first = snaps[0];
     if (snaps.length === 1 && !skipExtrapolation) {
       const overtime = Math.min(first.t - renderTime, MAX_EXTRAP_MS);
@@ -515,14 +527,14 @@ class GameStateManager {
       this._commitStep(state, entity, newest.x, newest.y);
       return;
     }
-    const MAX_EXTRAP_MS = 75;
+    const MAX_EXTRAP_MS = this._adaptiveExtrapCap();
     const overtime = Math.min(renderTime - newest.t, MAX_EXTRAP_MS);
     const t = overtime / 1000;
     this._commitStep(state, entity, newest.x + state.velocityX * t, newest.y + state.velocityY * t);
   }
 
   _stepWithinBuffer(state, entity, snaps, renderTime, skipExtrapolation, newest) {
-    const MAX_EXTRAP_MS = 75;
+    const MAX_EXTRAP_MS = this._adaptiveExtrapCap();
     const GAP_EXTRAP_THRESHOLD_MS = 200;
     for (let i = 1; i < snaps.length; i++) {
       const a = snaps[i - 1];
