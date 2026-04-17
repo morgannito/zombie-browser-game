@@ -430,24 +430,15 @@ class GameStateManager {
       }
     }
 
-    // Prefer authoritative server velocity when available (px/s). Fallback
-    // to reconstructed delta-based estimate when vx/vy are absent (bullets,
-    // particles, etc). The server value is noise-free; the reconstructed
-    // one jitters at 0.1px quantisation + packet timing variance.
-    if (typeof entity.vx === 'number' && typeof entity.vy === 'number') {
-      state.velocityX = entity.vx;
-      state.velocityY = entity.vy;
+    const elapsed = now - state.lastUpdateTime;
+    const dx = newX - state.serverX;
+    const dy = newY - state.serverY;
+    if (elapsed > 0 && elapsed < 500) {
+      state.velocityX = (dx / elapsed) * 1000;
+      state.velocityY = (dy / elapsed) * 1000;
     } else {
-      const elapsed = now - state.lastUpdateTime;
-      const dx = newX - state.serverX;
-      const dy = newY - state.serverY;
-      if (elapsed > 0 && elapsed < 500) {
-        state.velocityX = (dx / elapsed) * 1000;
-        state.velocityY = (dy / elapsed) * 1000;
-      } else {
-        state.velocityX = 0;
-        state.velocityY = 0;
-      }
+      state.velocityX = 0;
+      state.velocityY = 0;
     }
     state.serverX = newX;
     state.serverY = newY;

@@ -532,15 +532,6 @@ function moveTowardsPlayer(
   const { newX, newY } = calculateNewPosition(zombie, angle, effectiveSpeed, deltaTime);
   const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
 
-  // FIX animation jitter: broadcast authoritative velocity to the client so
-  // its interpolator doesn't reconstruct a noisy vx/vy from quantised
-  // position deltas (0.1px steps + network jitter = visible stutter at 60Hz).
-  // deltaTime is normalised to 60Hz (1 tick = 16.67ms), so seconds elapsed =
-  // deltaTime / 60, hence vx = Δpx * 60 / deltaTime.
-  const dtSafe = Math.max(deltaTime, 0.01);
-  zombie.vx = ((finalX - zombie.x) * 60) / dtSafe;
-  zombie.vy = ((finalY - zombie.y) * 60) / dtSafe;
-
   zombie.x = finalX;
   zombie.y = finalY;
 
