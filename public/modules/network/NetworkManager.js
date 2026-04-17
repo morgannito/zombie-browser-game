@@ -432,8 +432,8 @@ class NetworkManager {
       window.gameState.updateServerTime(state.serverTime);
     }
 
-    // Update state with server data
-    window.gameState.updateState(state);
+    // Update state with server data (passe serverTime pour ancrage interp)
+    window.gameState.updateState(state, state.serverTime);
 
     // Re-apply client-side environment systems (biome/weather)
     if (window.biomeSystem && window.biomeSystem.applyToGameState) {

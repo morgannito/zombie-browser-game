@@ -99,7 +99,7 @@ class GameStateManager {
     };
   }
 
-  updateState(newState) {
+  updateState(newState, packetServerTime) {
     // BUGFIX (multi): merge instead of replace — preserve client-only env state
     // (parallax, staticProps, dynamicProps, envParticles, obstacles, doors, totalRooms)
     // that the server does not echo back in full-state broadcasts.
@@ -134,6 +134,14 @@ class GameStateManager {
         if (e && e.x !== undefined) {
           e._serverX = e.x;
           e._serverY = e.y;
+          // FIX: stamp the authoritative server time so _applyServerUpdate
+          // pushes snapshots on the same clock as delta updates. Without
+          // this, full-state frames fell back to client-estimated `now`,
+          // producing a fractured snapshot timeline that froze interpolation
+          // mid-chase when the local player moved.
+          if (packetServerTime !== undefined) {
+            e._serverTime = packetServerTime;
+          }
         }
       }
     }
@@ -385,9 +393,11 @@ class GameStateManager {
     entity._serverY = undefined;
     entity._serverTime = undefined;
 
-    if (newX === state.serverX && newY === state.serverY) {
-      return; // Position unchanged on server — skip update
-    }
+    // FIX: keep pushing snapshots even when position is unchanged — otherwise
+    // stationary or near-stationary entities (zombies chasing a predicted
+    // player whose server-side position barely moves) have a stale buffer
+    // that freezes interpolation when renderTime passes the newest `t`.
+    // The snapshot is a no-op spatially but refreshes the timeline anchor.
 
     // Push snapshot into ringbuffer (max 8 entries)
     // 8 snaps @ 30Hz = ~267ms window — enough to cover 100ms interp delay with
