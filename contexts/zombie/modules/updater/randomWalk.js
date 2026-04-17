@@ -66,6 +66,10 @@ function moveRandomly(zombie, now, roomManager, deltaTime = 1) {
   const { finalX, finalY } = resolveWallCollisions(zombie, newX, newY, roomManager);
   const intended = { x: newX - zombie.x, y: newY - zombie.y };
   const actual = { x: finalX - zombie.x, y: finalY - zombie.y };
+  // Velocity for client interpolation (see moveTowardsPlayer for rationale).
+  const dtSafe = Math.max(deltaTime, 0.01);
+  zombie.vx = (actual.x * 60) / dtSafe;
+  zombie.vy = (actual.y * 60) / dtSafe;
   zombie.x = finalX;
   zombie.y = finalY;
   applyDeflection(zombie, intended, actual, now);
