@@ -502,127 +502,93 @@
          before any subsequent inline script runs. Nothing to do here. -->
 
     <!-- ============================================================
-         BUNDLE LOADER
-         If app.bundle.js exists (built via `npm run build`), load it.
-         Otherwise fall back to the original 82 individual scripts.
-         To activate bundled mode: run `npm run build` on the server.
+         Scripts loaded individually over HTTP/2 multiplexing.
+         Cache-bust `?v=<hash>` injected per-file by scripts/cache-bust.py
+         on every deploy, guaranteeing no stale code survives a push.
+         Bundled mode was removed 2026-04-17 after a stale app.bundle.js
+         silently shipped an obsolete auth route for weeks.
          ============================================================ -->
-    <script>
-      (function () {
-        var BUNDLE_VERSION = 'ded7749';
-        var head = document.head || document.getElementsByTagName('head')[0];
-
-        function loadScript(src, onload) {
-          var s = document.createElement('script');
-          s.src = src;
-          if (onload) s.onload = onload;
-          document.body.appendChild(s);
-        }
-
-        // Try bundle first via HEAD probe
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', '/app.bundle.js', true);
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState !== 4) return;
-          if (xhr.status === 200) {
-            // Bundle available — load single file
-            loadScript('/app.bundle.js?v=' + BUNDLE_VERSION);
-          } else {
-            // Fallback: load 82 scripts in order
-            var scripts = [
-              'modules/utils/ErrorTracker.js',
-              'perfPatches.js',
-              'EventListenerManager.js',
-              'TimerManager.js',
-              'lib/ClientLogger.js',
-              'lib/MathUtils.js',
-              'lib/PerformanceUtils.js',
-              'lib/StorageManager.js',
-              'assetManager.js',
-              'professionalAssetGenerator.js',
-              'demoAssetGenerator.js',
-              'assetIntegration.js',
-              'visualEffects.js',
-              'screenEffects.js',
-              'modules/audio/OptimizedAudioCore.js',
-              'modules/audio/OptimizedSoundEffects.js',
-              'weaponAudioSystem.js',
-              'audioSystem.js',
-              'skinSystem.js',
-              'enhancedUI.js',
-              'performanceSettings.js',
-              'gameIntegration.js',
-              'achievementSystem.js',
-              'dailyChallenges.js',
-              'unlockSystem.js',
-              'synergySystem.js',
-              'synergyTracker.js',
-              'missionSystem.js',
-              'lifetimeStats.js',
-              'gemSystem.js',
-              'retentionHooks.js',
-              'eventSystem.js',
-              'contracts.js',
-              'runMutators.js',
-              'riskRewardSystem.js',
-              'telemetrySystem.js',
-              'weaponRecords.js',
-              'metaProgression.js',
-              'biomeSystem.js',
-              'addictionIntegration.js',
-              'auth.js',
-              'modules/core/Constants.js',
-              'modules/core/SessionManager.js',
-              'modules/state/GameStateManager.js',
-              'modules/input/InputManager.js',
-              'modules/managers/AudioManager.js',
-              'modules/input/MobileControlsManager.js',
-              'modules/managers/CameraManager.js',
-              'modules/ui/UIManager.js',
-              'modules/ui/NicknameManager.js',
-              'modules/systems/ComboSystem.js',
-              'modules/systems/ToastManager.js',
-              'modules/systems/LeaderboardSystem.js',
-              'modules/network/NetworkManager.js',
-              'modules/systems/AccountProgressionManager.js',
-              'modules/entities/DestructibleObstacles.js',
-              'modules/entities/StaticProps.js',
-              'modules/entities/DynamicProps.js',
-              'modules/environment/WeatherSystem.js',
-              'modules/environment/DayNightCycle.js',
-              'modules/environment/LightingSystem.js',
-              'modules/environment/ParallaxBackground.js',
-              'modules/environment/EnvironmentalParticles.js',
-              'modules/audio/AmbientAudioSystem.js',
-              'modules/rendering/BackgroundRenderer.js',
-              'modules/rendering/EntityRenderer.js',
-              'modules/rendering/EffectsRenderer.js',
-              'modules/rendering/MinimapRenderer.js',
-              'modules/rendering/UIRenderer.js',
-              'modules/rendering/CrosshairRenderer.js',
-              'modules/input/PlayerController.js',
-              'modules/game/Renderer.js',
-              'modules/core/GameEngine.js',
-              'modules/utils/initHelpers.js',
-              'tutorialSystem.js',
-              'settingsMenu.js',
-              'pauseMenu.js',
-              'weaponWheel.js',
-              'enemyMarkers.js',
-              'game.js',
-              'gamePatch.js',
-            ];
-            var i = 0;
-            function next() {
-              if (i >= scripts.length) return;
-              loadScript(scripts[i++] + '?v=' + BUNDLE_VERSION, next);
-            }
-            next();
-          }
-        };
-        xhr.send();
-      }());
-    </script>
+    <script src="modules/utils/ErrorTracker.js"></script>
+    <script src="perfPatches.js"></script>
+    <script src="EventListenerManager.js"></script>
+    <script src="TimerManager.js"></script>
+    <script src="lib/ClientLogger.js"></script>
+    <script src="lib/MathUtils.js"></script>
+    <script src="lib/PerformanceUtils.js"></script>
+    <script src="lib/StorageManager.js"></script>
+    <script src="assetManager.js"></script>
+    <script src="professionalAssetGenerator.js"></script>
+    <script src="demoAssetGenerator.js"></script>
+    <script src="assetIntegration.js"></script>
+    <script src="visualEffects.js"></script>
+    <script src="screenEffects.js"></script>
+    <script src="modules/audio/OptimizedAudioCore.js"></script>
+    <script src="modules/audio/OptimizedSoundEffects.js"></script>
+    <script src="weaponAudioSystem.js"></script>
+    <script src="audioSystem.js"></script>
+    <script src="skinSystem.js"></script>
+    <script src="enhancedUI.js"></script>
+    <script src="performanceSettings.js"></script>
+    <script src="gameIntegration.js"></script>
+    <script src="achievementSystem.js"></script>
+    <script src="dailyChallenges.js"></script>
+    <script src="unlockSystem.js"></script>
+    <script src="synergySystem.js"></script>
+    <script src="synergyTracker.js"></script>
+    <script src="missionSystem.js"></script>
+    <script src="lifetimeStats.js"></script>
+    <script src="gemSystem.js"></script>
+    <script src="retentionHooks.js"></script>
+    <script src="eventSystem.js"></script>
+    <script src="contracts.js"></script>
+    <script src="runMutators.js"></script>
+    <script src="riskRewardSystem.js"></script>
+    <script src="telemetrySystem.js"></script>
+    <script src="weaponRecords.js"></script>
+    <script src="metaProgression.js"></script>
+    <script src="biomeSystem.js"></script>
+    <script src="addictionIntegration.js"></script>
+    <script src="auth.js"></script>
+    <script src="modules/core/Constants.js"></script>
+    <script src="modules/core/SessionManager.js"></script>
+    <script src="modules/state/GameStateManager.js"></script>
+    <script src="modules/input/InputManager.js"></script>
+    <script src="modules/managers/AudioManager.js"></script>
+    <script src="modules/input/MobileControlsManager.js"></script>
+    <script src="modules/managers/CameraManager.js"></script>
+    <script src="modules/ui/UIManager.js"></script>
+    <script src="modules/ui/NicknameManager.js"></script>
+    <script src="modules/systems/ComboSystem.js"></script>
+    <script src="modules/systems/ToastManager.js"></script>
+    <script src="modules/systems/LeaderboardSystem.js"></script>
+    <script src="modules/network/NetworkManager.js"></script>
+    <script src="modules/systems/AccountProgressionManager.js"></script>
+    <script src="modules/entities/DestructibleObstacles.js"></script>
+    <script src="modules/entities/StaticProps.js"></script>
+    <script src="modules/entities/DynamicProps.js"></script>
+    <script src="modules/environment/WeatherSystem.js"></script>
+    <script src="modules/environment/DayNightCycle.js"></script>
+    <script src="modules/environment/LightingSystem.js"></script>
+    <script src="modules/environment/ParallaxBackground.js"></script>
+    <script src="modules/environment/EnvironmentalParticles.js"></script>
+    <script src="modules/audio/AmbientAudioSystem.js"></script>
+    <script src="modules/rendering/BackgroundRenderer.js"></script>
+    <script src="modules/rendering/EntityRenderer.js"></script>
+    <script src="modules/rendering/EffectsRenderer.js"></script>
+    <script src="modules/rendering/MinimapRenderer.js"></script>
+    <script src="modules/rendering/UIRenderer.js"></script>
+    <script src="modules/rendering/CrosshairRenderer.js"></script>
+    <script src="modules/input/PlayerController.js"></script>
+    <script src="modules/game/Renderer.js"></script>
+    <script src="modules/core/GameEngine.js"></script>
+    <script src="modules/utils/initHelpers.js"></script>
+    <script src="tutorialSystem.js"></script>
+    <script src="settingsMenu.js"></script>
+    <script src="pauseMenu.js"></script>
+    <script src="weaponWheel.js"></script>
+    <script src="enemyMarkers.js"></script>
+    <script src="game.js"></script>
+    <script src="gamePatch.js"></script>
 
     <!-- Portrait-hint body class: toggled on game start/over/death -->
     <script>
