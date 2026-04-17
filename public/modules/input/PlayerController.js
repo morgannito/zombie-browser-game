@@ -72,10 +72,28 @@ class PlayerController {
     }
     this.lastAcknowledgedSequence = ack.seq;
     this._pendingInputs = this._pendingInputs.filter(i => i.seq > ack.seq);
-    // NOTE: no active re-snap here. The server broadcast stream already
-    // updates players[id].x/y every tick — snapping on moveAck caused
-    // mid-frame teleports into zombie contact zones (instant death).
-    // We keep seq tracking so positionCorrection (hard divergence) still works.
+
+    const player = this.gameState.state.players[this.gameState.playerId];
+    if (!player || !player.alive) {
+      return;
+    }
+
+    // Safety: if divergence is huge (>50px), let the server's explicit
+    // positionCorrection handler take over rather than snapping here.
+    const dxCurr = player.x - ack.x;
+    const dyCurr = player.y - ack.y;
+    if (Math.hypot(dxCurr, dyCurr) > this.RECONCILE_MAX_DIVERGENCE_PX) {
+      return;
+    }
+
+    // Snap to server-authoritative position, then re-apply unacked inputs.
+    player.x = ack.x;
+    player.y = ack.y;
+    for (const inp of this._pendingInputs) {
+      const resolved = this._resolveCollision(player, player.x + inp.dx, player.y + inp.dy);
+      player.x = resolved.finalX;
+      player.y = resolved.finalY;
+    }
   }
 
   setNickname(nickname) {
@@ -211,13 +229,14 @@ class PlayerController {
    * position at which the move was computed — server reconstructs absolute coords
    * sequentially. This halves payload size vs. sending absolute x,y per move.
    *
+   * @param {object} player
    * @param {number} finalX
    * @param {number} finalY
    * @param {number} angle
    * @param {boolean} directionChanged
    * @param {number} now
    */
-  _maybeEmitMove(finalX, finalY, angle, directionChanged, now) {
+  _maybeEmitMove(player, finalX, finalY, angle, directionChanged, now) {
     const positionDelta = Math.hypot(
       finalX - this.lastSentPosition.x,
       finalY - this.lastSentPosition.y
@@ -309,7 +328,7 @@ return;
       player.angle = angle;
 
       this.input.recordInput(finalX, finalY, angle, deltaTime);
-      this._maybeEmitMove(finalX, finalY, angle, directionChanged, now);
+      this._maybeEmitMove(player, finalX, finalY, angle, directionChanged, now);
     } else {
       // Not moving — decay velocity
       this.velocity.x *= 0.8;
