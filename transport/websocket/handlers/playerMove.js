@@ -20,7 +20,11 @@ const _mc = MetricsCollector.getInstance();
 const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
 const MAX_BUDGET = PIXELS_PER_MS * 2000;
 const ACCRUAL_FACTOR = 1.5;
-const MIN_ALLOWANCE = 20;
+const MIN_ALLOWANCE = 100;
+// Anti-cheat leaky-bucket disabled: it was causing rubber-band corrections
+// fighting the client prediction. Reactivate later when the movement pipeline
+// is stable by flipping this back to false (or gating on an env var).
+const DISABLE_ANTICHEAT = true;
 
 /**
  * Process a single validated move payload through the full anti-cheat pipeline.
@@ -54,27 +58,9 @@ function _processSingleMove(socket, gameState, roomManager, data) {
   }
 
   const validatedData = validateMovementData(absoluteData);
-  if (!validatedData) {
-    logger.warn('Invalid movement data received', { socketId: socket.id, data });
-    if (player) {
-      socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-    }
-    return;
-  }
-
-  if (!checkRateLimit(socket.id, 'playerMove')) {
-    if (player) {
-      socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-    }
-    return;
-  }
-
-  if (!player || !player.alive || !player.hasNickname) {
-    if (player) {
-      socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-    }
-    return;
-  }
+  if (!validatedData) return;
+  if (!checkRateLimit(socket.id, 'playerMove')) return;
+  if (!player || !player.alive || !player.hasNickname) return;
 
   const wallThickness = CONFIG.WALL_THICKNESS || 40;
   const playerSize = CONFIG.PLAYER_SIZE || 20;
@@ -93,7 +79,7 @@ function _processSingleMove(socket, gameState, roomManager, data) {
   const dy = newY - player.y;
   const distanceSq = dx * dx + dy * dy;
 
-  if (player.speedMultiplier > 5) {
+  if (!DISABLE_ANTICHEAT && player.speedMultiplier > 5) {
     logger.warn('Anti-cheat: Suspicious speedMultiplier detected', {
       player: player.nickname || socket.id,
       speedMultiplier: player.speedMultiplier
@@ -114,7 +100,6 @@ function _processSingleMove(socket, gameState, roomManager, data) {
   player.lastMoveTime = now;
 
   if (player.stunned && player.stunnedUntil > now) {
-    socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
     socket.emit(SOCKET_EVENTS.SERVER.STUNNED, { duration: player.stunnedUntil - now });
     return;
   } else if (player.stunned && player.stunnedUntil <= now) {
@@ -137,60 +122,49 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     player.moveBudget = MAX_BUDGET;
   }
 
-  // Compare squared to avoid sqrt on the common path (budget not exceeded).
-  const budgetPlusAllowance = player.moveBudget + MIN_ALLOWANCE;
-  if (distanceSq > budgetPlusAllowance * budgetPlusAllowance) {
-    const distance = Math.sqrt(distanceSq);
-    logger.warn('Anti-cheat: Movement rejected - exceeded budget', {
-      player: player.nickname || socket.id,
-      distance: Math.round(distance),
-      budget: Math.round(player.moveBudget)
-    });
-    _mc.recordCheatAttempt('movement_budget');
-    _mc.recordMovementCorrection();
-    if (_mc.recordViolation(socket.id)) {
-      _mc.metrics.anticheat.player_disconnects_total++;
-      _mc.clearViolations(socket.id);
-      socket.disconnect(true);
+  // Leaky-bucket movement budget disabled. Re-enable by wrapping this block
+  // with `if (!DISABLE_ANTICHEAT)` once the prediction + interpolation loop
+  // is stable.
+  if (!DISABLE_ANTICHEAT) {
+    const budgetPlusAllowance = player.moveBudget + MIN_ALLOWANCE;
+    if (distanceSq > budgetPlusAllowance * budgetPlusAllowance) {
+      const distance = Math.sqrt(distanceSq);
+      logger.warn('Anti-cheat: Movement rejected - exceeded budget', {
+        player: player.nickname || socket.id,
+        distance: Math.round(distance),
+        budget: Math.round(player.moveBudget)
+      });
+      _mc.recordCheatAttempt('movement_budget');
+      _mc.recordMovementCorrection();
+      if (_mc.recordViolation(socket.id)) {
+        _mc.metrics.anticheat.player_disconnects_total++;
+        _mc.clearViolations(socket.id);
+        socket.disconnect(true);
+        return;
+      }
+      socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
       return;
     }
-    socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-    return;
+    const distance = Math.sqrt(distanceSq);
+    player.moveBudget -= distance;
+    if (player.moveBudget < -100) {
+      player.moveBudget = -100;
+    }
   }
 
-  // Only compute sqrt when we actually need linear distance for budget debit.
-  const distance = Math.sqrt(distanceSq);
-  player.moveBudget -= distance;
-  if (player.moveBudget < -100) {
-    player.moveBudget = -100;
-  }
-
+  // Wall collision: accept client position if walkable, else slide along the
+  // axis that IS walkable, else keep server position. No explicit
+  // positionCorrection emit — the regular broadcast stream carries x/y and
+  // the client reconciles from there when the drift is large.
   if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
     player.x = newX;
     player.y = newY;
   } else {
-    let slideX = player.x;
-    let slideY = player.y;
-
     if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE)) {
-      slideX = newX;
+      player.x = newX;
     }
     if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE)) {
-      slideY = newY;
-    }
-
-    if (slideX !== player.x || slideY !== player.y) {
-      player.x = slideX;
-      player.y = slideY;
-      const clientDiff = Math.sqrt(
-        Math.pow(validatedData.x - player.x, 2) + Math.pow(validatedData.y - player.y, 2)
-      );
-      if (clientDiff > 50) {
-        socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
-      }
-    } else {
-      MetricsCollector.getInstance().recordMovementCorrection();
-      socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
+      player.y = newY;
     }
   }
 
@@ -199,9 +173,6 @@ function _processSingleMove(socket, gameState, roomManager, data) {
 }
 
 function registerPlayerMoveHandler(socket, gameState, roomManager) {
-  // Canonical single-move event — absolute {x, y, angle, seq}. 30Hz throttle
-  // on the client. No batching, no reconciliation: the broadcast stream is
-  // the source of truth for remote clients.
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE,
     safeHandler('playerMove', function (data) {

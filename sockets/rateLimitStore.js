@@ -9,7 +9,11 @@ const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 const rateLimits = new Map();
 
+// All socket rate limits disabled — small indie game, no spam defence needed.
+const RATE_LIMITS_DISABLED = true;
+
 function checkRateLimit(socketId, eventName) {
+  if (RATE_LIMITS_DISABLED) return true;
   const config = RATE_LIMIT_CONFIG[eventName];
   if (!config) {
     return true;

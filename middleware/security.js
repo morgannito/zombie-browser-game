@@ -16,28 +16,38 @@ const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../c
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const directives = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'https:'],
+    connectSrc: ["'self'", 'ws:', 'wss:'],
+    fontSrc: ["'self'"],
+    objectSrc: ["'none'"],
+    frameAncestors: ["'none'"]
+  };
+  // Helmet injects `upgrade-insecure-requests` by default which breaks local
+  // HTTP development (browsers silently rewrite script src to https://localhost).
+  // Disable it in dev; production/HTTPS deployments keep the hardening.
+  if (isDev) {
+    directives.upgradeInsecureRequests = null;
+  }
   return helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'ws:', 'wss:'],
-        fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        frameAncestors: ["'none'"]
-      }
-    }
+    contentSecurityPolicy: { directives },
+    // HSTS instructs browsers to use HTTPS for a year — disastrous on
+    // localhost because subsequent plain-HTTP loads get blocked or auto-
+    // upgraded. Only enable in production where we actually serve HTTPS.
+    strictTransportSecurity: isDev ? false : undefined
   });
 }
 
 /**
- * Configure API rate limiter
- * @returns {Function} Rate limiter middleware
+ * Configure API rate limiter. Disabled for this indie game — replaced by a
+ * pass-through middleware.
  */
 function configureApiLimiter() {
-  return rateLimit(API_LIMITER_CONFIG);
+  return (req, res, next) => next();
 }
 
 /**
@@ -66,7 +76,7 @@ function additionalSecurityHeaders(req, res, next) {
  * @returns {Function} Rate limiter middleware
  */
 function configureAuthLimiter() {
-  return rateLimit(AUTH_LIMITER_CONFIG);
+  return (req, res, next) => next();
 }
 
 /**

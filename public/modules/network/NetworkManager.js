@@ -487,28 +487,21 @@ class NetworkManager {
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Always trust client prediction on full-state. The previous 500px snap
-      // caused visible rollbacks when client/server state diverged cross-session
-      // or during wall desyncs. Real anti-cheat violations come via the
-      // `positionCorrection` event which still applies corrections.
-      if (distance > 500) {
-        console.warn(
-          '[DESYNC-FULL] ' +
-            distance.toFixed(0) +
-            'px local=(' +
-            localPlayerState.x.toFixed(0) +
-            ',' +
-            localPlayerState.y.toFixed(0) +
-            ') server=(' +
-            serverPlayer.x.toFixed(0) +
-            ',' +
-            serverPlayer.y.toFixed(0) +
-            ')'
-        );
+      // Trust client prediction for moderate drift (<200px) to avoid visible
+      // rubber-band. Only hard-snap on catastrophic desync (map bounds, wall
+      // phasing, reconnect). The server broadcasts position every tick so
+      // smaller drifts auto-correct through normal delta interpolation.
+      const PREDICTION_TRUST_PX = 200;
+      const p = window.gameState.state.players[window.gameState.playerId];
+      if (distance > PREDICTION_TRUST_PX) {
+        p.x = serverPlayer.x;
+        p.y = serverPlayer.y;
+        p.angle = serverPlayer.angle;
+      } else {
+        p.x = localPlayerState.x;
+        p.y = localPlayerState.y;
+        p.angle = localPlayerState.angle;
       }
-      window.gameState.state.players[window.gameState.playerId].x = localPlayerState.x;
-      window.gameState.state.players[window.gameState.playerId].y = localPlayerState.y;
-      window.gameState.state.players[window.gameState.playerId].angle = localPlayerState.angle;
     }
 
     // Clear reconnection flag after accepting server state
@@ -533,11 +526,21 @@ class NetworkManager {
     } else {
       Object.assign(window.gameState.state[type][id] || {}, patch);
     }
-    // Always restore client-predicted position/angle
+    // Keep client prediction when drift is moderate, hard-snap only on
+    // catastrophic desync. Trust the client for smooth playing experience.
     const e = window.gameState.state[type][id];
-    e.x = localPlayerState.x;
-    e.y = localPlayerState.y;
-    e.angle = localPlayerState.angle;
+    const sx = typeof patch.x === 'number' ? patch.x : e.x;
+    const sy = typeof patch.y === 'number' ? patch.y : e.y;
+    const drift = Math.hypot(localPlayerState.x - sx, localPlayerState.y - sy);
+    if (drift > 200) {
+      e.x = sx;
+      e.y = sy;
+      e.angle = typeof patch.angle === 'number' ? patch.angle : e.angle;
+    } else {
+      e.x = localPlayerState.x;
+      e.y = localPlayerState.y;
+      e.angle = localPlayerState.angle;
+    }
   }
 
   /**
@@ -659,7 +662,8 @@ class NetworkManager {
   }
 
   /**
-   * Warn on >500px desync but NEVER snap — anti-cheat uses positionCorrection.
+   * Delta path: snap to server position when predicted drift > 50px.
+   * Matches handleGameState full-state policy.
    */
   _checkLocalPlayerDesync(delta, localPlayerState) {
     if (
@@ -670,24 +674,18 @@ class NetworkManager {
     ) {
       return;
     }
-    const serverPlayer = delta.updated.players[window.gameState.playerId];
-    const dx = localPlayerState.x - serverPlayer.x;
-    const dy = localPlayerState.y - serverPlayer.y;
+    const serverPatch = delta.updated.players[window.gameState.playerId];
+    if (serverPatch.x === undefined || serverPatch.y === undefined) return;
+    const dx = localPlayerState.x - serverPatch.x;
+    const dy = localPlayerState.y - serverPatch.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > 500) {
-      console.warn(
-        '[DESYNC] distance=' +
-          distance.toFixed(0) +
-          'px local=(' +
-          localPlayerState.x.toFixed(0) +
-          ',' +
-          localPlayerState.y.toFixed(0) +
-          ') server=(' +
-          serverPlayer.x.toFixed(0) +
-          ',' +
-          serverPlayer.y.toFixed(0) +
-          ') — ignored, keeping client prediction'
-      );
+    if (distance > 50) {
+      const p = window.gameState.state.players?.[window.gameState.playerId];
+      if (p) {
+        p.x = serverPatch.x;
+        p.y = serverPatch.y;
+        if (typeof serverPatch.angle === 'number') p.angle = serverPatch.angle;
+      }
     }
   }
 
@@ -761,16 +759,8 @@ class NetworkManager {
   }
 
   handlePositionCorrection(data) {
-    // Server detected invalid movement and is correcting position
-    const local = window.gameState?.state?.players?.[window.gameState.playerId];
-    console.warn(
-      '[ROLLBACK-CORR] server=(' +
-        data.x.toFixed(0) +
-        ',' +
-        data.y.toFixed(0) +
-        ')' +
-        (local ? ' local=(' + local.x.toFixed(0) + ',' + local.y.toFixed(0) + ')' : '')
-    );
+    // Anti-cheat is off → server only sends positionCorrection for stuns /
+    // wall slides. Keep the handler but silence the noisy logs.
 
     // Apply correction to player position (this overrides client prediction)
     if (
@@ -807,32 +797,14 @@ class NetworkManager {
       }
       this._lastCorrectionTime = now;
 
-      const shouldHardSnap = correctionDistance >= 100 || isRapidCorrection;
-
-      if (shouldHardSnap) {
-        // Hard snap: large desync OR rapid consecutive corrections
+      // Small corrections lerp smoothly (no visible teleport). Large ones
+      // still snap so the client doesn't drift into walls / through map bounds.
+      if (correctionDistance >= 150) {
         player.x = data.x;
         player.y = data.y;
-        // Clear any pending lerp correction so it doesn't fight the hard snap.
         delete player._correctionTarget;
-        console.log(
-          '[Socket.IO] Hard snap correction. Distance:',
-          correctionDistance.toFixed(1),
-          'px, rapid:',
-          isRapidCorrection,
-          'count:',
-          this._correctionCount
-        );
-      } else {
-        // Smooth lerp correction over ~150ms: store the target so the render
-        // loop (GameStateManager.interpolate) can gradually blend toward it
-        // without a visible teleport. Falls back to immediate if no render loop.
-        player._correctionTarget = { x: data.x, y: data.y, startTime: now, duration: 150 };
-        console.log(
-          '[Socket.IO] Small correction queued for smooth lerp. Distance:',
-          correctionDistance.toFixed(1),
-          'px'
-        );
+      } else if (correctionDistance > 2) {
+        player._correctionTarget = { x: data.x, y: data.y, startTime: now, duration: 200 };
       }
 
       // Reset lastSentPosition to the corrected position so the next
@@ -844,9 +816,6 @@ class NetworkManager {
         playerController.lastSentPosition.y = player.y;
       }
 
-      if (window.toastManager && correctionDistance > 50) {
-        window.toastManager.show({ message: '⚠️ Position corrected', type: 'warning' });
-      }
     }
   }
 

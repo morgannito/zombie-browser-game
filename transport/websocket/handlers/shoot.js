@@ -75,27 +75,17 @@ function registerShootHandler(socket, gameState, entityManager, roomManager) {
       // Nombre total de balles (arme + extra bullets)
       const totalBullets = weapon.bulletCount + (player.extraBullets || 0);
 
-      // ANTI-CHEAT: Limiter le nombre total de balles pour éviter l'exploitation
+      // Keep a hard bullet cap to protect the server loop, but no more cheat
+      // logging / violations / disconnects.
       const MAX_TOTAL_BULLETS = 50;
-      if (totalBullets > MAX_TOTAL_BULLETS) {
-        logger.warn('Anti-cheat: Suspicious bullet count detected', {
-          player: player.nickname || socket.id,
-          bulletCount: totalBullets,
-          maxAllowed: MAX_TOTAL_BULLETS
-        });
-        MetricsCollector.getInstance().recordCheatAttempt('bullet_count');
-        if (MetricsCollector.getInstance().recordViolation(socket.id)) {
-          MetricsCollector.getInstance().metrics.anticheat.player_disconnects_total++;
-          MetricsCollector.getInstance().clearViolations(socket.id);
-          socket.disconnect(true);
-          return;
-        }
-      }
       const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
-      // LAG COMPENSATION: advance bullet spawn to counter client interp delay + RTT.
-      const latencyMs = Math.min(Math.max(player.latency || 0, 0), MAX_LAG_COMPENSATION_MS);
-      const compensationMs = latencyMs + CLIENT_INTERP_DELAY_MS;
+      // Lag compensation removed: fast-forwarding the bullet against a
+      // non-rewound zombie position produced trajectory mismatches (bullets
+      // phasing above moving zombies). Real rewind would require snapshotting
+      // zombie positions per tick, which is a bigger rewrite.
+      const compensationMs = 0;
+      void CLIENT_INTERP_DELAY_MS; void MAX_LAG_COMPENSATION_MS;
 
       // Créer les balles selon l'arme (OPTIMISÉ avec Object Pool)
       for (let i = 0; i < safeBulletCount; i++) {

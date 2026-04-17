@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test Hub</title>
+<style>
+  body { background:#111; color:#ddd; font-family:monospace; padding:24px; }
+  h1 { margin:0 0 16px; }
+  a { display:block; color:#4af; margin:8px 0; font-size:16px; text-decoration:none; }
+  a:hover { color:#fff; }
+  .desc { color:#888; margin-left:16px; font-size:13px; }
+</style>
+</head>
+<body>
+<h1>Pages de test — debug isolé</h1>
+<a href="/test/network.html">→ Network monitor</a>
+<div class="desc">Tous les events socket.io reçus + fréquences (broadcast, moveAck, shoot, etc.)</div>
+
+<a href="/test/movement.html">→ Mouvement joueur</a>
+<div class="desc">Player controller + réconciliation serveur, sans zombies. Voir déplacement pur.</div>
+
+<a href="/test/zombies.html">→ Spawn + IA zombies</a>
+<div class="desc">Affiche tous les zombies avec leurs positions serveur vs client. Nombre, vélocité, stale.</div>
+
+<a href="/test/bullets.html">→ Tir + collision</a>
+<div class="desc">Tire en continu dans une direction. Affiche bullet/zombie distances en temps réel.</div>
+
+<a href="/test/latency.html">→ Ping + RTT</a>
+<div class="desc">Mesure latence client↔serveur en boucle. Détecte les spikes.</div>
+</body>
+</html>
