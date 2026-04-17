@@ -6,6 +6,16 @@
  * @version 1.0.0
  */
 
+const DANGER_AURA_COLORS = {
+  explosive: '#ff6a00',
+  shooter: '#ffcc00',
+  teleporter: '#c266ff',
+  summoner: '#ff33aa',
+  shielded: '#66ddff',
+  poison: '#66ff66',
+  tank: '#ff4444'
+};
+
 class EntityRenderer {
   /**
    * Fast minimal sprite for perf mode.
@@ -1187,6 +1197,24 @@ class EntityRenderer {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.strokeRect(zombie.x - barWidth / 2, barY, barWidth, 5);
+      }
+
+      // Aura par type dangereux (non-élite, non-boss) — lisibilité spatiale rapide.
+      if (!zombie.isElite && !zombie.isBoss) {
+        const auraColor = DANGER_AURA_COLORS[zombie.type];
+        if (auraColor) {
+          ctx.save();
+          const pulse = 0.25 + Math.sin(timestamp / 220) * 0.1;
+          ctx.globalAlpha = pulse;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = auraColor;
+          ctx.strokeStyle = auraColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(zombie.x, zombie.y, zombie.size + 8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       if (zombie.isElite) {

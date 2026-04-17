@@ -650,6 +650,30 @@ body {
   padding: var(--space-md);
 }
 
+.game-over-best {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px dashed rgba(204, 51, 51, 0.4);
+}
+
+.pb-banner {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-align: center;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  animation: pb-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pb-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.7); }
+}
+
 .stat-row.main-stat .stat-value {
   font-size: var(--font-2xl);
   color: #cc3333;

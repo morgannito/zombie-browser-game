@@ -213,6 +213,7 @@ class Renderer {
       gameState.state.toxicPools,
       dateNow
     );
+    this.effectsRenderer.renderScorchDecals(this.ctx, this.camera, dateNow);
     this.effectsRenderer.renderExplosions(
       this.ctx,
       this.camera,
@@ -294,6 +295,14 @@ class Renderer {
       gameState,
       this.canvas.width / pixelRatioForIndicators,
       this.canvas.height / pixelRatioForIndicators
+    );
+    this.uiRenderer.renderDangerArrows(
+      this.ctx,
+      this.camera,
+      gameState,
+      this.canvas.width / pixelRatioForIndicators,
+      this.canvas.height / pixelRatioForIndicators,
+      playerId
     );
     this.ctx.restore();
 

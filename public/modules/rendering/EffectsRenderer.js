@@ -8,7 +8,61 @@
 
 class EffectsRenderer {
   constructor() {
-    // No persistent state needed
+    // Scorch decals — client-only persistent marks left after explosions fade.
+    this.scorchDecals = [];
+    this._scorchedExplosionIds = new Set();
+    this.SCORCH_LIFETIME_MS = 8000;
+    this.SCORCH_MAX = 48;
+  }
+
+  _spawnScorchDecal(explosion, now) {
+    const key = explosion.id || `${explosion.x}|${explosion.y}|${explosion.createdAt}`;
+    if (this._scorchedExplosionIds.has(key)) {
+      return;
+    }
+    this._scorchedExplosionIds.add(key);
+    this.scorchDecals.push({
+      id: key,
+      x: explosion.x,
+      y: explosion.y,
+      radius: explosion.radius * 0.85,
+      createdAt: now,
+      isRocket: !!explosion.isRocket
+    });
+    if (this.scorchDecals.length > this.SCORCH_MAX) {
+      const removed = this.scorchDecals.shift();
+      if (removed) {
+        this._scorchedExplosionIds.delete(removed.id);
+      }
+    }
+  }
+
+  renderScorchDecals(ctx, camera, now) {
+    now = now || Date.now();
+    for (let i = this.scorchDecals.length - 1; i >= 0; i--) {
+      const d = this.scorchDecals[i];
+      const age = now - d.createdAt;
+      if (age >= this.SCORCH_LIFETIME_MS) {
+        this.scorchDecals.splice(i, 1);
+        continue;
+      }
+      if (!camera.isInViewport(d.x, d.y, d.radius * 2)) {
+        continue;
+      }
+      const fade = 1 - age / this.SCORCH_LIFETIME_MS;
+      ctx.save();
+      ctx.globalAlpha = fade * 0.55;
+      ctx.fillStyle = d.isRocket ? '#1a0a0a' : '#1f1208';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = fade * 0.35;
+      ctx.fillStyle = d.isRocket ? '#3a1a1a' : '#3a2410';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.radius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   renderParticles(ctx, camera, particles) {
@@ -213,6 +267,11 @@ class EffectsRenderer {
 
       if (progress >= 1) {
         continue;
+      }
+
+      // Spawn scorch decal once per explosion (persists after flash fades).
+      if (progress > 0.5) {
+        this._spawnScorchDecal(explosion, now);
       }
 
       if (!camera.isInViewport(explosion.x, explosion.y, explosion.radius * 2)) {

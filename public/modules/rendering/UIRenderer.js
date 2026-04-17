@@ -658,6 +658,97 @@ class UIRenderer {
     ctx.restore();
   }
 
+  /**
+   * Render offscreen danger arrows for elite/special zombies near the local player.
+   * Bosses are handled separately by renderBossOffscreenIndicators.
+   */
+  renderDangerArrows(ctx, camera, gameState, canvasW, canvasH, playerId) {
+    if (!camera || !playerId) {
+      return;
+    }
+    const player = gameState.state.players && gameState.state.players[playerId];
+    if (!player || !player.alive) {
+      return;
+    }
+    const THREAT_RADIUS = 900;
+    const THREAT_RADIUS_SQ = THREAT_RADIUS * THREAT_RADIUS;
+    const DANGEROUS_TYPES = {
+      explosive: '#ff6a00',
+      shooter: '#ffcc00',
+      teleporter: '#c266ff',
+      summoner: '#ff33aa',
+      shielded: '#66ddff',
+      poison: '#66ff66',
+      tank: '#ff4444'
+    };
+    const MARGIN = 28;
+    const ARROW = 10;
+    const bounds = camera.getViewportBounds(0);
+    ctx.save();
+    const zombies = gameState.state.zombies;
+    for (const zid in zombies) {
+      const z = zombies[zid];
+      if (!z || z.isBoss) {
+        continue;
+      }
+      const color = DANGEROUS_TYPES[z.type];
+      if (!color) {
+        continue;
+      }
+      const dx = z.x - player.x;
+      const dy = z.y - player.y;
+      if (dx * dx + dy * dy > THREAT_RADIUS_SQ) {
+        continue;
+      }
+      if (camera.isInViewport(z.x, z.y, 0)) {
+        continue;
+      }
+      this._drawDangerArrow(ctx, z, bounds, canvasW, canvasH, MARGIN, ARROW, color);
+    }
+    ctx.restore();
+  }
+
+  _drawDangerArrow(ctx, zombie, bounds, cW, cH, margin, arrowSize, color) {
+    const cx = (bounds.left + bounds.right) / 2;
+    const cy = (bounds.top + bounds.bottom) / 2;
+    const dx = zombie.x - cx;
+    const dy = zombie.y - cy;
+    const angle = Math.atan2(dy, dx);
+    const hw = cW / 2 - margin;
+    const hh = cH / 2 - margin;
+    const tan = Math.tan(angle);
+    let ex, ey;
+    if (Math.abs(dy) <= Math.abs(dx)) {
+      ex = dx > 0 ? hw : -hw;
+      ey = ex * tan;
+    } else {
+      ey = dy > 0 ? hh : -hh;
+      ex = ey / tan;
+    }
+    ex = Math.max(-hw, Math.min(hw, ex));
+    ey = Math.max(-hh, Math.min(hh, ey));
+    const sx = cW / 2 + ex;
+    const sy = cH / 2 + ey;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(angle);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(arrowSize, 0);
+    ctx.lineTo(-arrowSize * 0.6, -arrowSize * 0.6);
+    ctx.lineTo(-arrowSize * 0.2, 0);
+    ctx.lineTo(-arrowSize * 0.6, arrowSize * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
   updateWaveProgress(gameState) {
     const waveNumberEl = this.getUiElement('waveNumber', 'wave-progress-number');
     const waveKillsEl = this.getUiElement('waveKills', 'wave-kills');

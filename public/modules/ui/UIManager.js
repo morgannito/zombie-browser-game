@@ -185,6 +185,11 @@ class UIManager {
         els.finalKills.textContent = (player.zombiesKilled || player.kills || 0).toLocaleString();
       }
 
+      // Comparaison avec personal best (avant l'enregistrement du nouveau score)
+      if (wasHidden) {
+        this._renderPersonalBestComparison(player);
+      }
+
       // Sauvegarder dans le leaderboard (une seule fois)
       if (!this.deathRecorded && window.leaderboardSystem) {
         this.deathRecorded = true;
@@ -230,6 +235,64 @@ class UIManager {
       return 400 + (level - 10) * 75;
     } else {
       return Math.floor(1000 + (level - 20) * 100);
+    }
+  }
+
+  _renderPersonalBestComparison(player) {
+    const container = document.getElementById('game-over-best');
+    if (!container) {
+      return;
+    }
+    const lb = window.leaderboardSystem;
+    const pb = lb && lb.personalBest ? lb.personalBest : null;
+    const currentScore = player.totalScore || 0;
+    container.style.display = 'block';
+    const pbScoreEl = document.getElementById('pb-score');
+    const deltaEl = document.getElementById('pb-delta');
+    const deltaLabel = document.getElementById('pb-delta-label');
+    const banner = document.getElementById('pb-banner');
+    const deltaRow = document.getElementById('pb-delta-row');
+    if (!pb) {
+      if (pbScoreEl) {
+        pbScoreEl.textContent = '—';
+      }
+      if (deltaRow) {
+        deltaRow.style.display = 'none';
+      }
+      if (banner) {
+        banner.style.display = currentScore > 0 ? 'block' : 'none';
+      }
+      return;
+    }
+    const delta = currentScore - pb.score;
+    if (pbScoreEl) {
+      pbScoreEl.textContent = pb.score.toLocaleString();
+    }
+    if (deltaRow) {
+      deltaRow.style.display = 'flex';
+    }
+    if (delta >= 0) {
+      if (deltaLabel) {
+        deltaLabel.textContent = 'Record battu de';
+      }
+      if (deltaEl) {
+        deltaEl.textContent = `+${delta.toLocaleString()}`;
+        deltaEl.style.color = '#44ff66';
+      }
+      if (banner) {
+        banner.style.display = 'block';
+      }
+    } else {
+      if (deltaLabel) {
+        deltaLabel.textContent = 'Écart';
+      }
+      if (deltaEl) {
+        deltaEl.textContent = delta.toLocaleString();
+        deltaEl.style.color = '#ff8866';
+      }
+      if (banner) {
+        banner.style.display = 'none';
+      }
     }
   }
 
