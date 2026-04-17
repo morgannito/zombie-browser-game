@@ -346,6 +346,11 @@ class NetworkManager {
     this.on('gameState', state => this.handleGameState(state));
     this.on('gameStateDelta', delta => this.handleGameStateDelta(delta));
     this.on('positionCorrection', data => this.handlePositionCorrection(data));
+    this.on('moveAck', data => {
+      if (window.playerController && data && typeof data.seq === 'number') {
+        window.playerController.lastAcknowledgedSequence = data.seq;
+      }
+    });
     this.on('bossSpawned', data => this.handleBossSpawned(data));
     this.on('newWave', data => this.handleNewWave(data));
     this.on('levelUp', data => this.handleLevelUp(data));

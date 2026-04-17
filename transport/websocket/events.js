@@ -48,6 +48,7 @@ const SOCKET_EVENTS = {
 
     // Player feedback
     POSITION_CORRECTION: 'positionCorrection',
+    MOVE_ACK: 'moveAck',
     STUNNED: 'stunned',
     NICKNAME_REJECTED: 'nicknameRejected',
     PLAYER_NICKNAME_SET: 'playerNicknameSet',

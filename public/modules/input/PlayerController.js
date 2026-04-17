@@ -33,8 +33,9 @@ class PlayerController {
     this.positionThreshold = 2; // Only send if moved more than 2 pixels
     this.angleThreshold = 0.05; // Only send if angle changed significantly
 
-    // Input sequence for reconciliation
+    // Input sequence for reconciliation — bumped per queued move, ACKed by server.
     this.lastAcknowledgedSequence = 0;
+    this._nextSeq = 1;
 
     // Instant stop emit was removed — it caused rapid double-emits that
     // tripped the server's movement budget anti-cheat, producing visible rollbacks.
@@ -216,7 +217,7 @@ return;
     // absolute coordinates by accumulating deltas from player.x/player.y.
     const dx = finalX - this.lastSentPosition.x;
     const dy = finalY - this.lastSentPosition.y;
-    this._inputBatch.push({ dx, dy, angle });
+    this._inputBatch.push({ dx, dy, angle, seq: this._nextSeq++ });
     this.lastNetworkUpdate = now;
     this.lastSentPosition = { x: finalX, y: finalY, angle };
 
@@ -287,7 +288,7 @@ return;
           const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
           if (angleDelta > this.angleThreshold) {
             // Angle-only update: dx/dy = 0, flush immediately (no batching needed at 20Hz idle).
-            this._inputBatch.push({ dx: 0, dy: 0, angle });
+            this._inputBatch.push({ dx: 0, dy: 0, angle, seq: this._nextSeq++ });
             this._flushBatch();
             this.lastNetworkUpdate = now;
             this.lastSentPosition = { x: player.x, y: player.y, angle };

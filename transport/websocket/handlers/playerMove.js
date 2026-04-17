@@ -38,6 +38,15 @@ const MIN_ALLOWANCE = 20;
 function _processSingleMove(socket, gameState, roomManager, data) {
   const player = gameState.players[socket.id];
 
+  // Sequence check — drop out-of-order / replayed batch items.
+  if (player && data && typeof data.seq === 'number') {
+    const lastSeq = player.lastMoveSeq || 0;
+    if (data.seq <= lastSeq) {
+      return;
+    }
+    player.lastMoveSeq = data.seq;
+  }
+
   // Reconstruct absolute position from delta format (batch items use dx/dy).
   let absoluteData = data;
   if (data && typeof data.dx === 'number' && typeof data.dy === 'number' && player) {
@@ -202,6 +211,16 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
       }
       for (const move of batch) {
         _processSingleMove(socket, gameState, roomManager, move);
+      }
+      // ACK the last processed seq so the client can prune acknowledged inputs
+      // and perform proper prediction reconciliation.
+      const player = gameState.players[socket.id];
+      if (player && typeof player.lastMoveSeq === 'number') {
+        socket.emit(SOCKET_EVENTS.SERVER.MOVE_ACK, {
+          seq: player.lastMoveSeq,
+          x: player.x,
+          y: player.y
+        });
       }
     })
   );

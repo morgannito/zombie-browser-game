@@ -63,7 +63,8 @@ const {
   saveDeadZombie,
   evictExpiredDeadZombies,
   calculateLootBonus,
-  cleanupZombieDamageTracking
+  cleanupZombieDamageTracking,
+  handleExplosiveZombieDeath
 } = require('../BulletCollisionHandler');
 
 const { updatePlayerCombo } = require('../../../player/modules/PlayerProgression');
@@ -287,5 +288,59 @@ describe('handlePlayerBulletCollisions integration', () => {
     const cm = { checkBulletZombieCollisions: () => [{ id: 'z1', zombie }] };
     handlePlayerBulletCollisions(bullet, 'b1', gameState, {}, cm, { destroyBullet: jest.fn() }, {});
     expect(zombie.health).toBe(100);
+  });
+});
+
+// REGRESSION (audit round 2): explosive zombie death must use quadtree broad-phase
+// when available — previously it looped through gameState.zombies in O(n).
+describe('handleExplosiveZombieDeath quadtree usage (regression)', () => {
+  test('uses quadtree.queryRadius when collisionManager.quadtree is present', () => {
+    const queryRadius = jest.fn(() => []);
+    const gameState = {
+      zombies: { z1: { id: 'z1', x: 0, y: 0, health: 100, color: '#f00' } },
+      players: {},
+      collisionManager: { quadtree: { queryRadius } }
+    };
+    const em = {};
+    handleExplosiveZombieDeath(
+      { id: 'z1', x: 0, y: 0, color: '#f00' },
+      'z1',
+      gameState,
+      em
+    );
+    expect(queryRadius).toHaveBeenCalledWith(0, 0, 80); // radius from mocked ZOMBIE_TYPES.explosive
+  });
+
+  test('falls back to full scan when no quadtree is available', () => {
+    const other = { id: 'z2', x: 10, y: 10, health: 100, color: '#0f0' };
+    const gameState = {
+      zombies: { z1: { id: 'z1', x: 0, y: 0, health: 100 }, z2: other },
+      players: {}
+    };
+    handleExplosiveZombieDeath(
+      { id: 'z1', x: 0, y: 0, color: '#f00' },
+      'z1',
+      gameState,
+      {}
+    );
+    // Fallback must still damage the nearby zombie (40 damage from mocked config)
+    expect(other.health).toBe(60);
+  });
+
+  test('damages only zombies within explosion radius', () => {
+    const near = { id: 'z2', x: 10, y: 10, health: 100, color: '#0f0' };
+    const far = { id: 'z3', x: 500, y: 500, health: 100, color: '#00f' };
+    const gameState = {
+      zombies: { z1: { id: 'z1', x: 0, y: 0 }, z2: near, z3: far },
+      players: {}
+    };
+    handleExplosiveZombieDeath(
+      { id: 'z1', x: 0, y: 0, color: '#f00' },
+      'z1',
+      gameState,
+      {}
+    );
+    expect(near.health).toBe(60);
+    expect(far.health).toBe(100);
   });
 });

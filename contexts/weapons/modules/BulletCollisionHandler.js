@@ -248,13 +248,41 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
   const explosiveType = ZOMBIE_TYPES.explosive;
   createExplosion(zombie.x, zombie.y, explosiveType.explosionRadius, false, entityManager);
 
-  for (const otherId in gameState.zombies) {
-    if (otherId !== zombieId) {
-      const other = gameState.zombies[otherId];
-      const dist = distance(zombie.x, zombie.y, other.x, other.y);
-      if (dist < explosiveType.explosionRadius) {
+  // PERF: use quadtree for broad-phase when available (parity with bullet explosions).
+  const radius = explosiveType.explosionRadius;
+  const radiusSq = radius * radius;
+  const cm = gameState.collisionManager;
+  const candidates =
+    cm && cm.quadtree && typeof cm.quadtree.queryRadius === 'function'
+      ? cm.quadtree.queryRadius(zombie.x, zombie.y, radius)
+      : null;
+
+  if (candidates) {
+    for (const entity of candidates) {
+      if (!entity || entity.id === undefined) {
+        continue;
+      }
+      const other = gameState.zombies[entity.id];
+      if (!other || String(entity.id) === String(zombieId)) {
+        continue;
+      }
+      const dx = zombie.x - other.x;
+      const dy = zombie.y - other.y;
+      if (dx * dx + dy * dy < radiusSq) {
         other.health -= explosiveType.explosionDamage;
         createParticles(other.x, other.y, other.color, 8, entityManager);
+      }
+    }
+  } else {
+    for (const otherId in gameState.zombies) {
+      if (otherId !== zombieId) {
+        const other = gameState.zombies[otherId];
+        const dx = zombie.x - other.x;
+        const dy = zombie.y - other.y;
+        if (dx * dx + dy * dy < radiusSq) {
+          other.health -= explosiveType.explosionDamage;
+          createParticles(other.x, other.y, other.color, 8, entityManager);
+        }
       }
     }
   }
@@ -354,5 +382,7 @@ module.exports = {
   saveDeadZombie,
   evictExpiredDeadZombies,
   calculateLootBonus,
-  cleanupZombieDamageTracking
+  cleanupZombieDamageTracking,
+  // Exported for regression tests (audit round 2)
+  handleExplosiveZombieDeath
 };

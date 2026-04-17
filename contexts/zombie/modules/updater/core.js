@@ -32,7 +32,15 @@ function ensureStaggerOffset(zombie, zombieId, pathfindingRate) {
   if (zombie.staggerOffset !== null && zombie.staggerOffset !== undefined) {
  return;
 }
-  zombie.staggerOffset = (Number(zombieId) || 0) % pathfindingRate;
+  // PERF: hash string zombieId → int to avoid NaN collapse for UUID-style IDs.
+  // Previously `Number(uuid)` = NaN → fallback 0, so ALL zombies recalculated
+  // pathing on the same tick (stagger benefit lost).
+  let h = 0;
+  const s = String(zombieId);
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  zombie.staggerOffset = Math.abs(h) % pathfindingRate;
 }
 
 function applyFarFreeze(zombie, players, isZombieFarFromAllPlayers) {
