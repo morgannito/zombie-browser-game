@@ -670,25 +670,20 @@ class GameStateManager {
    */
   cleanupOrphanedEntities() {
     const now = Date.now();
-    // Split timeouts: zombies go silent on AOI exit, so purge them fast to
-    // avoid 10s of ghosted frozen sprites. Other entities (bullets, loot)
-    // may legitimately have gaps — keep the generous window.
-    const ORPHAN_TIMEOUT_ZOMBIES = 2000;
-    const ORPHAN_TIMEOUT_DEFAULT = 10000;
+    const ORPHAN_TIMEOUT = 10000;
 
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(
       type => {
         if (!this.state[type]) {
           return;
         }
-        const timeout = type === 'zombies' ? ORPHAN_TIMEOUT_ZOMBIES : ORPHAN_TIMEOUT_DEFAULT;
 
         for (const [id, entity] of Object.entries(this.state[type])) {
           if (!entity._lastSeen) {
             entity._lastSeen = now;
           }
 
-          if (now - entity._lastSeen > timeout) {
+          if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
             delete this.state[type][id];
           }
         }

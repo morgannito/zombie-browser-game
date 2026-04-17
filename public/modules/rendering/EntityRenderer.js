@@ -1167,11 +1167,6 @@ class EntityRenderer {
   renderZombies(ctx, camera, zombies, timestamp) {
     timestamp = timestamp || performance.now();
     const now = Date.now();
-    // Hide zombies that dropped out of the server AOI / broadcast. Once the
-    // server stops sending patches for an entity, its `_lastSeen` ages. After
-    // 600ms we stop rendering it — otherwise it freezes visibly at its last
-    // known position for up to ORPHAN_TIMEOUT (2s), looking like a bug.
-    const STALE_MS = 600;
 
     for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
@@ -1181,10 +1176,6 @@ class EntityRenderer {
         !Number.isFinite(zombie.x) ||
         !Number.isFinite(zombie.y)
       ) {
-        continue;
-      }
-
-      if (zombie._lastSeen && now - zombie._lastSeen > STALE_MS) {
         continue;
       }
 
