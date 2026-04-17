@@ -58,7 +58,17 @@ function updateBullets(
 
     // PHYSICS FIX: Calculate deltaTime for this bullet
     const lastUpdate = bullet.lastUpdateTime || bullet.createdAt || now;
-    const deltaTime = Math.min(now - lastUpdate, 100); // Cap at 100ms to prevent huge jumps after lag
+    let deltaTime = Math.min(now - lastUpdate, 100); // Cap at 100ms to prevent huge jumps after lag
+
+    // LAG COMPENSATION: on the first tick, fast-forward the bullet by
+    // (client interp + RTT) ms through the normal swept-collision pipeline.
+    // Substepping in updateBulletPositionWithCollision guarantees any zombie
+    // or wall on the compensated path is hit correctly — no phasing through.
+    if (bullet.spawnCompensationMs && bullet.spawnCompensationMs > 0) {
+      deltaTime = Math.min(deltaTime + bullet.spawnCompensationMs, 500);
+      bullet.spawnCompensationMs = 0;
+    }
+
     const deltaMultiplier = deltaTime / TARGET_FRAME_TIME;
     bullet.lastUpdateTime = now;
 

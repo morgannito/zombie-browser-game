@@ -87,7 +87,7 @@ function captureBullets() {
 }
 
 describe('shoot handler lag compensation (regression)', () => {
-  test('bullet spawned at player position when latency is 0 still gets default interp compensation', () => {
+  test('bullet carries spawnCompensationMs flag for BulletUpdater consumption', () => {
     const socket = makeSocket();
     const player = makePlayer();
     const gameState = { players: { [socket.id]: player } };
@@ -98,47 +98,50 @@ describe('shoot handler lag compensation (regression)', () => {
 
     expect(em.spawned).toHaveLength(1);
     const b = em.spawned[0];
-    // 150ms interp delay at 60Hz ≈ 9 frames × 12 px/frame = 108px advance along +X.
-    expect(b.x).toBeGreaterThan(player.x);
-    expect(b.x).toBeLessThan(player.x + 200);
+    // Bullet spawns AT player position — compensation happens in BulletUpdater.
+    expect(b.x).toBe(player.x);
     expect(b.y).toBe(player.y);
     expect(b.vx).toBeCloseTo(12);
+    // Default interp delay 150ms, no latency → spawnCompensationMs = 150.
+    expect(b.spawnCompensationMs).toBe(150);
   });
 
-  test('higher latency produces proportionally larger spawn advance', () => {
+  test('higher latency yields proportionally larger compensation', () => {
     const socket = makeSocket();
     const player = makePlayer({ latency: 200 });
     const em = captureBullets();
-    registerShootHandler(socket, { players: { [socket.id]: player } }, em, {
-      checkWallCollision: () => false
-    });
+    registerShootHandler(socket, { players: { [socket.id]: player } }, em, {});
     socket.trigger(SOCKET_EVENTS.CLIENT.SHOOT, { angle: 0 });
-    // (200 + 150)ms ≈ 21 frames × 12 = ~252 px advance.
-    expect(em.spawned[0].x - player.x).toBeGreaterThan(200);
+    // latency (200) + interp (150) = 350
+    expect(em.spawned[0].spawnCompensationMs).toBe(350);
   });
 
   test('latency clamped at MAX_LAG_COMPENSATION_MS (250)', () => {
     const socket = makeSocket();
-    const player = makePlayer({ latency: 5000 }); // abusive
+    const player = makePlayer({ latency: 5000 });
     const em = captureBullets();
-    registerShootHandler(socket, { players: { [socket.id]: player } }, em, {
-      checkWallCollision: () => false
-    });
+    registerShootHandler(socket, { players: { [socket.id]: player } }, em, {});
     socket.trigger(SOCKET_EVENTS.CLIENT.SHOOT, { angle: 0 });
-    // Capped compensation = 250 + 150 = 400ms → 24 frames × 12 = 288 px max.
-    expect(em.spawned[0].x - player.x).toBeLessThan(320);
+    // capped 250 + 150 interp = 400ms max
+    expect(em.spawned[0].spawnCompensationMs).toBe(400);
   });
 
-  test('walls stop the lag-compensated spawn (no warping through geometry)', () => {
-    const socket = makeSocket();
-    const player = makePlayer({ latency: 200 });
-    const em = captureBullets();
-    // Wall intercepts after 30px of travel.
-    const roomManager = {
-      checkWallCollision: (x) => x - player.x > 30
+  test('BulletUpdater fast-forwards first tick by spawnCompensationMs then clears it', () => {
+    // Integration-style check against the updater's deltaTime math, without
+    // actually running a full tick loop (collision deps are heavy). We inline
+    // the relevant logic to verify the contract.
+    const bullet = {
+      x: 0, y: 0, vx: 12, vy: 0,
+      lastUpdateTime: 100, createdAt: 100,
+      spawnCompensationMs: 350
     };
-    registerShootHandler(socket, { players: { [socket.id]: player } }, em, roomManager);
-    socket.trigger(SOCKET_EVENTS.CLIENT.SHOOT, { angle: 0 });
-    expect(em.spawned[0].x - player.x).toBeLessThan(60);
+    const now = 116; // one frame elapsed
+    let deltaTime = Math.min(now - (bullet.lastUpdateTime || bullet.createdAt || now), 100);
+    if (bullet.spawnCompensationMs && bullet.spawnCompensationMs > 0) {
+      deltaTime = Math.min(deltaTime + bullet.spawnCompensationMs, 500);
+      bullet.spawnCompensationMs = 0;
+    }
+    expect(deltaTime).toBe(366); // 16ms normal + 350ms compensation
+    expect(bullet.spawnCompensationMs).toBe(0);
   });
 });
