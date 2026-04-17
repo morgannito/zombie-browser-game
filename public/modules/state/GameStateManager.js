@@ -179,7 +179,21 @@ class GameStateManager {
    * @returns {number} delay in ms
    */
   _adaptiveInterpDelay() {
-    return this._jitter > 50 ? 200 : 100;
+    // Base: 100ms stable link, 200ms on jitter.
+    // High-latency boost: when network RTT > 200ms the server throttles
+    // broadcasts to ~30Hz for that socket, so snapshots arrive every ~33ms
+    // instead of ~16ms. A 100-200ms buffer runs dry → renderTime sits past
+    // the newest snapshot → entities freeze until the next packet.
+    // Bump the buffer to cover one full RTT one-way + a safety margin, capped
+    // at 350ms to avoid excessive visual lag on very bad links.
+    let delay = this._jitter > 50 ? 200 : 100;
+    if (this.networkLatency > 200) {
+      const latencyDelay = Math.min(350, Math.round(this.networkLatency / 2 + 100));
+      if (latencyDelay > delay) {
+        delay = latencyDelay;
+      }
+    }
+    return delay;
   }
 
   /**
