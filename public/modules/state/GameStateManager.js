@@ -405,18 +405,24 @@ class GameStateManager {
     entity._serverY = undefined;
     entity._serverTime = undefined;
 
-    // FIX: keep pushing snapshots even when position is unchanged — otherwise
-    // stationary or near-stationary entities (zombies chasing a predicted
-    // player whose server-side position barely moves) have a stale buffer
-    // that freezes interpolation when renderTime passes the newest `t`.
-    // The snapshot is a no-op spatially but refreshes the timeline anchor.
-
-    // Push snapshot into ringbuffer (max 8 entries)
-    // 8 snaps @ 30Hz = ~267ms window — enough to cover 100ms interp delay with
-    // 4+ samples to interpolate between, vs. only 2 usable segments at 4 snaps.
-    state.snapshots.push({ x: newX, y: newY, t: snapshotT });
-    if (state.snapshots.length > 8) {
-      state.snapshots.shift();
+    // Skip snapshot push when position is unchanged AND buffer already holds
+    // a recent sample: prevents 60Hz broadcasts from flooding the 8-slot ring
+    // with identical snaps (which would mask real motion afterwards).
+    // But: still refresh lastUpdateTime so the timeline anchor stays alive
+    // for the interpolator's "is this entity still fresh?" checks.
+    const lastSnap = state.snapshots[state.snapshots.length - 1];
+    const positionUnchanged = newX === state.serverX && newY === state.serverY;
+    if (positionUnchanged && lastSnap) {
+      // Only refresh timestamp on the newest snap so the buffer stays "alive"
+      // without being diluted with duplicates.
+      if (snapshotT > lastSnap.t) {
+        lastSnap.t = snapshotT;
+      }
+    } else {
+      state.snapshots.push({ x: newX, y: newY, t: snapshotT });
+      if (state.snapshots.length > 8) {
+        state.snapshots.shift();
+      }
     }
 
     const elapsed = now - state.lastUpdateTime;
