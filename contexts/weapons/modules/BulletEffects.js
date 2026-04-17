@@ -11,7 +11,7 @@ const { createParticles, createExplosion, createLoot } = require('../../../game/
 /**
  * Handle explosive bullet effect
  */
-function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager) {
+function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager, collisionManager) {
   if (!bullet.explosiveRounds || bullet.explosionRadius <= 0) {
     return;
   }
@@ -27,35 +27,57 @@ function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManage
     createParticles(zombie.x, zombie.y, '#ffff00', 20, entityManager);
   }
 
-  applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager);
+  applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager, collisionManager);
 }
 
 /**
  * Apply explosion damage to nearby zombies
- * OPTIMIZED: Use distanceSquared to avoid expensive sqrt
+ * PERF: quadtree radius query (O(log n + k)) instead of Object.keys full scan
+ * over every zombie. Falls back to the scan when the quadtree isn't available
+ * (tests / bootstrap phases).
  */
-function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager) {
-  // OPTIMIZATION: Pre-calculate squared radius to avoid sqrt in loop
-  const radiusSq = bullet.explosionRadius * bullet.explosionRadius;
+function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager, collisionManager) {
+  const radius = bullet.explosionRadius;
+  const radiusSq = radius * radius;
   const explosionDmg = (bullet.rocketExplosionDamage !== null && bullet.rocketExplosionDamage !== undefined) ?
     bullet.rocketExplosionDamage :
     (bullet.damage * bullet.explosionDamagePercent);
 
-  const zombieIds = Object.keys(gameState.zombies);
-  for (let i = 0; i < zombieIds.length; i++) {
-    const otherId = zombieIds[i];
-    if (otherId !== zombieId) {
-      const other = gameState.zombies[otherId];
-      const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
-      if (distSq < radiusSq) {
-        other.health -= explosionDmg;
-        createParticles(other.x, other.y, other.color, 8, entityManager);
-        // BUGFIX (multi): splash-killed zombies were never deleted, never awarded
-        // XP/gold/kills, and stayed in gameState until next direct hit. Reuse the
-        // chain-kill path which handles attribution + loot + cleanup.
-        if (other.health <= 0) {
-          handleChainKill(other, otherId, bullet, gameState, entityManager);
-        }
+  const candidates = collisionManager && collisionManager.quadtree
+    ? collisionManager.quadtree.queryRadius(zombie.x, zombie.y, radius)
+    : null;
+
+  if (candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const wrap = candidates[i];
+      if (wrap.type !== 'zombie' || wrap.entityId === zombieId) {
+        continue;
+      }
+      const other = gameState.zombies[wrap.entityId];
+      if (!other) {
+        continue;
+      }
+      other.health -= explosionDmg;
+      createParticles(other.x, other.y, other.color, 8, entityManager);
+      if (other.health <= 0) {
+        handleChainKill(other, wrap.entityId, bullet, gameState, entityManager);
+      }
+    }
+    return;
+  }
+
+  // Fallback (no quadtree yet): original full scan.
+  for (const otherId in gameState.zombies) {
+    if (otherId === zombieId) {
+      continue;
+    }
+    const other = gameState.zombies[otherId];
+    const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
+    if (distSq < radiusSq) {
+      other.health -= explosionDmg;
+      createParticles(other.x, other.y, other.color, 8, entityManager);
+      if (other.health <= 0) {
+        handleChainKill(other, otherId, bullet, gameState, entityManager);
       }
     }
   }
@@ -96,16 +118,16 @@ function findNextChainTarget(bullet, zombie, weapon, gameState) {
   let closestZombie = null;
   let closestZombieId = null;
 
-  // OPTIMIZATION: Convert array to Set for O(1) lookup instead of O(n) includes()
-  const chainedSet = new Set(bullet.chainedZombies);
+  // Reuse Set from bullet if already built; only create once per chain sequence.
+  if (!bullet._chainedSet) {
+    bullet._chainedSet = new Set(bullet.chainedZombies);
+  }
+  const chainedSet = bullet._chainedSet;
 
-  const zombieIds = Object.keys(gameState.zombies);
-  for (let i = 0; i < zombieIds.length; i++) {
-    const otherId = zombieIds[i];
+  for (const otherId in gameState.zombies) {
     if (chainedSet.has(otherId)) {
       continue;
     }
-
     const other = gameState.zombies[otherId];
     // OPTIMIZATION: Use distanceSquared instead of distance
     const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
@@ -126,6 +148,9 @@ function findNextChainTarget(bullet, zombie, weapon, gameState) {
 function processChainJump(bullet, sourceZombie, target, weapon, gameState, entityManager, collisionManager, io) {
   bullet.chainJumps++;
   bullet.chainedZombies.push(target.id);
+  if (bullet._chainedSet) {
+    bullet._chainedSet.add(target.id);
+  }
 
   // FIX: Use chainDamage for current chain effect without modifying bullet.damage
   // This preserves original damage for any subsequent piercing hits
@@ -237,21 +262,15 @@ function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
     // OPTIMIZATION: Pre-calculate squared radius
     const spreadRadiusSq = weapon.poisonSpreadRadius * weapon.poisonSpreadRadius;
 
-    const zombieIds = Object.keys(gameState.zombies);
-    for (let i = 0; i < zombieIds.length; i++) {
-      const otherId = zombieIds[i];
+    for (const otherId in gameState.zombies) {
       if (otherId === zombieId) {
         continue;
       }
-
       const other = gameState.zombies[otherId];
       if (other.poisoned) {
-        continue; // Early exit before distance calculation
+        continue;
       }
-
-      // OPTIMIZATION: Use distanceSquared instead of distance
       const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
-
       if (distSq < spreadRadiusSq) {
         other.poisoned = {
           damage: weapon.poisonDamage * 0.7,
@@ -345,23 +364,15 @@ function applyIceAreaEffect(zombie, zombieId, weapon, gameState, now, entityMana
   const halfSlowDuration = weapon.slowDuration * 0.5;
   const reducedSlowAmount = weapon.slowAmount * 0.6;
 
-  const zombieIds = Object.keys(gameState.zombies);
-  for (let i = 0; i < zombieIds.length; i++) {
-    const otherId = zombieIds[i];
+  for (const otherId in gameState.zombies) {
     if (otherId === zombieId) {
       continue;
     }
-
     const other = gameState.zombies[otherId];
-
-    // OPTIMIZATION: Early exit if already slowed long enough
     if (other.slowed && other.slowed.endTime >= now + halfSlowDuration) {
       continue;
     }
-
-    // OPTIMIZATION: Use distanceSquared instead of distance
     const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
-
     if (distSq < iceRadiusSq) {
       // BUGFIX: when zombie is already slowed/frozen, other.speed is the
       // already-reduced value. Snapshotting it as 'originalSpeed' bakes in

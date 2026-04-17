@@ -538,13 +538,17 @@ class GameEngine {
       this.canvas.removeEventListener('click', this.handlers.click);
     }
 
-    // CORRECTION: Fermer la connexion socket proprement
+    // Cleanup NetworkManager BEFORE closing socket — releases socket event
+    // listeners and clears ping timers. Without this, on reload/reconnect
+    // the old listeners accumulate (memory leak).
+    if (window.networkManager && typeof window.networkManager.cleanup === 'function') {
+      window.networkManager.cleanup();
+    }
+
     if (window.socket && typeof window.socket.close === 'function') {
-      console.log('[CLEANUP] Closing socket connection');
       window.socket.close();
     }
 
-    // Cleanup all managers
     if (window.inputManager && typeof window.inputManager.cleanup === 'function') {
       window.inputManager.cleanup();
     }

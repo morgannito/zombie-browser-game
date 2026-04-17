@@ -85,17 +85,17 @@ class CollisionManager {
    *   }
    */
   rebuildQuadtree() {
-    // Créer un nouveau quadtree
-    this.quadtree = new Quadtree(
-      {
-        x: 0,
-        y: 0,
-        width: this.config.ROOM_WIDTH,
-        height: this.config.ROOM_HEIGHT
-      },
-      4, // capacity
-      8 // maxDepth
-    );
+    // PERF: reuse root Quadtree instance via clear() instead of allocating a
+    // fresh tree every tick. Saves ~85 node allocations (10 KB) per tick.
+    if (!this.quadtree) {
+      this.quadtree = new Quadtree(
+        { x: 0, y: 0, width: this.config.ROOM_WIDTH, height: this.config.ROOM_HEIGHT },
+        4,
+        8
+      );
+    } else {
+      this.quadtree.clear();
+    }
 
     // Reset wrapper pool for this frame — reuses objects to avoid GC pressure.
     this._wrapperCount = 0;

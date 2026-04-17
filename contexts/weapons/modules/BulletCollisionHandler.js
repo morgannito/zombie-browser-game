@@ -97,7 +97,7 @@ function handlePlayerBulletCollisions(
     handlePiercing(bullet, bulletId, zombieId, entityManager);
 
     // OPTIMIZATION: BulletEffects already imported at module level
-    BulletEffects.handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager);
+    BulletEffects.handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager, collisionManager);
     BulletEffects.handleChainLightning(
       bullet,
       zombie,
