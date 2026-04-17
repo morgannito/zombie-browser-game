@@ -31,7 +31,14 @@ if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
 // Rate limiting configuration
 const RATE_LIMIT_CONFIG = {
   shoot: { maxRequests: 20, windowMs: 1000 }, // Hard ceiling: fastest weapon ~20 rps
-  playerMove: { maxRequests: 100, windowMs: 1000 }, // Balanced for 60 FPS server with 30 FPS client updates
+  // Client sends BATCHES (up to 8 items) at 30Hz; anti-cheat (moveBudget)
+  // already polices the physical speed. Raise the ceiling well above the
+  // worst-case sustained rate so legitimate bursts never get dropped.
+  // 30 batches/s × 8 items = 240 items/s peak; 400 gives headroom for lag
+  // recovery catch-ups without re-triggering the symptom where moves were
+  // silently rejected and the player saccaded.
+  // Bypassable via DISABLE_MOVE_RATE_LIMIT=1 (dev). moveBudget polices real speed.
+  playerMove: { maxRequests: 400, windowMs: 1000 },
   setNickname: { maxRequests: 3, windowMs: 10000 },
   selectUpgrade: { maxRequests: 10, windowMs: 5000 },
   buyItem: { maxRequests: 20, windowMs: 5000 },

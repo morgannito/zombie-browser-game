@@ -15,6 +15,10 @@ function checkRateLimit(socketId, eventName) {
     return true;
   }
 
+  if (eventName === 'playerMove' && process.env.DISABLE_MOVE_RATE_LIMIT === '1') {
+    return true;
+  }
+
   const now = Date.now();
 
   if (!rateLimits.has(socketId)) {
