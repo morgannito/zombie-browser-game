@@ -14,8 +14,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - PERFORMANCE_MODE=${PERFORMANCE_MODE:-balanced}
-      # SESSION_SECRET=changeme
-      # ADMIN_TOKEN=changeme
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET must be set}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:?ADMIN_TOKEN must be set}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

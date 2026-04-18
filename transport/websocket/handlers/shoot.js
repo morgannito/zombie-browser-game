@@ -152,8 +152,8 @@ function registerShootHandler(socket, gameState, entityManager, roomManager) {
     SOCKET_EVENTS.CLIENT.SHOOT,
     safeHandler('shoot', function (data) {
       if (socket.spectator) {
-return;
-}
+        return;
+      }
       const validatedData = validateShootData(data);
       if (!validatedData) {
         logger.warn('Invalid shoot data received', { socketId: socket.id, data });

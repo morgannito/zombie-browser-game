@@ -17,6 +17,28 @@ describe('LeaderboardEntry Entity', () => {
     score: 3850
   };
 
+  describe('constructor invariants', () => {
+    it('should throw when playerId is missing', () => {
+      expect(() => new LeaderboardEntry({ ...validEntryData, playerId: '' })).toThrow('playerId is required');
+    });
+
+    it('should throw when playerUsername is missing', () => {
+      expect(() => new LeaderboardEntry({ ...validEntryData, playerUsername: '' })).toThrow('playerUsername is required');
+    });
+
+    it('should throw when wave is negative', () => {
+      expect(() => new LeaderboardEntry({ ...validEntryData, wave: -1 })).toThrow('wave must be >= 0');
+    });
+
+    it('should throw when kills is negative', () => {
+      expect(() => new LeaderboardEntry({ ...validEntryData, kills: -5 })).toThrow('kills must be >= 0');
+    });
+
+    it('should throw when score is negative', () => {
+      expect(() => new LeaderboardEntry({ ...validEntryData, score: -10 })).toThrow('score must be >= 0');
+    });
+  });
+
   describe('constructor', () => {
     it('should create an entry with valid data', () => {
       const entry = new LeaderboardEntry(validEntryData);

@@ -16,6 +16,28 @@ function makeAchievement(overrides = {}) {
   });
 }
 
+describe('Achievement constructor invariants', () => {
+  test('throws when id is missing', () => {
+    expect(() => makeAchievement({ id: '' })).toThrow('Achievement id is required');
+  });
+
+  test('throws when name is missing', () => {
+    expect(() => makeAchievement({ name: '' })).toThrow('Achievement name is required');
+  });
+
+  test('throws on invalid category', () => {
+    expect(() => makeAchievement({ category: 'invalid' })).toThrow('Invalid category');
+  });
+
+  test('throws on invalid tier', () => {
+    expect(() => makeAchievement({ tier: 'legendary' })).toThrow('Invalid tier');
+  });
+
+  test('throws when requirementJson is null', () => {
+    expect(() => makeAchievement({ requirementJson: null })).toThrow('requirementJson is required');
+  });
+});
+
 describe('Achievement constructor', () => {
   test('applies defaults for points, tier, hidden, sortOrder', () => {
     const a = makeAchievement();

@@ -14,8 +14,7 @@ const config = {
     '!**/node_modules/**'
   ],
   testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
-  // TODO: BossAbilities.test.js triggers RangeError (source-map/jest-mock stack overflow) on jest 29.7 — re-enable after jest 30 upgrade
-  testPathIgnorePatterns: ['/node_modules/', '__tests__/integration/testServerFactory\\.js', '/e2e/', 'contexts/zombie/modules/__tests__/BossAbilities\\.test\\.js'],
+  testPathIgnorePatterns: ['/node_modules/', '__tests__/integration/testServerFactory\\.js', '/e2e/'],
   verbose: true
 };
 

@@ -312,6 +312,28 @@ describe('Player Entity', () => {
     });
   });
 
+  describe('updateStats invariants', () => {
+    it('should throw when kills is negative', () => {
+      const player = new Player(validPlayerData);
+      expect(() => player.updateStats({ kills: -1, deaths: 0, wave: 0, level: 0, playtime: 0, goldEarned: 0 })).toThrow('kills must be >= 0');
+    });
+
+    it('should throw when deaths is negative', () => {
+      const player = new Player(validPlayerData);
+      expect(() => player.updateStats({ kills: 0, deaths: -1, wave: 0, level: 0, playtime: 0, goldEarned: 0 })).toThrow('deaths must be >= 0');
+    });
+
+    it('should throw when playtime is negative', () => {
+      const player = new Player(validPlayerData);
+      expect(() => player.updateStats({ kills: 0, deaths: 0, wave: 0, level: 0, playtime: -1, goldEarned: 0 })).toThrow('playtime must be >= 0');
+    });
+
+    it('should throw when goldEarned is negative', () => {
+      const player = new Player(validPlayerData);
+      expect(() => player.updateStats({ kills: 0, deaths: 0, wave: 0, level: 0, playtime: 0, goldEarned: -1 })).toThrow('goldEarned must be >= 0');
+    });
+  });
+
   describe('toObject', () => {
     it('should return a plain object with all fields', () => {
       const player = new Player({

@@ -15,10 +15,35 @@ window.skinManager = null;
 window.enhancedUI = null;
 
 /**
- * Initialise tous les nouveaux systèmes
+ * Détruit les instances précédentes pour éviter les fuites d'état entre parties.
+ */
+function destroyEnhancedSystems() {
+  if (window.enhancedEffects && typeof window.enhancedEffects.destroy === 'function') {
+    window.enhancedEffects.destroy();
+  }
+  if (window.advancedAudio && typeof window.advancedAudio.destroy === 'function') {
+    window.advancedAudio.destroy();
+  }
+  if (window.skinManager && typeof window.skinManager.destroy === 'function') {
+    window.skinManager.destroy();
+  }
+  if (window.enhancedUI && typeof window.enhancedUI.destroy === 'function') {
+    window.enhancedUI.destroy();
+  }
+  window.enhancedEffects = null;
+  window.advancedAudio = null;
+  window.skinManager = null;
+  window.enhancedUI = null;
+}
+
+/**
+ * Initialise tous les nouveaux systèmes.
+ * Détruit les instances précédentes si elles existent (état propre entre parties).
  */
 function initializeEnhancedSystems() {
   logger.debug('Initializing enhanced systems...');
+
+  destroyEnhancedSystems();
 
   // Système d'effets visuels
   if (typeof AdvancedEffectsManager !== 'undefined') {
@@ -341,9 +366,19 @@ window.renderEnhancedEffects = renderEnhancedEffects;
    ============================================ */
 
 /**
- * Crée le menu de sélection de skins
+ * Crée le menu de sélection de skins.
+ * Idempotent : ne crée le menu qu'une seule fois pour éviter les doublons DOM entre parties.
  */
 function createSkinsMenu() {
+  // Guard: évite l'injection DOM multiple (state leak entre runs)
+  if (document.getElementById('skins-menu')) {
+    if (window.skinManager) {
+      populatePlayerSkins();
+      populateWeaponSkins();
+    }
+    return;
+  }
+
   const menu = document.createElement('div');
   menu.id = 'skins-menu';
   menu.style.cssText = `

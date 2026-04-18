@@ -16,9 +16,11 @@ RUN apk add --no-cache curl
 
 WORKDIR /app
 
+# Copie node_modules depuis le builder puis prune les devDeps
+# Evite un double téléchargement NPM et exploite le cache du builder
+COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
-# Réinstalle uniquement les dépendances de production
-RUN HUSKY=0 npm ci --production && npm rebuild better-sqlite3
+RUN npm prune --production && npm rebuild better-sqlite3
 
 # Copier les artefacts applicatifs
 COPY server.js ./

@@ -61,13 +61,15 @@ class PerformanceSettingsManager {
   }
 
   /**
-   * Save settings to localStorage
+   * Save settings to localStorage.
+   * Swallows QuotaExceededError gracefully instead of crashing.
    */
   saveSettings() {
     try {
       localStorage.setItem('zombieGamePerformanceSettings', JSON.stringify(this.settings));
     } catch (e) {
-      logger.warn('Failed to save performance settings:', e);
+      // DOMException: QuotaExceededError – log and continue
+      logger.warn('Failed to save performance settings (quota exceeded?):', e);
     }
   }
 
@@ -130,9 +132,11 @@ class PerformanceSettingsManager {
   }
 
   /**
-   * Create the settings panel
+   * Build and return the outer panel element with base styles applied.
+   * @private
+   * @returns {HTMLDivElement}
    */
-  createSettingsPanel() {
+  _buildPanelElement() {
     const panel = document.createElement('div');
     panel.id = 'performance-settings-panel';
     panel.style.cssText = `
@@ -152,174 +156,14 @@ class PerformanceSettingsManager {
       backdrop-filter: blur(10px);
       box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
     `;
+    return panel;
+  }
 
-    panel.innerHTML = `
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #00ff00; margin: 0 0 10px 0; font-size: 24px;">⚙️ PARAMÈTRES</h2>
-        <div id="fps-display-panel" style="color: #ffd700; font-size: 14px; margin-bottom: 10px;">
-          FPS: <span id="current-fps">60</span> | Moyenne: <span id="avg-fps">60</span>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🚀 Mode Performance</h3>
-
-        <div class="setting-item">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            <input type="radio" name="perfMode" value="normal" ${this.settings.performanceMode === 'normal' ? 'checked' : ''}>
-            Mode Normal (Qualité maximale)
-          </label>
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="radio" name="perfMode" value="performance" ${this.settings.performanceMode === 'performance' ? 'checked' : ''}>
-            Mode Performance (Optimisé pour appareils bas de gamme)
-          </label>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            Résolution: <span id="resolution-value">${Math.round(this.settings.resolutionScale * 100)}%</span>
-          </label>
-          <input type="range" id="resolution-slider" min="50" max="100" value="${this.settings.resolutionScale * 100}"
-                 style="width: 100%;">
-          <p style="color: #aaa; font-size: 12px; margin: 5px 0 0 0;">
-            Réduire la résolution améliore les performances
-          </p>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            FPS Cible:
-          </label>
-          <label style="color: #fff; display: block;">
-            <input type="radio" name="targetFPS" value="60" ${this.settings.targetFPS === 60 ? 'checked' : ''}>
-            60 FPS (Fluide)
-          </label>
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="radio" name="targetFPS" value="30" ${this.settings.targetFPS === 30 ? 'checked' : ''}>
-            30 FPS (Économie d'énergie)
-          </label>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="auto-adjust-checkbox" ${this.autoAdjust ? 'checked' : ''}>
-            Ajustement automatique des performances
-          </label>
-          <p style="color: #aaa; font-size: 12px; margin: 0;">
-            Ajuste automatiquement la qualité si les FPS chutent
-          </p>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="adaptive-quality-checkbox" ${this.adaptiveQualityEnabled ? 'checked' : ''}>
-            Qualité adaptative (FPS &lt; 45 → réduit auto)
-          </label>
-          <p style="color: #aaa; font-size: 12px; margin: 0;">
-            Si FPS &lt; 45 pendant 3s : particles + effets désactivés. Restaure si FPS &gt; 55 pendant 5s.
-          </p>
-        </div>
-      </div>
-
-      <div class="settings-section" style="margin-top: 20px;">
-        <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🖥️ Affichage</h3>
-
-        <div class="setting-item">
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="fullscreen-checkbox" ${this.settings.fullscreenEnabled ? 'checked' : ''}>
-            Mode Plein Écran
-          </label>
-          <p style="color: #aaa; font-size: 12px; margin: 0 0 15px 0;">
-            Lance le jeu en plein écran pour une meilleure immersion
-          </p>
-        </div>
-
-        <div class="setting-item">
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="immersive-mode-checkbox" ${this.settings.immersiveMode ? 'checked' : ''}>
-            Mode Immersif (Masquer UI non-essentielle)
-          </label>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            Position de la Minimap:
-          </label>
-          <select id="minimap-position-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 2px solid #00ff00; border-radius: 5px;">
-            <option value="right" ${this.settings.minimapPosition === 'right' ? 'selected' : ''}>Droite</option>
-            <option value="left" ${this.settings.minimapPosition === 'left' ? 'selected' : ''}>Gauche</option>
-            <option value="hidden" ${this.settings.minimapPosition === 'hidden' ? 'selected' : ''}>Masquée</option>
-          </select>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            Taille Minimap (Mobile):
-          </label>
-          <select id="minimap-size-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 2px solid #00ff00; border-radius: 5px;">
-            <option value="small" ${this.settings.minimapSize === 'small' ? 'selected' : ''}>Petite (50px)</option>
-            <option value="medium" ${this.settings.minimapSize === 'medium' ? 'selected' : ''}>Moyenne (80px)</option>
-            <option value="large" ${this.settings.minimapSize === 'large' ? 'selected' : ''}>Grande (120px)</option>
-          </select>
-        </div>
-
-        <div class="setting-item" style="margin-top: 15px;">
-          <label style="color: #fff; display: block; margin-bottom: 5px;">
-            Opacité Minimap: <span id="minimap-opacity-value">${Math.round(this.settings.minimapOpacity * 100)}%</span>
-          </label>
-          <input type="range" id="minimap-opacity-slider" min="30" max="100" value="${this.settings.minimapOpacity * 100}"
-                 style="width: 100%;">
-          <p style="color: #aaa; font-size: 12px; margin: 5px 0 0 0;">
-            Ajustez la transparence de la minimap
-          </p>
-        </div>
-      </div>
-
-      <div class="settings-section" style="margin-top: 20px;">
-        <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🎨 Effets Visuels</h3>
-
-        <div class="setting-item">
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="particles-checkbox" ${this.settings.particlesEnabled ? 'checked' : ''}>
-            Particules
-          </label>
-          <label style="color: #fff; display: block; margin-bottom: 10px;">
-            <input type="checkbox" id="grid-checkbox" ${this.settings.gridEnabled ? 'checked' : ''}>
-            Grille
-          </label>
-        </div>
-      </div>
-
-      <div style="margin-top: 20px; text-align: center;">
-        <button id="apply-settings-btn" style="
-          background: linear-gradient(135deg, #00ff00, #00cc00);
-          color: #000;
-          border: none;
-          padding: 12px 30px;
-          font-size: 16px;
-          font-weight: bold;
-          border-radius: 8px;
-          cursor: pointer;
-          margin-right: 10px;
-          transition: all 0.3s ease;
-        ">Appliquer</button>
-        <button id="close-settings-btn" style="
-          background: rgba(100, 100, 100, 0.8);
-          color: #fff;
-          border: none;
-          padding: 12px 30px;
-          font-size: 16px;
-          font-weight: bold;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        ">Fermer</button>
-      </div>
-    `;
-
-    document.body.appendChild(panel);
-
-    // Event listeners
+  /**
+   * Bind all event listeners for the settings panel controls.
+   * @private
+   */
+  _bindPanelListeners() {
     document.getElementById('apply-settings-btn').addEventListener('click', () => {
       this.updateSettingsFromUI();
       this.applySettings();
@@ -331,34 +175,170 @@ class PerformanceSettingsManager {
       this.hideSettingsPanel();
     });
 
-    // Real-time resolution slider update
     document.getElementById('resolution-slider').addEventListener('input', e => {
       document.getElementById('resolution-value').textContent = e.target.value + '%';
     });
 
-    // Real-time minimap opacity slider update
     document.getElementById('minimap-opacity-slider').addEventListener('input', e => {
       document.getElementById('minimap-opacity-value').textContent = e.target.value + '%';
     });
 
-    // Performance mode presets
     document.querySelectorAll('input[name="perfMode"]').forEach(radio => {
-      radio.addEventListener('change', e => {
-        if (e.target.value === 'performance') {
-          document.getElementById('resolution-slider').value = 75;
-          document.getElementById('resolution-value').textContent = '75%';
-          document.querySelector('input[name="targetFPS"][value="30"]').checked = true;
-          document.getElementById('particles-checkbox').checked = false;
-          document.getElementById('grid-checkbox').checked = false;
-        } else {
-          document.getElementById('resolution-slider').value = 100;
-          document.getElementById('resolution-value').textContent = '100%';
-          document.querySelector('input[name="targetFPS"][value="60"]').checked = true;
-          document.getElementById('particles-checkbox').checked = true;
-          document.getElementById('grid-checkbox').checked = true;
-        }
-      });
+      radio.addEventListener('change', e => this._applyPerfModePreset(e.target.value));
     });
+  }
+
+  /**
+   * Apply UI preset values for a performance mode selection.
+   * @private
+   * @param {'normal'|'performance'} mode
+   */
+  _applyPerfModePreset(mode) {
+    const isPerf = mode === 'performance';
+    document.getElementById('resolution-slider').value = isPerf ? 75 : 100;
+    document.getElementById('resolution-value').textContent = isPerf ? '75%' : '100%';
+    document.querySelector(`input[name="targetFPS"][value="${isPerf ? '30' : '60'}"]`).checked = true;
+    document.getElementById('particles-checkbox').checked = !isPerf;
+    document.getElementById('grid-checkbox').checked = !isPerf;
+  }
+
+  /**
+   * Build the HTML for the Performance section.
+   * @private
+   * @returns {string}
+   */
+  _buildPerfSectionHTML() {
+    const s = this.settings;
+    return `<div class="settings-section">
+      <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🚀 Mode Performance</h3>
+      <div class="setting-item">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">
+          <input type="radio" name="perfMode" value="normal" ${s.performanceMode === 'normal' ? 'checked' : ''}>
+          Mode Normal (Qualité maximale)
+        </label>
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="radio" name="perfMode" value="performance" ${s.performanceMode === 'performance' ? 'checked' : ''}>
+          Mode Performance (Optimisé pour appareils bas de gamme)
+        </label>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">
+          Résolution: <span id="resolution-value">${Math.round(s.resolutionScale * 100)}%</span>
+        </label>
+        <input type="range" id="resolution-slider" min="50" max="100" value="${s.resolutionScale * 100}" style="width: 100%;">
+        <p style="color: #aaa; font-size: 12px; margin: 5px 0 0 0;">Réduire la résolution améliore les performances</p>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">FPS Cible:</label>
+        <label style="color: #fff; display: block;">
+          <input type="radio" name="targetFPS" value="60" ${s.targetFPS === 60 ? 'checked' : ''}> 60 FPS (Fluide)
+        </label>
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="radio" name="targetFPS" value="30" ${s.targetFPS === 30 ? 'checked' : ''}>
+          30 FPS (Économie d'énergie)
+        </label>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="auto-adjust-checkbox" ${this.autoAdjust ? 'checked' : ''}>
+          Ajustement automatique des performances
+        </label>
+        <p style="color: #aaa; font-size: 12px; margin: 0;">Ajuste automatiquement la qualité si les FPS chutent</p>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="adaptive-quality-checkbox" ${this.adaptiveQualityEnabled ? 'checked' : ''}>
+          Qualité adaptative (FPS &lt; 45 → réduit auto)
+        </label>
+        <p style="color: #aaa; font-size: 12px; margin: 0;">
+          Si FPS &lt; 45 pendant 3s : particles + effets désactivés. Restaure si FPS &gt; 55 pendant 5s.
+        </p>
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Build the HTML for the Affichage + Effets Visuels sections.
+   * @private
+   * @returns {string}
+   */
+  _buildDisplaySectionHTML() {
+    const s = this.settings;
+    const sel = (val, opt) => (opt === val ? 'selected' : '');
+    return `<div class="settings-section" style="margin-top: 20px;">
+      <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🖥️ Affichage</h3>
+      <div class="setting-item">
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="fullscreen-checkbox" ${s.fullscreenEnabled ? 'checked' : ''}> Mode Plein Écran
+        </label>
+        <p style="color: #aaa; font-size: 12px; margin: 0 0 15px 0;">Lance le jeu en plein écran pour une meilleure immersion</p>
+      </div>
+      <div class="setting-item">
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="immersive-mode-checkbox" ${s.immersiveMode ? 'checked' : ''}> Mode Immersif
+        </label>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">Position de la Minimap:</label>
+        <select id="minimap-position-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 2px solid #00ff00; border-radius: 5px;">
+          <option value="right" ${sel(s.minimapPosition, 'right')}>Droite</option>
+          <option value="left" ${sel(s.minimapPosition, 'left')}>Gauche</option>
+          <option value="hidden" ${sel(s.minimapPosition, 'hidden')}>Masquée</option>
+        </select>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">Taille Minimap (Mobile):</label>
+        <select id="minimap-size-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 2px solid #00ff00; border-radius: 5px;">
+          <option value="small" ${sel(s.minimapSize, 'small')}>Petite (50px)</option>
+          <option value="medium" ${sel(s.minimapSize, 'medium')}>Moyenne (80px)</option>
+          <option value="large" ${sel(s.minimapSize, 'large')}>Grande (120px)</option>
+        </select>
+      </div>
+      <div class="setting-item" style="margin-top: 15px;">
+        <label style="color: #fff; display: block; margin-bottom: 5px;">
+          Opacité Minimap: <span id="minimap-opacity-value">${Math.round(s.minimapOpacity * 100)}%</span>
+        </label>
+        <input type="range" id="minimap-opacity-slider" min="30" max="100" value="${s.minimapOpacity * 100}" style="width: 100%;">
+        <p style="color: #aaa; font-size: 12px; margin: 5px 0 0 0;">Ajustez la transparence de la minimap</p>
+      </div>
+    </div>
+    <div class="settings-section" style="margin-top: 20px;">
+      <h3 style="color: #ffd700; font-size: 18px; margin-bottom: 15px;">🎨 Effets Visuels</h3>
+      <div class="setting-item">
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="particles-checkbox" ${s.particlesEnabled ? 'checked' : ''}> Particules
+        </label>
+        <label style="color: #fff; display: block; margin-bottom: 10px;">
+          <input type="checkbox" id="grid-checkbox" ${s.gridEnabled ? 'checked' : ''}> Grille
+        </label>
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Create the settings panel, assembling HTML from section helpers.
+   */
+  createSettingsPanel() {
+    const panel = this._buildPanelElement();
+
+    panel.innerHTML = `
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #00ff00; margin: 0 0 10px 0; font-size: 24px;">⚙️ PARAMÈTRES</h2>
+        <div id="fps-display-panel" style="color: #ffd700; font-size: 14px; margin-bottom: 10px;">
+          FPS: <span id="current-fps">60</span> | Moyenne: <span id="avg-fps">60</span>
+        </div>
+      </div>
+
+      ${this._buildPerfSectionHTML()}
+      ${this._buildDisplaySectionHTML()}
+      <div style="margin-top: 20px; text-align: center;">
+        <button id="apply-settings-btn" style="background:linear-gradient(135deg,#00ff00,#00cc00);color:#000;border:none;padding:12px 30px;font-size:16px;font-weight:bold;border-radius:8px;cursor:pointer;margin-right:10px;transition:all 0.3s ease;">Appliquer</button>
+        <button id="close-settings-btn" style="background:rgba(100,100,100,0.8);color:#fff;border:none;padding:12px 30px;font-size:16px;font-weight:bold;border-radius:8px;cursor:pointer;transition:all 0.3s ease;">Fermer</button>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+    this._bindPanelListeners();
   }
 
   /**
@@ -917,59 +897,70 @@ class PerformanceSettingsManager {
   }
 
   /**
-   * Start FPS monitoring
+   * Start the 1-second FPS monitoring interval.
+   * Clears any existing interval first to prevent memory leaks.
    */
   startFPSMonitoring() {
-    this.autoAdjustCooldown = 0; // Cooldown to prevent spam adjustments
-
-    // MEMORY LEAK FIX: Clear existing interval before starting new one
+    this.autoAdjustCooldown = 0;
     this.stopFPSMonitoring();
 
     this.fpsMonitoringInterval = setInterval(() => {
       this.updateFPS();
-
       const now = Date.now();
-
-      // Legacy auto-adjust (kept for backward compat, at FPS < 40 hard limit)
-      if (
-        this.autoAdjust &&
-        this.currentFPS > 0 &&
-        this.currentFPS < 40 &&
-        now - this.autoAdjustCooldown > 5000
-      ) {
-        this.autoAdjustPerformance();
-        this.autoAdjustCooldown = now;
-      }
-
-      // Adaptive quality: sustained FPS window logic
-      if (this.adaptiveQualityEnabled && this.currentFPS > 0) {
-        if (!this.adaptiveQualityActive) {
-          // Watching for sustained low FPS (< 45 for 3s)
-          if (this.currentFPS < 45) {
-            if (!this._lowFpsStart) this._lowFpsStart = now;
-            else if (now - this._lowFpsStart >= 3000) {
-              this._lowFpsStart = null;
-              this._highFpsStart = null;
-              this._applyAdaptiveQualityLow();
-            }
-          } else {
-            this._lowFpsStart = null;
-          }
-        } else {
-          // Watching for recovery (> 55 for 5s)
-          if (this.currentFPS > 55) {
-            if (!this._highFpsStart) this._highFpsStart = now;
-            else if (now - this._highFpsStart >= 5000) {
-              this._highFpsStart = null;
-              this._lowFpsStart = null;
-              this._applyAdaptiveQualityRestore();
-            }
-          } else {
-            this._highFpsStart = null;
-          }
-        }
-      }
+      this._tickAutoAdjust(now);
+      this._tickAdaptiveQuality(now);
     }, 1000);
+  }
+
+  /**
+   * Legacy hard-limit auto-adjust tick (FPS < 40).
+   * @private
+   * @param {number} now - Current timestamp ms
+   */
+  _tickAutoAdjust(now) {
+    if (
+      this.autoAdjust &&
+      this.currentFPS > 0 &&
+      this.currentFPS < 40 &&
+      now - this.autoAdjustCooldown > 5000
+    ) {
+      this.autoAdjustPerformance();
+      this.autoAdjustCooldown = now;
+    }
+  }
+
+  /**
+   * Adaptive quality sustained-window tick.
+   * Reduces quality after 3 s below 45 FPS; restores after 5 s above 55 FPS.
+   * @private
+   * @param {number} now - Current timestamp ms
+   */
+  _tickAdaptiveQuality(now) {
+    if (!this.adaptiveQualityEnabled || this.currentFPS <= 0) return;
+
+    if (!this.adaptiveQualityActive) {
+      if (this.currentFPS < 45) {
+        if (!this._lowFpsStart) this._lowFpsStart = now;
+        else if (now - this._lowFpsStart >= 3000) {
+          this._lowFpsStart = null;
+          this._highFpsStart = null;
+          this._applyAdaptiveQualityLow();
+        }
+      } else {
+        this._lowFpsStart = null;
+      }
+    } else {
+      if (this.currentFPS > 55) {
+        if (!this._highFpsStart) this._highFpsStart = now;
+        else if (now - this._highFpsStart >= 5000) {
+          this._highFpsStart = null;
+          this._lowFpsStart = null;
+          this._applyAdaptiveQualityRestore();
+        }
+      } else {
+        this._highFpsStart = null;
+      }
+    }
   }
 
   /**

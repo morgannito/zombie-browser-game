@@ -219,6 +219,34 @@ function updateBossRoi(
 
 // ─── Boss Omega ───────────────────────────────────────────────────────────────
 
+/** Drop a toxic pool at current position using boss config values.
+ * @param {Object} zombie @param {number} now @param {Object} bossType
+ * @param {Object} entityManager @param {Object} gameState
+ */
+function _omegaToxicPool(zombie, now, bossType, entityManager, gameState) {
+  zombie.lastToxicPool = now;
+  gameState.toxicPools = gameState.toxicPools || [];
+  gameState.toxicPools.push({
+    id: `toxic_${now}_${Math.random()}`,
+    x: zombie.x, y: zombie.y,
+    radius: bossType.toxicPoolRadius || 70,
+    damage: bossType.toxicPoolDamage || 20,
+    createdAt: now,
+    duration: bossType.toxicPoolDuration || 10000
+  });
+  createParticles(zombie.x, zombie.y, '#00ff00', 30, entityManager);
+}
+
+/** Summon zombies (Phase 3). */
+function _omegaSummon(zombie, now, bossType, zombieManager, perfIntegration, entityManager, gameState) {
+  zombie.lastSummon = now;
+  for (let i = 0; i < 8; i++) {
+    let n = 0; for (const _ in gameState.zombies) { n++; }
+    if (perfIntegration.canSpawnZombie(n)) zombieManager.spawnSingleZombie();
+  }
+  createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
+}
+
 /** @returns {number} current phase (1-4) */
 function _omegaDetectPhase(bossType, healthPercent) {
   if (healthPercent <= bossType.phase4Threshold) return 4;
@@ -301,19 +329,11 @@ function updateBossOmega(
   }
 
   if (zombie.phase >= 2 && (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown)) {
-    zombie.lastToxicPool = now;
-    gameState.toxicPools = gameState.toxicPools || [];
-    gameState.toxicPools.push({ id: `toxic_${now}_${Math.random()}`, x: zombie.x, y: zombie.y, radius: 70, damage: 20, createdAt: now, duration: 10000 });
-    createParticles(zombie.x, zombie.y, '#00ff00', 30, entityManager);
+    _omegaToxicPool(zombie, now, bossType, entityManager, gameState);
   }
 
   if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
-    zombie.lastSummon = now;
-    for (let i = 0; i < 8; i++) {
-      let n = 0; for (const _ in gameState.zombies) { n++; }
-      if (perfIntegration.canSpawnZombie(n)) zombieManager.spawnSingleZombie();
-    }
-    createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
+    _omegaSummon(zombie, now, bossType, zombieManager, perfIntegration, entityManager, gameState);
   }
 
   if (zombie.phase >= 4 && (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)) {

@@ -91,12 +91,20 @@ const CursorManager = (() => {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  /**
+   * Toggle game-active state; starts or stops the cursor auto-hide timer.
+   * @param {boolean} active
+   */
   function setGameActive(active) {
     _gameActive = active;
     if (!active) _cancelHide();
     else _scheduleHide();
   }
 
+  /**
+   * Initialise the cursor manager: load persisted preference, wire up canvas
+   * auto-hide, hook the settings toggle, and listen for game lifecycle events.
+   */
   function init() {
     const persisted = _loadPersisted();
     _applyEnabled(persisted);

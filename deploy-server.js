@@ -215,8 +215,8 @@ async function deploy() {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     try {
-      await runCommand('lsof -i:3000');
-      log('Server is running on port 3000');
+      await runCommand(`lsof -i:${PORT}`);
+      log(`Server is running on port ${PORT}`);
     } catch {
       log('Warning: Could not verify server is running');
     }

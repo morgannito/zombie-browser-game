@@ -326,6 +326,36 @@ describe('AccountProgression Entity', () => {
     });
   });
 
+  describe('constructor invariants', () => {
+    it('should throw when playerId is missing', () => {
+      expect(() => new AccountProgression({ playerId: '' })).toThrow('playerId is required');
+    });
+
+    it('should throw when accountLevel < 1', () => {
+      expect(() => new AccountProgression({ playerId: 'p', accountLevel: 0 })).toThrow('accountLevel must be >= 1');
+    });
+
+    it('should throw when accountXP < 0', () => {
+      expect(() => new AccountProgression({ playerId: 'p', accountXP: -1 })).toThrow('accountXP must be >= 0');
+    });
+
+    it('should throw when skillPoints < 0', () => {
+      expect(() => new AccountProgression({ playerId: 'p', skillPoints: -5 })).toThrow('skillPoints must be >= 0');
+    });
+  });
+
+  describe('addXP invariants', () => {
+    it('should throw when xp is negative', () => {
+      const prog = new AccountProgression({ playerId: 'p' });
+      expect(() => prog.addXP(-10)).toThrow('xp must be a non-negative number');
+    });
+
+    it('should throw when xp is not a number', () => {
+      const prog = new AccountProgression({ playerId: 'p' });
+      expect(() => prog.addXP('lots')).toThrow('xp must be a non-negative number');
+    });
+  });
+
   describe('toObject', () => {
     it('should return a serializable plain object', () => {
       const prog = new AccountProgression({

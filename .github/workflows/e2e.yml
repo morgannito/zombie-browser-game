@@ -29,7 +29,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
@@ -52,7 +52,7 @@ jobs:
 
       - name: Run Playwright E2E tests
         run: npm run test:e2e
-        continue-on-error: true
+        # continue-on-error removed: E2E failures must block merge
 
       - name: Upload traces and screenshots on failure
         if: failure()

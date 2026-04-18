@@ -5,6 +5,9 @@
 
 const { createParticles } = require('../../lootFunctions');
 const { distance } = require('../../utilityFunctions');
+const ConfigManager = require('../../../lib/server/ConfigManager');
+
+const { CONFIG } = ConfigManager;
 
 // Max simultaneous hazards to cap memory (6: total cap across both lists)
 const MAX_HAZARDS = 20;
@@ -13,7 +16,40 @@ const MAX_TOXIC_POOLS = 10;
 // Deterministic stacking priority (higher index = overrides lower)
 const HAZARD_PRIORITY = { iceSpike: 0, lavaPool: 1, voidRift: 2, meteor: 3, lightning: 4 };
 
+/**
+ * @typedef {'meteor'|'iceSpike'|'lightning'|'lavaPool'|'voidRift'} HazardType
+ */
+
+/**
+ * @typedef {Object} Hazard
+ * @property {HazardType} type - Hazard type identifier
+ * @property {number} x - Center X position (clamped to arena)
+ * @property {number} y - Center Y position (clamped to arena)
+ * @property {number} radius - Damage radius in pixels
+ * @property {number} damage - Damage per tick
+ * @property {number} createdAt - Epoch ms of creation
+ * @property {number} duration - Lifetime in ms
+ * @property {number} damageInterval - Min ms between damage ticks (default 500)
+ * @property {number} [lastDamageTick] - Epoch ms of last damage application
+ * @property {number} [lastParticle] - Epoch ms of last particle emission
+ */
+
+/**
+ * @typedef {Object} ToxicPool
+ * @property {string} id - Unique pool ID (`toxic_<ts>_<rand>`)
+ * @property {number} x - Center X position
+ * @property {number} y - Center Y position
+ * @property {number} radius - Damage radius
+ * @property {number} damage - Full damage value (actual tick damage = damage/2)
+ * @property {number} createdAt - Epoch ms of creation
+ * @property {number} duration - Lifetime in ms
+ */
+
 class HazardManager {
+  /**
+   * @param {Object} gameState - Shared game state
+   * @param {Object} entityManager - Entity manager for particle creation
+   */
   constructor(gameState, entityManager) {
     this.gameState = gameState;
     this.entityManager = entityManager;
@@ -25,7 +61,10 @@ class HazardManager {
     this.gameState.toxicPools = this.gameState.toxicPools || [];
   }
 
-  /** Update all hazards (apply damage, cleanup expired) */
+  /**
+   * Update all hazards — apply damage and clean up expired entries.
+   * @param {number} now - Current epoch ms (Date.now())
+   */
   update(now) {
     this.updateHazards(now);
     this.updateToxicPools(now);
@@ -36,12 +75,14 @@ class HazardManager {
     const players = this.gameState.players;
     for (const id in players) {
       if (players[id].alive) {
-return true;
-}
+        return true;
+      }
     }
     const zombies = this.gameState.zombies;
     for (const id in zombies) {
-      return true;
+      if (zombies[id].alive) {
+        return true;
+      }
     }
     return false;
   }
@@ -89,13 +130,14 @@ continue;
       if (canDamage) {
         let hit = false;
         for (const player of alivePlayers) {
+          if (!player.alive) continue; // skip players killed earlier this frame
           if (distance(hazard.x, hazard.y, player.x, player.y) < hazard.radius) {
             player.lastKillerType = hazard.type || 'hazard';
             player.health -= hazard.damage;
             createParticles(player.x, player.y, color, 5, this.entityManager);
             if (player.health <= 0) {
- player.alive = false; player.deaths++;
-}
+              player.alive = false; player.deaths++;
+            }
             hit = true;
           }
         }
@@ -137,13 +179,14 @@ continue;
       if (canDamage) {
         let hit = false;
         for (const player of alivePlayers) {
+          if (!player.alive) continue; // skip players killed earlier this frame
           if (distance(pool.x, pool.y, player.x, player.y) < pool.radius) {
             player.lastKillerType = 'hazard';
             player.health -= pool.damage / 2;
             createParticles(player.x, player.y, '#00ff00', 4, this.entityManager);
             if (player.health <= 0) {
- player.alive = false; player.deaths++;
-}
+              player.alive = false; player.deaths++;
+            }
             hit = true;
           }
         }
@@ -159,7 +202,11 @@ pool.lastDamageTick = now;
     }
   }
 
-  /** Get hazard color based on type */
+  /**
+   * Get the particle color for a hazard type.
+   * @param {HazardType} type
+   * @returns {string} CSS hex color string
+   */
   getHazardColor(type) {
     const colors = {
       meteor: '#ff0000',
@@ -172,11 +219,38 @@ pool.lastDamageTick = now;
   }
 
   /**
-   * Create hazard zone — enforces MAX_HAZARDS cap + deterministic stacking.
-   * If cap reached: evicts the lowest-priority hazard of the same type, or skips.
+   * Clamp a spawn position to arena bounds with a margin equal to the radius.
+   * Prevents hazards from spawning partially or fully inside walls.
+   * @param {number} x - Raw X coordinate
+   * @param {number} y - Raw Y coordinate
+   * @param {number} margin - Exclusion margin (typically the hazard radius)
+   * @returns {{x: number, y: number}} Clamped position
+   */
+  _clampSpawn(x, y, margin) {
+    const w = CONFIG.ROOM_WIDTH || 2000;
+    const h = CONFIG.ROOM_HEIGHT || 2000;
+    return {
+      x: Math.max(margin, Math.min(x, w - margin)),
+      y: Math.max(margin, Math.min(y, h - margin))
+    };
+  }
+
+  /**
+   * Create a hazard zone, enforcing MAX_HAZARDS cap with priority-based eviction.
+   * Position is clamped to arena bounds to prevent wall-spawn bugs.
+   * @param {HazardType} type
+   * @param {number} x - Requested X (will be clamped)
+   * @param {number} y - Requested Y (will be clamped)
+   * @param {number} radius - Hazard radius in px
+   * @param {number} damage - Damage per tick
+   * @param {number} duration - Lifetime in ms
+   * @returns {Hazard|null} Created hazard, or null if eviction was impossible
    */
   createHazard(type, x, y, radius, damage, duration) {
     this.gameState.hazards = this.gameState.hazards || [];
+    const clamped = this._clampSpawn(x, y, radius);
+    x = clamped.x;
+    y = clamped.y;
 
     if (this.gameState.hazards.length >= MAX_HAZARDS) {
       // Evict oldest lowest-priority hazard to make room
@@ -209,6 +283,9 @@ return null;
   /** Create toxic pool — enforces MAX_TOXIC_POOLS cap */
   createToxicPool(x, y, radius, damage, duration) {
     this.gameState.toxicPools = this.gameState.toxicPools || [];
+    const clamped = this._clampSpawn(x, y, radius);
+    x = clamped.x;
+    y = clamped.y;
 
     if (this.gameState.toxicPools.length >= MAX_TOXIC_POOLS) {
       // Evict oldest (index 0 is oldest since we push to end)

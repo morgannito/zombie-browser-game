@@ -33,33 +33,30 @@
     let patchAttempts = 0;
     const MAX_PATCH_ATTEMPTS = 50; // 5 secondes max (50 * 100ms)
 
-    const patchInterval = window.timerManager
-      ? window.timerManager.setInterval(() => {
-          if (areSystemsReady()) {
-            window.timerManager.clearInterval(patchInterval);
-            applyPatches();
-          } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
-            window.timerManager.clearInterval(patchInterval);
-            console.error(
-              '❌ Failed to load game systems after 5 seconds. Required: GameEngine, Renderer, PlayerController'
-            );
-            console.error('Available:', {
-              GameEngine: !!window.GameEngine,
-              Renderer: !!window.Renderer,
-              PlayerController: !!window.PlayerController
-            });
-          }
-        }, 100)
-      : // Fallback si timerManager pas encore chargé
-        (window.timerManager ? window.timerManager.setInterval : setInterval)(() => {
-          if (areSystemsReady()) {
-            clearInterval(patchInterval);
-            applyPatches();
-          } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
-            clearInterval(patchInterval);
-            console.error('❌ Failed to load game systems after 5 seconds.');
-          }
-        }, 100);
+    // Utilise timerManager si disponible, sinon setInterval natif
+    const scheduler = window.timerManager
+      ? (fn, ms) => window.timerManager.setInterval(fn, ms)
+      : (fn, ms) => setInterval(fn, ms);
+    const canceller = window.timerManager
+      ? id => window.timerManager.clearInterval(id)
+      : id => clearInterval(id);
+
+    const patchInterval = scheduler(() => {
+      if (areSystemsReady()) {
+        canceller(patchInterval);
+        applyPatches();
+      } else if (++patchAttempts >= MAX_PATCH_ATTEMPTS) {
+        canceller(patchInterval);
+        console.error(
+          '❌ Failed to load game systems after 5 seconds. Required: GameEngine, Renderer, PlayerController'
+        );
+        console.error('Available:', {
+          GameEngine: !!window.GameEngine,
+          Renderer: !!window.Renderer,
+          PlayerController: !!window.PlayerController
+        });
+      }
+    }, 100);
   }
 
   // Attendre DOMContentLoaded avant d'initialiser
@@ -103,8 +100,8 @@
     // ===============================================
     // PATCH 2: Améliorer le rendu
     // ===============================================
-    const originalRender = Renderer.prototype.render;
-    Renderer.prototype.render = function (gameState, playerId) {
+    const originalRender = window.Renderer.prototype.render;
+    window.Renderer.prototype.render = function (gameState, playerId) {
       // Rendu original
       originalRender.call(this, gameState, playerId);
 
@@ -175,18 +172,20 @@
     // PATCH 6: Intercepter les événements réseau
     // ===============================================
     if (window.NetworkManager) {
+      let networkHooksInstalled = false;
+
       const setupNetworkHooks = () => {
         if (!window.networkManager || !window.networkManager.socket) {
-          if (window.timerManager) {
-            window.timerManager.setTimeout(setupNetworkHooks, 100);
-          } else {
-            (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
-              setupNetworkHooks,
-              100
-            );
-          }
+          const delay = window.timerManager ? window.timerManager.setTimeout : setTimeout;
+          delay(setupNetworkHooks, 100);
           return;
         }
+
+        // Guard: évite d'enregistrer le handler plusieurs fois (state leak / double dispatch)
+        if (networkHooksInstalled) {
+          return;
+        }
+        networkHooksInstalled = true;
 
         const socket = window.networkManager.socket;
 
