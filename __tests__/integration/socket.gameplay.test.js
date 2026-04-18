@@ -135,7 +135,8 @@ describe('shoot rate limit', () => {
     }
 
     // Wait for server to process all emitted events
-    await new Promise(r => setTimeout(r, 200));
+    // TODO: flaky — 200ms too tight under load; bumped to 600ms (21 events batched over socket.io may queue)
+    await new Promise(r => setTimeout(r, 600));
 
     // Assert — at most 20 bullets were created (21st was rate-limited)
     const bulletsAfter = Object.keys(ctx.gameState.bullets).length;

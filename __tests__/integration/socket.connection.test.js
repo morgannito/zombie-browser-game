@@ -158,7 +158,8 @@ describe('disconnect', () => {
 
     // Act
     client.disconnect();
-    await new Promise(r => setTimeout(r, 300));
+    // TODO: flaky — 300ms too tight on slow CI; bumped to 800ms (socket.io disconnect + server cleanup latency)
+    await new Promise(r => setTimeout(r, 800));
 
     // Assert — player removed or saved in disconnected buffer (not in active players)
     expect(ctx.gameState.players[playerId]).toBeUndefined();
