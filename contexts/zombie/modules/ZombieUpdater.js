@@ -15,7 +15,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
-const { DAMAGE_INTERVAL, ZOMBIE_MAX_SPEED, PARTICLES_DEFAULT_COUNT } = require('../constants');
+const { DAMAGE_INTERVAL, ZOMBIE_MAX_SPEED } = require('../constants');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
 // Direct import — DeathProgressionHandler is a leaf module (only depends on

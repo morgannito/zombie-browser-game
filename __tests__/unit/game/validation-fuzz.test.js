@@ -107,10 +107,10 @@ function runFuzz(fn, label) {
       for (let i = 0; i < ITERATIONS; i++) {
         const payload = randomPayload();
         // Arrange + Act
-        let result;
+        let _result;
         let threw = false;
         try {
-          result = fn(payload);
+          _result = fn(payload);
         } catch {
           threw = true;
         }

@@ -77,7 +77,7 @@ async function runLoadTest() {
     proc.stdout.on('data', d => {
  stdout += d; process.stdout.write(d);
 });
-    proc.on('exit', code => {
+    proc.on('exit', _code => {
       // Parse "Total bytes received" and "Duration (s)" from load-test table
       // Format: | Total bytes received  | 1,234,567              |
       //         | Duration (s)          | 30                     |

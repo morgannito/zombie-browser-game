@@ -220,6 +220,14 @@ module.exports = [
     }
   },
 
+  // ES module files in lib/
+  {
+    files: ['lib/PRNG.js'],
+    languageOptions: {
+      sourceType: 'module'
+    }
+  },
+
   // Bench harness (Node scripts with URL + fetch globals)
   {
     files: ['bench/**/*.js'],
