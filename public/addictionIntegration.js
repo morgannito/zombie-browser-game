@@ -1,5 +1,15 @@
 /**
- * ADDICTION INTEGRATION - Intégration de tous les systèmes d'addiction
+ * @file addictionIntegration.js
+ * @description Central hub that wires game events to all retention/progression systems
+ *   (achievements, daily challenges, leaderboard, unlocks, synergies, gems, events…).
+ *
+ * Public API:
+ *   initialize()               — create all panels, bind events, start periodic checks
+ *   destroy()                  — remove all listeners, clear interval
+ *   startPeriodicCheck()       — start 5-second unlock/achievement polling
+ *   stopPeriodicCheck()
+ *   applyActiveBoosts(values)  — apply gem/event multipliers to { xp, gold, … }
+ *   getDisplayStats()          → summary object for HUD display
  * @version 1.0.0
  */
 
@@ -133,68 +143,25 @@ class AddictionIntegration {
 
   // Setup menu de navigation
   setupGameMenu() {
-    // Achievements
-    const achievementsBtn = document.getElementById('menu-btn-achievements');
-    if (achievementsBtn && window.achievementSystem) {
-      achievementsBtn.addEventListener('click', () => {
-        window.achievementSystem.openPanel();
-      });
-    }
+    this._bindMenuBtn('menu-btn-achievements', window.achievementSystem);
+    this._bindMenuBtn('menu-btn-challenges', window.dailyChallengeSystem);
+    this._bindMenuBtn('menu-btn-leaderboard', window.leaderboardSystem);
+    this._bindMenuBtn('menu-btn-unlocks', window.unlockSystem);
+    this._bindMenuBtn('menu-btn-synergies', window.synergySystem);
+    this._bindMenuBtn('menu-btn-lifetime-stats', window.lifetimeStatsSystem);
+    this._bindMenuBtn('menu-btn-gem-shop', window.gemSystem);
+    this._bindMenuBtn('menu-btn-progression', window.metaProgressionSystem);
+  }
 
-    // Challenges
-    const challengesBtn = document.getElementById('menu-btn-challenges');
-    if (challengesBtn && window.dailyChallengeSystem) {
-      challengesBtn.addEventListener('click', () => {
-        window.dailyChallengeSystem.openPanel();
-      });
-    }
-
-    // Leaderboard
-    const leaderboardBtn = document.getElementById('menu-btn-leaderboard');
-    if (leaderboardBtn && window.leaderboardSystem) {
-      leaderboardBtn.addEventListener('click', () => {
-        window.leaderboardSystem.openPanel();
-      });
-    }
-
-    // Unlocks
-    const unlocksBtn = document.getElementById('menu-btn-unlocks');
-    if (unlocksBtn && window.unlockSystem) {
-      unlocksBtn.addEventListener('click', () => {
-        window.unlockSystem.openPanel();
-      });
-    }
-
-    // Synergies
-    const synergiesBtn = document.getElementById('menu-btn-synergies');
-    if (synergiesBtn && window.synergySystem) {
-      synergiesBtn.addEventListener('click', () => {
-        window.synergySystem.openPanel();
-      });
-    }
-
-    // Lifetime Stats
-    const statsBtn = document.getElementById('menu-btn-lifetime-stats');
-    if (statsBtn && window.lifetimeStatsSystem) {
-      statsBtn.addEventListener('click', () => {
-        window.lifetimeStatsSystem.openPanel();
-      });
-    }
-
-    // Gem Shop
-    const gemShopBtn = document.getElementById('menu-btn-gem-shop');
-    if (gemShopBtn && window.gemSystem) {
-      gemShopBtn.addEventListener('click', () => {
-        window.gemSystem.openPanel();
-      });
-    }
-
-    // Meta Progression
-    const progressionBtn = document.getElementById('menu-btn-progression');
-    if (progressionBtn && window.metaProgressionSystem) {
-      progressionBtn.addEventListener('click', () => {
-        window.metaProgressionSystem.openPanel();
-      });
+  /**
+   * Bind a menu button click to system.openPanel(), if both button and system exist.
+   * @param {string} btnId - DOM element id
+   * @param {object|undefined} system - target system (must expose openPanel())
+   */
+  _bindMenuBtn(btnId, system) {
+    const btn = document.getElementById(btnId);
+    if (btn && system) {
+      btn.addEventListener('click', () => system.openPanel());
     }
   }
 

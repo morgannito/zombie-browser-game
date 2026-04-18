@@ -1,6 +1,14 @@
 /**
- * Settings Menu Management
- * Handles settings UI, persistence, and application
+ * @file settingsMenu.js
+ * @description Persistent settings menu: audio, graphics, controls, accessibility, themes.
+ *
+ * Public API:
+ *   open() / close()
+ *   apply()   — save + apply + close
+ *   reset()   — revert to defaults
+ *   getSettings() → currentSettings object
+ *   applyTheme(theme)  — 'dark' | 'neon' | 'retro'
+ *   destroy() — remove all document-level listeners
  */
 
 class SettingsMenu {
@@ -67,12 +75,13 @@ class SettingsMenu {
       settingsOverlay.addEventListener('click', () => this.close());
     }
 
-    // ESC key to close
-    document.addEventListener('keydown', (e) => {
+    // ESC key to close — stored for cleanup
+    this._onKeydown = (e) => {
       if (e.key === 'Escape' && settingsMenu && settingsMenu.style.display === 'block') {
         this.close();
       }
-    });
+    };
+    document.addEventListener('keydown', this._onKeydown);
 
     // Tab switching
     const tabs = document.querySelectorAll('.settings-tab');
@@ -460,6 +469,17 @@ class SettingsMenu {
 
   getSettings() {
     return this.currentSettings;
+  }
+
+  /**
+   * Remove all document-level event listeners attached by this instance.
+   * Call when tearing down between game sessions.
+   */
+  destroy() {
+    if (this._onKeydown) {
+      document.removeEventListener('keydown', this._onKeydown);
+      this._onKeydown = null;
+    }
   }
 
   applyTheme(theme) {

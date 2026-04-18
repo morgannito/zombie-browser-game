@@ -1,22 +1,41 @@
 /**
  * @fileoverview Admin Commands System
- * @description Debug and testing commands for zombie/boss spawning
+ * @description Debug and testing commands for zombie/boss spawning.
+ *   All commands require the caller's socket.userId to be listed in the
+ *   ADMIN_USER_IDS environment variable (comma-separated UUIDs).
+ *   The admin user list is resolved once at construction time.
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { ZOMBIE_TYPES } = ConfigManager;
 const perfIntegration = require('../../../lib/server/PerformanceIntegration');
 
+/** Maximum zombies that can be spawned in a single /spawn call. */
+const MAX_SPAWN_COUNT = 50;
+
 class AdminCommands {
+  /**
+   * @param {import('socket.io').Server} io
+   * @param {object} gameState - Shared mutable game state.
+   * @param {object|null} zombieManager - Optional zombie manager instance.
+   */
   constructor(io, gameState, zombieManager) {
     this.io = io;
     this.gameState = gameState;
     this.zombieManager = zombieManager;
-    this.adminUsers = new Set(); // Track admin users
+
+    // Resolve admin IDs once at construction — avoids re-parsing env on every request.
+    this._adminIds = new Set(
+      (process.env.ADMIN_USER_IDS || '')
+        .split(',')
+        .map(id => id.trim())
+        .filter(Boolean)
+    );
   }
 
   /**
-   * Register admin command handlers
+   * Register admin command handlers for a connected socket.
+   * @param {import('socket.io').Socket} socket
    */
   registerCommands(socket) {
     socket.on('adminCommand', data => {
@@ -25,18 +44,22 @@ class AdminCommands {
   }
 
   /**
-   * Handle admin command
+   * Dispatch an incoming admin command after authorization.
+   * @param {import('socket.io').Socket} socket
+   * @param {object} data
+   * @param {string} data.command - Command name.
+   * @param {string[]} [data.args] - Command arguments.
    */
   handleCommand(socket, data) {
-    const { command, args } = data;
+    if (!data || typeof data !== 'object') {
+      return;
+    }
 
-    // Simple auth - check if socket.playerId is in adminUsers
-    // In production, use proper auth
+    const command = typeof data.command === 'string' ? data.command : '';
+    const args = Array.isArray(data.args) ? data.args : [];
+
     if (!this.isAdmin(socket.userId)) {
-      socket.emit('adminResponse', {
-        success: false,
-        message: 'Not authorized'
-      });
+      socket.emit('adminResponse', { success: false, message: 'Not authorized' });
       return;
     }
 
@@ -74,12 +97,14 @@ class AdminCommands {
   }
 
   /**
-   * Spawn specific zombie type
+   * Spawn specific zombie type near the admin player.
+   * @param {import('socket.io').Socket} socket
+   * @param {string[]} args - [type, count?]
    * Usage: /spawn <type> [count]
    */
   handleSpawn(socket, args) {
-    const [type, countStr] = args;
-    const count = parseInt(countStr) || 1;
+    const type = String(args[0] || '');
+    const count = Math.max(1, parseInt(args[1]) || 1);
 
     if (!ZOMBIE_TYPES[type]) {
       socket.emit('adminResponse', {
@@ -90,7 +115,7 @@ class AdminCommands {
     }
 
     let spawned = 0;
-    for (let i = 0; i < Math.min(count, 50); i++) {
+    for (let i = 0; i < Math.min(count, MAX_SPAWN_COUNT); i++) {
       // Spawn at player position
       const player = this.gameState.players[socket.userId] || this.gameState.players[socket.id];
       if (!player) {
@@ -132,7 +157,9 @@ class AdminCommands {
   }
 
   /**
-   * Set current wave
+   * Jump to a specific wave number.
+   * @param {import('socket.io').Socket} socket
+   * @param {string[]} args - [waveNumber]
    * Usage: /wave <number>
    */
   handleWave(socket, args) {
@@ -164,11 +191,13 @@ class AdminCommands {
   }
 
   /**
-   * Spawn specific boss
+   * Clear all zombies and spawn a single boss at the room centre.
+   * @param {import('socket.io').Socket} socket
+   * @param {string[]} args - [bossType?] defaults to 'boss'
    * Usage: /boss <type>
    */
   handleBoss(socket, args) {
-    const [bossType] = args || ['boss'];
+    const bossType = String(args[0] || 'boss');
 
     const validBosses = [
       'boss',
@@ -192,11 +221,16 @@ class AdminCommands {
       return;
     }
 
+    const type = ZOMBIE_TYPES[bossType];
+    if (!type) {
+      socket.emit('adminResponse', { success: false, message: `Boss type '${bossType}' not found in ZOMBIE_TYPES` });
+      return;
+    }
+
     // Clear existing zombies
     this.gameState.zombies = {};
 
     // Spawn boss at center
-    const type = ZOMBIE_TYPES[bossType];
     const zombieId = this.gameState.getNextId('nextZombieId');
 
     this.gameState.zombies[zombieId] = {
@@ -223,7 +257,9 @@ class AdminCommands {
   }
 
   /**
-   * List all zombie types
+   * List all available zombie types, optionally filtered by name prefix.
+   * @param {import('socket.io').Socket} socket
+   * @param {string[]} args - [filter?]
    * Usage: /list [filter]
    */
   handleList(socket, args) {
@@ -283,7 +319,9 @@ class AdminCommands {
   }
 
   /**
-   * Teleport player to coordinates
+   * Teleport the admin player to the given coordinates (clamped to room bounds).
+   * @param {import('socket.io').Socket} socket
+   * @param {string[]} args - [x, y]
    * Usage: /teleport <x> <y>
    */
   handleTeleport(socket, args) {
@@ -299,8 +337,11 @@ class AdminCommands {
       return;
     }
     const cfg = this.gameState.config;
-    player.x = Math.max(0, Math.min(x, cfg.ROOM_WIDTH || x));
-    player.y = Math.max(0, Math.min(y, cfg.ROOM_HEIGHT || y));
+    // Use explicit null-check instead of || to avoid bypassing a 0-valued dimension.
+    const maxX = cfg.ROOM_WIDTH != null ? cfg.ROOM_WIDTH : x;
+    const maxY = cfg.ROOM_HEIGHT != null ? cfg.ROOM_HEIGHT : y;
+    player.x = Math.max(0, Math.min(x, maxX));
+    player.y = Math.max(0, Math.min(y, maxY));
     socket.emit('adminResponse', { success: true, message: `Teleported to (${player.x}, ${player.y})` });
   }
 
@@ -324,34 +365,13 @@ class AdminCommands {
   }
 
   /**
-   * Check if user is admin.
-   * Requires ADMIN_USER_IDS env var (comma-separated UUIDs).
-   * No admin access without explicit configuration.
+   * Check whether a given userId has admin privileges.
+   * Resolves against the ADMIN_USER_IDS env var parsed at construction time.
+   * @param {string|undefined} userId
+   * @returns {boolean}
    */
   isAdmin(userId) {
-    if (!userId) {
-      return false;
-    }
-    const adminIds = process.env.ADMIN_USER_IDS
-      ? process.env.ADMIN_USER_IDS.split(',')
-          .map(id => id.trim())
-          .filter(Boolean)
-      : [];
-    return adminIds.includes(userId);
-  }
-
-  /**
-   * Enable admin for specific user
-   */
-  enableAdmin(playerId) {
-    this.adminUsers.add(playerId);
-  }
-
-  /**
-   * Disable admin for specific user
-   */
-  disableAdmin(playerId) {
-    this.adminUsers.delete(playerId);
+    return typeof userId === 'string' && userId.length > 0 && this._adminIds.has(userId);
   }
 }
 

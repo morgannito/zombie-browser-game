@@ -310,6 +310,11 @@ candidates.add(w);
     this.gameState.zombiesKilledThisWave = 0;
     this.gameState.zombiesSpawnedThisWave = 0;
 
+    // Cleanup mutator effects to prevent stale state across rooms
+    if (this.gameState.mutatorManager) {
+      this.gameState.mutatorManager.cleanupWave();
+    }
+
     // Charger tous les murs (extérieurs + obstacles)
     this.gameState.walls = [...room.walls, ...room.obstacles];
 

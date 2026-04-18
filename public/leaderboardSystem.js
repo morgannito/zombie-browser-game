@@ -1,5 +1,17 @@
 /**
- * LEADERBOARD SYSTEM - Système de classement
+ * @file leaderboardSystem.js
+ * @description Score tracking, ranking and leaderboard UI (full-panel + mini in-game widget).
+ *
+ * Public API:
+ *   initialize(socket)         — bind socket.io events
+ *   submitScore(name, stats)   — calculate & persist a run score
+ *   getTopScores(n, period)    — 'all' | 'weekly' | 'daily'
+ *   getPlayerPosition(name, period)
+ *   createLeaderboardUI()      — inject full-panel into DOM
+ *   createLeaderboardWidget()  — small home-screen widget
+ *   createMiniLeaderboard()    — in-game top-5 overlay (toggle with L)
+ *   destroyMiniLeaderboard()   — remove overlay + all its listeners
+ *   openPanel()
  * @version 1.0.0
  */
 
@@ -328,12 +340,13 @@ class LeaderboardSystem {
     el.append(title, list);
     document.body.appendChild(el);
 
-    // Toggle touche L
-    document.addEventListener('keydown', (e) => {
+    // Toggle touche L — stored for cleanup
+    this._miniKeydown = (e) => {
       if (e.key === 'l' || e.key === 'L') {
         el.classList.toggle('mini-lb-hidden');
       }
-    });
+    };
+    document.addEventListener('keydown', this._miniKeydown);
 
     this._miniLeaderboardEl = el;
     this._fetchAndRenderMini();
@@ -372,6 +385,10 @@ class LeaderboardSystem {
 
   destroyMiniLeaderboard() {
     if (this._miniInterval) clearInterval(this._miniInterval);
+    if (this._miniKeydown) {
+      document.removeEventListener('keydown', this._miniKeydown);
+      this._miniKeydown = null;
+    }
     document.getElementById('mini-leaderboard')?.remove();
     this._miniLeaderboardEl = null;
   }

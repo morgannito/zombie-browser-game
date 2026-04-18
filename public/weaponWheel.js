@@ -1,6 +1,16 @@
 /**
- * Weapon Wheel UI System
- * Radial menu for quick weapon selection
+ * @file weaponWheel.js
+ * @description Radial weapon-selection wheel with keyboard, mouse-wheel and click support.
+ *
+ * Public API:
+ *   open() / close() / toggle()
+ *   selectWeapon(index)
+ *   unlockWeapon(weaponId)
+ *   updateAmmo(weaponId, ammo)
+ *   getCurrentWeapon() → weapon object
+ *   setWeapons(array)
+ *   reset()
+ *   destroy()  — removes all listeners/observers
  */
 
 class WeaponWheel {
