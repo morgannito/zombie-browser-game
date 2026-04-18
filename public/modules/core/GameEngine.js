@@ -96,6 +96,11 @@ class GameEngine {
       this.ctx.imageSmoothingEnabled = false;
     }
 
+    // Invalidate offscreen sprite caches — they were rendered at the old pixel ratio
+    if (this.renderer && this.renderer.entityRenderer) {
+      this.renderer.entityRenderer.invalidateResolutionCaches();
+    }
+
     // Note: Pixel ratio scaling is applied in the render() method to avoid accumulation
 
     // Also resize minimap canvas

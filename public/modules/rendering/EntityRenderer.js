@@ -109,6 +109,18 @@ class EntityRenderer {
   }
 
   /**
+   * Invalidate resolution-dependent offscreen caches.
+   * Call after canvas resize or devicePixelRatio change so sprites are rebuilt
+   * at the new resolution rather than blitted from a stale size.
+   */
+  invalidateResolutionCaches() {
+    this._powerupSpriteCache.clear();
+    this._playerBodyCache.clear();
+    this._zombieSpriteCache.clear();
+    this._zombieSpriteCacheLRU.clear();
+  }
+
+  /**
    * Release all caches and pooled data structures.
    * Call when the renderer is no longer needed (e.g. game over / scene teardown).
    */

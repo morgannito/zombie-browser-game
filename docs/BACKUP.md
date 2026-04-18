@@ -7,6 +7,8 @@
 | `scripts/backup-db.sh` | Backup shell (WAL checkpoint + gzip, rotation 14) |
 | `scripts/backup.js` | Backup Node.js via DatabaseManager (rotation configurable, défaut 7) |
 | `scripts/restore-db.sh` | Restauration avec vérification intégrité SHA-256 |
+| `scripts/install-cron.sh` | Installe le cron toutes les 6h (idempotent) |
+| `scripts/uninstall-cron.sh` | Supprime l'entrée cron zombie-backup |
 
 ## Rétention
 
@@ -27,6 +29,19 @@ Cron suggéré (quotidien à 3h) :
 ```
 0 3 * * * /path/to/scripts/backup-db.sh >> /var/log/zombie-backup.log 2>&1
 ```
+
+### Installation automatique du cron
+
+```sh
+# Installe une entrée cron toutes les 6h (idempotent)
+./scripts/install-cron.sh
+
+# Désinstaller
+./scripts/uninstall-cron.sh
+```
+
+`install-cron.sh` ajoute l'entrée `0 */6 * * *` dans le crontab de l'utilisateur courant.
+Le marqueur `# zombie-backup` garantit l'idempotence (pas de doublon).
 
 ## Restauration
 
