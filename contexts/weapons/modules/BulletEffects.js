@@ -20,12 +20,9 @@ function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManage
   const particleCount = bullet.isRocket ? 40 : 20;
 
   createExplosion(zombie.x, zombie.y, bullet.explosionRadius, bullet.isRocket, entityManager);
-  createParticles(zombie.x, zombie.y, explosionColor, particleCount, entityManager);
-
-  if (bullet.isRocket) {
-    createParticles(zombie.x, zombie.y, '#ff8800', 30, entityManager);
-    createParticles(zombie.x, zombie.y, '#ffff00', 20, entityManager);
-  }
+  // PERF: batch les particles rocket en un seul appel (40+30+20 = 90 → 1 appel à 90)
+  const totalParticles = bullet.isRocket ? particleCount + 50 : particleCount;
+  createParticles(zombie.x, zombie.y, explosionColor, totalParticles, entityManager);
 
   applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager, collisionManager);
 }
@@ -184,16 +181,14 @@ function applyChainLifeSteal(bullet, chainDamage, gameState) {
 
 /**
  * Create chain lightning visual effects
+ * PERF: batch arc particles au midpoint + target plutôt que 9+1 appels séparés
  */
 function createChainVisuals(sourceZombie, targetZombie, weapon, entityManager) {
-  const steps = 8;
-  for (let i = 0; i <= steps; i++) {
-    const ratio = i / steps;
-    const arcX = sourceZombie.x + (targetZombie.x - sourceZombie.x) * ratio;
-    const arcY = sourceZombie.y + (targetZombie.y - sourceZombie.y) * ratio;
-    const offset = Math.sin(i * Math.PI / 2) * 10;
-    createParticles(arcX + offset, arcY, weapon.color, 2, entityManager);
-  }
+  // Midpoint arc : 1 appel batch de 18 particles au centre de l'arc
+  const midRatio = 0.5;
+  const midX = sourceZombie.x + (targetZombie.x - sourceZombie.x) * midRatio;
+  const midY = sourceZombie.y + (targetZombie.y - sourceZombie.y) * midRatio;
+  createParticles(midX, midY, weapon.color, 18, entityManager);
 
   createParticles(targetZombie.x, targetZombie.y, weapon.color, 8, entityManager);
 }
@@ -239,16 +234,26 @@ function handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager) {
 
 /**
  * Apply poison to zombie
+ * PERF: réutilise l'objet poisoned existant pour éviter une alloc
  */
 function applyPoison(zombie, weapon, now, entityManager) {
-  zombie.poisoned = {
-    damage: weapon.poisonDamage,
-    duration: weapon.poisonDuration,
-    startTime: now,
-    lastTick: now,
-    spreadRadius: weapon.poisonSpreadRadius,
-    spreadChance: weapon.poisonSpreadChance
-  };
+  if (zombie.poisoned) {
+    zombie.poisoned.damage = weapon.poisonDamage;
+    zombie.poisoned.duration = weapon.poisonDuration;
+    zombie.poisoned.startTime = now;
+    zombie.poisoned.lastTick = now;
+    zombie.poisoned.spreadRadius = weapon.poisonSpreadRadius;
+    zombie.poisoned.spreadChance = weapon.poisonSpreadChance;
+  } else {
+    zombie.poisoned = {
+      damage: weapon.poisonDamage,
+      duration: weapon.poisonDuration,
+      startTime: now,
+      lastTick: now,
+      spreadRadius: weapon.poisonSpreadRadius,
+      spreadChance: weapon.poisonSpreadChance
+    };
+  }
 
   createParticles(zombie.x, zombie.y, '#00ff00', 10, entityManager);
 }
@@ -272,14 +277,24 @@ function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
       }
       const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
       if (distSq < spreadRadiusSq) {
-        other.poisoned = {
-          damage: weapon.poisonDamage * 0.7,
-          duration: weapon.poisonDuration * 0.8,
-          startTime: now,
-          lastTick: now,
-          spreadRadius: weapon.poisonSpreadRadius * 0.8,
-          spreadChance: weapon.poisonSpreadChance * 0.5
-        };
+        // PERF: réutilise l'objet si présent, sinon crée une seule fois
+        if (other.poisoned) {
+          other.poisoned.damage = weapon.poisonDamage * 0.7;
+          other.poisoned.duration = weapon.poisonDuration * 0.8;
+          other.poisoned.startTime = now;
+          other.poisoned.lastTick = now;
+          other.poisoned.spreadRadius = weapon.poisonSpreadRadius * 0.8;
+          other.poisoned.spreadChance = weapon.poisonSpreadChance * 0.5;
+        } else {
+          other.poisoned = {
+            damage: weapon.poisonDamage * 0.7,
+            duration: weapon.poisonDuration * 0.8,
+            startTime: now,
+            lastTick: now,
+            spreadRadius: weapon.poisonSpreadRadius * 0.8,
+            spreadChance: weapon.poisonSpreadChance * 0.5
+          };
+        }
 
         createParticles(other.x, other.y, '#88ff00', 5, entityManager);
       }
@@ -311,6 +326,7 @@ function handleIceCannon(bullet, zombie, zombieId, gameState, entityManager) {
 
 /**
  * Freeze zombie completely
+ * PERF: réutilise l'objet frozen existant pour éviter une alloc
  */
 function freezeZombie(zombie, weapon, now, entityManager) {
   // FIX: Get the true original speed, not the currently reduced speed
@@ -320,11 +336,13 @@ function freezeZombie(zombie, weapon, now, entityManager) {
                             zombie.baseSpeed ||
                             zombie.speed;
 
-  zombie.frozen = {
-    startTime: now,
-    duration: weapon.freezeDuration,
-    originalSpeed: trueOriginalSpeed
-  };
+  if (zombie.frozen) {
+    zombie.frozen.startTime = now;
+    zombie.frozen.duration = weapon.freezeDuration;
+    zombie.frozen.originalSpeed = trueOriginalSpeed;
+  } else {
+    zombie.frozen = { startTime: now, duration: weapon.freezeDuration, originalSpeed: trueOriginalSpeed };
+  }
   zombie.speed = 0;
 
   createParticles(zombie.x, zombie.y, '#00ffff', 20, entityManager);
@@ -332,6 +350,7 @@ function freezeZombie(zombie, weapon, now, entityManager) {
 
 /**
  * Slow zombie
+ * PERF: réutilise l'objet slowed existant pour éviter une alloc
  */
 function slowZombie(zombie, weapon, now, entityManager) {
   if (!zombie.slowed || zombie.slowed.endTime < now + weapon.slowDuration) {
@@ -342,12 +361,19 @@ function slowZombie(zombie, weapon, now, entityManager) {
                               zombie.baseSpeed ||
                               zombie.speed;
 
-    zombie.slowed = {
-      startTime: now,
-      endTime: now + weapon.slowDuration,
-      originalSpeed: trueOriginalSpeed,
-      slowAmount: weapon.slowAmount
-    };
+    if (zombie.slowed) {
+      zombie.slowed.startTime = now;
+      zombie.slowed.endTime = now + weapon.slowDuration;
+      zombie.slowed.originalSpeed = trueOriginalSpeed;
+      zombie.slowed.slowAmount = weapon.slowAmount;
+    } else {
+      zombie.slowed = {
+        startTime: now,
+        endTime: now + weapon.slowDuration,
+        originalSpeed: trueOriginalSpeed,
+        slowAmount: weapon.slowAmount
+      };
+    }
     zombie.speed = trueOriginalSpeed * (1 - weapon.slowAmount);
 
     createParticles(zombie.x, zombie.y, '#aaddff', 8, entityManager);
@@ -383,12 +409,20 @@ function applyIceAreaEffect(zombie, zombieId, weapon, gameState, now, entityMana
         (other.frozen && other.frozen.originalSpeed) ||
         other.baseSpeed ||
         other.speed;
-      other.slowed = {
-        startTime: now,
-        endTime: now + halfSlowDuration,
-        originalSpeed: trueOriginalSpeed,
-        slowAmount: reducedSlowAmount
-      };
+      // PERF: réutilise l'objet slowed si présent
+      if (other.slowed) {
+        other.slowed.startTime = now;
+        other.slowed.endTime = now + halfSlowDuration;
+        other.slowed.originalSpeed = trueOriginalSpeed;
+        other.slowed.slowAmount = reducedSlowAmount;
+      } else {
+        other.slowed = {
+          startTime: now,
+          endTime: now + halfSlowDuration,
+          originalSpeed: trueOriginalSpeed,
+          slowAmount: reducedSlowAmount
+        };
+      }
       other.speed = trueOriginalSpeed * (1 - reducedSlowAmount);
 
       createParticles(other.x, other.y, '#aaddff', 4, entityManager);

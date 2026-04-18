@@ -12,17 +12,44 @@
 const ANGLE_TO_RAD = (Math.PI * 2) / 255;
 
 class NetworkManager {
-  constructor(socket) {
+  constructor(socket, deps = {}) {
     this.socket = socket;
     this.justReconnected = false; // Flag to track reconnection state
     this._initialConnect = true; // True until the first successful connect
     this.listeners = []; // Track all listeners for cleanup
 
+    // Dependency injection — fallback to window.* for backward compat
+    const DEP_KEYS = [
+      'gameState', 'gameUI', 'playerController', 'comboSystem',
+      'screenEffects', 'biomeSystem', 'runMutatorsSystem',
+      'advancedAudio', 'toastManager', 'timerManager'
+    ];
+    this._fallbackWarned = false;
+    this._deps = {};
+    for (const key of DEP_KEYS) {
+      if (deps[key] !== undefined) {
+        this._deps[key] = deps[key];
+      } else {
+        Object.defineProperty(this._deps, key, {
+          get: () => {
+            if (!this._fallbackWarned) {
+              this._fallbackWarned = true;
+              console.warn('[NetworkManager] Using window.* fallback for deps. Pass deps to constructor.');
+            }
+            return window[key];
+          },
+          enumerable: true, configurable: true
+        });
+      }
+    }
+
     // Latency monitoring
     this.latency = 0; // Current latency in ms
     this.lastPingTime = 0;
-    this.latencyHistory = []; // Keep last 10 measurements
-    this.maxLatencyHistory = 10;
+    // Ring buffer for latency history — zero-alloc, no shift()
+    this._latencyBuf = new Float32Array(10);
+    this._latencyBufIdx = 0;
+    this._latencyBufCount = 0;
     this._lastLatencyWarnAt = 0; // Throttle high-latency log (once per 5 s)
 
     // Outbound emit batch queue (flushed via queueMicrotask within same rAF tick)
@@ -162,8 +189,8 @@ class NetworkManager {
     this.listeners = [];
 
     // Clear ping interval
-    if (this.pingIntervalId && window.timerManager) {
-      window.timerManager.clearInterval(this.pingIntervalId);
+    if (this.pingIntervalId && this._deps.timerManager) {
+      this._deps.timerManager.clearInterval(this.pingIntervalId);
       this.pingIntervalId = null;
     } else if (this.pingInterval) {
       clearInterval(this.pingInterval);
@@ -194,7 +221,7 @@ class NetworkManager {
       }
     };
 
-    const timerMgr = window.timerManager;
+    const timerMgr = this._deps.timerManager;
     if (timerMgr) {
       this.pingIntervalId = timerMgr.setInterval(doPing, 2000);
     } else {
@@ -211,18 +238,17 @@ class NetworkManager {
 
     this.latency = latency;
 
-    // Add to history
-    this.latencyHistory.push(latency);
-    if (this.latencyHistory.length > this.maxLatencyHistory) {
-      this.latencyHistory.shift();
-    }
+    // Add to ring buffer (zero-alloc)
+    this._latencyBuf[this._latencyBufIdx] = latency;
+    this._latencyBufIdx = (this._latencyBufIdx + 1) % this._latencyBuf.length;
+    if (this._latencyBufCount < this._latencyBuf.length) this._latencyBufCount++;
 
     // Update UI indicator if available
     this.updateLatencyIndicator();
 
     // Update GameStateManager with latency for adaptive interpolation
-    if (window.gameState && window.gameState.updateNetworkLatency) {
-      window.gameState.updateNetworkLatency(latency);
+    if (this._deps.gameState && this._deps.gameState.updateNetworkLatency) {
+      this._deps.gameState.updateNetworkLatency(latency);
     }
 
     // Log high latency warnings — throttled to once every 5 s to avoid log spam.
@@ -237,11 +263,12 @@ class NetworkManager {
   }
 
   getAverageLatency() {
-    if (this.latencyHistory.length === 0) {
+    if (this._latencyBufCount === 0) {
       return 0;
     }
-    const sum = this.latencyHistory.reduce((a, b) => a + b, 0);
-    return Math.round(sum / this.latencyHistory.length);
+    let sum = 0;
+    for (let i = 0; i < this._latencyBufCount; i++) sum += this._latencyBuf[i];
+    return Math.round(sum / this._latencyBufCount);
   }
 
   getConnectionQuality() {
@@ -284,9 +311,9 @@ class NetworkManager {
         this._initialConnect = false;
         console.log(`[Socket.IO] Connected successfully (transport: ${transport})`);
         this._resetReconnectBackoff();
-        if (window.toastManager) {
+        if (this._deps.toastManager) {
           const quality = this.getConnectionQuality();
-          window.toastManager.show({ message: `✅ Connected (${quality.text})`, type: 'success' });
+          this._deps.toastManager.show({ message: `✅ Connected (${quality.text})`, type: 'success' });
         }
       } else {
         // Manual reconnect path (backoff via _scheduleReconnect → socket.connect())
@@ -296,15 +323,15 @@ class NetworkManager {
         // Reset PlayerController's lastSentPosition so the first post-reconnect
         // playerMove doesn't compute a huge delta from a stale pre-disconnect
         // reference, which the server anti-cheat would reject → teleport.
-        if (window.playerController) {
-          const p = window.gameState?.state?.players?.[window.gameState.playerId];
+        if (this._deps.playerController) {
+          const p = this._deps.gameState?.state?.players?.[this._deps.gameState.playerId];
           if (p) {
-            window.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
-            window.playerController.lastNetworkUpdate = performance.now();
+            this._deps.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
+            this._deps.playerController.lastNetworkUpdate = performance.now();
           }
         }
-        if (window.toastManager) {
-          window.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
+        if (this._deps.toastManager) {
+          this._deps.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
         }
         // Re-sync: request full authoritative state. Silent no-op if server does not support it.
         this._syncFullState();
@@ -313,22 +340,22 @@ class NetworkManager {
 
     this.on('connect_error', error => {
       console.error('[Socket.IO] Connection error:', error);
-      if (window.toastManager) {
-        window.toastManager.show({ message: '⚠️ Connection error. Retrying...', type: 'warning' });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: '⚠️ Connection error. Retrying...', type: 'warning' });
       }
     });
 
     this.on('disconnect', reason => {
       console.log('[Socket.IO] Disconnected:', reason);
-      if (window.toastManager) {
-        window.toastManager.show({ message: '🔌 Connexion perdue. Reconnexion en cours...', type: 'error' });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: '🔌 Connexion perdue. Reconnexion en cours...', type: 'error' });
       }
       // Invalidate the server-time offset: clocks may have drifted while the
       // socket was down (long suspends, OS clock change). The next server
       // packet after reconnect will re-prime via updateServerTime().
-      if (window.gameState && typeof window.gameState === 'object') {
-        window.gameState._serverTimeSynced = false;
-        window.gameState.serverTimeOffset = 0;
+      if (this._deps.gameState && typeof this._deps.gameState === 'object') {
+        this._deps.gameState._serverTimeSynced = false;
+        this._deps.gameState.serverTimeOffset = 0;
       }
       // Trigger backoff reconnect when socket won't auto-reconnect
       const noAutoReconnect = ['io server disconnect', 'transport close', 'transport error'];
@@ -343,15 +370,15 @@ class NetworkManager {
       this.justReconnected = true;
       this._resetReconnectBackoff();
       // Reset lastSentPosition to prevent huge delta → anti-cheat reject on first move
-      if (window.playerController) {
-        const p = window.gameState?.state?.players?.[window.gameState.playerId];
+      if (this._deps.playerController) {
+        const p = this._deps.gameState?.state?.players?.[this._deps.gameState.playerId];
         if (p) {
-          window.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
-          window.playerController.lastNetworkUpdate = performance.now();
+          this._deps.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
+          this._deps.playerController.lastNetworkUpdate = performance.now();
         }
       }
-      if (window.toastManager) {
-        window.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
       }
       // Re-sync: request full authoritative state. Silent no-op if server does not support it.
       this._syncFullState();
@@ -359,8 +386,8 @@ class NetworkManager {
 
     this.on('reconnect_attempt', attemptNumber => {
       console.log('[Socket.IO] Reconnection attempt', attemptNumber);
-      if (window.toastManager) {
-        window.toastManager.show({ message: `🔄 Reconnexion en cours... (tentative ${attemptNumber})`, type: 'warning' });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: `🔄 Reconnexion en cours... (tentative ${attemptNumber})`, type: 'warning' });
       }
     });
 
@@ -370,8 +397,8 @@ class NetworkManager {
 
     this.on('reconnect_failed', () => {
       console.error('[Socket.IO] Reconnection failed');
-      if (window.toastManager) {
-        window.toastManager.show({ message: '❌ Failed to reconnect. Please refresh.', type: 'error' });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: '❌ Failed to reconnect. Please refresh.', type: 'error' });
       }
       // Fall back to manual exponential backoff
       this._scheduleReconnect();
@@ -383,8 +410,8 @@ class NetworkManager {
     this.on('gameStateDelta', delta => this.handleGameStateDelta(delta));
     this.on('positionCorrection', data => this.handlePositionCorrection(data));
     this.on('moveAck', data => {
-      if (window.playerController && typeof window.playerController.reconcileWithServer === 'function') {
-        window.playerController.reconcileWithServer(data);
+      if (this._deps.playerController && typeof this._deps.playerController.reconcileWithServer === 'function') {
+        this._deps.playerController.reconcileWithServer(data);
       }
     });
     this.on('bossSpawned', data => this.handleBossSpawned(data));
@@ -420,18 +447,18 @@ class NetworkManager {
   }
 
   handleInit(data) {
-    window.gameState.initialize(data);
-    if (data.mutators && window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
-      window.runMutatorsSystem.applyServerMutators(data.mutators, {
+    this._deps.gameState.initialize(data);
+    if (data.mutators && this._deps.runMutatorsSystem && this._deps.runMutatorsSystem.applyServerMutators) {
+      this._deps.runMutatorsSystem.applyServerMutators(data.mutators, {
         effects: data.mutatorEffects,
         nextRotationWave: data.nextMutatorWave,
-        wave: window.gameState.state.wave || 1
+        wave: this._deps.gameState.state.wave || 1
       });
     }
 
     // Show notification if session was recovered
-    if (data.recovered && window.toastManager) {
-      window.toastManager.show({ message: '🔄 Session restaurée ! Votre progression a été récupérée.', type: 'success' });
+    if (data.recovered && this._deps.toastManager) {
+      this._deps.toastManager.show({ message: '🔄 Session restaurée ! Votre progression a été récupérée.', type: 'success' });
       console.log('[Session] State successfully recovered');
     }
   }
@@ -441,12 +468,12 @@ class NetworkManager {
       return;
     }
 
-    if (window.gameState && window.gameState.state) {
-      window.gameState.state.mutators = data.mutators;
+    if (this._deps.gameState && this._deps.gameState.state) {
+      this._deps.gameState.state.mutators = data.mutators;
     }
 
-    if (window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
-      window.runMutatorsSystem.applyServerMutators(data.mutators, data);
+    if (this._deps.runMutatorsSystem && this._deps.runMutatorsSystem.applyServerMutators) {
+      this._deps.runMutatorsSystem.applyServerMutators(data.mutators, data);
     }
   }
 
@@ -455,34 +482,34 @@ class NetworkManager {
     let localPlayerState = null;
     if (
       !this.justReconnected &&
-      window.gameState.state &&
-      window.gameState.state.players &&
-      window.gameState.state.players[window.gameState.playerId]
+      this._deps.gameState.state &&
+      this._deps.gameState.state.players &&
+      this._deps.gameState.state.players[this._deps.gameState.playerId]
     ) {
-      const localPlayer = window.gameState.state.players[window.gameState.playerId];
+      const localPlayer = this._deps.gameState.state.players[this._deps.gameState.playerId];
       localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
     }
 
     // FIX: Update server time offset for latency compensation
     if (state.serverTime) {
-      window.gameState.updateServerTime(state.serverTime);
+      this._deps.gameState.updateServerTime(state.serverTime);
     }
 
     // Update state with server data (passe serverTime pour ancrage interp)
-    window.gameState.updateState(state, state.serverTime);
+    this._deps.gameState.updateState(state, state.serverTime);
 
     // Re-apply client-side environment systems (biome/weather)
-    if (window.biomeSystem && window.biomeSystem.applyToGameState) {
-      window.biomeSystem.applyToGameState();
+    if (this._deps.biomeSystem && this._deps.biomeSystem.applyToGameState) {
+      this._deps.biomeSystem.applyToGameState();
     }
 
     // Client prediction: restore local position unless server differs significantly
     if (
       localPlayerState &&
-      window.gameState.state.players &&
-      window.gameState.state.players[window.gameState.playerId]
+      this._deps.gameState.state.players &&
+      this._deps.gameState.state.players[this._deps.gameState.playerId]
     ) {
-      const serverPlayer = window.gameState.state.players[window.gameState.playerId];
+      const serverPlayer = this._deps.gameState.state.players[this._deps.gameState.playerId];
       const dx = localPlayerState.x - serverPlayer.x;
       const dy = localPlayerState.y - serverPlayer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -492,7 +519,7 @@ class NetworkManager {
       // phasing, reconnect). The server broadcasts position every tick so
       // smaller drifts auto-correct through normal delta interpolation.
       const PREDICTION_TRUST_PX = 200;
-      const p = window.gameState.state.players[window.gameState.playerId];
+      const p = this._deps.gameState.state.players[this._deps.gameState.playerId];
       if (distance > PREDICTION_TRUST_PX) {
         p.x = serverPlayer.x;
         p.y = serverPlayer.y;
@@ -510,8 +537,8 @@ class NetworkManager {
       this.justReconnected = false;
     }
 
-    if (window.gameUI) {
-      window.gameUI.update();
+    if (this._deps.gameUI) {
+      this._deps.gameUI.update();
     }
   }
 
@@ -522,13 +549,13 @@ class NetworkManager {
    */
   _applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState) {
     if (isNew) {
-      window.gameState.state[type][id] = patch;
+      this._deps.gameState.state[type][id] = patch;
     } else {
-      Object.assign(window.gameState.state[type][id] || {}, patch);
+      Object.assign(this._deps.gameState.state[type][id] || {}, patch);
     }
     // Keep client prediction when drift is moderate, hard-snap only on
     // catastrophic desync. Trust the client for smooth playing experience.
-    const e = window.gameState.state[type][id];
+    const e = this._deps.gameState.state[type][id];
     const sx = typeof patch.x === 'number' ? patch.x : e.x;
     const sy = typeof patch.y === 'number' ? patch.y : e.y;
     const drift = Math.hypot(localPlayerState.x - sx, localPlayerState.y - sy);
@@ -549,7 +576,7 @@ class NetworkManager {
    * @private
    */
   _applyEntityPatch(type, id, patch, isNew, packetServerTime) {
-    if (isNew || !window.gameState.state[type][id]) {
+    if (isNew || !this._deps.gameState.state[type][id]) {
       const entity = Object.assign({}, patch);
       delete entity._new;
       if (entity.x !== undefined) {
@@ -559,9 +586,9 @@ class NetworkManager {
           entity._serverTime = packetServerTime;
         }
       }
-      window.gameState.state[type][id] = entity;
+      this._deps.gameState.state[type][id] = entity;
     } else {
-      const entity = window.gameState.state[type][id];
+      const entity = this._deps.gameState.state[type][id];
       const hadPosition = patch.x !== undefined;
       Object.assign(entity, patch);
       if (hadPosition) {
@@ -584,13 +611,13 @@ class NetworkManager {
     const snapshot = { localPlayerState: null, prevHealth: null, prevMaxHealth: null };
     if (
       this.justReconnected ||
-      !window.gameState.state ||
-      !window.gameState.state.players ||
-      !window.gameState.state.players[window.gameState.playerId]
+      !this._deps.gameState.state ||
+      !this._deps.gameState.state.players ||
+      !this._deps.gameState.state.players[this._deps.gameState.playerId]
     ) {
       return snapshot;
     }
-    const localPlayer = window.gameState.state.players[window.gameState.playerId];
+    const localPlayer = this._deps.gameState.state.players[this._deps.gameState.playerId];
     snapshot.localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
     snapshot.prevHealth = localPlayer.health;
     snapshot.prevMaxHealth = localPlayer.maxHealth;
@@ -606,8 +633,8 @@ class NetworkManager {
       return;
     }
     for (const type in updatedByType) {
-      if (!window.gameState.state[type]) {
-        window.gameState.state[type] = {};
+      if (!this._deps.gameState.state[type]) {
+        this._deps.gameState.state[type] = {};
       }
       const entities = updatedByType[type];
       for (const id in entities) {
@@ -618,12 +645,12 @@ class NetworkManager {
           patch.angle = patch.angle * ANGLE_TO_RAD;
         }
         const isNew = patch._new === true;
-        if (type === 'players' && id === window.gameState.playerId && localPlayerState) {
+        if (type === 'players' && id === this._deps.gameState.playerId && localPlayerState) {
           this._applyLocalPlayerPatch(type, id, patch, isNew, localPlayerState);
         } else {
           this._applyEntityPatch(type, id, patch, isNew, packetServerTime);
         }
-        window.gameState.markEntitySeen(type, id);
+        this._deps.gameState.markEntitySeen(type, id);
       }
     }
   }
@@ -633,12 +660,12 @@ class NetworkManager {
       return;
     }
     for (const type in removedByType) {
-      if (!window.gameState.state[type]) {
+      if (!this._deps.gameState.state[type]) {
         continue;
       }
       const ids = removedByType[type];
       for (let i = 0; i < ids.length; i++) {
-        delete window.gameState.state[type][ids[i]];
+        delete this._deps.gameState.state[type][ids[i]];
       }
     }
   }
@@ -648,16 +675,16 @@ class NetworkManager {
       return;
     }
     if (meta.wave !== undefined) {
-      window.gameState.state.wave = meta.wave;
+      this._deps.gameState.state.wave = meta.wave;
     }
     if (meta.walls !== undefined) {
-      window.gameState.state.walls = meta.walls;
+      this._deps.gameState.state.walls = meta.walls;
     }
     if (meta.currentRoom !== undefined) {
-      window.gameState.state.currentRoom = meta.currentRoom;
+      this._deps.gameState.state.currentRoom = meta.currentRoom;
     }
     if (meta.bossSpawned !== undefined) {
-      window.gameState.state.bossSpawned = meta.bossSpawned;
+      this._deps.gameState.state.bossSpawned = meta.bossSpawned;
     }
   }
 
@@ -670,21 +697,25 @@ class NetworkManager {
       !localPlayerState ||
       !delta.updated ||
       !delta.updated.players ||
-      !delta.updated.players[window.gameState.playerId]
+      !delta.updated.players[this._deps.gameState.playerId]
     ) {
       return;
     }
-    const serverPatch = delta.updated.players[window.gameState.playerId];
-    if (serverPatch.x === undefined || serverPatch.y === undefined) return;
+    const serverPatch = delta.updated.players[this._deps.gameState.playerId];
+    if (serverPatch.x === undefined || serverPatch.y === undefined) {
+return;
+}
     const dx = localPlayerState.x - serverPatch.x;
     const dy = localPlayerState.y - serverPatch.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     if (distance > 50) {
-      const p = window.gameState.state.players?.[window.gameState.playerId];
+      const p = this._deps.gameState.state.players?.[this._deps.gameState.playerId];
       if (p) {
         p.x = serverPatch.x;
         p.y = serverPatch.y;
-        if (typeof serverPatch.angle === 'number') p.angle = serverPatch.angle;
+        if (typeof serverPatch.angle === 'number') {
+p.angle = serverPatch.angle;
+}
       }
     }
   }
@@ -696,51 +727,70 @@ class NetworkManager {
     if (
       prevHealth === null ||
       prevMaxHealth === null ||
-      !window.gameState.state.players ||
-      !window.gameState.state.players[window.gameState.playerId]
+      !this._deps.gameState.state.players ||
+      !this._deps.gameState.state.players[this._deps.gameState.playerId]
     ) {
       return;
     }
-    const updatedPlayer = window.gameState.state.players[window.gameState.playerId];
-    if (updatedPlayer.health < prevHealth && updatedPlayer.alive && window.screenEffects) {
+    const updatedPlayer = this._deps.gameState.state.players[this._deps.gameState.playerId];
+    if (updatedPlayer.health < prevHealth && updatedPlayer.alive && this._deps.screenEffects) {
       const damageAmount = prevHealth - updatedPlayer.health;
-      window.screenEffects.onPlayerDamage(damageAmount / prevMaxHealth);
+      this._deps.screenEffects.onPlayerDamage(damageAmount / prevMaxHealth);
     }
-    if (!updatedPlayer.alive && window.advancedAudio) {
-      window.advancedAudio.stopLowHealthHeartbeat();
+    if (!updatedPlayer.alive && this._deps.advancedAudio) {
+      this._deps.advancedAudio.stopLowHealthHeartbeat();
     }
   }
 
   _detectBossDeath(delta) {
-    if (!window.screenEffects) {
+    if (!this._deps.screenEffects) {
       return;
     }
     if (
       delta.meta &&
       delta.meta.bossSpawned === false &&
-      window.gameState.state.bossSpawned === true
+      this._deps.gameState.state.bossSpawned === true
     ) {
-      window.screenEffects.onBossDeath();
+      this._deps.screenEffects.onBossDeath();
     }
   }
 
-  handleGameStateDelta(delta) {
-    const { localPlayerState, prevHealth, prevMaxHealth } = this._captureLocalPlayerSnapshot();
-
-    // FIX: Update server time offset for latency compensation
+  /**
+   * Snapshot pre-delta context: local player state + server time anchor.
+   * @param {object} delta
+   * @returns {{localPlayerState, prevHealth, prevMaxHealth, packetServerTime}}
+   */
+  _prepareDeltaContext(delta) {
     if (delta.serverTime) {
-      window.gameState.updateServerTime(delta.serverTime);
+      this._deps.gameState.updateServerTime(delta.serverTime);
     }
-    // Capture serverTime once for the whole delta batch so each entity
-    // snapshot gets a consistent authoritative timestamp.
+    const { localPlayerState, prevHealth, prevMaxHealth } = this._captureLocalPlayerSnapshot();
     const packetServerTime = delta.serverTime || undefined;
+    return { localPlayerState, prevHealth, prevMaxHealth, packetServerTime };
+  }
 
+  /**
+   * Apply all entity updates, removals, and metadata from the delta.
+   * @param {object} delta
+   * @param {{localPlayerState, packetServerTime}} context
+   */
+  _processDeltaEntities(delta, context) {
+    const { localPlayerState, packetServerTime } = context;
     this._applyDeltaUpdates(delta.updated, localPlayerState, packetServerTime);
     this._applyDeltaRemovals(delta.removed);
     this._applyDeltaMetadata(delta.meta);
+  }
 
-    if (window.biomeSystem && window.biomeSystem.applyToGameState) {
-      window.biomeSystem.applyToGameState();
+  /**
+   * React to post-delta events: biome, desync correction, damage, boss death, UI.
+   * @param {object} delta
+   * @param {{localPlayerState, prevHealth, prevMaxHealth}} context
+   */
+  _handlePostDeltaEvents(delta, context) {
+    const { localPlayerState, prevHealth, prevMaxHealth } = context;
+
+    if (this._deps.biomeSystem && this._deps.biomeSystem.applyToGameState) {
+      this._deps.biomeSystem.applyToGameState();
     }
 
     this._checkLocalPlayerDesync(delta, localPlayerState);
@@ -753,9 +803,15 @@ class NetworkManager {
     this._detectLocalPlayerDamage(prevHealth, prevMaxHealth);
     this._detectBossDeath(delta);
 
-    if (window.gameUI) {
-      window.gameUI.update();
+    if (this._deps.gameUI) {
+      this._deps.gameUI.update();
     }
+  }
+
+  handleGameStateDelta(delta) {
+    const context = this._prepareDeltaContext(delta);
+    this._processDeltaEntities(delta, context);
+    this._handlePostDeltaEvents(delta, context);
   }
 
   handlePositionCorrection(data) {
@@ -764,11 +820,11 @@ class NetworkManager {
 
     // Apply correction to player position (this overrides client prediction)
     if (
-      window.gameState.state &&
-      window.gameState.state.players &&
-      window.gameState.state.players[window.gameState.playerId]
+      this._deps.gameState.state &&
+      this._deps.gameState.state.players &&
+      this._deps.gameState.state.players[this._deps.gameState.playerId]
     ) {
-      const player = window.gameState.state.players[window.gameState.playerId];
+      const player = this._deps.gameState.state.players[this._deps.gameState.playerId];
       const oldX = player.x;
       const oldY = player.y;
 
@@ -810,7 +866,7 @@ class NetworkManager {
       // Reset lastSentPosition to the corrected position so the next
       // _maybeEmitMove does not compute a huge delta from the stale value,
       // which would immediately trigger another server correction.
-      const playerController = window.playerController || window.gameState?.playerController;
+      const playerController = this._deps.playerController || this._deps.gameState?.playerController;
       if (playerController?.lastSentPosition) {
         playerController.lastSentPosition.x = player.x;
         playerController.lastSentPosition.y = player.y;
@@ -820,15 +876,15 @@ class NetworkManager {
   }
 
   handleBossSpawned(data) {
-    if (window.gameUI) {
-      window.gameUI.showBossAnnouncement(data.bossName);
+    if (this._deps.gameUI) {
+      this._deps.gameUI.showBossAnnouncement(data.bossName);
     }
     document.dispatchEvent(new CustomEvent('boss_spawned', { detail: data }));
   }
 
   handleNewWave(data) {
-    if (window.gameUI) {
-      window.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
+    if (this._deps.gameUI) {
+      this._deps.gameUI.showNewWaveAnnouncement(data.wave, data.zombiesCount);
       // BUGFIX (multi): only auto-open the shop if the local player is alive,
       // not already in a modal (level-up, shop, settings, etc.) and not the
       // dead/spectating state. Avoids unwanted popup interrupting another
@@ -836,13 +892,13 @@ class NetworkManager {
       if (this._shouldAutoOpenShop()) {
         setTimeout(() => {
           if (this._shouldAutoOpenShop()) {
-            window.gameUI.showShop();
+            this._deps.gameUI.showShop();
           }
         }, CONSTANTS.ANIMATIONS.SHOP_DELAY);
       }
     }
-    if (data.mutators && window.runMutatorsSystem && window.runMutatorsSystem.applyServerMutators) {
-      window.runMutatorsSystem.applyServerMutators(data.mutators, data);
+    if (data.mutators && this._deps.runMutatorsSystem && this._deps.runMutatorsSystem.applyServerMutators) {
+      this._deps.runMutatorsSystem.applyServerMutators(data.mutators, data);
     }
     document.dispatchEvent(new CustomEvent('wave_changed', { detail: data }));
   }
@@ -853,14 +909,14 @@ class NetworkManager {
    * @private
    */
   _shouldAutoOpenShop() {
-    if (!window.gameUI) {
+    if (!this._deps.gameUI) {
       return false;
     }
-    if (window.gameUI.shopOpen || window.gameUI.levelUpOpen || window.gameUI.settingsOpen) {
+    if (this._deps.gameUI.shopOpen || this._deps.gameUI.levelUpOpen || this._deps.gameUI.settingsOpen) {
       return false;
     }
     const localPlayer =
-      window.gameState && window.gameState.getPlayer && window.gameState.getPlayer();
+      this._deps.gameState && this._deps.gameState.getPlayer && this._deps.gameState.getPlayer();
     if (!localPlayer || !localPlayer.alive) {
       return false;
     }
@@ -868,16 +924,16 @@ class NetworkManager {
   }
 
   handleLevelUp(data) {
-    if (window.gameUI) {
+    if (this._deps.gameUI) {
       if (data.milestoneBonus) {
-        window.gameUI.showMilestoneBonus(data.milestoneBonus, data.newLevel);
+        this._deps.gameUI.showMilestoneBonus(data.milestoneBonus, data.newLevel);
         setTimeout(() => {
-          if (window.gameUI) {
-            window.gameUI.showLevelUpScreen(data.newLevel, data.upgradeChoices);
+          if (this._deps.gameUI) {
+            this._deps.gameUI.showLevelUpScreen(data.newLevel, data.upgradeChoices);
           }
         }, CONSTANTS.ANIMATIONS.MILESTONE_DELAY);
       } else {
-        window.gameUI.showLevelUpScreen(data.newLevel, data.upgradeChoices);
+        this._deps.gameUI.showLevelUpScreen(data.newLevel, data.upgradeChoices);
       }
     }
   }
@@ -885,18 +941,18 @@ class NetworkManager {
   handleRoomChanged(data) {
     // Apply new room walls immediately so client collision doesn't use stale
     // walls from the previous room (caused walk-through + teleport-back bugs).
-    if (data.walls && window.gameState && window.gameState.state) {
-      window.gameState.state.walls = data.walls;
+    if (data.walls && this._deps.gameState && this._deps.gameState.state) {
+      this._deps.gameState.state.walls = data.walls;
     }
-    if (window.gameUI) {
-      window.gameUI.showRoomAnnouncement(data.roomIndex + 1, data.totalRooms);
+    if (this._deps.gameUI) {
+      this._deps.gameUI.showRoomAnnouncement(data.roomIndex + 1, data.totalRooms);
     }
     document.dispatchEvent(new CustomEvent('room_changed', { detail: data }));
   }
 
   handleRunCompleted(data) {
-    if (window.gameUI) {
-      window.gameUI.showRunCompleted(data.gold, data.level);
+    if (this._deps.gameUI) {
+      this._deps.gameUI.showRunCompleted(data.gold, data.level);
     }
   }
 
@@ -906,46 +962,54 @@ class NetworkManager {
 
   handleShopUpdate(data) {
     // Release the in-flight guard regardless of success/failure
-    if (window.gameUI) {
-      window.gameUI._buyPending = false;
+    if (this._deps.gameUI) {
+      this._deps.gameUI._buyPending = false;
     }
 
     if (data.success) {
       // Show success message
-      if (window.toastManager) {
-        window.toastManager.show({ message: '✅ Achat réussi !', type: 'success', duration: 2000 });
+      if (this._deps.toastManager) {
+        this._deps.toastManager.show({ message: '✅ Achat réussi !', type: 'success', duration: 2000 });
       }
 
       // Refresh shop if open
-      if (window.gameUI && window.gameUI.shopOpen) {
-        window.gameUI.populateShop();
+      if (this._deps.gameUI && this._deps.gameUI.shopOpen) {
+        this._deps.gameUI.populateShop();
       }
     } else {
       // Show error message
-      if (window.toastManager) {
+      if (this._deps.toastManager) {
         const message = data.message || 'Achat impossible';
-        window.toastManager.show({ message: `❌ ${message}`, type: 'error', duration: 2500 });
+        this._deps.toastManager.show({ message: `❌ ${message}`, type: 'error', duration: 2500 });
       }
       console.warn('[Shop] Purchase failed:', data.message);
     }
   }
 
   handleComboUpdate(data) {
-    if (window.comboSystem) {
-      window.comboSystem.updateCombo(data);
+    if (this._deps.comboSystem) {
+      this._deps.comboSystem.updateCombo(data);
     }
   }
 
   handleComboReset() {
-    if (window.comboSystem) {
-      window.comboSystem.resetCombo();
+    if (this._deps.comboSystem) {
+      this._deps.comboSystem.resetCombo();
     }
   }
 
   handleSessionReplaced(data) {
     console.warn('[Socket.IO] Session replaced by another tab:', data.reason);
-    if (window.toastManager) {
-      window.toastManager.show({ message: '⚠️ Connexion fermée : un autre onglet a pris le relais.', type: 'error', duration: 4000 });
+    // Disable auto-reconnect: this tab was legitimately evicted.
+    // Reconnecting would re-eject the active tab, creating an infinite loop.
+    this._reconnectAttempts = Infinity;
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
+    this.socket.io.opts.reconnection = false;
+    if (this._deps.toastManager) {
+      this._deps.toastManager.show({ message: '⚠️ Connexion fermée : un autre onglet a pris le relais.', type: 'error', duration: 4000 });
     }
   }
 
@@ -953,8 +1017,8 @@ class NetworkManager {
     console.log('[Socket.IO] Session timeout:', data.reason);
 
     // Show error message to user
-    if (window.toastManager) {
-      window.toastManager.show({
+    if (this._deps.toastManager) {
+      this._deps.toastManager.show({
         message: '⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'),
         type: 'error'
       });
@@ -1012,7 +1076,9 @@ class NetworkManager {
    * @param {{x:number,y:number,angle:number,seq:number}} move
    */
   playerMove(move) {
-    if (!move) return;
+    if (!move) {
+return;
+}
     this.socket.emit('playerMove', move);
   }
 
@@ -1022,7 +1088,9 @@ class NetworkManager {
    * @param {Array<{dx:number,dy:number,angle:number,seq:number}>} batch
    */
   playerMoveBatch(batch) {
-    if (!batch || batch.length === 0) return;
+    if (!batch || batch.length === 0) {
+return;
+}
     for (const item of batch) {
       this.socket.emit('playerMove', item);
     }

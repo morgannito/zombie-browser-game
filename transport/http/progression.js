@@ -14,7 +14,7 @@ const { requireSameUserInParam } = require('../../middleware/authz');
  * Initialize progression routes
  * @param {Object} container - DI container
  * @param {{ requireAuth?: Function }} options - Route middleware options
- * @returns {Router}
+ * @returns {express.Router}
  */
 function initProgressionRoutes(container, options = {}) {
   const requireAuth = options.requireAuth || ((_req, _res, next) => next());
@@ -23,6 +23,13 @@ function initProgressionRoutes(container, options = {}) {
   const progressionRepo = new SQLiteProgressionRepository(db);
   const AccountProgression = require('../../lib/domain/entities/AccountProgression');
   const playerIdSchema = Joi.string().guid({ version: ['uuidv4', 'uuidv5'] });
+  const accountProgressionService = (() => {
+    try {
+ return container.get('accountProgressionService');
+} catch {
+ return null;
+}
+  })();
 
   router.use(requireAuth);
 
@@ -270,8 +277,25 @@ function initProgressionRoutes(container, options = {}) {
           }
         }
 
+        // Snapshot for rollback
+        const prevSkillPoints = progression.skillPoints;
+        const prevUnlockedSkills = [...progression.unlockedSkills];
+
         progression.unlockSkill(skillId, skill.cost);
-        await progressionRepo.update(progression);
+
+        try {
+          await progressionRepo.update(progression);
+        } catch (dbErr) {
+          // Rollback in-memory state on DB failure
+          progression.skillPoints = prevSkillPoints;
+          progression.unlockedSkills = prevUnlockedSkills;
+          throw dbErr;
+        }
+
+        // Invalidate skill bonus cache so next spawn picks up new skill
+        if (accountProgressionService) {
+          accountProgressionService.invalidateBonusCache(req.params.playerId);
+        }
 
         res.json({
           success: true,

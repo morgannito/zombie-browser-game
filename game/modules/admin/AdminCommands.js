@@ -5,6 +5,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { ZOMBIE_TYPES } = ConfigManager;
+const perfIntegration = require('../../../lib/server/PerformanceIntegration');
 
 class AdminCommands {
   constructor(io, gameState, zombieManager) {
@@ -57,6 +58,12 @@ class AdminCommands {
         break;
       case 'fps':
         this.handleFPS(socket);
+        break;
+      case 'teleport':
+        this.handleTeleport(socket, args);
+        break;
+      case 'stats':
+        this.handleStats(socket);
         break;
       default:
         socket.emit('adminResponse', {
@@ -273,6 +280,47 @@ class AdminCommands {
       success: true,
       message: `Zombies: ${zombieCount}, Players: ${playerCount}, Wave: ${this.gameState.wave}`
     });
+  }
+
+  /**
+   * Teleport player to coordinates
+   * Usage: /teleport <x> <y>
+   */
+  handleTeleport(socket, args) {
+    const x = parseFloat(args[0]);
+    const y = parseFloat(args[1]);
+    if (isNaN(x) || isNaN(y)) {
+      socket.emit('adminResponse', { success: false, message: 'Usage: /teleport <x> <y>' });
+      return;
+    }
+    const player = this.gameState.players[socket.userId] || this.gameState.players[socket.id];
+    if (!player) {
+      socket.emit('adminResponse', { success: false, message: 'Player not found' });
+      return;
+    }
+    const cfg = this.gameState.config;
+    player.x = Math.max(0, Math.min(x, cfg.ROOM_WIDTH || x));
+    player.y = Math.max(0, Math.min(y, cfg.ROOM_HEIGHT || y));
+    socket.emit('adminResponse', { success: true, message: `Teleported to (${player.x}, ${player.y})` });
+  }
+
+  /**
+   * Dump server-side metrics
+   * Usage: /stats
+   */
+  handleStats(socket) {
+    const mem = process.memoryUsage();
+    const toMB = b => (b / 1048576).toFixed(1);
+    const zombieCount = Object.keys(this.gameState.zombies).length;
+    const playerCount = Object.keys(this.gameState.players).length;
+    const perfCfg = perfIntegration.perfConfig;
+    const message = [
+      `[Stats] Wave: ${this.gameState.wave} | Zombies: ${zombieCount} | Players: ${playerCount}`,
+      `[Tick] Mode: ${perfCfg.mode} | Rate: ${perfCfg.current.tickRate}Hz | Counter: ${perfIntegration.tickCounter}`,
+      `[Perf] Broadcast: ${perfCfg.current.broadcastRate}Hz | Pathfind every: ${perfCfg.current.zombiePathfindingRate} ticks`,
+      `[Mem] Heap: ${toMB(mem.heapUsed)}/${toMB(mem.heapTotal)} MB | RSS: ${toMB(mem.rss)} MB | Ext: ${toMB(mem.external)} MB`
+    ].join('\n');
+    socket.emit('adminResponse', { success: true, message });
   }
 
   /**

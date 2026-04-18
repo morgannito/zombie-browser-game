@@ -20,10 +20,13 @@ const { ZOMBIE_TYPES } = ConfigManager;
  * CRITICAL FIX: Defer trail deletion to EntityManager to prevent race conditions
  */
 function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
-  // CRITICAL FIX: Create snapshot of trail IDs to avoid modification during iteration
-  const trailIds = Object.keys(gameState.poisonTrails);
+  // PERF: snapshot via for-in to avoid Object.keys() array allocation each tick
+  const trailSnapshot = [];
+  for (const id in gameState.poisonTrails) {
+ trailSnapshot.push(id);
+}
 
-  for (const trailId of trailIds) {
+  for (const trailId of trailSnapshot) {
     const trail = gameState.poisonTrails[trailId];
 
     // Skip if trail was already cleaned up by EntityManager
@@ -31,10 +34,9 @@ function updatePoisonTrails(gameState, now, collisionManager, entityManager) {
       continue;
     }
 
-    // CRITICAL FIX: Check expiration but don't delete here
-    // Let EntityManager.cleanupExpiredEntities() handle deletion to prevent race condition
+    // Expired: delete immediately (EntityManager.cleanupExpiredEntities will no-op since gone)
     if (now - trail.createdAt > trail.duration) {
-      // Trail expired - skip damage processing but let EntityManager clean it up
+      delete gameState.poisonTrails[trailId];
       continue;
     }
 

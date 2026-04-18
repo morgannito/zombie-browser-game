@@ -23,16 +23,17 @@ describe('startGameLoop', () => {
 
   test('invokes tickFn on first setImmediate + returns stop()', async () => {
     const tickFn = jest.fn();
-    const stop = startGameLoop({ getTickInterval: () => 100 }, tickFn);
+    const { stop, getMetrics } = startGameLoop({ getTickInterval: () => 100 }, tickFn);
     await flushImmediates();
     expect(tickFn).toHaveBeenCalledTimes(1);
     expect(typeof stop).toBe('function');
+    expect(typeof getMetrics).toBe('function');
     stop();
   });
 
   test('schedules next tick (fires second call after interval)', async () => {
     const tickFn = jest.fn();
-    const stop = startGameLoop({ getTickInterval: () => 50 }, tickFn);
+    const { stop } = startGameLoop({ getTickInterval: () => 50 }, tickFn);
     await flushImmediates(); // first tick fires, queues setTimeout(~49ms)
     // Wait for the setTimeout + spin period
     await new Promise(resolve => setTimeout(resolve, 60));
@@ -43,7 +44,7 @@ describe('startGameLoop', () => {
 
   test('stop() halts further ticks', async () => {
     const tickFn = jest.fn();
-    const stop = startGameLoop({ getTickInterval: () => 50 }, tickFn);
+    const { stop } = startGameLoop({ getTickInterval: () => 50 }, tickFn);
     stop(); // cancel before setImmediate fires
     await flushImmediates();
     await new Promise(resolve => setTimeout(resolve, 60));
@@ -59,7 +60,7 @@ describe('startGameLoop', () => {
 throw new Error('boom');
 }
     });
-    const stop = startGameLoop({ getTickInterval: () => 50 }, tickFn);
+    const { stop } = startGameLoop({ getTickInterval: () => 50 }, tickFn);
     await flushImmediates(); // first tick (throws)
     expect(logger.error).toHaveBeenCalledWith(
       'Game loop tick error',
@@ -73,10 +74,29 @@ throw new Error('boom');
 
   test('clears pending handles on stop (no hung process)', async () => {
     const tickFn = jest.fn();
-    const stop = startGameLoop({ getTickInterval: () => 1000 }, tickFn);
+    const { stop } = startGameLoop({ getTickInterval: () => 1000 }, tickFn);
     stop();
     // If stop() works, no handles remain to prevent Jest from exiting.
-    // We just verify stop() doesn't throw.
     expect(typeof stop).toBe('function');
+  });
+
+  test('getMetrics returns avgTickDuration, maxTickDuration, ticksPerSecond', async () => {
+    const tickFn = jest.fn();
+    const { stop, getMetrics } = startGameLoop({ getTickInterval: () => 100 }, tickFn);
+    await flushImmediates();
+    const m = getMetrics();
+    expect(m).toHaveProperty('avgTickDuration');
+    expect(m).toHaveProperty('maxTickDuration');
+    expect(m).toHaveProperty('ticksPerSecond');
+    expect(m.avgTickDuration).toBeGreaterThanOrEqual(0);
+    stop();
+  });
+
+  test('tickFn receives overBudget boolean argument', async () => {
+    const tickFn = jest.fn();
+    const { stop } = startGameLoop({ getTickInterval: () => 100 }, tickFn);
+    await flushImmediates();
+    expect(tickFn).toHaveBeenCalledWith(expect.any(Boolean));
+    stop();
   });
 });

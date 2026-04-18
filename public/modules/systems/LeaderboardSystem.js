@@ -6,10 +6,14 @@
  * @version 2.0.0
  */
 
+const PAGE_SIZE = 10;
+
 class LeaderboardSystem {
   constructor() {
     this.socket = null;
     this.leaderboard = this.loadLeaderboard();
+    this._page = 0;
+    this._lastEntries = [];
     this.createUI();
   }
 
@@ -267,41 +271,69 @@ class LeaderboardSystem {
       </div>
     `;
 
-    // Afficher le top 10
-    if (this.leaderboard.entries.length === 0) {
+    const allEntries = this.leaderboard.entries;
+    if (allEntries.length === 0) {
       contentDiv.innerHTML = '<p style="color: #ccc; text-align: center;">Aucune partie jouée</p>';
       return;
     }
 
-    let html = '<table style="width: 100%; color: white; border-collapse: collapse;">';
-    html += `
-      <tr style="background: rgba(255, 215, 0, 0.2); border-bottom: 2px solid #FFD700;">
-        <th style="padding: 10px; text-align: left;">Rang</th>
-        <th style="padding: 10px; text-align: left;">Joueur</th>
-        <th style="padding: 10px; text-align: center;">Score</th>
-        <th style="padding: 10px; text-align: center;">Kills</th>
-        <th style="padding: 10px; text-align: center;">Vague</th>
-      </tr>
-    `;
+    const totalPages = Math.max(1, Math.ceil(allEntries.length / PAGE_SIZE));
+    this._page = Math.min(this._page, totalPages - 1);
+    const start = this._page * PAGE_SIZE;
+    const pageEntries = allEntries.slice(start, start + PAGE_SIZE);
 
-    this.leaderboard.entries.forEach((entry, index) => {
-      const rankColor =
-        index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
-      const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1;
+    const table = document.createElement('table');
+    table.style.cssText = 'width:100%;color:white;border-collapse:collapse;';
+    const thead = document.createElement('tr');
+    thead.style.cssText = 'background:rgba(255,215,0,0.2);border-bottom:2px solid #FFD700;';
+    thead.innerHTML = '<th style="padding:10px;text-align:left;">Rang</th><th style="padding:10px;text-align:left;">Joueur</th><th style="padding:10px;text-align:center;">Score</th><th style="padding:10px;text-align:center;">Kills</th><th style="padding:10px;text-align:center;">Vague</th>';
+    table.appendChild(thead);
 
-      html += `
-        <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-          <td style="padding: 10px; color: ${rankColor}; font-weight: bold;">${rankIcon}</td>
-          <td style="padding: 10px;">${entry.nickname}</td>
-          <td style="padding: 10px; text-align: center; color: #FFD700;">${entry.score.toLocaleString()}</td>
-          <td style="padding: 10px; text-align: center; color: #ff6464;">${entry.kills}</td>
-          <td style="padding: 10px; text-align: center; color: #64ff64;">Vague ${entry.wave}</td>
-        </tr>
-      `;
+    pageEntries.forEach((entry, i) => {
+      const index = start + i;
+      const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
+      const rankIcon = index < 3 ? ['🥇','🥈','🥉'][index] : String(index + 1);
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+      const tdRank = document.createElement('td');
+      tdRank.style.cssText = `padding:10px;color:${rankColor};font-weight:bold;`;
+      tdRank.textContent = rankIcon;
+      const tdName = document.createElement('td');
+      tdName.style.padding = '10px';
+      tdName.textContent = entry.nickname;
+      const tdScore = document.createElement('td');
+      tdScore.style.cssText = 'padding:10px;text-align:center;color:#FFD700;';
+      tdScore.textContent = entry.score.toLocaleString();
+      const tdKills = document.createElement('td');
+      tdKills.style.cssText = 'padding:10px;text-align:center;color:#ff6464;';
+      tdKills.textContent = entry.kills;
+      const tdWave = document.createElement('td');
+      tdWave.style.cssText = 'padding:10px;text-align:center;color:#64ff64;';
+      tdWave.textContent = `Vague ${entry.wave}`;
+      tr.append(tdRank, tdName, tdScore, tdKills, tdWave);
+      table.appendChild(tr);
     });
 
-    html += '</table>';
-    contentDiv.innerHTML = html;
+    const nav = document.createElement('div');
+    nav.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:#ccc;';
+    const btnPrev = document.createElement('button');
+    btnPrev.textContent = '<';
+    btnPrev.style.cssText = 'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
+    btnPrev.onclick = () => {
+ this._page = Math.max(0, this._page - 1); this.updateUI();
+};
+    const pageInfo = document.createElement('span');
+    pageInfo.textContent = `Page ${this._page + 1} / ${totalPages}`;
+    const btnNext = document.createElement('button');
+    btnNext.textContent = '>';
+    btnNext.style.cssText = 'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
+    btnNext.onclick = () => {
+ this._page = Math.min(totalPages - 1, this._page + 1); this.updateUI();
+};
+    nav.append(btnPrev, pageInfo, btnNext);
+
+    contentDiv.textContent = '';
+    contentDiv.append(table, nav);
   }
 
   formatTime(seconds) {

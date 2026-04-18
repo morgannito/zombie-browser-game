@@ -6,6 +6,8 @@
  *   single source of truth for ability / boss functions.
  */
 
+const { updateBossStateMachine } = require('../BossStateMachine');
+
 const DEFAULT_PATHFINDING_RATE = 10;
 const STUCK_MOVE_THRESHOLD = 0.5;
 const STUCK_DESPAWN_FRAMES = 600;
@@ -64,9 +66,13 @@ function dispatchAbility(zombie, zombieId, ctx, abilityHandlers) {
 
 function dispatchBoss(zombie, zombieId, ctx, bossHandlers) {
   const handler = bossHandlers[zombie.type];
-  if (handler) {
- handler(zombie, zombieId, ctx);
+  if (!handler) {
+ return;
 }
+  if (zombie.isBoss) {
+    updateBossStateMachine(zombie, ctx.now, ctx.collisionManager);
+  }
+  handler(zombie, zombieId, ctx);
 }
 
 function trackStuck(zombie, zombies, zombieId) {
@@ -78,6 +84,30 @@ function trackStuck(zombie, zombies, zombieId) {
   if (zombie._stuckFrames > STUCK_DESPAWN_FRAMES) {
  delete zombies[zombieId];
 }
+}
+
+// PERF: early-exit when no player is alive — skip all AI/movement entirely.
+function hasAnyAlivePlayer(players) {
+  for (const pid in players) {
+    if (players[pid] && players[pid].alive) {
+ return true;
+}
+  }
+  return false;
+}
+
+// PERF: fill the scratch tickState in one place to keep updateZombies concise.
+function fillTickState(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration, tick, pathfindingRate) {
+  _tickState.gameState = gameState;
+  _tickState.now = now;
+  _tickState.io = io;
+  _tickState.collisionManager = collisionManager;
+  _tickState.entityManager = entityManager;
+  _tickState.zombieManager = zombieManager;
+  _tickState.perfIntegration = perfIntegration;
+  _tickState.players = gameState.players;
+  _tickState.tick = tick;
+  _tickState.pathfindingRate = pathfindingRate;
 }
 
 function tickOneZombie(zombie, zombieId, tickState, handlers) {
@@ -113,29 +143,17 @@ function tickOneZombie(zombie, zombieId, tickState, handlers) {
 function updateZombies(
   gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration, handlers
 ) {
-  const zombies = gameState.zombies;
+  // PERF: skip all AI work when no player is alive (game over / between waves).
+  if (!hasAnyAlivePlayer(gameState.players)) {
+    return;
+  }
   const { tick, pathfindingRate } = resolveTickContext(perfIntegration);
-  const players = gameState.players;
-
-  // PERF: reuse a module-scoped scratch object instead of allocating a new
-  // tickState literal (~9 props) on every tick (60 Hz).
-  _tickState.gameState = gameState;
-  _tickState.now = now;
-  _tickState.io = io;
-  _tickState.collisionManager = collisionManager;
-  _tickState.entityManager = entityManager;
-  _tickState.zombieManager = zombieManager;
-  _tickState.perfIntegration = perfIntegration;
-  _tickState.players = players;
-  _tickState.tick = tick;
-  _tickState.pathfindingRate = pathfindingRate;
-
-  // PERF: for-in avoids Object.keys() array allocation.
-  for (const zombieId in zombies) {
-    const zombie = zombies[zombieId];
+  fillTickState(gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration, tick, pathfindingRate);
+  for (const zombieId in gameState.zombies) {
+    const zombie = gameState.zombies[zombieId];
     if (!zombie) {
-      continue;
-    }
+ continue;
+}
     tickOneZombie(zombie, zombieId, _tickState, handlers);
   }
 }

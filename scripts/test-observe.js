@@ -15,7 +15,15 @@ function httpLogin(username) {
     const req = http.request(
       BASE + '/api/v1/auth/login',
       { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': body.length } },
-      res => { let d=''; res.on('data', c => d += c); res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e){reject(e);} }); }
+      res => {
+ let d=''; res.on('data', c => d += c); res.on('end', () => {
+ try {
+ resolve(JSON.parse(d));
+} catch (e) {
+reject(e);
+}
+});
+}
     );
     req.on('error', reject); req.write(body); req.end();
   });
@@ -51,7 +59,9 @@ async function run() {
     const zu = Object.keys(d.updated?.zombies || {}).length;
     const bu = Object.keys(d.updated?.bullets || {}).length;
     const pu = Object.keys(d.updated?.players || {}).length;
-    if (zu + bu + pu === 0) stats.emptyDeltaCount++;
+    if (zu + bu + pu === 0) {
+stats.emptyDeltaCount++;
+}
     stats.zombieUpdates += zu;
     stats.bulletUpdates += bu;
     stats.playerUpdates += pu;
@@ -86,4 +96,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(e => {
+ console.error(e); process.exit(1);
+});

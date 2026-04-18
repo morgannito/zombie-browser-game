@@ -11,15 +11,38 @@
 class ParticleSystem {
   constructor() {
     this.particles = [];
-    this.maxParticles = 300; // Limite réduite pour meilleures performances (500 -> 300)
+    this.maxParticles = 1000; // Hard cap — death-spiral prevention
+    this._pool = []; // Object pool — no alloc per particle
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     this._reducedMotion = mq.matches;
     mq.addEventListener('change', e => {
       this._reducedMotion = e.matches;
       if (this._reducedMotion) {
-        this.particles = [];
+        this._releaseAll();
       }
     });
+  }
+
+  /** Acquire from pool or create new object (no-alloc fast path). */
+  _acquire() {
+    return this._pool.length > 0 ? this._pool.pop() : {};
+  }
+
+  /** Release all live particles back to pool. */
+  _releaseAll() {
+    for (let i = 0; i < this.particles.length; i++) {
+      this._pool.push(this.particles[i]);
+    }
+    this.particles.length = 0;
+  }
+
+  /**
+   * LOD multiplier: reduces particle count when FPS < 50.
+   * Reads window.performanceSettings.currentFPS (set by GameEngine).
+   */
+  _lodMult() {
+    const fps = window.performanceSettings ? window.performanceSettings.currentFPS : 60;
+    return fps < 50 ? 0.4 : 1;
   }
 
   _skip() {
@@ -33,29 +56,23 @@ class ParticleSystem {
     if (this._skip()) {
       return;
     }
-    // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
     }
-
-    // Limiter le nombre de particules créées
-    const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
-
+    const effective = Math.ceil(count * this._lodMult());
+    const maxToCreate = Math.min(effective, this.maxParticles - this.particles.length);
     for (let i = 0; i < maxToCreate; i++) {
       const angle = (Math.PI * 2 * i) / maxToCreate;
       const speed = 2 + Math.random() * 3;
-      this.particles.push({
-        x,
-        y,
-        vx: MathUtils.fastCos(angle) * speed,
-        vy: MathUtils.fastSin(angle) * speed,
-        size: size + Math.random() * 2,
-        color,
-        life: 1,
-        decay: 0.02 + Math.random() * 0.015, // Disparaissent plus vite
-        gravity: 0.1,
-        type: 'explosion'
-      });
+      const p = this._acquire();
+      p.x = x; p.y = y;
+      p.vx = MathUtils.fastCos(angle) * speed;
+      p.vy = MathUtils.fastSin(angle) * speed;
+      p.size = size + Math.random() * 2;
+      p.color = color; p.life = 1;
+      p.decay = 0.02 + Math.random() * 0.015;
+      p.gravity = 0.1; p.type = 'explosion';
+      this.particles.push(p);
     }
   }
 
@@ -66,30 +83,22 @@ class ParticleSystem {
     if (this._skip()) {
       return;
     }
-    // Vérification de la limite de particules
     if (this.particles.length >= this.maxParticles) {
       return;
     }
-
-    const count = 8; // Réduit de 15 à 8
+    const count = Math.ceil(8 * this._lodMult());
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
-
     for (let i = 0; i < maxToCreate; i++) {
-      const spread = 0.5;
-      const angle = direction + (Math.random() - 0.5) * spread;
+      const angle = direction + (Math.random() - 0.5) * 0.5;
       const speed = 3 + Math.random() * 4;
-      this.particles.push({
-        x,
-        y,
-        vx: MathUtils.fastCos(angle) * speed,
-        vy: MathUtils.fastSin(angle) * speed,
-        size: 2 + Math.random() * 3,
-        color,
-        life: 1,
-        decay: 0.012, // Disparaissent plus vite (0.008 -> 0.012)
-        gravity: 0.2,
-        type: 'blood'
-      });
+      const p = this._acquire();
+      p.x = x; p.y = y;
+      p.vx = MathUtils.fastCos(angle) * speed;
+      p.vy = MathUtils.fastSin(angle) * speed;
+      p.size = 2 + Math.random() * 3;
+      p.color = color; p.life = 1;
+      p.decay = 0.012; p.gravity = 0.2; p.type = 'blood';
+      this.particles.push(p);
     }
   }
 
@@ -97,54 +106,38 @@ class ParticleSystem {
    * Crée un effet de trail (traînée)
    */
   createTrail(x, y, color, size = 2) {
-    if (this._skip()) {
+    if (this._skip() || this.particles.length >= this.maxParticles) {
       return;
     }
-    if (this.particles.length < this.maxParticles) {
-      this.particles.push({
-        x,
-        y,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        size,
-        color,
-        life: 1,
-        decay: 0.02,
-        gravity: 0,
-        type: 'trail'
-      });
-    }
+    const p = this._acquire();
+    p.x = x; p.y = y;
+    p.vx = (Math.random() - 0.5) * 0.5;
+    p.vy = (Math.random() - 0.5) * 0.5;
+    p.size = size; p.color = color; p.life = 1;
+    p.decay = 0.02; p.gravity = 0; p.type = 'trail';
+    this.particles.push(p);
   }
 
   /**
    * Crée des étincelles (pour critiques, etc.)
    */
   createSparks(x, y, count = 10) {
-    if (this._skip()) {
+    if (this._skip() || this.particles.length >= this.maxParticles) {
       return;
     }
-    // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) {
-      return;
-    }
-
-    const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
-
+    const effective = Math.ceil(count * this._lodMult());
+    const maxToCreate = Math.min(effective, this.maxParticles - this.particles.length);
     for (let i = 0; i < maxToCreate; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 2 + Math.random() * 3;
-      this.particles.push({
-        x,
-        y,
-        vx: MathUtils.fastCos(angle) * speed,
-        vy: MathUtils.fastSin(angle) * speed,
-        size: 1 + Math.random() * 2,
-        color: `hsl(${45 + Math.random() * 30}, 100%, 60%)`, // Jaune/orange
-        life: 1,
-        decay: 0.025, // Disparaissent plus vite
-        gravity: 0.05,
-        type: 'spark'
-      });
+      const p = this._acquire();
+      p.x = x; p.y = y;
+      p.vx = MathUtils.fastCos(angle) * speed;
+      p.vy = MathUtils.fastSin(angle) * speed;
+      p.size = 1 + Math.random() * 2;
+      p.color = `hsl(${45 + Math.random() * 30}, 100%, 60%)`;
+      p.life = 1; p.decay = 0.025; p.gravity = 0.05; p.type = 'spark';
+      this.particles.push(p);
     }
   }
 
@@ -152,53 +145,34 @@ class ParticleSystem {
    * Crée un effet de collecte (or, XP)
    */
   createCollectEffect(x, y, text, color) {
-    if (this._skip()) {
+    if (this._skip() || this.particles.length >= this.maxParticles) {
       return;
     }
-    this.particles.push({
-      x,
-      y,
-      vx: 0,
-      vy: -1,
-      size: 14,
-      color,
-      text,
-      life: 1,
-      decay: 0.015,
-      gravity: 0,
-      type: 'text'
-    });
+    const p = this._acquire();
+    p.x = x; p.y = y; p.vx = 0; p.vy = -1;
+    p.size = 14; p.color = color; p.text = text;
+    p.life = 1; p.decay = 0.015; p.gravity = 0; p.type = 'text';
+    this.particles.push(p);
   }
 
   /**
    * Crée un effet de heal/buff
    */
   createHealEffect(x, y, radius = 30) {
-    if (this._skip()) {
+    if (this._skip() || this.particles.length >= this.maxParticles) {
       return;
     }
-    // Vérification de la limite de particules
-    if (this.particles.length >= this.maxParticles) {
-      return;
-    }
-
-    const count = 12; // Réduit de 20 à 12
+    const count = Math.ceil(12 * this._lodMult());
     const maxToCreate = Math.min(count, this.maxParticles - this.particles.length);
-
     for (let i = 0; i < maxToCreate; i++) {
       const angle = (Math.PI * 2 * i) / maxToCreate;
-      this.particles.push({
-        x: x + MathUtils.fastCos(angle) * radius,
-        y: y + MathUtils.fastSin(angle) * radius,
-        vx: 0,
-        vy: -0.5 - Math.random() * 0.5,
-        size: 3,
-        color: '#00ff88',
-        life: 1,
-        decay: 0.015, // Disparaissent plus vite
-        gravity: -0.05, // Remonte
-        type: 'heal'
-      });
+      const p = this._acquire();
+      p.x = x + MathUtils.fastCos(angle) * radius;
+      p.y = y + MathUtils.fastSin(angle) * radius;
+      p.vx = 0; p.vy = -0.5 - Math.random() * 0.5;
+      p.size = 3; p.color = '#00ff88'; p.life = 1;
+      p.decay = 0.015; p.gravity = -0.05; p.type = 'heal';
+      this.particles.push(p);
     }
   }
 
@@ -210,17 +184,15 @@ class ParticleSystem {
     let i = 0;
     while (i < len) {
       const p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x += p.vx; p.y += p.vy;
       p.vy += p.gravity;
-      p.vx *= 0.98;
-      p.vy *= 0.98;
+      p.vx *= 0.98; p.vy *= 0.98;
       p.life -= p.decay;
       if (p.life <= 0) {
+        this._pool.push(p); // Return to pool — no GC
         len--;
         this.particles[i] = this.particles[len];
         this.particles.length = len;
-        // Do not increment i — re-examine swapped-in element
       } else {
         i++;
       }
@@ -309,7 +281,7 @@ class ParticleSystem {
    * Nettoie toutes les particules
    */
   clear() {
-    this.particles = [];
+    this._releaseAll();
   }
 }
 
@@ -473,11 +445,29 @@ class AnimationSystem {
 class AdvancedEffectsManager {
   constructor() {
     this.particles = new ParticleSystem();
-    // Note: Screen shake is now handled by ScreenEffectsManager (from screenEffects.js)
     this.animations = new AnimationSystem();
-    // Note: Lighting is now handled by LightingSystem (from modules/environment/LightingSystem.js)
     this.lighting = null; // Deprecated - use window.LightingSystem instead
     this.enabled = true;
+    // Screenshake cooldown per-source key — prevents cascade re-triggers
+    this._shakeCooldown = new Map();
+  }
+
+  /**
+   * Trigger screenshake once per source within a cooldown window (ms).
+   * @param {'light'|'medium'|'heavy'} level
+   * @param {string} sourceKey - unique key (e.g. explosion id or 'player')
+   * @param {number} [cooldownMs=300]
+   */
+  _shake(level, sourceKey, cooldownMs = 300) {
+    const now = Date.now();
+    if ((this._shakeCooldown.get(sourceKey) || 0) > now) {
+return;
+}
+    this._shakeCooldown.set(sourceKey, now + cooldownMs);
+    if (!window.screenEffects || !window.screenEffects.shake) {
+return;
+}
+    window.screenEffects.shake[`shake${level.charAt(0).toUpperCase()}${level.slice(1)}`]?.();
   }
 
   /**
@@ -487,9 +477,17 @@ class AdvancedEffectsManager {
     if (!this.enabled) {
       return;
     }
-
     this.particles.update();
     this.animations.update();
+    // Evict expired shake cooldown entries to prevent Map growth
+    if (this._shakeCooldown.size > 32) {
+      const now = Date.now();
+      for (const [k, exp] of this._shakeCooldown) {
+        if (exp <= now) {
+this._shakeCooldown.delete(k);
+}
+      }
+    }
   }
 
   /**
@@ -553,15 +551,16 @@ class AdvancedEffectsManager {
    * Effet lors d'une explosion
    */
   onExplosion(x, y, _radius) {
-    // Réduit de 50 à 25 particules pour l'explosion principale
     this.particles.createExplosion(x, y, '#ff6600', 25, 4);
-
-    // Onde de choc réduite (20 -> 10 ondes, 10 -> 5 particules)
-    for (let i = 0; i < 10; i++) {
+    // Onde de choc: spawn 3 bursts au lieu de 10 timers en cascade
+    const shockCount = Math.ceil(3 * this.particles._lodMult());
+    for (let i = 0; i < shockCount; i++) {
       (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-        this.particles.createExplosion(x, y, 'rgba(255, 100, 0, 0.3)', 5, 2);
-      }, i * 30);
+        this.particles.createExplosion(x, y, 'rgba(255, 100, 0, 0.3)', 4, 2);
+      }, i * 80);
     }
+    // Single screenshake per explosion source (cooldown 400ms)
+    this._shake('medium', `exp|${Math.round(x)}|${Math.round(y)}`, 400);
   }
 
   /**

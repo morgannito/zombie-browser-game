@@ -44,9 +44,10 @@ describe('NetworkManager socket throttle state cleanup (regression)', () => {
     const nm = makeInstance();
     nm.playerLatencies['sock-B'] = { latency: 300 };
     nm._shouldSkipSocket('sock-B');
-    expect(nm._socketSkipFlags.has('sock-B')).toBe(true);
+    const flags = nm._throttler ? nm._throttler._socketSkipFlags : nm._socketSkipFlags;
+    expect(flags.has('sock-B')).toBe(true);
     nm.cleanupPlayer('sock-B');
-    expect(nm._socketSkipFlags.has('sock-B')).toBe(false);
+    expect(flags.has('sock-B')).toBe(false);
   });
 
   test('fast-latency sockets are never tracked in throttle Map', () => {
@@ -55,8 +56,9 @@ describe('NetworkManager socket throttle state cleanup (regression)', () => {
     const res = nm._shouldSkipSocket('sock-C');
     expect(res).toBe(false);
     // Map is lazy-created only when an actual throttle decision is made.
-    if (nm._socketSkipFlags) {
-      expect(nm._socketSkipFlags.has('sock-C')).toBe(false);
+    const flags = nm._throttler ? nm._throttler._socketSkipFlags : nm._socketSkipFlags;
+    if (flags) {
+      expect(flags.has('sock-C')).toBe(false);
     }
   });
 });

@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jeu de Zombie Multijoueur</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
     <link rel="stylesheet" href="style.css?v=a86016d">
     <link rel="stylesheet" href="addictionStyles.css?v=a86016d">
 </head>
 <body>
+    <a href="#gameCanvas" id="skip-to-content" class="skip-link">Passer au jeu</a>
     <div id="ui">
         <div id="nickname-screen" style="display: flex;">
             <div class="nickname-container">
@@ -40,7 +43,7 @@
             </div>
         </div>
 
-        <div id="stats">
+        <div id="stats" role="status" aria-live="polite" aria-atomic="false">
             <div id="player-name-display"></div>
             <div id="health-container">
                 <span>Vie:</span>
@@ -87,7 +90,7 @@
         </div>
 
         <!-- Kill Feed -->
-        <div id="kill-feed" class="kill-feed"></div>
+        <div id="kill-feed" class="kill-feed" role="log" aria-live="polite" aria-label="Fil des éliminations"></div>
 
         <!-- Combo Display -->
         <div id="combo-display" style="display: none;">
@@ -265,7 +268,7 @@
         </button>
 
         <!-- Toast Notifications Container -->
-        <div id="toast-container"></div>
+        <div id="toast-container" role="region" aria-live="assertive" aria-label="Notifications"></div>
 
         <!-- Enemy Indicators Container (for off-screen elite/boss) -->
         <div id="enemy-indicators"></div>
@@ -393,7 +396,7 @@
         </div>
 
         <!-- Settings Button (top-right corner) -->
-        <button id="settings-btn" class="settings-toggle-btn" title="Paramètres (ESC)" style="display: none;">
+        <button id="settings-btn" class="settings-toggle-btn" title="Paramètres (ESC)" aria-label="Ouvrir les paramètres" style="display: none;">
             ⚙️
         </button>
 
@@ -476,6 +479,13 @@
                 </div>
             </div>
 
+            <!-- Aim Joystick (right) -->
+            <div id="aim-joystick-container">
+                <div id="aim-joystick-base">
+                    <div id="aim-joystick-stick"></div>
+                </div>
+            </div>
+
             <!-- Auto-shoot button -->
             <div id="auto-shoot-container">
                 <button id="auto-shoot-btn">
@@ -508,6 +518,8 @@
          Bundled mode was removed 2026-04-17 after a stale app.bundle.js
          silently shipped an obsolete auth route for weeks.
          ============================================================ -->
+    <script src="modules/i18n/i18n.js"></script>
+    <script>I18n.init('fr');</script>
     <script src="modules/utils/ErrorTracker.js"></script>
     <script src="perfPatches.js"></script>
     <script src="EventListenerManager.js"></script>
@@ -583,6 +595,7 @@
     <script src="modules/core/GameEngine.js"></script>
     <script src="modules/utils/initHelpers.js"></script>
     <script src="tutorialSystem.js"></script>
+    <script src="modules/tutorial/TutorialOverlay.js"></script>
     <script src="settingsMenu.js"></script>
     <script src="pauseMenu.js"></script>
     <script src="weaponWheel.js"></script>
@@ -610,6 +623,69 @@
           obs.observe(nicknameScreen, { attributes: true, attributeFilter: ['style'] });
         }
       }());
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        let pendingWorker = null;
+
+        function showUpdateToast() {
+          const existing = document.getElementById('sw-update-toast');
+          if (existing) return;
+          const toast = document.createElement('div');
+          toast.id = 'sw-update-toast';
+          toast.style.cssText = [
+            'position:fixed', 'bottom:1.5rem', 'left:50%', 'transform:translateX(-50%)',
+            'background:#1e293b', 'color:#f1f5f9', 'border:1px solid #334155',
+            'border-radius:0.5rem', 'padding:0.75rem 1.25rem', 'display:flex',
+            'align-items:center', 'gap:0.75rem', 'z-index:99999',
+            'box-shadow:0 4px 20px rgba(0,0,0,.5)', 'font-size:0.9rem'
+          ].join(';');
+          const msg = document.createElement('span');
+          msg.textContent = 'Nouvelle version disponible !';
+          const btn = document.createElement('button');
+          btn.textContent = 'Recharger';
+          btn.style.cssText = [
+            'background:#3b82f6', 'color:#fff', 'border:none', 'border-radius:0.35rem',
+            'padding:0.35rem 0.85rem', 'cursor:pointer', 'font-size:0.85rem'
+          ].join(';');
+          btn.addEventListener('click', () => {
+            if (pendingWorker) pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+            else window.location.reload();
+          });
+          toast.appendChild(msg);
+          toast.appendChild(btn);
+          document.body.appendChild(toast);
+        }
+
+        function listenForUpdate(registration) {
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                pendingWorker = newWorker;
+                showUpdateToast();
+              }
+            });
+          });
+        }
+
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            listenForUpdate(registration);
+            setInterval(() => registration.update(), 5 * 60 * 1000);
+          })
+          .catch(console.error);
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'SW_UPDATED') {
+            showUpdateToast();
+          }
+        });
+      }
     </script>
 </body>
 </html>

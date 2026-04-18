@@ -23,13 +23,13 @@
 
 .menu-btn {
   background: rgba(26, 26, 46, 0.95);
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--color-panel-border);
   border-radius: 50%;
   width: 50px;
   height: 50px;
   font-size: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,8 +65,8 @@
   width: 90%;
   max-width: 900px;
   max-height: 85vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border: 3px solid #4a90e2;
+  background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-panel-alt) 100%);
+  border: 3px solid var(--color-panel-border);
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
   z-index: 1000;
@@ -82,7 +82,7 @@
 .lifetime-stats-header,
 .gem-shop-header,
 .meta-progression-header {
-  background: linear-gradient(90deg, #4a90e2, #6ab7ff);
+  background: linear-gradient(90deg, var(--color-panel-border), var(--color-panel-border-light));
   padding: 20px;
   position: relative;
 }
@@ -120,7 +120,7 @@
   font-size: 30px;
   color: white;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background 0.3s ease;
 }
 
 .achievement-close-btn:hover,
@@ -180,7 +180,7 @@
 .lifetime-stats-content::-webkit-scrollbar-thumb,
 .gem-shop-content::-webkit-scrollbar-thumb,
 .meta-progression-content::-webkit-scrollbar-thumb {
-  background: #4a90e2;
+  background: var(--color-panel-border);
   border-radius: 5px;
 }
 
@@ -238,7 +238,7 @@
 }
 
 .achievement-category-btn.active {
-  background: #4a90e2;
+  background: var(--color-panel-border);
   border-color: #6ab7ff;
 }
 
@@ -278,7 +278,7 @@
 }
 
 .achievement-card.common { border-left: 5px solid #999; }
-.achievement-card.rare { border-left: 5px solid #4a90e2; }
+.achievement-card.rare { border-left: 5px solid var(--color-panel-border); }
 .achievement-card.epic { border-left: 5px solid #9b59b6; }
 .achievement-card.legendary { border-left: 5px solid #f39c12; }
 
@@ -322,7 +322,7 @@
   z-index: 2000;
   opacity: 0;
   transform: translateX(400px);
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .achievement-popup.show {
@@ -331,7 +331,7 @@
 }
 
 .achievement-popup-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
   border: 3px solid #f39c12;
   border-radius: 15px;
   padding: 20px;
@@ -341,7 +341,7 @@
 }
 
 .achievement-popup-inner.common { border-color: #999; }
-.achievement-popup-inner.rare { border-color: #4a90e2; }
+.achievement-popup-inner.rare { border-color: var(--color-panel-border); }
 .achievement-popup-inner.epic { border-color: #9b59b6; }
 .achievement-popup-inner.legendary { border-color: #f39c12; }
 
@@ -509,7 +509,7 @@
 
 .challenge-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4a90e2, #6ab7ff);
+  background: linear-gradient(90deg, var(--color-panel-border), var(--color-panel-border-light));
   transition: width 0.5s ease;
 }
 
@@ -578,7 +578,7 @@
   z-index: 2000;
   opacity: 0;
   transform: translateX(400px);
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .challenge-popup.show {
@@ -587,8 +587,8 @@
 }
 
 .challenge-popup-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border: 3px solid #4a90e2;
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
+  border: 3px solid var(--color-panel-border);
   border-radius: 15px;
   padding: 20px;
   min-width: 350px;
@@ -596,7 +596,7 @@
 }
 
 .challenge-popup-inner.daily {
-  border-color: #4a90e2;
+  border-color: var(--color-panel-border);
 }
 
 .challenge-popup-inner.weekly {
@@ -610,7 +610,7 @@
 }
 
 .challenge-popup .challenge-header {
-  color: #4a90e2;
+  color: var(--color-panel-border);
   font-size: 16px;
   text-align: center;
   font-weight: bold;
@@ -662,7 +662,7 @@
 }
 
 .leaderboard-tab.active {
-  background: #4a90e2;
+  background: var(--color-panel-border);
   border-color: #6ab7ff;
 }
 
@@ -798,7 +798,7 @@
 
 .leaderboard-widget-expand {
   background: rgba(74, 144, 226, 0.3);
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--color-panel-border);
   border-radius: 20px;
   padding: 8px 16px;
   color: white;
@@ -808,7 +808,7 @@
 }
 
 .leaderboard-widget-expand:hover {
-  background: #4a90e2;
+  background: var(--color-panel-border);
   transform: translateX(5px);
 }
 
@@ -898,7 +898,7 @@
   box-shadow: 0 10px 25px rgba(74, 144, 226, 0.3);
 }
 
-.synergy-card.rare { border-left: 5px solid #4a90e2; }
+.synergy-card.rare { border-left: 5px solid var(--color-panel-border); }
 .synergy-card.epic { border-left: 5px solid #9b59b6; }
 .synergy-card.legendary { border-left: 5px solid #f39c12; }
 
@@ -954,7 +954,7 @@
   transform: translate(-50%, -50%) scale(0.8);
   z-index: 2500;
   opacity: 0;
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .synergy-popup.show {
@@ -963,7 +963,7 @@
 }
 
 .synergy-popup-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
   border: 4px solid #9b59b6;
   border-radius: 20px;
   padding: 40px;
@@ -979,7 +979,7 @@
   50% { box-shadow: 0 20px 100px rgba(155, 89, 182, 0.8); }
 }
 
-.synergy-popup-inner.rare { border-color: #4a90e2; }
+.synergy-popup-inner.rare { border-color: var(--color-panel-border); }
 .synergy-popup-inner.epic { border-color: #9b59b6; }
 .synergy-popup-inner.legendary { border-color: #f39c12; }
 
@@ -1058,7 +1058,7 @@
 .stat-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(74, 144, 226, 0.3);
-  border-color: #4a90e2;
+  border-color: var(--color-panel-border);
 }
 
 .stat-card .stat-icon {
@@ -1255,7 +1255,7 @@
 
 .retention-hook {
   background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(106, 183, 255, 0.1));
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--color-panel-border);
   border-radius: 12px;
   padding: 15px;
   display: flex;
@@ -1304,7 +1304,7 @@
 }
 
 .hook-action {
-  color: #4a90e2;
+  color: var(--color-panel-border);
   font-size: 14px;
   font-weight: bold;
 }
@@ -1318,7 +1318,7 @@
   top: 150px;
   left: 10px;
   background: rgba(26, 26, 46, 0.95);
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--color-panel-border);
   border-radius: 12px;
   padding: 15px;
   max-width: 300px;
@@ -1381,7 +1381,7 @@
   z-index: 2000;
   opacity: 0;
   transform: translateX(400px);
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .mission-card-notification.show {
@@ -1390,8 +1390,8 @@
 }
 
 .mission-card-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border: 3px solid #4a90e2;
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
+  border: 3px solid var(--color-panel-border);
   border-radius: 15px;
   padding: 20px;
   min-width: 350px;
@@ -1402,7 +1402,7 @@
 .mission-card-inner.epic { border-color: #f39c12; }
 
 .mission-card-inner .mission-header {
-  color: #4a90e2;
+  color: var(--color-panel-border);
   font-size: 14px;
   text-align: center;
   font-weight: bold;
@@ -1437,7 +1437,7 @@
   z-index: 2100;
   opacity: 0;
   transform: translateX(400px);
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .mission-complete-popup.show {
@@ -1446,7 +1446,7 @@
 }
 
 .mission-complete-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
   border: 3px solid #4CAF50;
   border-radius: 15px;
   padding: 20px;
@@ -1488,7 +1488,7 @@
   transform: translate(-50%, -50%) scale(0.8);
   z-index: 3000;
   opacity: 0;
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .event-announcement.show {
@@ -1759,7 +1759,7 @@
   z-index: 2000;
   opacity: 0;
   transform: translateX(400px);
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .unlock-popup.show {
@@ -1768,7 +1768,7 @@
 }
 
 .unlock-popup-inner {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-alt));
   border: 3px solid #4CAF50;
   border-radius: 15px;
   padding: 20px;
@@ -2358,7 +2358,7 @@
   padding: 6px 10px;
   border-radius: 8px;
   border: none;
-  background: #4a90e2;
+  background: var(--color-panel-border);
   color: white;
   font-weight: 700;
   cursor: pointer;
@@ -2386,5 +2386,29 @@
 
   #biome-indicator {
     font-size: 11px;
+  }
+}
+
+/* ============================================
+   PERFORMANCE - will-change on animated elements
+   ============================================ */
+.achievement-popup,
+.achievement-popup-inner,
+.synergy-popup-inner,
+.event-icon-large,
+.menu-btn {
+  will-change: transform, opacity;
+}
+
+/* ============================================
+   ACCESSIBILITY - Reduced Motion
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

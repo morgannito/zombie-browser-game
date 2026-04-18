@@ -9,7 +9,7 @@
 const logger = require('../infrastructure/logging/Logger');
 
 const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
-const FORCED_EXIT_MS = 10000;
+const FORCED_EXIT_MS = 30000;
 
 function stopTimers(state) {
   if (state.stopGameLoop) {
@@ -60,23 +60,39 @@ return;
   }
 }
 
+function drainSockets(io) {
+  const sockets = io && io.sockets && io.sockets.sockets;
+  if (!sockets || sockets.size === 0) {
+return;
+}
+  logger.info(`Draining ${sockets.size} active socket(s)...`);
+  sockets.forEach(socket => {
+    try {
+      socket.emit('server:shutdown', { reason: 'Server shutting down', saveState: true });
+      socket.disconnect(true);
+    } catch (e) { /* ignore per-socket errors */ }
+  });
+  logger.info('Active sockets disconnected');
+}
+
 function closeRuntime(io, server, dbManager) {
+  drainSockets(io);
   io.close(() => {
-    logger.info('✅ All socket connections closed');
+    logger.info('All socket connections closed');
+    // Stop accepting new HTTP connections (incl. keep-alive)
+    if (typeof server.closeAllConnections === 'function') {
+      server.closeAllConnections();
+    }
     server.close(() => {
-      logger.info('✅ HTTP server closed');
-      Promise.resolve(dbManager.close())
-        .then(() => {
-          logger.info('✅ Database connection closed');
-          process.exit(0);
-        })
-        .catch(err => {
-          logger.error('❌ Database closure error:', {
-            error: err.message,
-            stack: err.stack
-          });
-          process.exit(1);
-        });
+      logger.info('HTTP server closed');
+      try {
+        dbManager.close();
+        logger.info('Database connection closed');
+        process.exit(0);
+      } catch (err) {
+        logger.error('Database closure error', { error: err.message });
+        process.exit(1);
+      }
     });
   });
 }
@@ -112,9 +128,9 @@ function createCleanup(deps) {
     closeRuntime(io, server, dbManager);
 
     setTimeout(() => {
-      logger.error('❌ Forced shutdown after timeout');
+      logger.error('Forced shutdown after 30s timeout');
       process.exit(1);
-    }, FORCED_EXIT_MS);
+    }, FORCED_EXIT_MS).unref();
   }
 
   function install() {
@@ -122,19 +138,22 @@ function createCleanup(deps) {
     process.on('SIGINT', cleanupServer);
 
     process.on('uncaughtException', err => {
+      const isDev = process.env.NODE_ENV !== 'production';
       logger.error('Uncaught exception', {
         error: err && err.message,
         code: err && err.code,
-        stack: err && err.stack
+        ...(isDev ? { stack: err && err.stack } : {})
       });
-      if (err && FATAL_OS_CODES.has(err.code)) {
-cleanupServer();
-}
+      cleanupServer();
     });
 
     process.on('unhandledRejection', reason => {
       const err = reason instanceof Error ? reason : new Error(String(reason));
-      logger.error('Unhandled promise rejection', { error: err.message, stack: err.stack });
+      const isDev = process.env.NODE_ENV !== 'production';
+      logger.error('Unhandled promise rejection', {
+        error: err.message,
+        ...(isDev ? { stack: err.stack } : {})
+      });
       // Do not exit — keep active game sessions alive.
     });
   }

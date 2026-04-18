@@ -43,11 +43,10 @@ function configureHelmet() {
 }
 
 /**
- * Configure API rate limiter. Disabled for this indie game — replaced by a
- * pass-through middleware.
+ * Configure API rate limiter (100 req / 15 min per IP).
  */
 function configureApiLimiter() {
-  return (req, res, next) => next();
+  return rateLimit(API_LIMITER_CONFIG);
 }
 
 /**
@@ -72,11 +71,12 @@ function additionalSecurityHeaders(req, res, next) {
 }
 
 /**
- * Configure Auth rate limiter (stricter than API limiter)
+ * Configure Auth rate limiter — 20 req / 15 min per IP to block brute-force.
+ * Can be bypassed in CI via DISABLE_AUTH_RATE_LIMIT=1.
  * @returns {Function} Rate limiter middleware
  */
 function configureAuthLimiter() {
-  return (req, res, next) => next();
+  return rateLimit(AUTH_LIMITER_CONFIG);
 }
 
 /**

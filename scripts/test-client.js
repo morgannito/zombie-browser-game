@@ -20,7 +20,11 @@ function httpLogin(username, password) {
         let data = '';
         res.on('data', c => (data += c));
         res.on('end', () => {
-          try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+          try {
+ resolve(JSON.parse(data));
+} catch (e) {
+ reject(e);
+}
         });
       }
     );
@@ -33,7 +37,9 @@ function httpLogin(username, password) {
 async function run() {
   const u = 'tst' + Date.now().toString().slice(-6);
   const login = await httpLogin(u, 'testpass1234');
-  if (!login.token) { console.error('Login failed:', login); process.exit(1); }
+  if (!login.token) {
+ console.error('Login failed:', login); process.exit(1);
+}
   console.log('[auth] token[0..20]=', login.token.slice(0, 20), 'player=', login.player);
 
   const socket = io(BASE, {
@@ -75,15 +81,23 @@ async function run() {
     if (p) {
       stats.lastPlayerPos = { x: p.x, y: p.y };
       if (typeof p.health === 'number') {
-        if (p.health < stats.lastHealth) stats.damageTaken += stats.lastHealth - p.health;
+        if (p.health < stats.lastHealth) {
+stats.damageTaken += stats.lastHealth - p.health;
+}
         stats.lastHealth = p.health;
       }
     }
     stats.lastZombieCount = Object.keys(s.zombies || {}).length;
   });
-  socket.on('gameStateDelta', d => { stats.gameStateDelta++; });
-  socket.on('positionCorrection', () => { stats.positionCorrection++; });
-  socket.on('moveAck', () => { stats.moveAck++; });
+  socket.on('gameStateDelta', d => {
+ stats.gameStateDelta++;
+});
+  socket.on('positionCorrection', () => {
+ stats.positionCorrection++;
+});
+  socket.on('moveAck', () => {
+ stats.moveAck++;
+});
 
   // Wait for init
   await new Promise(r => setTimeout(r, 1000));
@@ -125,7 +139,7 @@ async function run() {
       await new Promise(r => setTimeout(r, 33));
     }
     await new Promise(r => setTimeout(r, 500));
-    console.log(`  moves sent: 60`);
+    console.log('  moves sent: 60');
     console.log(`  final server pos: ${stats.lastPlayerPos?.x?.toFixed(0)},${stats.lastPlayerPos?.y?.toFixed(0)}`);
     console.log(`  expected: ${(start.x + 295).toFixed(0)},${start.y.toFixed(0)}`);
     console.log(`  positionCorrection received: ${stats.positionCorrection}`);
@@ -149,4 +163,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error('FATAL:', e); process.exit(1); });
+run().catch(e => {
+ console.error('FATAL:', e); process.exit(1);
+});

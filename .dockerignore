@@ -33,9 +33,14 @@ fly.toml
 render.yaml
 railway.json
 
-# Data et logs locaux
+# Data, logs et backups locaux
 data/
 logs/
+backups/
+
+# Tests e2e et bench
+e2e/
+bench/
 
 # macOS
 .DS_Store

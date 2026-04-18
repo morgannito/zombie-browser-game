@@ -28,7 +28,10 @@ function shouldResolveTarget(zombie, tick, pathfindingRate) {
 function resolveTargetOnEvalTick(zombie, players, tick, getNearestPlayer) {
   const { player } = getNearestPlayer(zombie, players, tick);
   if (player) {
-    zombie._lockedTargetId = player.id;
+    // PERF: skip write if target unchanged — avoids property churn on hot path.
+    if (zombie._lockedTargetId !== player.id) {
+      zombie._lockedTargetId = player.id;
+    }
     return player;
   }
   zombie._lockedTargetId = null;

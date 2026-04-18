@@ -12,16 +12,22 @@ const { ValidationError, NotFoundError } = require('../../lib/domain/errors/Doma
  * Valide les donnees, recupere le joueur, calcule le score et persiste l'entree.
  * @class
  */
+const THROTTLE_MS = 60 * 1000; // 1 submit/min per player
+
 class SubmitScoreUseCase {
-  /**
-   * @param {Object} leaderboardRepository - Repository d'acces au classement (port domaine)
-   * @param {Object} playerRepository - Repository d'acces aux donnees joueur (port domaine)
-   */
-  constructor(leaderboardRepository, playerRepository) {
-    /** @type {Object} */
+  constructor(leaderboardRepository, playerRepository, cache = null) {
     this.leaderboardRepository = leaderboardRepository;
-    /** @type {Object} */
     this.playerRepository = playerRepository;
+    this.cache = cache;
+    this._throttle = new Map(); // playerId -> lastSubmitMs
+  }
+
+  _checkThrottle(playerId) {
+    const last = this._throttle.get(playerId) || 0;
+    if (Date.now() - last < THROTTLE_MS) {
+throw new Error('Rate limit: 1 submit per minute');
+}
+    this._throttle.set(playerId, Date.now());
   }
 
   /**
@@ -39,42 +45,27 @@ class SubmitScoreUseCase {
    * @throws {Error} Si le joueur n'existe pas
    */
   async execute({ playerId, wave, level, kills, survivalTime }) {
-    // Validate input
     if (!playerId || wave < 0 || level < 0 || kills < 0 || survivalTime < 0) {
       throw new ValidationError('Invalid score data');
     }
 
-    // Get player info
+    this._checkThrottle(playerId);
+
     const player = await this.playerRepository.findById(playerId);
     if (!player) {
-      throw new NotFoundError('Player', playerId);
-    }
+throw new NotFoundError('Player', playerId);
+}
 
-    // Calculate score
     const score = LeaderboardEntry.calculateScore(wave, level, kills, survivalTime);
+    const entry = new LeaderboardEntry({ playerId, playerUsername: player.username, wave, level, kills, survivalTime, score });
 
-    // Create entry
-    const entry = new LeaderboardEntry({
-      playerId,
-      playerUsername: player.username,
-      wave,
-      level,
-      kills,
-      survivalTime,
-      score
-    });
-
-    // Submit to leaderboard
     await this.leaderboardRepository.submit(entry);
 
-    logger.info('Score submitted to leaderboard', {
-      playerId,
-      username: player.username,
-      wave,
-      level,
-      score
-    });
+    if (this.cache?.isActive() && this.cache.shouldInvalidate(score)) {
+      this.cache.invalidate();
+    }
 
+    logger.info('Score submitted to leaderboard', { playerId, username: player.username, wave, level, score });
     return entry;
   }
 }

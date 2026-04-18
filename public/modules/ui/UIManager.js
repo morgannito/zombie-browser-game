@@ -51,6 +51,9 @@ class UIManager {
     this._ghostPercent = 100;
     this._ghostTimer = null;
 
+    // Cache last-rendered values to skip no-op DOM writes
+    this._last = {};
+
     this.setupEventListeners();
   }
 
@@ -65,6 +68,8 @@ class UIManager {
 
     // Guard: prevent duplicate emissions before server acknowledges the first
     this._buyPending = false;
+    // Guard: prevent duplicate upgrade selections before screen hides
+    this._upgradePending = false;
 
     // Make buyItem global for onclick handlers
     window.buyItem = (itemId, category) => {
@@ -122,42 +127,68 @@ class UIManager {
       this.gameOverDispatched = false;
     }
 
-    // Health bar with damage-lag ghost bar
+    // --- READ phase (avoid interleaved read/write reflow) ---
     const healthPercent = Math.max(0, (player.health / player.maxHealth) * 100);
-    const { els } = this;
-    els.healthFill.style.width = healthPercent + '%';
-    els.healthText.textContent = Math.max(0, Math.round(player.health));
-    this._updateHealthGhost(healthPercent);
-
-    // Low health warning (< 30%)
-    if (healthPercent < 30) {
-      els.healthBar.classList.add('low-health');
-    } else {
-      els.healthBar.classList.remove('low-health');
-    }
-
-    // XP and level
+    const healthRounded = Math.max(0, Math.round(player.health));
+    const lowHealth = healthPercent < 30;
+    const score = (player.totalScore || 0).toLocaleString();
+    const wave = `${this.gameState.state.wave || 1}`;
+    const gold = player.gold || 0;
+    let xpPercent, xpNeeded, xpFillVal, nearLevelup;
     if (player.level && player.xp !== undefined) {
-      const xpNeeded = this.getXPForLevel(player.level);
-      const xpPercent = (player.xp / xpNeeded) * 100;
+      xpNeeded = this.getXPForLevel(player.level);
+      xpPercent = (player.xp / xpNeeded) * 100;
       // BUGFIX: clamp the bar fill to 100% — a brief race between server XP
       // grant and level-up processing can make xpPercent ≥ 100, stretching
       // the fill div past its container.
-      els.xpFill.style.width = Math.min(100, xpPercent) + '%';
-      els.levelText.textContent = player.level;
-      els.xpText.textContent = `${Math.floor(player.xp)}/${xpNeeded}`;
-      // Near level up indicator (> 85%)
-      if (xpPercent > 85) {
-        els.xpBar.classList.add('near-levelup');
-      } else {
-        els.xpBar.classList.remove('near-levelup');
-      }
+      xpFillVal = Math.min(100, xpPercent);
+      nearLevelup = xpPercent > 85;
     }
 
+    // --- WRITE phase ---
+    const { els, _last: last } = this;
+    if (last.healthPercent !== healthPercent) {
+      els.healthFill.style.width = healthPercent + '%';
+      this._updateHealthGhost(healthPercent);
+      last.healthPercent = healthPercent;
+    }
+    if (last.healthRounded !== healthRounded) {
+      els.healthText.textContent = healthRounded;
+      last.healthRounded = healthRounded;
+    }
+    if (last.lowHealth !== lowHealth) {
+      els.healthBar.classList.toggle('low-health', lowHealth);
+      last.lowHealth = lowHealth;
+    }
+    if (xpFillVal !== undefined) {
+      if (last.xpFillVal !== xpFillVal) {
+        els.xpFill.style.width = xpFillVal + '%';
+        last.xpFillVal = xpFillVal;
+      }
+      if (last.level !== player.level) {
+        els.levelText.textContent = player.level;
+        last.level = player.level;
+      }
+      const xpText = `${Math.floor(player.xp)}/${xpNeeded}`;
+      if (last.xpText !== xpText) {
+        els.xpText.textContent = xpText;
+        last.xpText = xpText;
+      }
+      if (last.nearLevelup !== nearLevelup) {
+        els.xpBar.classList.toggle('near-levelup', nearLevelup);
+        last.nearLevelup = nearLevelup;
+      }
+    }
     // Stats — server increments `totalScore` on kills (combo-multiplied).
-    els.scoreValue.textContent = (player.totalScore || 0).toLocaleString();
-    els.waveValue.textContent = `${this.gameState.state.wave || 1}`;
-    els.goldValue.textContent = player.gold || 0;
+    if (last.score !== score) {
+ els.scoreValue.textContent = score; last.score = score;
+}
+    if (last.wave !== wave) {
+ els.waveValue.textContent = wave; last.wave = wave;
+}
+    if (last.gold !== gold) {
+ els.goldValue.textContent = gold; last.gold = gold;
+}
 
     // Game over
     if (!player.alive) {
@@ -273,7 +304,7 @@ class UIManager {
     }
     if (delta >= 0) {
       if (deltaLabel) {
-        deltaLabel.textContent = 'Record battu de';
+        deltaLabel.textContent = typeof I18n !== 'undefined' ? I18n.t('ui.record_beaten') : 'Record battu de';
       }
       if (deltaEl) {
         deltaEl.textContent = `+${delta.toLocaleString()}`;
@@ -284,7 +315,7 @@ class UIManager {
       }
     } else {
       if (deltaLabel) {
-        deltaLabel.textContent = 'Écart';
+        deltaLabel.textContent = typeof I18n !== 'undefined' ? I18n.t('ui.delta') : 'Écart';
       }
       if (deltaEl) {
         deltaEl.textContent = delta.toLocaleString();
@@ -331,7 +362,7 @@ class UIManager {
 
   showBossAnnouncement(bossName) {
     this._showAnnouncement(
-      'BOSS !',
+      (typeof I18n !== 'undefined' ? I18n.t('ui.boss') : 'BOSS !'),
       bossName,
       'rgba(255, 0, 0, 0.9)',
       CONSTANTS.ANIMATIONS.BOSS_ANNOUNCEMENT
@@ -370,32 +401,45 @@ class UIManager {
     }, 10);
 
     // Clear previous choices
-    upgradeChoicesContainer.innerHTML = '';
+    upgradeChoicesContainer.textContent = '';
 
-    // Create upgrade cards
+    // Build all cards in a fragment to avoid repeated reflows
+    const fragment = document.createDocumentFragment();
     upgradeChoices.forEach(upgrade => {
       const card = document.createElement('div');
       card.className = `upgrade-card ${upgrade.rarity}`;
-      card.innerHTML = `
-        <div class="upgrade-rarity">${upgrade.rarity}</div>
-        <div class="upgrade-name">${upgrade.name}</div>
-        <div class="upgrade-description">${upgrade.description}</div>
-      `;
+      const rarityEl = document.createElement('div');
+      rarityEl.className = 'upgrade-rarity';
+      rarityEl.textContent = upgrade.rarity;
+      const nameEl = document.createElement('div');
+      nameEl.className = 'upgrade-name';
+      nameEl.textContent = upgrade.name;
+      const descEl = document.createElement('div');
+      descEl.className = 'upgrade-description';
+      descEl.textContent = upgrade.description;
+      card.append(rarityEl, nameEl, descEl);
 
       card.addEventListener('click', () => {
-        if (window.networkManager) {
-          window.networkManager.selectUpgrade(upgrade.id);
-        }
+        if (this._upgradePending) {
+return;
+}
+        if (!window.networkManager) {
+return;
+}
+        this._upgradePending = true;
+        window.networkManager.selectUpgrade(upgrade.id);
         document.dispatchEvent(
           new CustomEvent('upgrade_obtained', {
             detail: { upgradeId: upgrade.id, rarity: upgrade.rarity }
           })
         );
         levelUpScreen.style.display = 'none';
+        this._upgradePending = false;
       });
 
-      upgradeChoicesContainer.appendChild(card);
+      fragment.appendChild(card);
     });
+    upgradeChoicesContainer.appendChild(fragment);
 
     levelUpScreen.style.display = 'flex';
   }
@@ -403,7 +447,7 @@ class UIManager {
   showRoomAnnouncement(roomNum, totalRooms) {
     this._showAnnouncement(
       `Salle ${roomNum}/${totalRooms}`,
-      'En avant!',
+      (typeof I18n !== 'undefined' ? I18n.t('ui.forward') : 'En avant!'),
       'rgba(255, 170, 0, 0.9)',
       2000
     );
@@ -735,26 +779,22 @@ class UIManager {
     if (!killerType) {
       return null;
     }
+    if (typeof I18n !== 'undefined') {
+      const key = `enemy.${killerType}`;
+      const translated = I18n.t(key);
+      if (translated !== key) {
+return translated;
+}
+    }
     const labels = {
-      zombie: 'Zombie',
-      fast: 'Zombie Rapide',
-      tank: 'Zombie Tank',
-      berserker: 'Berserker',
-      exploder: 'Zombie Explosif',
-      splitter: 'Zombie Diviseur',
-      spitter: 'Zombie Cracheur',
-      ghost: 'Zombie Fantôme',
-      elemental: 'Zombie Élémentaire',
-      bossCharnier: 'Boss : Le Charnier',
-      bossInfect: "Boss : L'Infect",
-      bossColosse: 'Boss : Le Colosse',
-      bossRoi: 'Boss : Le Roi',
-      bossInfernal: "Boss : L'Infernal",
-      bossCryos: 'Boss : Cryos',
-      bossVortex: 'Boss : Vortex',
-      bossNexus: 'Boss : Nexus',
-      bossApocalypse: "Boss : L'Apocalypse",
-      hazard: 'Zone de Danger'
+      zombie: 'Zombie', fast: 'Zombie Rapide', tank: 'Zombie Tank',
+      berserker: 'Berserker', exploder: 'Zombie Explosif', splitter: 'Zombie Diviseur',
+      spitter: 'Zombie Cracheur', ghost: 'Zombie Fantôme', elemental: 'Zombie Élémentaire',
+      bossCharnier: 'Boss : Le Charnier', bossInfect: "Boss : L'Infect",
+      bossColosse: 'Boss : Le Colosse', bossRoi: 'Boss : Le Roi',
+      bossInfernal: "Boss : L'Infernal", bossCryos: 'Boss : Cryos',
+      bossVortex: 'Boss : Vortex', bossNexus: 'Boss : Nexus',
+      bossApocalypse: "Boss : L'Apocalypse", hazard: 'Zone de Danger'
     };
     return labels[killerType] || killerType;
   }

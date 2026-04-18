@@ -12,6 +12,7 @@ const compression = require('compression');
 const { requestIdMiddleware } = require('../middleware/requestId');
 const { httpsRedirect } = require('../middleware/httpsRedirect');
 const { accessLogMiddleware } = require('../middleware/accessLog');
+const { corsMiddleware } = require('../middleware/cors');
 const {
   configureHelmet,
   configureApiLimiter,
@@ -55,33 +56,39 @@ function mountMsgpackMetaRoute(app) {
 }
 
 function mountStaticAssets(app) {
-  // Note: /shared/socketEvents.js was server-only; events moved to
-  // transport/websocket/events.js. Mount removed (no remaining shared assets).
-  // CACHES DESACTIVES : tous les assets sont servis avec no-store pour garantir
-  // que chaque deploy soit immédiatement effectif (no stale JS/CSS/HTML).
-  const noCache = (res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+  // Cache strategy:
+  //   ?v=<hash>  → immutable 1 year (fingerprinted assets)
+  //   favicon.*  → 7 days
+  //   everything else → no-store (safe default for unversioned files)
+  // ETag is enabled globally so conditional GETs work on versioned assets.
+  const setHeaders = (res, filePath) => {
+    const url = res.req && res.req.url ? res.req.url : '';
+    const isFavicon = /favicon\./i.test(path.basename(filePath));
+    if (isFavicon) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    } else if (url.includes('?v=')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+    }
   };
-  app.use(
-    '/assets',
-    express.static('assets', {
-      maxAge: 0,
-      etag: false,
-      lastModified: false,
-      fallthrough: false,
-      setHeaders: noCache
-    })
-  );
-  app.use(
-    express.static('public', {
-      maxAge: 0,
-      etag: false,
-      lastModified: false,
-      setHeaders: noCache
-    })
-  );
+
+  app.use('/assets', express.static('assets', { fallthrough: false, setHeaders }));
+  app.use(express.static('public', { setHeaders }));
+}
+
+/** Inject Link preload hint for socket.io.js on HTML responses. */
+function addPreloadHints(req, res, next) {
+  const _writeHead = res.writeHead.bind(res);
+  res.writeHead = function (statusCode, headers) {
+    const ct = res.getHeader('Content-Type') || '';
+    if (String(ct).includes('text/html')) {
+      res.setHeader('Link', '</socket.io/socket.io.js>; rel=preload; as=script');
+    }
+    return _writeHead(statusCode, headers);
+  };
+  next();
 }
 
 /**
@@ -93,11 +100,13 @@ function configureMiddleware(app) {
   app.use(httpsRedirect);
   app.use(requestIdMiddleware);
   app.use(accessLogMiddleware);
+  app.use(corsMiddleware);
   app.use(compression());
   app.use(configureHelmet());
   app.use('/api/', configureApiLimiter());
   app.use(...configureBodyParser());
   app.use(additionalSecurityHeaders);
+  app.use(addPreloadHints);
   // Inject msgpack meta tag before static files intercept GET /.
   mountMsgpackMetaRoute(app);
   mountStaticAssets(app);

@@ -369,3 +369,124 @@ describe('RunMutatorManager broadcastMutators', () => {
     expect(emitted[0].mutators).toEqual([{ id: 'x' }]);
   });
 });
+
+// --- hasActiveMutators (cache flag) ---
+
+describe('RunMutatorManager hasActiveMutators', () => {
+  test('hasActiveMutators_beforeInitialize_returnsFalse', () => {
+    const mgr = makeManager(makeGameState());
+
+    expect(mgr.hasActiveMutators()).toBe(false);
+  });
+
+  test('hasActiveMutators_afterRotate_returnsTrue', () => {
+    const gameState = makeGameState({ wave: 1 });
+    const mgr = makeManager(gameState);
+
+    mgr.rotateIfNeeded(1, true);
+
+    expect(mgr.hasActiveMutators()).toBe(true);
+  });
+});
+
+// --- handleWaveChange nextMutatorWave fast-skip ---
+
+describe('RunMutatorManager handleWaveChange nextMutatorWave skip', () => {
+  test('handleWaveChange_waveBelowNextMutatorWave_returnsFalse', () => {
+    const gameState = makeGameState({ wave: 1, nextMutatorWave: 20 });
+    const mgr = makeManager(gameState, null, { rotationInterval: 10 });
+
+    const result = mgr.handleWaveChange(15);
+
+    expect(result).toBe(false);
+  });
+
+  test('handleWaveChange_waveAtNextMutatorWave_returnsTrue', () => {
+    const gameState = makeGameState({ wave: 1, nextMutatorWave: 10 });
+    const mgr = makeManager(gameState, null, { rotationInterval: 10 });
+    mgr.lastRotationWave = 0;
+
+    const result = mgr.handleWaveChange(10);
+
+    expect(result).toBe(true);
+  });
+});
+
+// --- cleanupWave ---
+
+describe('RunMutatorManager cleanupWave', () => {
+  test('cleanupWave_resetsActiveMutators', () => {
+    const gameState = makeGameState({ wave: 1 });
+    const mgr = makeManager(gameState);
+    mgr.rotateIfNeeded(1, true);
+
+    mgr.cleanupWave();
+
+    expect(mgr.activeMutators).toHaveLength(0);
+    expect(gameState.activeMutators).toHaveLength(0);
+  });
+
+  test('cleanupWave_resetsEffectsToDefault', () => {
+    const gameState = makeGameState({ wave: 1 });
+    const mgr = makeManager(gameState);
+    mgr.rotateIfNeeded(1, true);
+
+    mgr.cleanupWave();
+
+    expect(gameState.mutatorEffects.zombieHealthMultiplier).toBe(1);
+    expect(mgr.hasActiveMutators()).toBe(false);
+  });
+});
+
+// --- pickMutators deduplication ---
+
+describe('RunMutatorManager pickMutators deduplication', () => {
+  test('pickMutators_noDuplicateIds', () => {
+    const mgr = makeManager(makeGameState());
+
+    for (let i = 0; i < 20; i++) {
+      const picked = mgr.pickMutators();
+      const ids = picked.map((m) => m.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+});
+
+// --- serialize / restore ---
+
+describe('RunMutatorManager serialize and restore', () => {
+  test('serialize_capturesState', () => {
+    const gameState = makeGameState({ wave: 1 });
+    const mgr = makeManager(gameState, null, { rotationInterval: 10 });
+    mgr.rotateIfNeeded(5, true);
+
+    const snap = mgr.serialize();
+
+    expect(snap.lastRotationWave).toBe(5);
+    expect(Array.isArray(snap.activeMutatorIds)).toBe(true);
+    expect(snap.nextMutatorWave).toBe(15);
+    expect(snap.effects).toBeDefined();
+  });
+
+  test('restore_rebuildsActiveMutators', () => {
+    const gameState = makeGameState({ wave: 1 });
+    const original = makeManager(gameState, null, { rotationInterval: 10 });
+    original.rotateIfNeeded(5, true);
+    const snap = original.serialize();
+
+    const gameState2 = makeGameState();
+    const restored = makeManager(gameState2, null, { rotationInterval: 10 });
+    restored.restore(snap);
+
+    expect(restored.lastRotationWave).toBe(5);
+    expect(gameState2.nextMutatorWave).toBe(15);
+    expect(restored.hasActiveMutators()).toBe(true);
+    expect(gameState2.activeMutators.length).toBeGreaterThan(0);
+  });
+
+  test('restore_null_doesNotThrow', () => {
+    const mgr = makeManager(makeGameState());
+
+    expect(() => mgr.restore(null)).not.toThrow();
+  });
+});

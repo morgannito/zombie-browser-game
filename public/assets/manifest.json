@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "assets": {
     "backgrounds": {
-      "city": "/assets/backgrounds/bg_city.png",
-      "forest": "/assets/backgrounds/bg_forest.png",
-      "lab": "/assets/backgrounds/bg_lab.png",
-      "cemetery": "/assets/backgrounds/bg_cemetery.png",
-      "wasteland": "/assets/backgrounds/bg_wasteland.png"
+      "city": "/assets/backgrounds/bg_city.webp",
+      "forest": "/assets/backgrounds/bg_forest.webp",
+      "lab": "/assets/backgrounds/bg_lab.webp",
+      "cemetery": "/assets/backgrounds/bg_cemetery.webp",
+      "wasteland": "/assets/backgrounds/bg_wasteland.webp"
     },
     "tiles": {
       "floor_concrete": "/assets/tiles/floor_concrete.png",

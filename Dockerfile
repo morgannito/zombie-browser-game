@@ -1,4 +1,4 @@
-# Stage 1: build — compile better-sqlite3 avec les outils natifs
+# Stage 1: builder — installe toutes les dépendances (dev incluses)
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache python3 make g++
@@ -6,17 +6,21 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 COPY package*.json ./
-# HUSKY=0 skips the `prepare` git hook install (husky is devDep, not present with --production)
-RUN HUSKY=0 npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
+# HUSKY=0 évite l'échec du hook prepare (devDep)
+RUN HUSKY=0 npm ci --production=false
 
-# Stage 2: runtime — image finale sans les outils de build
+# Stage 2: runtime — image finale allégée, deps prod uniquement
 FROM node:20-alpine AS runtime
+
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
-# Copier uniquement les artefacts nécessaires
-COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
+# Réinstalle uniquement les dépendances de production
+RUN HUSKY=0 npm ci --production && npm rebuild better-sqlite3
+
+# Copier les artefacts applicatifs
 COPY server.js ./
 COPY config/ ./config/
 COPY contexts/ ./contexts/
@@ -30,19 +34,19 @@ COPY server/ ./server/
 COPY sockets/ ./sockets/
 COPY transport/ ./transport/
 
-# Créer les répertoires runtime et donner les droits à node
+# Répertoires runtime
 RUN mkdir -p /app/data /app/logs && \
     chown -R node:node /app
 
-EXPOSE 3000
+EXPOSE ${PORT:-3000}
 
 ENV NODE_ENV=production \
     PORT=3000 \
     DB_PATH=/app/data/game.db \
     LOG_DIR=/app/logs
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -fs http://localhost:${PORT:-3000}/health || exit 1
 
 USER node
 

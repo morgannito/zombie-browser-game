@@ -4,24 +4,25 @@ services:
   zombie-game:
     build: .
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=${PORT:-3000}
       - DB_PATH=/app/data/game.db
       - LOG_DIR=/app/logs
-      - LOG_LEVEL=info
-      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-      - PERFORMANCE_MODE=balanced  # Options: high | balanced | low-memory | minimal
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - PERFORMANCE_MODE=${PERFORMANCE_MODE:-balanced}
+      # SESSION_SECRET=changeme
+      # ADMIN_TOKEN=changeme
     volumes:
-      # Volumes persistants pour données et logs
       - ./data:/app/data
       - ./logs:/app/logs
     container_name: zombie-game
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "curl", "-fs", "http://localhost:${PORT:-3000}/health"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s

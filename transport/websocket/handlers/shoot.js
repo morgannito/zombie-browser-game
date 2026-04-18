@@ -30,6 +30,9 @@ function registerShootHandler(socket, gameState, entityManager, roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.SHOOT,
     safeHandler('shoot', function (data) {
+      if (socket.spectator) {
+return;
+}
       // VALIDATION: Vérifier et sanitize les données d'entrée
       const validatedData = validateShootData(data);
       if (!validatedData) {

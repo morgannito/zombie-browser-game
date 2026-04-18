@@ -99,7 +99,7 @@ class NicknameManager {
     // Validate nickname format (alphanumeric, spaces, underscores, hyphens only)
     const nicknameRegex = /^[\w\s-]+$/u;
     if (!nicknameRegex.test(nickname)) {
-      alert('Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
+      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.invalid') : 'Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
       this.isStarting = false;
       return;
     }
@@ -115,7 +115,7 @@ class NicknameManager {
         return;
       }
     } else {
-      alert('Authentification non disponible');
+      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.auth_unavailable') : 'Authentification non disponible');
       this.isStarting = false;
       return;
     }
@@ -130,7 +130,7 @@ class NicknameManager {
         return;
       }
     } else {
-      alert('Connexion réseau indisponible');
+      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.network_unavailable') : 'Connexion réseau indisponible');
       this.isStarting = false;
       return;
     }
@@ -214,7 +214,7 @@ return;
         clearInterval(this.respawnCountdownInterval);
         this.respawnCountdownInterval = null;
         this.respawnBtn.disabled = false;
-        this.respawnBtn.textContent = 'CONTINUER ?';
+        this.respawnBtn.textContent = typeof I18n !== 'undefined' ? I18n.t('ui.continue') : 'CONTINUER ?';
       } else {
         this.respawnBtn.textContent = `${Math.ceil(remaining / 1000)}...`;
       }

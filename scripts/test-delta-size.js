@@ -12,7 +12,15 @@ function login(u) {
     const b = JSON.stringify({ username: u });
     const r = http.request(BASE + '/api/v1/auth/login',
       { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': b.length } },
-      rs => { let d=''; rs.on('data', c => d += c); rs.on('end', () => { try { res(JSON.parse(d)); } catch(e){rej(e);} }); });
+      rs => {
+ let d=''; rs.on('data', c => d += c); rs.on('end', () => {
+ try {
+ res(JSON.parse(d));
+} catch (e) {
+rej(e);
+}
+});
+});
     r.on('error', rej); r.write(b); r.end();
   });
 }
@@ -79,4 +87,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(e => {
+ console.error(e); process.exit(1);
+});

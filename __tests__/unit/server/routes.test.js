@@ -21,6 +21,7 @@ jest.mock('../../../transport/http/leaderboard', () => jest.fn(() => 'leaderboar
 jest.mock('../../../transport/http/players', () => jest.fn(() => 'playersRouter'));
 jest.mock('../../../transport/http/progression', () => jest.fn(() => 'progressionRouter'));
 jest.mock('../../../transport/http/achievements', () => jest.fn(() => 'achievementsRouter'));
+jest.mock('../../../transport/http/dailyChallenges', () => jest.fn(() => 'dailyChallengesRouter'));
 jest.mock('../../../transport/http/features', () => 'featuresRouter');
 
 const {
@@ -31,7 +32,7 @@ const {
 } = require('../../../server/routes');
 
 function makeApp() {
-  return { use: jest.fn() };
+  return { use: jest.fn(), get: jest.fn() };
 }
 
 describe('mountAuthRoutes', () => {
@@ -45,7 +46,7 @@ describe('mountAuthRoutes', () => {
 });
 
 describe('mountDbRoutes', () => {
-  test('mounts all 4 db-dependent routes under /api/v1', () => {
+  test('mounts all db-dependent routes under /api/v1', () => {
     const app = makeApp();
     mountDbRoutes(app, {}, () => {});
     const paths = app.use.mock.calls.map(c => c[0]);
@@ -53,6 +54,7 @@ describe('mountDbRoutes', () => {
     expect(paths).toContain('/api/v1/players');
     expect(paths).toContain('/api/v1/progression');
     expect(paths).toContain('/api/v1/achievements');
+    expect(paths).toContain('/api/v1/daily-challenges');
     expect(paths).not.toContain('/api/leaderboard');
     expect(paths).not.toContain('/api/players');
   });

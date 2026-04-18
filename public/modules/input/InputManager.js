@@ -107,6 +107,10 @@ class InputManager {
       this.isIdle = false;
     }
 
+    // Skip repeat events — key state unchanged, no need to dirty the cache.
+    if (this.keys[key]) {
+return;
+}
     this.keys[key] = true;
     this.movementDirty = true;
 

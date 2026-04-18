@@ -7,6 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { getTelemetryCollector } = require('../../infrastructure/telemetry/TelemetryCollector');
 
 /**
  * Build domain game stats snapshot
@@ -29,16 +30,20 @@ function buildGameStats(mc) {
 /**
  * Initialize metrics route
  * @param {Object} metricsCollector - Metrics collector instance
- * @returns {Router} Express router
+ * @returns {express.Router} Express router
  */
 function initMetricsRoute(metricsCollector) {
-  router.get('/', (req, res) => {
+  router.get('/', (_req, res) => {
     res.set('Content-Type', 'text/plain; version=0.0.4');
     res.send(metricsCollector.getPrometheusMetrics());
   });
 
-  router.get('/game', (req, res) => {
+  router.get('/game', (_req, res) => {
     res.json(buildGameStats(metricsCollector));
+  });
+
+  router.get('/telemetry', (_req, res) => {
+    res.json(getTelemetryCollector().getStats());
   });
 
   return router;

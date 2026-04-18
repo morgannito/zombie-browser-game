@@ -15,7 +15,15 @@ function login(u) {
     const b = JSON.stringify({ username: u });
     const r = http.request(BASE + '/api/v1/auth/login',
       { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': b.length } },
-      rs => { let d=''; rs.on('data', c => d += c); rs.on('end', () => { try { res(JSON.parse(d)); } catch(e){rej(e);} }); });
+      rs => {
+ let d=''; rs.on('data', c => d += c); rs.on('end', () => {
+ try {
+ res(JSON.parse(d));
+} catch (e) {
+rej(e);
+}
+});
+});
     r.on('error', rej); r.write(b); r.end();
   });
 }
@@ -34,28 +42,43 @@ async function makeBot(idx) {
     state.myId = d.playerId;
     socket.emit('setNickname', { nickname: 'mb' + idx });
   });
-  socket.on('disconnect', () => { state.disconnected = true; });
+  socket.on('disconnect', () => {
+ state.disconnected = true;
+});
   socket.on('gameState', s => {
     state.fullCount++;
     state.bytesIn += JSON.stringify(s).length;
-    if (s.players?.[state.myId]) state.me = s.players[state.myId];
-    for (const id in s.zombies) state.zombies[id] = s.zombies[id];
+    if (s.players?.[state.myId]) {
+state.me = s.players[state.myId];
+}
+    for (const id in s.zombies) {
+state.zombies[id] = s.zombies[id];
+}
   });
   socket.on('gameStateDelta', d => {
     state.deltaCount++;
     state.bytesIn += JSON.stringify(d).length;
     if (d.updated?.players?.[state.myId]) {
       const p = d.updated.players[state.myId];
-      if (typeof p.x === 'number') state.me && (state.me.x = p.x);
-      if (typeof p.y === 'number') state.me && (state.me.y = p.y);
+      if (typeof p.x === 'number') {
+state.me && (state.me.x = p.x);
+}
+      if (typeof p.y === 'number') {
+state.me && (state.me.y = p.y);
+}
     }
     for (const id in d.updated?.zombies || {}) {
       const z = d.updated.zombies[id];
-      if (!state.zombies[id]) state.zombies[id] = z;
-      else Object.assign(state.zombies[id], z);
+      if (!state.zombies[id]) {
+state.zombies[id] = z;
+} else {
+Object.assign(state.zombies[id], z);
+}
     }
     for (const id of d.removed?.zombies || []) {
-      if (state.zombies[id]) { state.killsObserved++; delete state.zombies[id]; }
+      if (state.zombies[id]) {
+ state.killsObserved++; delete state.zombies[id];
+}
     }
   });
 
@@ -79,7 +102,9 @@ async function run() {
   const loops = alive.map(({ socket, state }) => {
     let seq = 10000, angle = 0;
     return setInterval(() => {
-      if (state.disconnected) return;
+      if (state.disconnected) {
+return;
+}
       angle += 0.3;
       socket.emit('shoot', { angle });
       if (state.me) {
@@ -100,7 +125,9 @@ async function run() {
   console.log(`\n=== MULTI-CLIENT RESULTS (${DURATION}s, ${alive.length} bots) ===`);
   let totalBytes = 0, totalDeltas = 0, totalKills = 0, totalDisconnects = 0;
   for (const { state } of alive) {
-    if (state.disconnected) totalDisconnects++;
+    if (state.disconnected) {
+totalDisconnects++;
+}
     totalBytes += state.bytesIn;
     totalDeltas += state.deltaCount;
     totalKills += state.killsObserved;
@@ -115,4 +142,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(e => {
+ console.error(e); process.exit(1);
+});

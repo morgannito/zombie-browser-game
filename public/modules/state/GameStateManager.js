@@ -198,8 +198,12 @@ class GameStateManager {
    * @returns {number} cap in ms
    */
   _adaptiveExtrapCap() {
-    if (this.networkLatency > 250) return 140;
-    if (this.networkLatency > 100) return 100;
+    if (this.networkLatency > 250) {
+return 140;
+}
+    if (this.networkLatency > 100) {
+return 100;
+}
     return 75;
   }
 
@@ -209,9 +213,15 @@ class GameStateManager {
     // jitter comfortably. On high-latency links, bump up gently so entities
     // don't freeze between sparse packets.
     const base = 40;
-    if (this.networkLatency > 300) return 150;
-    if (this.networkLatency > 150) return 90;
-    if (this._jitter > 40) return 70;
+    if (this.networkLatency > 300) {
+return 150;
+}
+    if (this.networkLatency > 150) {
+return 90;
+}
+    if (this._jitter > 40) {
+return 70;
+}
     return base;
   }
 

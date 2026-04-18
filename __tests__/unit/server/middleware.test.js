@@ -14,6 +14,9 @@ jest.mock('../../../middleware/httpsRedirect', () => ({
 jest.mock('../../../middleware/accessLog', () => ({
   accessLogMiddleware: 'accessLogMiddleware'
 }));
+jest.mock('../../../middleware/cors', () => ({
+  corsMiddleware: 'corsMiddleware'
+}));
 
 const mockHelmet = jest.fn(() => 'helmetMiddleware');
 const mockApiLimiter = jest.fn(() => 'apiLimiterMiddleware');
@@ -28,7 +31,7 @@ jest.mock('../../../middleware/security', () => ({
 const { configureMiddleware, mountStaticAssets } = require('../../../server/middleware');
 
 function makeApp() {
-  return { use: jest.fn() };
+  return { use: jest.fn(), get: jest.fn() };
 }
 
 describe('mountStaticAssets', () => {
@@ -42,40 +45,27 @@ describe('mountStaticAssets', () => {
     expect(paths).toContain('/assets');
   });
 
-  // Caches are intentionally disabled in every environment (no-store) so
-  // each deploy is immediately effective. See server/middleware.js.
-  test('serves /assets with no-cache headers in production', () => {
-    const prevEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
-    try {
-      mountStaticAssets(makeApp());
-      const assetsOpts = mockStatic.mock.calls[0][1];
-      expect(assetsOpts.maxAge).toBe(0);
-      expect(assetsOpts.etag).toBe(false);
-      expect(typeof assetsOpts.setHeaders).toBe('function');
-    } finally {
-      process.env.NODE_ENV = prevEnv;
-    }
-  });
-
-  test('serves /assets with no-cache headers in development', () => {
-    const prevEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-    try {
-      mountStaticAssets(makeApp());
-      const assetsOpts = mockStatic.mock.calls[0][1];
-      expect(assetsOpts.maxAge).toBe(0);
-      expect(assetsOpts.etag).toBe(false);
-    } finally {
-      process.env.NODE_ENV = prevEnv;
-    }
-  });
-
-  test('setHeaders writes no-store Cache-Control', () => {
+  // Static assets use smart cache strategy (immutable for versioned, no-store otherwise).
+  test('serves /assets with setHeaders function', () => {
     mountStaticAssets(makeApp());
     const assetsOpts = mockStatic.mock.calls[0][1];
-    const res = { setHeader: jest.fn() };
-    assetsOpts.setHeaders(res);
+    expect(typeof assetsOpts.setHeaders).toBe('function');
+  });
+
+  test('setHeaders writes immutable Cache-Control for versioned assets', () => {
+    mountStaticAssets(makeApp());
+    const assetsOpts = mockStatic.mock.calls[0][1];
+    const res = { req: { url: '/assets/game.js?v=abc123' }, setHeader: jest.fn() };
+    assetsOpts.setHeaders(res, '/public/game.js');
+    const cacheCtrl = res.setHeader.mock.calls.find(c => c[0] === 'Cache-Control');
+    expect(cacheCtrl[1]).toMatch(/immutable/);
+  });
+
+  test('setHeaders writes no-store Cache-Control for unversioned assets', () => {
+    mountStaticAssets(makeApp());
+    const assetsOpts = mockStatic.mock.calls[0][1];
+    const res = { req: { url: '/assets/game.js' }, setHeader: jest.fn() };
+    assetsOpts.setHeaders(res, '/public/game.js');
     const cacheCtrl = res.setHeader.mock.calls.find(c => c[0] === 'Cache-Control');
     expect(cacheCtrl[1]).toMatch(/no-store/);
   });

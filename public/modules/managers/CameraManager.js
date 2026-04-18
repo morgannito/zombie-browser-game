@@ -4,7 +4,7 @@
  * Frame-independent smoothing with delta time
  * @module CameraManager
  * @author Claude Code
- * @version 3.0.0
+ * @version 4.0.0
  */
 
 class CameraManager {
@@ -14,121 +14,113 @@ class CameraManager {
     this.width = 0;
     this.height = 0;
 
-    // Frame-independent smoothing parameters
-    this.smoothingSpeed = 8; // Higher = faster camera follow (units per second factor)
-    this.targetFrameTime = 1000 / 60; // Base calculations on 60 FPS
+    // Frame-independent smoothing
+    this.smoothingSpeed = 8;
+    this.targetFrameTime = 1000 / 60;
 
-    // Velocity-based camera with damping
+    // Velocity-based follow
     this.velocityX = 0;
     this.velocityY = 0;
-    this.damping = 0.85; // Velocity damping per frame at 60fps
+    this.damping = 0.85;
 
-    // Dead zone to prevent micro-jitter
-    this.deadZone = 0.5; // Pixels
+    // Deadzone: avoid micro-shakes (squared comparison — no Math.sqrt)
+    this.deadZone = 0.5;
+    this._deadZoneSq = 0.5 * 0.5;
 
-    // Look-ahead based on player velocity (optional)
+    // Look-ahead
     this.lookAheadEnabled = true;
-    this.lookAheadFactor = 0.15; // How much to look ahead
+    this.lookAheadFactor = 0.15;
     this.lastPlayerX = 0;
     this.lastPlayerY = 0;
 
-    // Smoothed velocity EMA to prevent look-ahead spikes on server corrections
+    // EMA velocity smoothing (absorbs server corrections)
     this.smoothVelX = 0;
     this.smoothVelY = 0;
-    this.velSmoothAlpha = 0.15; // EMA factor: lower = smoother but more lag
+    this.velSmoothAlpha = 0.15;
 
-    // Screen shake support
+    // Screen shake
     this.shakeOffset = { x: 0, y: 0 };
     this.shakeIntensity = 0;
-    this.shakeDuration = 0;
-    this.shakeStartTime = 0;
+    this.shakeRemaining = 0; // ms remaining — decay via deltaTime, no extra perf.now()
+
+    // Zoom + device pixel ratio
+    this.zoom = 1.0;
+    this._dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+
+    // Screen-space conversion cache (invalidated each follow() call)
+    this._cacheValid = false;
+    this._cachedCamX = 0;
+    this._cachedCamY = 0;
   }
 
-  /**
-   * Follow player with frame-independent smoothing
-   * @param {Object} player - Player object with x, y position
-   * @param {number} canvasWidth - Canvas width
-   * @param {number} canvasHeight - Canvas height
-   * @param {number} deltaTime - Time since last frame in ms (optional)
-   */
-  follow(player, canvasWidth, canvasHeight, deltaTime) {
-    // Default delta time if not provided
-    if (deltaTime === undefined) {
-      deltaTime = this.targetFrameTime;
-    }
+  // ─── Internal: invalidate cache ───────────────────────────────────────────
 
-    // Clamp delta time
+  _invalidateCache(camX, camY) {
+    this._cacheValid = true;
+    this._cachedCamX = camX;
+    this._cachedCamY = camY;
+  }
+
+  // ─── Follow ───────────────────────────────────────────────────────────────
+
+  /**
+   * Follow player with exponential lerp (frame-independent, deadzone, look-ahead).
+   * @param {Object} player  - {x, y}
+   * @param {number} canvasWidth
+   * @param {number} canvasHeight
+   * @param {number} [deltaTime] - ms since last frame
+   * @returns {{x: number, y: number}} final camera position (with shake)
+   */
+  follow(player, canvasWidth, canvasHeight, deltaTime = this.targetFrameTime) {
     deltaTime = Math.min(deltaTime, 100);
 
-    // Calculate delta factor for frame-independent movement
-    const _deltaFactor = deltaTime / this.targetFrameTime;
-
-    // Calculate player velocity for look-ahead
+    // Look-ahead via EMA-smoothed velocity
     let lookAheadX = 0;
     let lookAheadY = 0;
-
     if (this.lookAheadEnabled) {
-      const rawVelX = player.x - this.lastPlayerX;
-      const rawVelY = player.y - this.lastPlayerY;
-
-      // EMA smoothing to absorb server-correction spikes
-      this.smoothVelX = this.smoothVelX + (rawVelX - this.smoothVelX) * this.velSmoothAlpha;
-      this.smoothVelY = this.smoothVelY + (rawVelY - this.smoothVelY) * this.velSmoothAlpha;
-
-      lookAheadX = this.smoothVelX * this.lookAheadFactor * 10;
-      lookAheadY = this.smoothVelY * this.lookAheadFactor * 10;
-
-      // Clamp look-ahead to reasonable bounds
-      const maxLookAhead = 100;
-      lookAheadX = Math.max(-maxLookAhead, Math.min(maxLookAhead, lookAheadX));
-      lookAheadY = Math.max(-maxLookAhead, Math.min(maxLookAhead, lookAheadY));
+      const rawVX = player.x - this.lastPlayerX;
+      const rawVY = player.y - this.lastPlayerY;
+      this.smoothVelX += (rawVX - this.smoothVelX) * this.velSmoothAlpha;
+      this.smoothVelY += (rawVY - this.smoothVelY) * this.velSmoothAlpha;
+      const maxLA = 100;
+      lookAheadX = Math.max(-maxLA, Math.min(maxLA, this.smoothVelX * this.lookAheadFactor * 10));
+      lookAheadY = Math.max(-maxLA, Math.min(maxLA, this.smoothVelY * this.lookAheadFactor * 10));
     }
-
     this.lastPlayerX = player.x;
     this.lastPlayerY = player.y;
 
-    // Calculate target camera position (centered on player + look-ahead)
     const targetX = player.x + lookAheadX - canvasWidth / 2;
     const targetY = player.y + lookAheadY - canvasHeight / 2;
 
-    // Calculate distance to target
     const dx = targetX - this.x;
     const dy = targetY - this.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distSq = dx * dx + dy * dy; // no Math.sqrt needed for deadzone
 
-    // Apply dead zone to prevent micro-jitter
-    if (distance < this.deadZone) {
+    if (distSq < this._deadZoneSq) {
       this.velocityX *= this.damping;
       this.velocityY *= this.damping;
     } else {
-      // Calculate smoothing factor with frame-independence
-      // Using exponential smoothing: factor = 1 - e^(-speed * dt)
-      const smoothFactor = 1 - Math.exp((-this.smoothingSpeed * deltaTime) / 1000);
-
-      // Apply smoothed movement
-      this.velocityX = dx * smoothFactor;
-      this.velocityY = dy * smoothFactor;
+      // Exponential smooth: factor = 1 - e^(-speed * dt/1000)
+      const t = 1 - Math.exp((-this.smoothingSpeed * deltaTime) / 1000);
+      this.velocityX = dx * t;
+      this.velocityY = dy * t;
     }
 
-    // Apply velocity
     this.x += this.velocityX;
     this.y += this.velocityY;
-
-    // Apply screen shake if active
-    this.updateShake(deltaTime);
-    const finalX = this.x + this.shakeOffset.x;
-    const finalY = this.y + this.shakeOffset.y;
-
     this.width = canvasWidth;
     this.height = canvasHeight;
 
-    return { x: finalX, y: finalY };
+    this._updateShake(deltaTime);
+    const camX = this.x + this.shakeOffset.x;
+    const camY = this.y + this.shakeOffset.y;
+    this._invalidateCache(camX, camY);
+
+    return { x: camX, y: camY };
   }
 
-  /**
-   * Instantly recenter camera on player (no easing)
-   * Use this to fix camera bugs or when player gets repositioned
-   */
+  // ─── Recenter ─────────────────────────────────────────────────────────────
+
   recenter(player, canvasWidth, canvasHeight) {
     this.x = player.x - canvasWidth / 2;
     this.y = player.y - canvasHeight / 2;
@@ -138,111 +130,134 @@ class CameraManager {
     this.lastPlayerY = player.y;
     this.width = canvasWidth;
     this.height = canvasHeight;
+    this._invalidateCache(this.x, this.y);
   }
 
+  // ─── Shake ────────────────────────────────────────────────────────────────
+
   /**
-   * Add screen shake effect
-   * @param {number} intensity - Shake intensity in pixels
-   * @param {number} duration - Duration in ms
+   * Trigger screen shake.
+   * @param {number} intensity - pixels
+   * @param {number} duration  - ms
    */
   shake(intensity, duration) {
     this.shakeIntensity = intensity;
-    this.shakeDuration = duration;
-    this.shakeStartTime = performance.now();
+    this.shakeRemaining = duration;
+  }
+
+  /** @private — called inside follow(); decays via deltaTime, no extra perf.now() */
+  _updateShake(deltaTime) {
+    if (this.shakeIntensity <= 0 || this.shakeRemaining <= 0) {
+      this.shakeOffset.x = 0;
+      this.shakeOffset.y = 0;
+      return;
+    }
+    // Linear decay
+    const progress = 1 - this.shakeRemaining / (this.shakeRemaining + deltaTime);
+    const cur = this.shakeIntensity * (1 - progress);
+    this.shakeOffset.x = (Math.random() - 0.5) * 2 * cur;
+    this.shakeOffset.y = (Math.random() - 0.5) * 2 * cur;
+    this.shakeRemaining = Math.max(0, this.shakeRemaining - deltaTime);
+    if (this.shakeRemaining <= 0) {
+      this.shakeIntensity = 0;
+      this.shakeOffset.x = 0;
+      this.shakeOffset.y = 0;
+    }
+  }
+
+  // ─── Viewport / culling ───────────────────────────────────────────────────
+
+  /**
+   * AABB viewport check — no Math.hypot, uses cached cam position.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [margin=100]
+   * @returns {boolean}
+   */
+  isInViewport(x, y, margin = 100) {
+    const cx = this._cacheValid ? this._cachedCamX : this.x + this.shakeOffset.x;
+    const cy = this._cacheValid ? this._cachedCamY : this.y + this.shakeOffset.y;
+    return x + margin >= cx &&
+           x - margin <= cx + this.width &&
+           y + margin >= cy &&
+           y - margin <= cy + this.height;
   }
 
   /**
-   * Update screen shake
-   * @param {number} deltaTime - Time since last frame
+   * Viewport bounds for bulk culling.
+   * @param {number} [margin=0]
    */
-  updateShake(_deltaTime) {
-    if (this.shakeIntensity <= 0 || this.shakeDuration <= 0) {
-      this.shakeOffset = { x: 0, y: 0 };
-      return;
-    }
-
-    const elapsed = performance.now() - this.shakeStartTime;
-    if (elapsed >= this.shakeDuration) {
-      this.shakeIntensity = 0;
-      this.shakeOffset = { x: 0, y: 0 };
-      return;
-    }
-
-    // Decay intensity over time
-    const progress = elapsed / this.shakeDuration;
-    const currentIntensity = this.shakeIntensity * (1 - progress);
-
-    // Random offset with perlin-like smoothing
-    this.shakeOffset = {
-      x: (Math.random() - 0.5) * 2 * currentIntensity,
-      y: (Math.random() - 0.5) * 2 * currentIntensity
+  getViewportBounds(margin = 0) {
+    const cx = this._cachedCamX;
+    const cy = this._cachedCamY;
+    return {
+      left:   cx - margin,
+      right:  cx + this.width + margin,
+      top:    cy - margin,
+      bottom: cy + this.height + margin
     };
   }
+
+  // ─── Zoom + DPR ───────────────────────────────────────────────────────────
+
+  /**
+   * Set zoom level.
+   * @param {number} z - zoom factor (1.0 = normal)
+   */
+  setZoom(z) {
+    this.zoom = Math.max(0.1, z);
+  }
+
+  /**
+   * Effective pixel ratio (DPR × zoom).
+   * Use this as ctx.scale() factor instead of raw devicePixelRatio.
+   */
+  getPixelRatio() {
+    return this._dpr * this.zoom;
+  }
+
+  // ─── Screen-space conversions (cached) ────────────────────────────────────
+
+  /** World → screen pixel (uses cached cam, respects DPR). */
+  worldToScreen(wx, wy) {
+    const dpr = this._dpr;
+    return {
+      x: (wx - this._cachedCamX) * dpr,
+      y: (wy - this._cachedCamY) * dpr
+    };
+  }
+
+  /** Screen pixel → world coordinate. */
+  screenToWorld(sx, sy) {
+    const dpr = this._dpr;
+    return {
+      x: sx / dpr + this._cachedCamX,
+      y: sy / dpr + this._cachedCamY
+    };
+  }
+
+  // ─── Misc helpers ─────────────────────────────────────────────────────────
 
   getPosition() {
-    return {
-      x: this.x + this.shakeOffset.x,
-      y: this.y + this.shakeOffset.y
-    };
+    return { x: this._cachedCamX, y: this._cachedCamY };
   }
 
-  /**
-   * Get raw position without shake
-   */
   getRawPosition() {
     return { x: this.x, y: this.y };
   }
 
-  /**
-   * Set camera smoothing speed
-   * @param {number} speed - Smoothing speed (1-20 recommended, higher = faster)
-   */
   setSmoothingSpeed(speed) {
     this.smoothingSpeed = Math.max(1, Math.min(20, speed));
   }
 
-  /**
-   * Enable/disable look-ahead
-   * @param {boolean} enabled - Whether to enable look-ahead
-   * @param {number} factor - Look-ahead factor (0-1)
-   */
   setLookAhead(enabled, factor = 0.15) {
     this.lookAheadEnabled = enabled;
     this.lookAheadFactor = Math.max(0, Math.min(1, factor));
   }
 
-  /**
-   * Check if entity is visible in viewport with margin
-   * @param {number} x - Entity X position
-   * @param {number} y - Entity Y position
-   * @param {number} margin - Extra margin around viewport
-   * @returns {boolean} True if visible
-   */
-  isInViewport(x, y, margin = 100) {
-    const camX = this.x + this.shakeOffset.x;
-    const camY = this.y + this.shakeOffset.y;
-    return (
-      x + margin >= camX &&
-      x - margin <= camX + this.width &&
-      y + margin >= camY &&
-      y - margin <= camY + this.height
-    );
-  }
-
-  /**
-   * Get viewport bounds for culling
-   * @param {number} margin - Extra margin
-   * @returns {{left: number, right: number, top: number, bottom: number}}
-   */
-  getViewportBounds(margin = 0) {
-    const camX = this.x + this.shakeOffset.x;
-    const camY = this.y + this.shakeOffset.y;
-    return {
-      left: camX - margin,
-      right: camX + this.width + margin,
-      top: camY - margin,
-      bottom: camY + this.height + margin
-    };
+  setDeadZone(px) {
+    this.deadZone = px;
+    this._deadZoneSq = px * px;
   }
 }
 

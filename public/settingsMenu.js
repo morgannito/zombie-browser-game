@@ -187,7 +187,7 @@ class SettingsMenu {
 
     // Show confirmation toast (if ToastManager exists)
     if (typeof ToastManager !== 'undefined') {
-      ToastManager.show({ message: 'Paramètres sauvegardés', type: '✓', duration: 'success' });
+      ToastManager.show({ message: (typeof I18n !== 'undefined' ? I18n.t('settings.saved') : 'Paramètres sauvegardés'), type: '✓', duration: 'success' });
     }
   }
 
@@ -196,9 +196,14 @@ class SettingsMenu {
     this.applySettings();
     this.updateUI();
 
+    // Reset tutorial overlay completion flag
+    if (typeof TutorialOverlay !== 'undefined') {
+      TutorialOverlay.reset();
+    }
+
     // Show confirmation toast
     if (typeof ToastManager !== 'undefined') {
-      ToastManager.show({ message: 'Paramètres réinitialisés', type: '🔄', duration: 'info' });
+      ToastManager.show({ message: (typeof I18n !== 'undefined' ? I18n.t('settings.reset') : 'Paramètres réinitialisés'), type: '🔄', duration: 'info' });
     }
   }
 

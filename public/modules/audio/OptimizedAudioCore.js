@@ -69,6 +69,12 @@ class OptimizedAudioCore {
     this.reverbNode = null;
     this.reverbGain = null;
 
+    // Shared reverb send gain (reused, not spawned per sound)
+    this.reverbSendGain = null;
+
+    // Noise buffer cache (keyed by rounded duration)
+    this.noiseBufferCache = new Map();
+
     // Cleanup interval
     this.cleanupInterval = null;
 
@@ -96,11 +102,47 @@ class OptimizedAudioCore {
       // Start cleanup interval
       this.startCleanupInterval();
 
+      // Suspend context when tab is hidden, resume on visibility
+      this._onVisibility = () => this._handleVisibility();
+      document.addEventListener('visibilitychange', this._onVisibility);
+
       console.log('[OptimizedAudioCore] Initialized with pooling and throttling');
     } catch (e) {
       console.warn('[OptimizedAudioCore] Web Audio API not supported:', e);
       this.enabled = false;
     }
+  }
+
+  /**
+   * Suspend/resume AudioContext on tab visibility change
+   */
+  _handleVisibility() {
+    if (!this.audioContext) {
+ return;
+}
+    if (document.hidden) {
+      this.audioContext.suspend().catch(() => {});
+    } else if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch(() => {});
+    }
+  }
+
+  /**
+   * Get or create a cached noise buffer for given duration
+   */
+  _getNoiseBuffer(duration) {
+    const key = Math.round(duration * 10); // bucket by 100ms
+    if (this.noiseBufferCache.has(key)) {
+      return this.noiseBufferCache.get(key);
+    }
+    const bufferSize = Math.min(this.audioContext.sampleRate * duration, 48000);
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    this.noiseBufferCache.set(key, buffer);
+    return buffer;
   }
 
   /**
@@ -130,6 +172,11 @@ class OptimizedAudioCore {
     this.reverbGain.gain.value = 0.15;
     this.reverbNode.connect(this.reverbGain);
     this.reverbGain.connect(this.masterGain);
+
+    // Shared reverb send — reused for all sounds, gain set per-call
+    this.reverbSendGain = this.audioContext.createGain();
+    this.reverbSendGain.gain.value = 0.15;
+    this.reverbSendGain.connect(this.reverbNode);
   }
 
   /**
@@ -428,12 +475,10 @@ class OptimizedAudioCore {
       oscillator.connect(gainNode);
     }
 
-    // Optional reverb
-    if (useReverb && this.reverbNode) {
-      const reverbSend = this.audioContext.createGain();
-      reverbSend.gain.value = reverbAmount;
-      gainNode.connect(reverbSend);
-      reverbSend.connect(this.reverbNode);
+    // Optional reverb — use shared send gain (no new node per sound)
+    if (useReverb && this.reverbSendGain) {
+      this.reverbSendGain.gain.setValueAtTime(reverbAmount, now);
+      gainNode.connect(this.reverbSendGain);
     }
 
     // Start and stop
@@ -487,13 +532,7 @@ class OptimizedAudioCore {
     }
 
     const now = this.audioContext.currentTime;
-    const bufferSize = Math.min(this.audioContext.sampleRate * duration, 48000);
-    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
-    const data = buffer.getChannelData(0);
-
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
+    const buffer = this._getNoiseBuffer(duration);
 
     const noise = this.audioContext.createBufferSource();
     noise.buffer = buffer;
@@ -603,7 +642,12 @@ class OptimizedAudioCore {
       clearInterval(this.cleanupInterval);
     }
 
+    if (this._onVisibility) {
+      document.removeEventListener('visibilitychange', this._onVisibility);
+    }
+
     this.stopAllSounds();
+    this.noiseBufferCache.clear();
 
     if (this.audioContext) {
       this.audioContext.close();

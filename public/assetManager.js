@@ -78,6 +78,8 @@ class AssetManager {
   loadImage(path, key) {
     return new Promise((resolve, _reject) => {
       const img = new Image();
+      const webpPath = path.replace(/\.png$/, '.webp');
+      const useWebp = webpPath !== path;
 
       img.onload = () => {
         this.images.set(key, img);
@@ -88,13 +90,18 @@ class AssetManager {
       };
 
       img.onerror = () => {
+        if (useWebp && img.src.endsWith('.webp')) {
+          // Fallback PNG si WebP non supporté ou absent
+          img.src = path;
+          return;
+        }
         logger.warn(`Image non disponible: ${path} (utilisation du rendu procedural)`);
         this.loadedAssets++;
         this.updateProgress();
         resolve(null);
       };
 
-      img.src = path;
+      img.src = useWebp ? webpPath : path;
     });
   }
 
@@ -316,6 +323,35 @@ class AssetManager {
     };
 
     return report;
+  }
+
+  /**
+   * Retourne les coordonnées d'un sprite dans l'atlas.
+   * @param {string} name - Nom du sprite (ex: "zombie_normal")
+   * @returns {{ x: number, y: number, w: number, h: number } | null}
+   */
+  getSpriteRect(name) {
+    if (!this._atlasData) {
+return null;
+}
+    return this._atlasData.sprites[name] ?? null;
+  }
+
+  /**
+   * Charge les métadonnées de l'atlas depuis atlas.json.
+   * @returns {Promise<void>}
+   */
+  async loadAtlas() {
+    try {
+      const response = await fetch('assets/atlas.json');
+      if (!response.ok) {
+throw new Error(`HTTP ${response.status}`);
+}
+      this._atlasData = await response.json();
+    } catch (err) {
+      console.warn('[AssetManager] Atlas non disponible:', err.message);
+      this._atlasData = null;
+    }
   }
 }
 

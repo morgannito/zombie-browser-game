@@ -4,14 +4,17 @@
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
-const { distance } = require('../../utilityFunctions');
+const { distanceSquared } = require('../../utilityFunctions');
 const { createParticles } = require('../../lootFunctions');
 const { handlePlayerLevelUp } = require('../../../contexts/player/modules/PlayerProgression');
 
 const { CONFIG } = ConfigManager;
 
+// Magnet interpolation speed (fraction of gap closed per tick at 60fps)
+const MAGNET_LERP = 0.12;
+
 /**
- * Update loot - check expiration and player collection
+ * Update loot - check expiration, magnet attract, and player collection
  */
 function updateLoot(gameState, now, io, entityManager) {
   for (const lootId in gameState.loot) {
@@ -21,6 +24,12 @@ function updateLoot(gameState, now, io, entityManager) {
       delete gameState.loot[lootId];
       continue;
     }
+
+    applyMagnetAttract(loot, gameState);
+
+    if (!gameState.loot[lootId]) {
+continue;
+} // collected during magnet step
 
     checkLootCollection(loot, lootId, gameState, io, entityManager);
   }
@@ -34,12 +43,39 @@ function isLootExpired(loot, now) {
 }
 
 /**
- * Check loot collection by players
+ * Smooth magnet interpolation toward nearest player with goldMagnetRadius
+ */
+function applyMagnetAttract(loot, gameState) {
+  let nearestPlayer = null;
+  let nearestDistSq = Infinity;
+  const baseRadius = CONFIG.PLAYER_SIZE + CONFIG.LOOT_SIZE;
+
+  for (const playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (!player.alive || !player.hasNickname || !player.goldMagnetRadius) {
+continue;
+}
+    const magnetRadius = baseRadius + player.goldMagnetRadius;
+    const distSq = distanceSquared(loot.x, loot.y, player.x, player.y);
+    if (distSq < magnetRadius * magnetRadius && distSq < nearestDistSq) {
+      nearestDistSq = distSq;
+      nearestPlayer = player;
+    }
+  }
+
+  if (!nearestPlayer) {
+return;
+}
+  loot.x += (nearestPlayer.x - loot.x) * MAGNET_LERP;
+  loot.y += (nearestPlayer.y - loot.y) * MAGNET_LERP;
+}
+
+/**
+ * Check loot collection by players using distanceSquared to avoid sqrt
  */
 function checkLootCollection(loot, lootId, gameState, io, entityManager) {
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-
     if (canCollectLoot(player, loot)) {
       collectLoot(player, playerId, loot, lootId, gameState, io, entityManager);
       break;
@@ -48,23 +84,29 @@ function checkLootCollection(loot, lootId, gameState, io, entityManager) {
 }
 
 /**
- * Check if player can collect loot
+ * Check if player can collect loot (distanceSquared — no sqrt)
  */
 function canCollectLoot(player, loot) {
-  const collectRadius = CONFIG.PLAYER_SIZE + CONFIG.LOOT_SIZE + (player.goldMagnetRadius || 0);
+  const r = CONFIG.PLAYER_SIZE + CONFIG.LOOT_SIZE;
+  const rSq = r * r;
   return (
     player.alive &&
     player.hasNickname &&
-    distance(loot.x, loot.y, player.x, player.y) < collectRadius
+    distanceSquared(loot.x, loot.y, player.x, player.y) < rSq
   );
 }
 
 /**
- * Collect loot and update player stats
- * BUG FIX: Added validation for loot values to prevent NaN
+ * Collect loot - atomic delete before applying to prevent double pickup
  */
 function collectLoot(player, playerId, loot, lootId, gameState, io, entityManager) {
-  // BUG FIX: Validate loot values before adding
+  if (!gameState.loot[lootId]) {
+return;
+} // already collected this tick
+
+  // Atomic remove first
+  delete gameState.loot[lootId];
+
   const goldToAdd = typeof loot.gold === 'number' && isFinite(loot.gold) ? loot.gold : 0;
   const xpToAdd = typeof loot.xp === 'number' && isFinite(loot.xp) ? loot.xp : 0;
 
@@ -72,8 +114,6 @@ function collectLoot(player, playerId, loot, lootId, gameState, io, entityManage
   player.xp = (player.xp || 0) + xpToAdd;
 
   createParticles(loot.x, loot.y, '#ffff00', 10, entityManager);
-  delete gameState.loot[lootId];
-
   handlePlayerLevelUp(player, playerId, io);
 }
 

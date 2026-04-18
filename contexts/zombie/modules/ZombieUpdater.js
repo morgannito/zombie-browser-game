@@ -59,6 +59,14 @@ const {
 // Wall-collision resolver moved to ./updater/wallCollision.js for SRP + lint compliance.
 const { resolveWallCollisions } = require('./updater/wallCollision');
 
+// Per-type ability processors (healer/slower/shooter/poison) — SRP extract.
+const {
+  processHealerAbility: _processHealerAbility,
+  processSlowerAbility: _processSlowerAbility,
+  processShooterAbility: _processShooterAbility,
+  processPoisonTrail: _processPoisonTrail
+} = require('./updater/abilities');
+
 // ---------------------------------------------------------------------------
 // PERF helpers
 // ---------------------------------------------------------------------------
@@ -162,12 +170,12 @@ const { updateZombies: _updateZombiesCore } = require('./updater/core');
 
 const ABILITY_HANDLERS = {
   healer: (zombie, zombieId, ctx) =>
-    processHealerAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
-  slower: (zombie, _zombieId, ctx) => processSlowerAbility(zombie, ctx.now, ctx.collisionManager),
+    _processHealerAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
+  slower: (zombie, _zombieId, ctx) => _processSlowerAbility(zombie, ctx.now, ctx.collisionManager),
   shooter: (zombie, zombieId, ctx) =>
-    processShooterAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
+    _processShooterAbility(zombie, zombieId, ctx.now, ctx.collisionManager, ctx.entityManager),
   poison: (zombie, _zombieId, ctx) =>
-    processPoisonTrail(zombie, ctx.now, ctx.gameState, ctx.entityManager),
+    _processPoisonTrail(zombie, ctx.now, ctx.gameState, ctx.entityManager),
   teleporter: (zombie, zombieId, ctx) =>
     updateTeleporterZombie(
       zombie,
@@ -525,7 +533,14 @@ function moveTowardsPlayer(
   const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
 
   if (zombie.type === 'shielded') {
-    zombie.facingAngle = angle;
+    // PERF: recalculate facingAngle only when player moved > 8px since last update
+    const dx = closestPlayer.x - (zombie._shieldPx || 0);
+    const dy = closestPlayer.y - (zombie._shieldPy || 0);
+    if (dx * dx + dy * dy > 64) {
+      zombie.facingAngle = angle;
+      zombie._shieldPx = closestPlayer.x;
+      zombie._shieldPy = closestPlayer.y;
+    }
   }
 
   const effectiveSpeed = calculateEffectiveSpeed(zombie, angle);

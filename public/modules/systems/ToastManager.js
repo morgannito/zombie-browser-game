@@ -10,40 +10,64 @@ class ToastManager {
   constructor() {
     this.container = document.getElementById('toast-container');
     this.toasts = [];
+    this._queue = [];
+    this._rafPending = false;
   }
 
   show(options) {
-    const {
-      title = '',
-      message = '',
-      type = 'info',
-      icon = this.getDefaultIcon(type),
-      duration = 3000
-    } = options || {};
+    this._queue.push(options || {});
+    if (!this._rafPending) {
+      this._rafPending = true;
+      requestAnimationFrame(() => this._flush());
+    }
+    return null;
+  }
 
-    // Create toast element
+  _buildToast(title, message, type, icon) {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `
-      <div class="toast-icon">${icon}</div>
-      <div class="toast-content">
-        ${title ? `<div class="toast-title">${title}</div>` : ''}
-        <div class="toast-message">${message}</div>
-      </div>
-    `;
-
-    // Add to container
-    this.container.appendChild(toast);
-    this.toasts.push(toast);
-
-    // Auto remove after duration
-    if (duration > 0) {
-      setTimeout(() => {
-        this.remove(toast);
-      }, duration);
+    const iconEl = document.createElement('div');
+    iconEl.className = 'toast-icon';
+    iconEl.textContent = icon;
+    const content = document.createElement('div');
+    content.className = 'toast-content';
+    if (title) {
+      const titleEl = document.createElement('div');
+      titleEl.className = 'toast-title';
+      titleEl.textContent = title;
+      content.appendChild(titleEl);
     }
-
+    const msgEl = document.createElement('div');
+    msgEl.className = 'toast-message';
+    msgEl.textContent = message;
+    content.appendChild(msgEl);
+    toast.appendChild(iconEl);
+    toast.appendChild(content);
     return toast;
+  }
+
+  _flush() {
+    this._rafPending = false;
+    if (!this._queue.length) {
+return;
+}
+    const fragment = document.createDocumentFragment();
+    const toInsert = [];
+    for (const options of this._queue) {
+      const { title = '', message = '', type = 'info', duration = 3000 } = options;
+      const icon = options.icon !== undefined ? options.icon : this.getDefaultIcon(type);
+      const toast = this._buildToast(title, message, type, icon);
+      fragment.appendChild(toast);
+      toInsert.push({ toast, duration });
+    }
+    this._queue = [];
+    this.container.appendChild(fragment);
+    for (const { toast, duration } of toInsert) {
+      this.toasts.push(toast);
+      if (duration > 0) {
+setTimeout(() => this.remove(toast), duration);
+}
+    }
   }
 
   remove(toast) {

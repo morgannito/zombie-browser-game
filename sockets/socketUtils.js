@@ -68,6 +68,8 @@ function safeHandler(handlerName, handler) {
       return;
     }
 
+    const isDev = process.env.NODE_ENV === 'development';
+
     try {
       const result = handler.apply(this, args);
 
@@ -77,13 +79,15 @@ function safeHandler(handlerName, handler) {
             handler: handlerName,
             socketId: this.id,
             error: error.message,
-            stack: error.stack,
+            ...(isDev ? { stack: error.stack } : {}),
             argPreview: stringifyArgPreview(args[0])
           });
           this.emit(SOCKET_EVENTS.SERVER.ERROR, {
             message: 'Une erreur est survenue sur le serveur',
-            code: 'INTERNAL_ERROR'
+            code: 'INTERNAL_ERROR',
+            ...(isDev && { details: error.message })
           });
+          this.disconnect(true);
         });
       }
 
@@ -93,15 +97,16 @@ function safeHandler(handlerName, handler) {
         handler: handlerName,
         socketId: this.id,
         error: error.message,
-        stack: error.stack,
+        ...(isDev ? { stack: error.stack } : {}),
         argPreview: args.length > 0 ? stringifyArgPreview(args[0]) : 'no args'
       });
 
       this.emit(SOCKET_EVENTS.SERVER.ERROR, {
         message: 'Une erreur est survenue sur le serveur',
         code: 'INTERNAL_ERROR',
-        ...(process.env.NODE_ENV === 'development' && { details: error.message })
+        ...(isDev && { details: error.message })
       });
+      this.disconnect(true);
     }
   };
 }

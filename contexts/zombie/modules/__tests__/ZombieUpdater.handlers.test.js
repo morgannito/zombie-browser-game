@@ -28,7 +28,7 @@ jest.mock('../../../../game/lootFunctions', () => ({
   createParticles: jest.fn()
 }));
 
-jest.mock('../../../../game/gameLoop', () => ({
+jest.mock('../../../../contexts/player/modules/DeathProgressionHandler', () => ({
   handlePlayerDeathProgression: jest.fn()
 }));
 

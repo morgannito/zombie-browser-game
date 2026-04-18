@@ -14,7 +14,10 @@ const initAdminStatsRoute = require('../transport/http/adminStats');
 const initLeaderboardRoutes = require('../transport/http/leaderboard');
 const initPlayersRoutes = require('../transport/http/players');
 const initClientErrorRoutes = require('../transport/http/clientError');
+const initDashboardRoute = require('../transport/http/dashboard');
 const featuresRoutes = require('../transport/http/features');
+const debugErrorsRoutes = require('../transport/http/debugErrors');
+const debugReplayRoutes = require('../transport/http/debugReplay');
 
 function mountAuthRoutes(app, container, jwtService) {
   const authRoutes = initAuthRoutes(container, jwtService);
@@ -27,18 +30,26 @@ function mountDbRoutes(app, container, requireAuth) {
   const progressionRoutes = require('../transport/http/progression')(container, { requireAuth });
   const achievementRoutes = require('../transport/http/achievements')(container, { requireAuth });
 
+  const dailyChallengesRoutes = require('../transport/http/dailyChallenges')(container, { requireAuth });
+
   app.use('/api/v1/leaderboard', leaderboardRoutes);
   app.use('/api/v1/players', playerRoutes);
   app.use('/api/v1/progression', progressionRoutes);
   app.use('/api/v1/achievements', achievementRoutes);
+  app.use('/api/v1/daily-challenges', dailyChallengesRoutes);
 
   logger.info('Database-dependent routes initialized (v1)');
 }
 
 function mountSystemRoutes(app, deps) {
-  const { metricsCollector, memoryMonitor, dbManager, perfIntegration } = deps;
+  const { metricsCollector, memoryMonitor, dbManager, perfIntegration, gameLoopRef } = deps;
   const metricsRoutes = initMetricsRoutes(metricsCollector);
   app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
+  // Endpoint Prometheus standard (scrape direct sans préfixe API)
+  app.get('/metrics', requireMetricsToken, (req, res) => {
+    res.set('Content-Type', 'text/plain; version=0.0.4');
+    res.send(metricsCollector.getPrometheusMetrics());
+  });
   app.use('/api/v1/features', featuresRoutes);
   // Client error ingestion — unauthenticated (clients need to report even
   // pre-auth crashes) but rate-limited inside the route itself.
@@ -49,8 +60,11 @@ function mountSystemRoutes(app, deps) {
     requireMetricsToken,
     initAdminStatsRoute(metricsCollector, memoryMonitor)
   );
+  app.use('/debug/errors', requireMetricsToken, debugErrorsRoutes);
+  app.use('/debug/replay', requireMetricsToken, debugReplayRoutes);
+  app.use('/dashboard', requireMetricsToken, initDashboardRoute(metricsCollector, deps.perfIntegration));
   // /health stays unauthenticated for LB / k8s liveness probes.
-  app.use('/health', initHealthRoutes(dbManager, metricsCollector, perfIntegration, memoryMonitor));
+  app.use('/health', initHealthRoutes(dbManager, metricsCollector, gameLoopRef));
 }
 
 /**
@@ -59,7 +73,22 @@ function mountSystemRoutes(app, deps) {
  * @param {{container, jwtService, requireAuth, dbAvailable,
  *          metricsCollector, memoryMonitor, dbManager, perfIntegration}} deps
  */
+function mountDocsRoutes(app) {
+  const path = require('path');
+  app.get('/admin', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/admin.html'));
+  });
+  app.get('/docs', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/docs.html'));
+  });
+  app.get('/openapi.yaml', (req, res) => {
+    res.setHeader('Content-Type', 'application/yaml');
+    res.sendFile(path.resolve(__dirname, '../openapi.yaml'));
+  });
+}
+
 function configureRoutes(app, deps) {
+  mountDocsRoutes(app);
   mountAuthRoutes(app, deps.container, deps.jwtService);
   if (deps.dbAvailable) {
     mountDbRoutes(app, deps.container, deps.requireAuth);

@@ -32,6 +32,14 @@ function accumulateSeparation(zombie, other) {
 
 function computeSeparationForce(zombie, zombieId, collisionManager) {
   const radius = zombie.size * 2;
+  // PERF: SpatialGrid early-out before hitting the quadtree (avoids query cost
+  // when zombie is isolated in its cell neighbourhood).
+  if (collisionManager._zombieGrid) {
+    const gridCandidates = collisionManager._zombieGrid.nearby(zombie.x, zombie.y, radius);
+    if (gridCandidates.length <= 1) {
+ return null;
+}
+  }
   const nearby = collisionManager.findZombiesInRadius(zombie.x, zombie.y, radius, zombieId);
   if (nearby.length === 0) {
     return null;

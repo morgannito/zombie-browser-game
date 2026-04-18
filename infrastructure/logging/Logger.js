@@ -114,8 +114,14 @@ function isLevelEnabled(level) {
  * Wrapped logger with level guards
  * Only performs expensive operations if level is enabled
  */
+const errorTracker = require('../metrics/ErrorTracker');
+
 module.exports = {
-  error: (message, meta = {}) => logger.error(message, meta),
+  error: (message, meta = {}) => {
+    const err = meta instanceof Error ? meta : new Error(message);
+    errorTracker.record(err, meta instanceof Error ? {} : meta);
+    logger.error(message, meta);
+  },
   warn: (message, meta = {}) => {
     if (isLevelEnabled('warn')) {
       logger.warn(message, meta);

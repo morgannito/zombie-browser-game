@@ -4,6 +4,7 @@
  */
 
 const { getXPForLevel, generateUpgradeChoices } = require('../../../game/utilityFunctions');
+const { getTelemetryCollector } = require('../../../infrastructure/telemetry/TelemetryCollector');
 
 /**
  * Update player combo on zombie kill
@@ -40,6 +41,7 @@ function updateComboCounter(shooter, now, COMBO_TIMEOUT) {
   shooter.comboTimer = now;
   shooter.kills++;
   shooter.zombiesKilled++;
+  getTelemetryCollector().record('kill');
 
   if (shooter.combo > shooter.highestCombo) {
     shooter.highestCombo = shooter.combo;
@@ -155,6 +157,7 @@ function handlePlayerLevelUp(player, playerId, io) {
       player.pendingUpgradeChoices = [];
     }
     player.pendingUpgradeChoices.push(upgradeChoices.map(u => u.id));
+    getTelemetryCollector().record('level_up');
 
     setInvisibilityForUpgrade(player);
     emitLevelUpEvent(player, playerId, upgradeChoices, milestoneBonus, io);

@@ -1,55 +1,32 @@
 /**
  * METRICS COLLECTOR
- * Collecte des métriques temps réel pour monitoring et observabilité
- * @version 1.0.0
+ * Orchestre HistogramCollector, CounterCollector et PrometheusFormatter
+ * @version 2.0.0
  */
 
 const os = require('os');
 const logger = require('../logging/Logger');
+const HistogramCollector = require('./HistogramCollector');
+const CounterCollector = require('./CounterCollector');
+const PrometheusFormatter = require('./PrometheusFormatter');
 
 class MetricsCollector {
   constructor() {
     this.startTime = Date.now();
 
+    this._histo = new HistogramCollector();
+    this._counters = new CounterCollector();
+    this._formatter = new PrometheusFormatter();
+
     // Compteurs de base
     this.metrics = {
-      players: {
-        current: 0,
-        total: 0,
-        peak: 0
-      },
-      zombies: {
-        current: 0,
-        spawned: 0,
-        killed: 0
-      },
-      powerups: {
-        current: 0,
-        spawned: 0,
-        collected: 0
-      },
-      bullets: {
-        current: 0,
-        fired: 0
-      },
-      performance: {
-        tickRate: 0,
-        actualFPS: 0,
-        targetFPS: 0,
-        avgFrameTime: 0,
-        maxFrameTime: 0
-      },
-      network: {
-        bytesIn: 0,
-        bytesOut: 0,
-        messagesIn: 0,
-        messagesOut: 0
-      },
-      game: {
-        currentWave: 0,
-        highestWave: 0,
-        activeGames: 0
-      },
+      players: { current: 0, total: 0, peak: 0 },
+      zombies: { current: 0, spawned: 0, killed: 0 },
+      powerups: { current: 0, spawned: 0, collected: 0 },
+      bullets: { current: 0, fired: 0 },
+      performance: { tickRate: 0, actualFPS: 0, targetFPS: 0, avgFrameTime: 0, maxFrameTime: 0 },
+      network: { bytesIn: 0, bytesOut: 0, messagesIn: 0, messagesOut: 0 },
+      game: { currentWave: 0, highestWave: 0, activeGames: 0, total_shots: 0, total_hits: 0 },
       anticheat: {
         cheat_attempts_total: {},
         rate_limit_blocks_total: {},
@@ -58,203 +35,156 @@ class MetricsCollector {
       }
     };
 
-    // Historique pour calculs de moyenne
+    // Historique frames
     this.frameTimes = [];
-    this.maxFrameTimeSamples = 60; // Garder 60 derniers frames
-
-    // Sample pour FPS
+    this.maxFrameTimeSamples = 60;
     this.lastFpsSample = Date.now();
     this.frameCount = 0;
 
-    // Histogrammes Prometheus (buckets en ms)
-    this.histograms = {
-      fps: { buckets: [10, 20, 30, 45, 60, 90, 120], counts: {}, sum: 0, count: 0 },
-      latency: { buckets: [1, 5, 10, 25, 50, 100, 250, 500], counts: {}, sum: 0, count: 0 },
-      // emitGameState full duration (ms) — covers filter + clone + delta + emit.
-      broadcast_ms: { buckets: [1, 2, 5, 10, 20, 50, 100], counts: {}, sum: 0, count: 0 },
-      // Total bytes emitted per tick across all sockets.
-      broadcast_bytes: { buckets: [1024, 4096, 16384, 65536, 262144, 1048576], counts: {}, sum: 0, count: 0 },
-      // V8 GC pause durations (ms) via PerformanceObserver.
-      gc_pause_ms: { buckets: [1, 5, 10, 25, 50, 100, 250], counts: {}, sum: 0, count: 0 }
-    };
-    this._initHistogramBuckets();
-    this._installGcObserver();
+    // Error rate tracking
+    this._errorTimestamps = [];
+    this._errorCountsByContext = {};
+    this._ERROR_WINDOW_MS = 60000;
 
-    // Violation tracker per player for auto-disconnect
-    // Structure: Map<socketId, { count: number, windowStart: number }>
-    this.violationTracker = new Map();
-    this.VIOLATION_THRESHOLD = 10;
-    this.VIOLATION_WINDOW_MS = 60000;
+    // Délégation violation tracker
+    this.violationTracker = this._counters.violationTracker;
+    this.VIOLATION_THRESHOLD = this._counters.VIOLATION_THRESHOLD;
+    this.VIOLATION_WINDOW_MS = this._counters.VIOLATION_WINDOW_MS;
   }
 
-  _initHistogramBuckets() {
-    for (const hist of Object.values(this.histograms)) {
-      for (const b of hist.buckets) {
-        hist.counts[b] = 0;
-      }
-      hist.counts['+Inf'] = 0;
-    }
-  }
+  // ── Exposition du sous-objet histograms (compat. reset/tests) ──
+  get histograms() {
+ return this._histo.histograms;
+}
 
-  _recordHistogram(name, value) {
-    const hist = this.histograms[name];
-    if (!hist) {
-      return;
-    }
-    hist.sum += value;
-    hist.count++;
-    for (const b of hist.buckets) {
-      if (value <= b) {
-        hist.counts[b]++;
-      }
-    }
-    hist.counts['+Inf']++;
-  }
-
-  recordFpsSample(fps) {
-    this._recordHistogram('fps', fps);
-  }
-
-  recordLatency(ms) {
-    this._recordHistogram('latency', ms);
-  }
-
+  // ── Histogrammes ──
+  recordFpsSample(fps)        {
+ this._histo.recordFpsSample(fps);
+}
+  recordLatency(ms)           {
+ this._histo.recordLatency(ms);
+}
   recordBroadcastDuration(ms) {
-    this._recordHistogram('broadcast_ms', ms);
-  }
-
+ this._histo.recordBroadcastDuration(ms);
+}
+  recordTickDuration(ms)      {
+ this._histo.recordTickDuration(ms);
+}
   recordBroadcastBytes(bytes) {
-    this._recordHistogram('broadcast_bytes', bytes);
+ this._histo.recordBroadcastBytes(bytes);
+}
+  recordGcPause(ms)           {
+ this._histo.recordGcPause(ms);
+}
+
+  // ── Counters jeu ──
+  incrementShots(count = 1)   {
+ this.metrics.game.total_shots += count;
+}
+  incrementHits(count = 1)    {
+ this.metrics.game.total_hits += count;
+}
+
+  // ── Erreurs ──
+  incrementError(context = 'unknown') {
+    const now = Date.now();
+    this._errorTimestamps.push(now);
+    const cutoff = now - this._ERROR_WINDOW_MS;
+    let i = 0;
+    while (i < this._errorTimestamps.length && this._errorTimestamps[i] < cutoff) {
+i++;
+}
+    if (i > 0) {
+this._errorTimestamps.splice(0, i);
+}
+    this._errorCountsByContext[context] = (this._errorCountsByContext[context] || 0) + 1;
   }
 
-  recordGcPause(ms) {
-    this._recordHistogram('gc_pause_ms', ms);
-  }
-
-  /**
-   * Subscribe to V8 GC events so every major/minor pause is captured in
-   * the gc_pause_ms histogram. Lazy-loaded — PerformanceObserver may not
-   * exist in older Node runtimes; failure is logged but non-fatal.
-   */
-  _installGcObserver() {
-    try {
-      const { PerformanceObserver, constants } = require('perf_hooks');
-      this._gcObserver = new PerformanceObserver(list => {
-        for (const entry of list.getEntries()) {
-          // entry.duration is in ms; guard against negative/NaN defensively.
-          if (Number.isFinite(entry.duration) && entry.duration > 0) {
-            this.recordGcPause(entry.duration);
-          }
-        }
-      });
-      this._gcObserver.observe({ entryTypes: ['gc'], buffered: false });
-      // Keep reference so node doesn't GC the observer itself.
-      this._gcKinds = constants;
-    } catch (e) {
-      logger.warn('[MetricsCollector] GC observer unavailable', { err: e.message });
+  getErrorsPerMinute() {
+    const cutoff = Date.now() - this._ERROR_WINDOW_MS;
+    let count = 0;
+    for (let i = this._errorTimestamps.length - 1; i >= 0; i--) {
+      if (this._errorTimestamps[i] < cutoff) {
+break;
+}
+      count++;
     }
+    return count;
   }
 
-  _prometheusHistogram(metricName, help, hist) {
-    const lines = [];
-    lines.push(`# HELP ${metricName} ${help}`);
-    lines.push(`# TYPE ${metricName} histogram`);
-    for (const b of hist.buckets) {
-      lines.push(`${metricName}_bucket{le="${b}"} ${hist.counts[b]}`);
-    }
-    lines.push(`${metricName}_bucket{le="+Inf"} ${hist.counts['+Inf']}`);
-    lines.push(`${metricName}_sum ${hist.sum}`);
-    lines.push(`${metricName}_count ${hist.count}`);
-    return lines.join('\n');
-  }
-
-  /**
-   * Mettre à jour les métriques de joueurs
-   */
+  // ── Players ──
   updatePlayers(gameState) {
-    const currentPlayers = Object.keys(gameState.players || {}).length;
-
-    this.metrics.players.current = currentPlayers;
-    this.metrics.players.peak = Math.max(this.metrics.players.peak, currentPlayers);
+    const players = gameState.players || {};
+    let cur = 0;
+    for (const _ in players) {
+cur++;
+}
+    this.metrics.players.current = cur;
+    this.metrics.players.peak = Math.max(this.metrics.players.peak, cur);
   }
 
-  /**
-   * Incrémenter le compteur total de joueurs
-   */
   incrementTotalPlayers() {
-    this.metrics.players.total++;
-  }
+ this.metrics.players.total++;
+}
 
-  /**
-   * Mettre à jour les métriques de zombies
-   */
+  // ── Zombies ──
   updateZombies(gameState) {
-    this.metrics.zombies.current = Object.keys(gameState.zombies || {}).length;
+    const zombies = gameState.zombies || {};
+    let count = 0;
+    for (const _ in zombies) {
+count++;
+}
+    this.metrics.zombies.current = count;
   }
 
-  /**
-   * Incrémenter le compteur de zombies spawned
-   */
   incrementZombiesSpawned(count = 1) {
-    this.metrics.zombies.spawned += count;
-  }
+ this.metrics.zombies.spawned += count;
+}
+  incrementZombiesKilled()           {
+ this.metrics.zombies.killed++;
+}
 
-  /**
-   * Incrémenter le compteur de zombies killed
-   */
-  incrementZombiesKilled() {
-    this.metrics.zombies.killed++;
-  }
-
-  /**
-   * Mettre à jour les métriques de power-ups
-   */
+  // ── Power-ups ──
   updatePowerups(gameState) {
-    this.metrics.powerups.current = Object.keys(gameState.powerups || {}).length;
+    const powerups = gameState.powerups || {};
+    let count = 0;
+    for (const _ in powerups) {
+count++;
+}
+    this.metrics.powerups.current = count;
   }
 
-  /**
-   * Incrémenter power-ups spawned
-   */
-  incrementPowerupsSpawned() {
-    this.metrics.powerups.spawned++;
-  }
-
-  /**
-   * Incrémenter power-ups collected
-   */
+  incrementPowerupsSpawned()   {
+ this.metrics.powerups.spawned++;
+}
   incrementPowerupsCollected() {
-    this.metrics.powerups.collected++;
-  }
+ this.metrics.powerups.collected++;
+}
 
-  /**
-   * Mettre à jour les métriques de balles
-   */
+  // ── Bullets ──
   updateBullets(gameState) {
-    this.metrics.bullets.current = Object.keys(gameState.bullets || {}).length;
+    const bullets = gameState.bullets || {};
+    let count = 0;
+    for (const _ in bullets) {
+count++;
+}
+    this.metrics.bullets.current = count;
   }
 
-  /**
-   * Incrémenter balles tirées
-   */
   incrementBulletsFired(count = 1) {
-    this.metrics.bullets.fired += count;
-  }
+ this.metrics.bullets.fired += count;
+}
 
-  /**
-   * Enregistrer le temps d'un frame
-   */
+  // ── Performance ──
   recordFrameTime(frameTime) {
     this.frameTimes.push(frameTime);
     if (this.frameTimes.length > this.maxFrameTimeSamples) {
-      this.frameTimes.shift();
-    }
+this.frameTimes.shift();
+}
 
-    // Calculer FPS réel
     this.frameCount++;
     const now = Date.now();
     const elapsed = now - this.lastFpsSample;
-
     if (elapsed >= 1000) {
       this.metrics.performance.actualFPS = Math.round((this.frameCount * 1000) / elapsed);
       this.recordFpsSample(this.metrics.performance.actualFPS);
@@ -262,22 +192,22 @@ class MetricsCollector {
       this.lastFpsSample = now;
     }
 
-    // Calculer moyennes
-    const sum = this.frameTimes.reduce((a, b) => a + b, 0);
+    let sum = 0; let max = 0;
+    for (let i = 0; i < this.frameTimes.length; i++) {
+      sum += this.frameTimes[i];
+      if (this.frameTimes[i] > max) {
+max = this.frameTimes[i];
+}
+    }
     this.metrics.performance.avgFrameTime = sum / this.frameTimes.length;
-    this.metrics.performance.maxFrameTime = Math.max(...this.frameTimes);
+    this.metrics.performance.maxFrameTime = max;
   }
 
-  /**
-   * Mettre à jour le tick rate cible
-   */
   setTargetFPS(fps) {
-    this.metrics.performance.targetFPS = fps;
-  }
+ this.metrics.performance.targetFPS = fps;
+}
 
-  /**
-   * Mettre à jour les métriques réseau
-   */
+  // ── Réseau ──
   recordNetworkIn(bytes) {
     this.metrics.network.bytesIn += bytes;
     this.metrics.network.messagesIn++;
@@ -288,28 +218,24 @@ class MetricsCollector {
     this.metrics.network.messagesOut++;
   }
 
-  /**
-   * Mettre à jour les métriques de jeu
-   */
+  // ── Jeu ──
   updateGame(gameState) {
     this.metrics.game.currentWave = gameState.wave || 0;
-    this.metrics.game.highestWave = Math.max(
-      this.metrics.game.highestWave,
-      this.metrics.game.currentWave
-    );
-
-    // Active games = nombre de joueurs avec hasNickname
-    const activePlayers = Object.values(gameState.players || {}).filter(p => p.hasNickname).length;
+    this.metrics.game.highestWave = Math.max(this.metrics.game.highestWave, this.metrics.game.currentWave);
+    let activePlayers = 0;
+    const players = gameState.players || {};
+    for (const id in players) {
+      if (players[id].hasNickname) {
+activePlayers++;
+}
+    }
     this.metrics.game.activeGames = activePlayers;
   }
 
-  /**
-   * Récupérer les métriques système
-   */
+  // ── Système ──
   getSystemMetrics() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
-
     return {
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
       processUptime: Math.floor(process.uptime()),
@@ -322,10 +248,7 @@ class MetricsCollector {
         heapTotalMB: (memUsage.heapTotal / 1024 / 1024).toFixed(2),
         rssMB: (memUsage.rss / 1024 / 1024).toFixed(2)
       },
-      cpu: {
-        user: cpuUsage.user,
-        system: cpuUsage.system
-      },
+      cpu: { user: cpuUsage.user, system: cpuUsage.system },
       system: {
         totalMemory: os.totalmem(),
         freeMemory: os.freemem(),
@@ -340,154 +263,51 @@ class MetricsCollector {
     };
   }
 
-  /**
-   * Récupérer toutes les métriques
-   */
   getMetrics() {
-    return {
-      ...this.metrics,
-      system: this.getSystemMetrics()
-    };
+    return { ...this.metrics, system: this.getSystemMetrics() };
   }
 
-  /**
-   * Format Prometheus pour /metrics
-   */
+  // ── Anti-cheat (délégués aux compteurs + sync vers metrics) ──
+  recordCheatAttempt(type) {
+    this._counters.recordCheatAttempt(type);
+    this.metrics.anticheat.cheat_attempts_total = this._counters.anticheat.cheat_attempts_total;
+  }
+
+  recordRateLimitBlock(event) {
+    this._counters.recordRateLimitBlock(event);
+    this.metrics.anticheat.rate_limit_blocks_total = this._counters.anticheat.rate_limit_blocks_total;
+  }
+
+  recordMovementCorrection() {
+    this._counters.recordMovementCorrection();
+    this.metrics.anticheat.movement_corrections_total = this._counters.anticheat.movement_corrections_total;
+  }
+
+  recordViolation(socketId)  {
+ return this._counters.recordViolation(socketId);
+}
+  clearViolations(socketId)  {
+ this._counters.clearViolations(socketId);
+}
+
+  // ── Cleanup ──
+  recordCleanup(stats) {
+    if (!this.metrics.cleanup) {
+      this.metrics.cleanup = { runs_total: 0, players_removed_total: 0, orphaned_total: 0 };
+    }
+    this.metrics.cleanup.runs_total++;
+    this.metrics.cleanup.players_removed_total += (stats && stats.playersRemoved) || 0;
+    this.metrics.cleanup.orphaned_total += (stats && stats.orphaned) || 0;
+  }
+
+  // ── Prometheus ──
   getPrometheusMetrics() {
-    const metrics = this.getMetrics();
-    const lines = [];
-
-    // Players
-    lines.push('# HELP zombie_players_current Current number of connected players');
-    lines.push('# TYPE zombie_players_current gauge');
-    lines.push(`zombie_players_current ${metrics.players.current}`);
-
-    lines.push('# HELP zombie_players_total Total number of players that connected');
-    lines.push('# TYPE zombie_players_total counter');
-    lines.push(`zombie_players_total ${metrics.players.total}`);
-
-    lines.push('# HELP zombie_players_peak Peak number of concurrent players');
-    lines.push('# TYPE zombie_players_peak gauge');
-    lines.push(`zombie_players_peak ${metrics.players.peak}`);
-
-    // Zombies
-    lines.push('# HELP zombie_zombies_current Current number of active zombies');
-    lines.push('# TYPE zombie_zombies_current gauge');
-    lines.push(`zombie_zombies_current ${metrics.zombies.current}`);
-
-    lines.push('# HELP zombie_zombies_spawned Total zombies spawned');
-    lines.push('# TYPE zombie_zombies_spawned counter');
-    lines.push(`zombie_zombies_spawned ${metrics.zombies.spawned}`);
-
-    lines.push('# HELP zombie_zombies_killed Total zombies killed');
-    lines.push('# TYPE zombie_zombies_killed counter');
-    lines.push(`zombie_zombies_killed ${metrics.zombies.killed}`);
-
-    // Performance
-    lines.push('# HELP zombie_fps_actual Actual server FPS');
-    lines.push('# TYPE zombie_fps_actual gauge');
-    lines.push(`zombie_fps_actual ${metrics.performance.actualFPS}`);
-
-    lines.push('# HELP zombie_fps_target Target server FPS');
-    lines.push('# TYPE zombie_fps_target gauge');
-    lines.push(`zombie_fps_target ${metrics.performance.targetFPS}`);
-
-    lines.push('# HELP zombie_frame_time_avg Average frame time in ms');
-    lines.push('# TYPE zombie_frame_time_avg gauge');
-    lines.push(`zombie_frame_time_avg ${metrics.performance.avgFrameTime.toFixed(2)}`);
-
-    lines.push('# HELP zombie_frame_time_max Maximum frame time in ms');
-    lines.push('# TYPE zombie_frame_time_max gauge');
-    lines.push(`zombie_frame_time_max ${metrics.performance.maxFrameTime.toFixed(2)}`);
-
-    // Memory
-    lines.push('# HELP zombie_memory_heap_used Heap memory used in bytes');
-    lines.push('# TYPE zombie_memory_heap_used gauge');
-    lines.push(`zombie_memory_heap_used ${metrics.system.memory.heapUsed}`);
-
-    lines.push('# HELP zombie_memory_rss Resident Set Size in bytes');
-    lines.push('# TYPE zombie_memory_rss gauge');
-    lines.push(`zombie_memory_rss ${metrics.system.memory.rss}`);
-
-    // Game
-    lines.push('# HELP zombie_wave_current Current wave number');
-    lines.push('# TYPE zombie_wave_current gauge');
-    lines.push(`zombie_wave_current ${metrics.game.currentWave}`);
-
-    lines.push('# HELP zombie_wave_highest Highest wave reached');
-    lines.push('# TYPE zombie_wave_highest gauge');
-    lines.push(`zombie_wave_highest ${metrics.game.highestWave}`);
-
-    // Anti-cheat
-    lines.push('# HELP zombie_cheat_attempts_total Total cheat attempts by type');
-    lines.push('# TYPE zombie_cheat_attempts_total counter');
-    Object.entries(metrics.anticheat.cheat_attempts_total).forEach(([type, val]) => {
-      lines.push(`zombie_cheat_attempts_total{type="${type}"} ${val}`);
-    });
-
-    lines.push('# HELP zombie_rate_limit_blocks_total Total rate limit blocks by event');
-    lines.push('# TYPE zombie_rate_limit_blocks_total counter');
-    Object.entries(metrics.anticheat.rate_limit_blocks_total).forEach(([event, val]) => {
-      lines.push(`zombie_rate_limit_blocks_total{event="${event}"} ${val}`);
-    });
-
-    lines.push('# HELP zombie_movement_corrections_total Total server-side position corrections');
-    lines.push('# TYPE zombie_movement_corrections_total counter');
-    lines.push(`zombie_movement_corrections_total ${metrics.anticheat.movement_corrections_total}`);
-
-    lines.push(
-      '# HELP zombie_player_disconnects_total Total auto-disconnects for cheat violations'
-    );
-    lines.push('# TYPE zombie_player_disconnects_total counter');
-    lines.push(`zombie_player_disconnects_total ${metrics.anticheat.player_disconnects_total}`);
-
-    // Uptime
-    lines.push('# HELP zombie_uptime_seconds Server uptime in seconds');
-    lines.push('# TYPE zombie_uptime_seconds counter');
-    lines.push(`zombie_uptime_seconds ${metrics.system.uptime}`);
-
-    // Histogrammes
-    lines.push(
-      this._prometheusHistogram('zombie_fps', 'Server FPS distribution', this.histograms.fps)
-    );
-    lines.push(
-      this._prometheusHistogram(
-        'zombie_request_latency_ms',
-        'HTTP request latency in ms',
-        this.histograms.latency
-      )
-    );
-    lines.push(
-      this._prometheusHistogram(
-        'zombie_broadcast_ms',
-        'emitGameState wall-clock duration (ms)',
-        this.histograms.broadcast_ms
-      )
-    );
-    lines.push(
-      this._prometheusHistogram(
-        'zombie_broadcast_bytes',
-        'Total bytes emitted per tick across all sockets',
-        this.histograms.broadcast_bytes
-      )
-    );
-    lines.push(
-      this._prometheusHistogram(
-        'zombie_gc_pause_ms',
-        'V8 GC pause duration (ms) captured via PerformanceObserver',
-        this.histograms.gc_pause_ms
-      )
-    );
-
-    return lines.join('\n') + '\n';
+    return this._formatter.format(this.getMetrics(), this._histo.histograms);
   }
 
-  /**
-   * Logger périodique des métriques importantes
-   */
+  // ── Logs ──
   logMetrics() {
     const metrics = this.getMetrics();
-
     logger.info('Server metrics', {
       players: metrics.players.current,
       zombies: metrics.zombies.current,
@@ -497,73 +317,7 @@ class MetricsCollector {
     });
   }
 
-  /**
-   * Increment cheat_attempts_total counter by type
-   */
-  recordCheatAttempt(type) {
-    const bucket = this.metrics.anticheat.cheat_attempts_total;
-    bucket[type] = (bucket[type] || 0) + 1;
-  }
-
-  /**
-   * Increment rate_limit_blocks_total counter by event
-   */
-  recordRateLimitBlock(event) {
-    const bucket = this.metrics.anticheat.rate_limit_blocks_total;
-    bucket[event] = (bucket[event] || 0) + 1;
-  }
-
-  /**
-   * Increment movement_corrections_total counter
-   */
-  recordMovementCorrection() {
-    this.metrics.anticheat.movement_corrections_total++;
-  }
-
-  /**
-   * Track heartbeat cleanup (zombie sockets, orphaned game objects).
-   * Called from server.js after each heartbeat sweep.
-   * @param {{playersRemoved?: number, orphaned?: number}} stats
-   */
-  recordCleanup(stats) {
-    if (!this.metrics.cleanup) {
-      this.metrics.cleanup = {
-        runs_total: 0,
-        players_removed_total: 0,
-        orphaned_total: 0
-      };
-    }
-    this.metrics.cleanup.runs_total++;
-    this.metrics.cleanup.players_removed_total += (stats && stats.playersRemoved) || 0;
-    this.metrics.cleanup.orphaned_total += (stats && stats.orphaned) || 0;
-  }
-
-  /**
-   * Track per-player violations. Returns true if threshold exceeded.
-   */
-  recordViolation(socketId) {
-    const now = Date.now();
-    const entry = this.violationTracker.get(socketId);
-
-    if (!entry || now - entry.windowStart > this.VIOLATION_WINDOW_MS) {
-      this.violationTracker.set(socketId, { count: 1, windowStart: now });
-      return false;
-    }
-
-    entry.count++;
-    return entry.count >= this.VIOLATION_THRESHOLD;
-  }
-
-  /**
-   * Remove violation tracking for a player (on disconnect)
-   */
-  clearViolations(socketId) {
-    this.violationTracker.delete(socketId);
-  }
-
-  /**
-   * Reset des compteurs (pour tests)
-   */
+  // ── Reset ──
   reset() {
     this.metrics.players.total = 0;
     this.metrics.zombies.spawned = 0;
@@ -571,6 +325,8 @@ class MetricsCollector {
     this.metrics.powerups.spawned = 0;
     this.metrics.powerups.collected = 0;
     this.metrics.bullets.fired = 0;
+    this.metrics.game.total_shots = 0;
+    this.metrics.game.total_hits = 0;
     this.metrics.network.bytesIn = 0;
     this.metrics.network.bytesOut = 0;
     this.metrics.network.messagesIn = 0;
@@ -579,14 +335,8 @@ class MetricsCollector {
     this.metrics.anticheat.rate_limit_blocks_total = {};
     this.metrics.anticheat.movement_corrections_total = 0;
     this.metrics.anticheat.player_disconnects_total = 0;
-    this.violationTracker.clear();
-    for (const hist of Object.values(this.histograms)) {
-      hist.sum = 0;
-      hist.count = 0;
-      for (const key of Object.keys(hist.counts)) {
-        hist.counts[key] = 0;
-      }
-    }
+    this._counters.reset();
+    this._histo.reset();
   }
 }
 
@@ -596,8 +346,8 @@ let instance = null;
 module.exports = {
   getInstance: () => {
     if (!instance) {
-      instance = new MetricsCollector();
-    }
+instance = new MetricsCollector();
+}
     return instance;
   }
 };

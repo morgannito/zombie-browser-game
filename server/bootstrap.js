@@ -35,9 +35,15 @@ function attachProgression(dbAvailable, container, io, gameState) {
 }
 
 function attachAdminCommands(io, gameState, zombieManager) {
+  const isDebugAllowed =
+    process.env.NODE_ENV !== 'production' || process.env.ADMIN_DEBUG === 'true';
+  if (!isDebugAllowed) {
+    logger.info('Admin commands disabled in production (set ADMIN_DEBUG=true to override)');
+    return;
+  }
   const AdminCommands = require('../game/modules/admin/AdminCommands');
   gameState.adminCommands = new AdminCommands(io, gameState, zombieManager);
-  logger.info('Admin commands initialized (debug mode enabled)');
+  logger.info('Admin commands initialized');
 }
 
 function startPowerupSpawner(deps) {
@@ -53,7 +59,7 @@ function startPowerupSpawner(deps) {
 function makeTickFn(deps) {
   const { gameLoop, gameState, io, metricsCollector, perfIntegration,
     collisionManager, entityManager, zombieManager, networkManager } = deps;
-  return () => {
+  return (overBudget = false) => {
     gameLoop(
       gameState, io, metricsCollector, perfIntegration,
       collisionManager, entityManager, zombieManager, logger
@@ -61,7 +67,8 @@ function makeTickFn(deps) {
     // PERF: Decouple broadcast from sim tick — schedule as setImmediate tail so
     // the tick returns to the event loop first, reducing measured tick duration.
     // Primary fix for "Slow tick detected 25-26ms" warnings.
-    if (perfIntegration.shouldBroadcast()) {
+    // Skip non-critical broadcast when tick exceeded its time budget.
+    if (!overBudget && perfIntegration.shouldBroadcast()) {
       setImmediate(() => networkManager.emitGameState());
     }
   };
@@ -126,9 +133,10 @@ function createBootstrap(deps) {
     const jwtService = new JwtService(logger);
     const requireAuth = jwtService.expressMiddleware();
 
+    const gameLoopRef = { getMetrics: () => null };
     configureRoutes(app, {
       container, jwtService, requireAuth, dbAvailable,
-      metricsCollector, memoryMonitor, dbManager, perfIntegration
+      metricsCollector, memoryMonitor, dbManager, perfIntegration, gameLoopRef
     });
 
     const gameState = initializeGameState();
@@ -149,10 +157,13 @@ function createBootstrap(deps) {
       gameState, roomManager, perfIntegration, metricsCollector, config
     });
 
-    const stopGameLoop = startGameLoop(perfIntegration, makeTickFn({
+    const gameLoopHandle = startGameLoop(perfIntegration, makeTickFn({
       gameLoop, gameState, io, metricsCollector, perfIntegration,
       collisionManager, entityManager, zombieManager, networkManager
     }));
+    const stopGameLoop = gameLoopHandle.stop;
+    const getLoopMetrics = gameLoopHandle.getMetrics;
+    gameLoopRef.getMetrics = getLoopMetrics;
 
     const heartbeat = startHeartbeat({
       gameState, io, networkManager, metricsCollector,
@@ -168,7 +179,7 @@ function createBootstrap(deps) {
     listenAndLog(server, port, allowedOrigins, dbAvailable);
 
     return {
-      dbAvailable, gameState, stopGameLoop,
+      dbAvailable, gameState, stopGameLoop, getLoopMetrics,
       heartbeatTimer: heartbeat.timer, powerupSpawnerTimer
     };
   }

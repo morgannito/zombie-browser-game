@@ -1,0 +1,803 @@
+openapi: 3.1.0
+info:
+  title: Zombie Browser Game API
+  version: 1.0.0
+  description: REST API for zombie browser game — authentication, progression, leaderboard, daily challenges, health and metrics.
+
+servers:
+  - url: /api/v1
+    description: Versioned API prefix
+  - url: /
+    description: Root (health, metrics)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    ProgressionStats:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        accountLevel:
+          type: integer
+        totalXPEarned:
+          type: integer
+        prestigeLevel:
+          type: integer
+        prestigeTokens:
+          type: integer
+        skillPoints:
+          type: integer
+        unlockedSkills:
+          type: array
+          items:
+            type: string
+
+    Skill:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        tier:
+          type: integer
+        cost:
+          type: integer
+        prerequisites:
+          type: array
+          items:
+            type: string
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        playerId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        wave:
+          type: integer
+        level:
+          type: integer
+        kills:
+          type: integer
+        survivalTime:
+          type: integer
+
+    DailyChallenge:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        target:
+          type: integer
+        progress:
+          type: integer
+        completed:
+          type: boolean
+        claimed:
+          type: boolean
+        reward:
+          type: object
+
+paths:
+  # ─── AUTH ────────────────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Create anonymous session
+      description: Always creates a new identity — username is display-only. Each call returns a fresh UUID and JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 2
+                  maxLength: 15
+                  pattern: '^[a-zA-Z0-9 _-]+$'
+                  example: ZombieSlayer
+              required: [username]
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Signed JWT
+                  player:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      username:
+                        type: string
+                      highScore:
+                        type: integer
+                      totalKills:
+                        type: integer
+                      gamesPlayed:
+                        type: integer
+        '400':
+          description: Invalid username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── PROGRESSION ─────────────────────────────────────────────────────────────
+
+  /progression/skills/all:
+    get:
+      tags: [Progression]
+      summary: Get full skill tree
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All skills grouped by category and tier
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      skills:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Skill'
+                      grouped:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          additionalProperties:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Skill'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /progression/leaderboard/level:
+    get:
+      tags: [Progression]
+      summary: Top players by account level
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Ranked list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rank:
+                          type: integer
+                        username:
+                          type: string
+                        accountLevel:
+                          type: integer
+                        totalXP:
+                          type: integer
+                        prestigeLevel:
+                          type: integer
+
+  /progression/leaderboard/prestige:
+    get:
+      tags: [Progression]
+      summary: Top players by prestige level
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Ranked list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rank:
+                          type: integer
+                        username:
+                          type: string
+                        prestigeLevel:
+                          type: integer
+                        prestigeTokens:
+                          type: integer
+                        accountLevel:
+                          type: integer
+
+  /progression/{playerId}:
+    get:
+      tags: [Progression]
+      summary: Get player progression
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Progression data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ProgressionStats'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal error
+
+  /progression/{playerId}/add-xp:
+    post:
+      tags: [Progression]
+      summary: Add XP to account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                xp:
+                  type: integer
+                  minimum: 0
+                  maximum: 100000000
+              required: [xp]
+      responses:
+        '200':
+          description: XP added, returns level-up info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      levelsGained:
+                        type: integer
+                      newLevel:
+                        type: integer
+                      progression:
+                        $ref: '#/components/schemas/ProgressionStats'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal error
+
+  /progression/{playerId}/unlock-skill:
+    post:
+      tags: [Progression]
+      summary: Unlock a skill with skill points
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                skillId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              required: [skillId]
+      responses:
+        '200':
+          description: Skill unlocked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      skill:
+                        $ref: '#/components/schemas/Skill'
+                      progression:
+                        $ref: '#/components/schemas/ProgressionStats'
+        '400':
+          description: Prerequisite not met or insufficient skill points
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Progression or skill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /progression/{playerId}/prestige:
+    post:
+      tags: [Progression]
+      summary: Prestige — reset progress and earn tokens
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prestige successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      tokensEarned:
+                        type: integer
+                      progression:
+                        $ref: '#/components/schemas/ProgressionStats'
+        '400':
+          description: Prestige conditions not met
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Progression not found
+
+  # ─── LEADERBOARD ─────────────────────────────────────────────────────────────
+
+  /leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Get global leaderboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: playerId
+          in: query
+          description: Include rank context for this player
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+                  playerRank:
+                    type: object
+                    nullable: true
+                    description: Rank info for the requested playerId if provided
+    post:
+      tags: [Leaderboard]
+      summary: Submit game score
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                wave:
+                  type: integer
+                  minimum: 0
+                level:
+                  type: integer
+                  minimum: 0
+                kills:
+                  type: integer
+                  minimum: 0
+                survivalTime:
+                  type: integer
+                  minimum: 0
+                  description: Survival time in milliseconds
+              required: [playerId, wave, level, kills, survivalTime]
+      responses:
+        '201':
+          description: Score submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardEntry'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── DAILY CHALLENGES ────────────────────────────────────────────────────────
+
+  /daily-challenges/{playerId}:
+    get:
+      tags: [Daily Challenges]
+      summary: Get today's challenges and progress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Today's challenges with progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailyChallenge'
+        '500':
+          description: Internal error
+
+  /daily-challenges/{playerId}/event:
+    post:
+      tags: [Daily Challenges]
+      summary: Apply a game event to challenge progress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventType:
+                  type: string
+                  enum: [zombies_killed, zombies_killed_type, boss_kill, survival_time]
+                delta:
+                  type: integer
+                  minimum: 1
+                  default: 1
+                meta:
+                  type: object
+                  default: {}
+              required: [eventType]
+      responses:
+        '200':
+          description: Event applied, returns updated challenges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailyChallenge'
+        '500':
+          description: Internal error
+
+  /daily-challenges/{playerId}/claim:
+    post:
+      tags: [Daily Challenges]
+      summary: Claim reward for a completed challenge
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                challengeId:
+                  type: string
+              required: [challengeId]
+      responses:
+        '200':
+          description: Reward claimed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      reward:
+                        type: object
+        '409':
+          description: Already claimed or challenge not completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal error
+
+  # ─── HEALTH ──────────────────────────────────────────────────────────────────
+
+  /health:
+    get:
+      tags: [Ops]
+      summary: Health check with detailed metrics
+      responses:
+        '200':
+          description: Server healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, unhealthy]
+                  timestamp:
+                    type: integer
+                  uptime:
+                    type: number
+                  performanceMode:
+                    type: string
+                  game:
+                    type: object
+                    properties:
+                      players:
+                        type: object
+                        properties:
+                          current: { type: integer }
+                          peak: { type: integer }
+                      zombies:
+                        type: object
+                        properties:
+                          current: { type: integer }
+                          killed: { type: integer }
+                      wave:
+                        type: integer
+                      activeSessions:
+                        type: integer
+                      recoverableSessions:
+                        type: integer
+                  performance:
+                    type: object
+                    properties:
+                      fps:
+                        type: object
+                        properties:
+                          actual: { type: number }
+                          target: { type: number }
+                      frameTime:
+                        type: object
+                        properties:
+                          avg: { type: number }
+                          max: { type: number }
+                  system:
+                    type: object
+                    properties:
+                      memory:
+                        type: object
+                        properties:
+                          heapUsedMB: { type: number }
+                          heapTotalMB: { type: number }
+                          rssMB: { type: number }
+                          systemUsagePercent: { type: number }
+                      cpu:
+                        type: object
+                        properties:
+                          cores: { type: integer }
+                          loadAverage: { type: array, items: { type: number } }
+                  database:
+                    type: string
+                    enum: [healthy, unhealthy]
+        '503':
+          description: Server unhealthy (same schema)
+
+  # ─── METRICS ─────────────────────────────────────────────────────────────────
+
+  /metrics:
+    get:
+      tags: [Ops]
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /metrics/game:
+    get:
+      tags: [Ops]
+      summary: Domain game stats snapshot
+      description: Returns waves, kills, powerup drop rate, player counts. Requires METRICS_TOKEN header.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Game stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  waves:
+                    type: object
+                    properties:
+                      current: { type: integer }
+                      highest: { type: integer }
+                  zombies:
+                    type: object
+                    properties:
+                      killed: { type: integer }
+                      spawned: { type: integer }
+                      current: { type: integer }
+                  powerups:
+                    type: object
+                    properties:
+                      spawned: { type: integer }
+                      collected: { type: integer }
+                      dropRate: { type: number }
+                  players:
+                    type: object
+                    properties:
+                      current: { type: integer }
+                      peak: { type: integer }
+                      total: { type: integer }

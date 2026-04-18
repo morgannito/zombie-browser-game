@@ -1,5 +1,14 @@
 name: CI
 
+# Minimal permissions — no secrets needed for this CI
+permissions:
+  contents: read
+
+# Cancel redundant runs on same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main, master, 'claude/**', 'ralph-**']
@@ -46,4 +55,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+      - run: HUSKY=0 npm ci
       - run: npm audit --audit-level=moderate

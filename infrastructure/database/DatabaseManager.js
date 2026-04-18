@@ -42,6 +42,8 @@ class DatabaseManager {
       this.db.pragma('temp_store = MEMORY');
       this.db.pragma('mmap_size = 134217728'); // 128MB mmap
 
+      // better-sqlite3 est synchrone — pas d'API événementielle, pas de profiling via .on()
+
       logger.info('Database connection established', { path: DB_PATH });
 
       // Create schema
@@ -196,6 +198,26 @@ class DatabaseManager {
 
       CREATE INDEX IF NOT EXISTS idx_player_achievements ON player_achievements(player_id);
       CREATE INDEX IF NOT EXISTS idx_achievement_unlocked ON player_achievements(unlocked_at DESC);
+
+      CREATE TABLE IF NOT EXISTS daily_challenges (
+        challenge_date TEXT NOT NULL PRIMARY KEY,
+        challenges_json TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS player_daily_challenges (
+        player_id TEXT NOT NULL,
+        challenge_date TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        progress INTEGER DEFAULT 0,
+        completed INTEGER DEFAULT 0,
+        completed_at INTEGER,
+        reward_claimed INTEGER DEFAULT 0,
+        claimed_at INTEGER,
+        PRIMARY KEY (player_id, challenge_date, challenge_id),
+        FOREIGN KEY (player_id) REFERENCES players(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_player_daily_challenges ON player_daily_challenges(player_id, challenge_date);
     `);
 
     logger.info('Database schema created');

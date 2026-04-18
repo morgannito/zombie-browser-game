@@ -29,6 +29,39 @@ class CollisionManager {
     // Uniform spatial grid for zombie-only lookups (bullet↔zombie, zombie↔player).
     // Rebuilt once per tick alongside the quadtree. Cell size 100 px (tunable in SpatialGrid.js).
     this._zombieGrid = new SpatialGrid();
+
+    // Preallocated result buffers — reused each call to avoid [] alloc per tick.
+    // Safe because JS is single-threaded and callers iterate before the next call.
+    this._zombieResultBuf = [];
+    this._playerResultBuf = [];
+
+    // Object pool for checkBulletZombieCollisions hit records {id, zombie, distSq}.
+    // _hitPool stores pre-allocated objects; _hitResultBuf is the view returned to callers.
+    this._hitPool = [];
+    this._hitPoolSize = 0;
+    this._hitResultBuf = [];
+  }
+
+  /** Acquire a hit record from the pool (or allocate if exhausted). */
+  _acquireHit(id, zombie, distSq) {
+    let h;
+    if (this._hitPoolSize < this._hitPool.length) {
+      h = this._hitPool[this._hitPoolSize];
+    } else {
+      h = { id: null, zombie: null, distSq: 0 };
+      this._hitPool.push(h);
+    }
+    h.id = id;
+    h.zombie = zombie;
+    h.distSq = distSq;
+    this._hitResultBuf[this._hitPoolSize] = h;
+    this._hitPoolSize++;
+  }
+
+  /** Release all hit records back to the pool. */
+  _releaseHits() {
+    this._hitPoolSize = 0;
+    this._hitResultBuf.length = 0;
   }
 
   _acquireWrapper(x, y, type, entityId) {
@@ -47,42 +80,7 @@ class CollisionManager {
   }
 
   /**
-   * Rebuild the quadtree spatial index with all active entities for efficient collision detection
-   *
-   * @returns {void}
-   *
-   * @description
-   * Reconstructs the quadtree from scratch with current game state entities:
-   * - Creates new Quadtree instance covering full room dimensions
-   * - Inserts all alive players with type='player' tag
-   * - Inserts all zombies with type='zombie' tag (also into the SpatialGrid)
-   * - Each entity gets entityId property for lookup after query
-   * - MUST be called at start of every game loop tick
-   *
-   * Quadtree configuration:
-   * - Bounds: Full room width/height from config
-   * - Capacity: 4 entities per node before subdivision
-   * - Max depth: 8 levels of spatial subdivision
-   * - Optimizes O(n²) collision checks to O(n log n)
-   *
-   * SpatialGrid (zombie-only):
-   * - Cell size: 100 px (tunable constant in SpatialGrid.js)
-   * - O(k) lookup where k = zombies in nearby cells
-   * - Used in checkBulletZombieCollisions for hot-path efficiency
-   *
-   * Performance impact:
-   * - Rebuild cost: O(n log n) where n = entity count
-   * - Query benefit: Reduces collision checks by 60-70%
-   * - Critical for games with 100+ entities
-   * - Rebuilding each frame is faster than incremental updates
-   *
-   * @example
-   *   // In main game loop
-   *   function gameLoop() {
-   *     collisionManager.rebuildQuadtree();
-   *     // Now can efficiently query nearby entities
-   *     const nearby = collisionManager.findZombiesInRadius(x, y, 100);
-   *   }
+   * Reconstruit le quadtree + SpatialGrid depuis l'état courant. À appeler en début de tick.
    */
   rebuildQuadtree() {
     // PERF: reuse root Quadtree instance via clear() instead of allocating a
@@ -137,50 +135,11 @@ class CollisionManager {
   }
 
   /**
-   * Find the closest zombie to a point within maximum range using quadtree optimization
-   *
-   * @param {number} x - Search origin X coordinate
-   * @param {number} y - Search origin Y coordinate
-   * @param {number} [maxRange=500] - Maximum search radius in pixels
-   * @returns {Object|null} Closest zombie entity or null if none in range
-   *
-   * @description
-   * Efficiently finds nearest zombie using spatial partitioning:
-   * - Queries quadtree for all entities within maxRange radius
-   * - Filters results to only zombie-type entities
-   * - Calculates exact distance squared for each candidate
-   * - Returns zombie with minimum distance
-   * - Returns null if no zombies in range or quadtree not built
-   *
-   * Performance optimization:
-   * - Quadtree query eliminates distant zombies immediately
-   * - Only checks zombies within search radius
-   * - Uses distanceSquared to avoid expensive Math.sqrt()
-   * - Critical for auto-turret targeting AI
-   *
-   * Safety checks:
-   * - CORRECTION v1.0.1: Returns null if quadtree not initialized
-   * - Prevents crash when called before rebuildQuadtree()
-   *
-   * Use cases:
-   * - Auto-turret upgrade targeting
-   * - Zombie Summoner AI (avoiding other summoners)
-   * - Zombie Healer finding wounded allies
-   * - Player proximity detection
-   *
-   * @example
-   *   // Auto-turret targeting
-   *   const turretRange = 400;
-   *   const target = collisionManager.findClosestZombie(
-   *     player.x, player.y, turretRange
-   *   );
-   *   if (target) {
-   *     // Fire at target
-   *   }
-   *
-   * @example
-   *   // Short-range detection
-   *   const nearbyZombie = collisionManager.findClosestZombie(x, y, 100);
+   * Retourne le zombie le plus proche dans un rayon donné.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [maxRange=500]
+   * @returns {Object|null}
    */
   findClosestZombie(x, y, maxRange = 500) {
     // CORRECTION: Vérifier que le quadtree existe
@@ -207,59 +166,14 @@ class CollisionManager {
   }
 
   /**
-   * Find the closest player to a point with optional filtering (zombie AI targeting)
-   *
-   * @param {number} x - Search origin X coordinate
-   * @param {number} y - Search origin Y coordinate
-   * @param {number} [maxRange=Infinity] - Maximum search radius in pixels
-   * @param {Object} [options={}] - Filter options for player selection
-   * @param {boolean} [options.ignoreSpawnProtection=false] - If true, targets players with spawn protection
-   * @param {boolean} [options.ignoreInvisible=false] - If true, targets invisible players
-   * @returns {Object|null} Closest player entity or null if none found
-   *
-   * @description
-   * Finds nearest valid player target for zombie AI pathfinding:
-   * - Queries quadtree for players within search radius
-   * - Applies filter options to exclude protected players
-   * - Calculates exact distance squared for valid candidates
-   * - Returns player with minimum distance
-   * - Returns null if no valid targets or quadtree not built
-   *
-   * Filter behavior:
-   * - By default: Skip players with spawnProtection or invisible status
-   * - ignoreSpawnProtection=true: Include spawn-protected players
-   * - ignoreInvisible=true: Include invisible players
-   * - Always skips dead players (alive=false)
-   *
-   * Performance optimization:
-   * - Quadtree eliminates distant players from consideration
-   * - Uses distanceSquared to avoid Math.sqrt() overhead
-   * - When maxRange=Infinity, uses max(roomWidth, roomHeight) for query
-   * - Critical for zombie pathfinding (runs for every zombie)
-   *
-   * Safety checks:
-   * - CORRECTION v1.0.1: Returns null if quadtree not initialized
-   * - Prevents crash during initial game setup
-   *
-   * @example
-   *   // Standard zombie targeting
-   *   const target = collisionManager.findClosestPlayer(
-   *     zombie.x, zombie.y, Infinity
-   *   );
-   *   // Excludes spawn-protected and invisible players
-   *
-   * @example
-   *   // Special zombie that ignores protection
-   *   const target = collisionManager.findClosestPlayer(
-   *     bossZombie.x, bossZombie.y, Infinity,
-   *     { ignoreSpawnProtection: true }
-   *   );
-   *
-   * @example
-   *   // Short-range aggro detection
-   *   const nearPlayer = collisionManager.findClosestPlayer(
-   *     zombie.x, zombie.y, 200
-   *   );
+   * Retourne le joueur vivant le plus proche, en excluant par défaut les protégés/invisibles.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [maxRange=Infinity]
+   * @param {Object} [options={}]
+   * @param {boolean} [options.ignoreSpawnProtection=false]
+   * @param {boolean} [options.ignoreInvisible=false]
+   * @returns {Object|null}
    */
   findClosestPlayer(x, y, maxRange = Infinity, options = {}) {
     // CORRECTION: Vérifier que le quadtree existe
@@ -309,36 +223,13 @@ class CollisionManager {
   }
 
   /**
-   * SSSS OPTIMIZATION: Cached pathfinding for zombie AI (5-10 FPS boost)
-   *
-   * @param {string} zombieId - Zombie ID for cache lookup
-   * @param {number} x - Zombie X position
-   * @param {number} y - Zombie Y position
-   * @param {number} [maxRange=Infinity] - Search radius
-   * @param {Object} [options={}] - Filter options (same as findClosestPlayer)
-   * @returns {Object|null} Closest player or null
-   *
-   * @description
-   * Cached version of findClosestPlayer for zombie AI:
-   * - Checks cache for existing target (valid for 5 frames = ~83ms at 60 FPS)
-   * - Falls back to full findClosestPlayer if cache miss
-   * - Stores {playerId, frame} in cache for reuse
-   * - Cache auto-invalidates every cacheInvalidationInterval frames
-   * - Reduces pathfinding CPU by 80% for zombies with consistent targets
-   *
-   * Performance impact:
-   * - Early game (10-15 zombies): +2-3 FPS
-   * - Late game (45-50 zombies): +5-10 FPS
-   * - Cache hit rate: ~80% (zombies chase same target for multiple frames)
-   *
-   * @example
-   *   // In zombie AI update loop
-   *   const target = collisionManager.findClosestPlayerCached(
-   *     zombie.id, zombie.x, zombie.y
-   *   );
-   *   if (target) {
-   *     moveTowardsPlayer(zombie, target);
-   *   }
+   * Version cachée de findClosestPlayer (cache ~5 frames, +5-10 FPS en late game).
+   * @param {string} zombieId
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [maxRange=Infinity]
+   * @param {Object} [options={}]
+   * @returns {Object|null}
    */
   findClosestPlayerCached(zombieId, x, y, maxRange = Infinity, options = {}) {
     // Include options in cache key to avoid returning stale results when options differ
@@ -371,55 +262,12 @@ class CollisionManager {
   }
 
   /**
-   * Find all zombies within radius of a point (Healer zombie AI and AOE detection)
-   *
-   * @param {number} x - Search center X coordinate
-   * @param {number} y - Search center Y coordinate
-   * @param {number} radius - Search radius in pixels
-   * @param {string|null} [excludeId=null] - Zombie ID to exclude from results (typically self)
-   * @returns {Array<Object>} Array of zombie entities within radius
-   *
-   * @description
-   * Finds all zombies in circular area using quadtree spatial query:
-   * - Queries quadtree for all entities within radius
-   * - Filters to only zombie-type entities
-   * - Excludes zombie with ID matching excludeId parameter
-   * - Returns array of zombie objects (not IDs)
-   * - Returns empty array if quadtree not built or no zombies found
-   *
-   * Performance optimization:
-   * - Quadtree eliminates zombies outside radius immediately
-   * - No distance calculation needed (quadtree handles radius check)
-   * - Much faster than iterating all zombies in game state
-   *
-   * Use cases:
-   * - Healer Zombie: Finding wounded allies to heal within range
-   * - Explosive AOE damage: Finding all zombies hit by explosion
-   * - Buff abilities: Applying group effects to nearby zombies
-   * - Boss abilities: Chain lightning, AOE attacks
-   *
-   * Safety checks:
-   * - CORRECTION v1.0.1: Returns empty array if quadtree not initialized
-   * - Safe to call before rebuildQuadtree()
-   *
-   * @example
-   *   // Healer zombie finding wounded allies
-   *   const healRange = 150;
-   *   const wounded = collisionManager.findZombiesInRadius(
-   *     healerZombie.x,
-   *     healerZombie.y,
-   *     healRange,
-   *     healerZombie.id  // Exclude self
-   *   ).filter(z => z.health < z.maxHealth);
-   *
-   * @example
-   *   // Explosion damage to all nearby zombies
-   *   const affected = collisionManager.findZombiesInRadius(
-   *     explosionX, explosionY, explosionRadius
-   *   );
-   *   affected.forEach(zombie => {
-   *     zombie.health -= explosionDamage;
-   *   });
+   * Retourne tous les zombies dans un rayon, en excluant optionnellement un ID (ex: self).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} radius
+   * @param {string|null} [excludeId=null]
+   * @returns {Array<Object>}
    */
   findZombiesInRadius(x, y, radius, excludeId = null) {
     // CORRECTION: Vérifier que le quadtree existe
@@ -428,7 +276,8 @@ class CollisionManager {
     }
 
     const candidates = this.quadtree.queryRadius(x, y, radius);
-    const zombies = [];
+    const zombies = this._zombieResultBuf;
+    zombies.length = 0;
 
     for (const entity of candidates) {
       if (entity.type === 'zombie' && entity.entityId !== excludeId) {
@@ -440,55 +289,11 @@ class CollisionManager {
   }
 
   /**
-   * Find all alive players within radius of a point (Slowing zombie AI and AOE effects)
-   *
-   * @param {number} x - Search center X coordinate
-   * @param {number} y - Search center Y coordinate
-   * @param {number} radius - Search radius in pixels
-   * @returns {Array<Object>} Array of alive player entities within radius
-   *
-   * @description
-   * Finds all living players in circular area using quadtree spatial query:
-   * - Queries quadtree for all entities within radius
-   * - Filters to only player-type entities
-   * - Filters to only alive players (player.alive === true)
-   * - Returns array of player objects
-   * - Returns empty array if quadtree not built or no players found
-   *
-   * Performance optimization:
-   * - Quadtree eliminates players outside radius immediately
-   * - No distance calculation needed (quadtree handles radius check)
-   * - Critical for zombie AOE abilities that affect multiple players
-   *
-   * Use cases:
-   * - Slowing Zombie: Applying slow debuff to nearby players
-   * - Boss AOE attacks: Damage/effects to all players in range
-   * - Poison cloud: Damaging players inside toxic area
-   * - Zombie collision detection: Finding players to attack
-   *
-   * Safety checks:
-   * - CORRECTION v1.0.1: Returns empty array if quadtree not initialized
-   * - Filters out dead players automatically
-   * - Safe to call at any time
-   *
-   * @example
-   *   // Slowing zombie debuff application
-   *   const slowRadius = 100;
-   *   const nearbyPlayers = collisionManager.findPlayersInRadius(
-   *     slowZombie.x, slowZombie.y, slowRadius
-   *   );
-   *   nearbyPlayers.forEach(player => {
-   *     player.speedMultiplier *= 0.5; // 50% slow
-   *   });
-   *
-   * @example
-   *   // Boss AOE damage pulse
-   *   const affected = collisionManager.findPlayersInRadius(
-   *     boss.x, boss.y, 200
-   *   );
-   *   affected.forEach(player => {
-   *     damagePlayer(player, bossPulseDamage);
-   *   });
+   * Retourne tous les joueurs vivants dans un rayon.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} radius
+   * @returns {Array<Object>}
    */
   findPlayersInRadius(x, y, radius) {
     // CORRECTION: Vérifier que le quadtree existe
@@ -497,7 +302,8 @@ class CollisionManager {
     }
 
     const candidates = this.quadtree.queryRadius(x, y, radius);
-    const players = [];
+    const players = this._playerResultBuf;
+    players.length = 0;
 
     for (const entity of candidates) {
       if (entity.type === 'player') {
@@ -512,57 +318,10 @@ class CollisionManager {
   }
 
   /**
-   * Detect all bullet-zombie collisions using spatial grid broadphase + exact circle check
-   *
-   * @param {Object} bullet - Bullet entity to check collisions for
-   * @param {number} bullet.x - Bullet X coordinate
-   * @param {number} bullet.y - Bullet Y coordinate
-   * @returns {Array<{id: string, zombie: Object}>} Array of hit zombies with ID and zombie object
-   *
-   * @description
-   * Efficiently detects which zombies are hit by a bullet:
-   * - Queries the uniform spatial grid (100 px cells) for zombie candidates (O(k))
-   * - Search radius: maxZombieSize + BULLET_SIZE (maximum collision distance)
-   * - Performs exact circle collision check using MathUtils.circleCollision()
-   * - Returns array of {id, zombie} objects for all hits
-   * - Returns empty array if no hits or quadtree not built
-   *
-   * Performance optimization:
-   * - SpatialGrid broadphase: O(k) where k = zombies in nearby cells (~9 cells checked)
-   * - Only runs precise circle check on candidates, not all zombies
-   * - Critical path: runs for every bullet every frame
-   *
-   * Collision detection:
-   * - Uses circle-circle collision (bullet vs zombie)
-   * - Calculates distance squared to avoid Math.sqrt()
-   * - Checks if distance < (bulletSize + zombieSize)
-   *
-   * Safety checks:
-   * - CORRECTION v1.0.1: Returns empty array if quadtree not initialized
-   * - CORRECTION: Verifies zombie still exists (may have been deleted)
-   * - Prevents crashes from stale references
-   *
-   * Return format:
-   * - Each hit: {id: zombieId, zombie: zombieObject}
-   * - Allows caller to identify which zombie was hit
-   * - Used for piercing bullets (track already-hit zombies)
-   *
-   * @example
-   *   // Check bullet collisions
-   *   const hits = collisionManager.checkBulletZombieCollisions(bullet);
-   *   hits.forEach(({id, zombie}) => {
-   *     zombie.health -= bullet.damage;
-   *     if (zombie.health <= 0) {
-   *       killZombie(id);
-   *     }
-   *   });
-   *
-   * @example
-   *   // Piercing bullet logic
-   *   const hits = collisionManager.checkBulletZombieCollisions(bullet);
-   *   const newHits = hits.filter(({id}) =>
-   *     !bullet.piercedZombies.includes(id)
-   *   );
+   * Détecte les zombies touchés par une balle (broadphase SpatialGrid + circle check exact).
+   * Résultats triés par distance croissante.
+   * @param {Object} bullet - Entité balle avec {x, y}
+   * @returns {Array<{id: string, zombie: Object, distSq: number}>}
    */
   checkBulletZombieCollisions(bullet) {
     // CORRECTION: Vérifier que le quadtree existe
@@ -578,13 +337,15 @@ class CollisionManager {
     // For non-boss zombies this over-queries slightly but correctness is preserved.
     // TODO: track gameState.maxZombieSize dynamically to tighten this radius.
     const maxZombieSize = this.gameState.maxZombieSize || 120;
+    // BULLET_HIT_TOLERANCE=8 accounts for network lag; must be included in broadphase
+    const hitTolerance = this.config.BULLET_HIT_TOLERANCE || 8;
     const candidates = this._zombieGrid.nearby(
       bullet.x,
       bullet.y,
-      maxZombieSize + this.config.BULLET_SIZE
+      maxZombieSize + this.config.BULLET_SIZE + hitTolerance
     );
 
-    const hitZombies = [];
+    this._releaseHits();
 
     for (const entity of candidates) {
       const zombie = this.gameState.zombies[entity.entityId];
@@ -607,55 +368,27 @@ class CollisionManager {
           zombieSize
         )
       ) {
-        hitZombies.push({ id: entity.entityId, zombie });
+        const distSq = MathUtils.distanceSquared(bullet.x, bullet.y, zombie.x, zombie.y);
+        this._acquireHit(entity.entityId, zombie, distSq);
       }
+    }
+
+    // Return the result buffer (same array ref each call, populated via _acquireHit).
+    const hitZombies = this._hitResultBuf;
+
+    // Sort by distance so the closest zombie is processed first (avoids skipping near hits)
+    if (hitZombies.length > 1) {
+      hitZombies.sort((a, b) => a.distSq - b.distSq);
     }
 
     return hitZombies;
   }
 
   /**
-   * Check if a point is outside the playable room boundaries
-   *
-   * @param {number} x - X coordinate to check
-   * @param {number} y - Y coordinate to check
-   * @returns {boolean} True if point is outside walls, false if inside valid area
-   *
-   * @description
-   * Tests whether a coordinate is out of bounds (inside walls):
-   * - Checks against room dimensions from config
-   * - Accounts for wall thickness on all four sides
-   * - Returns true if point is inside any wall
-   * - Used for bullet cleanup and entity boundary enforcement
-   *
-   * Boundary calculation:
-   * - Left wall: x < WALL_THICKNESS
-   * - Right wall: x > ROOM_WIDTH - WALL_THICKNESS
-   * - Top wall: y < WALL_THICKNESS
-   * - Bottom wall: y > ROOM_HEIGHT - WALL_THICKNESS
-   *
-   * Use cases:
-   * - Bullet despawn: Remove bullets that hit walls
-   * - Entity validation: Prevent spawning inside walls
-   * - Pathfinding: Boundary checking for AI movement
-   * - Player movement: Wall collision detection
-   *
-   * Performance:
-   * - Simple arithmetic comparisons (very fast)
-   * - Safe to call frequently in game loop
-   * - No object allocations
-   *
-   * @example
-   *   // Cleanup bullets outside bounds
-   *   if (collisionManager.isOutOfBounds(bullet.x, bullet.y)) {
-   *     entityManager.destroyBullet(bullet.id);
-   *   }
-   *
-   * @example
-   *   // Validate spawn position
-   *   if (!collisionManager.isOutOfBounds(spawnX, spawnY)) {
-   *     spawnZombie(spawnX, spawnY);
-   *   }
+   * Retourne true si le point est dans un mur (hors zone jouable).
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
    */
   isOutOfBounds(x, y) {
     const wallThickness = this.config.WALL_THICKNESS;
@@ -668,47 +401,8 @@ class CollisionManager {
   }
 
   /**
-   * Get diagnostic statistics about the quadtree spatial index
-   *
-   * @returns {Object} Quadtree statistics object
-   * @returns {number} returns.size - Total number of entities in quadtree (0 if not built)
-   * @returns {Object|null} returns.bounds - Quadtree boundary rectangle or null
-   * @returns {number} returns.bounds.x - Boundary X coordinate
-   * @returns {number} returns.bounds.y - Boundary Y coordinate
-   * @returns {number} returns.bounds.width - Boundary width
-   * @returns {number} returns.bounds.height - Boundary height
-   *
-   * @description
-   * Retrieves diagnostic information about the quadtree structure:
-   * - size: Total entities indexed (players + zombies)
-   * - bounds: Spatial coverage area (full room dimensions)
-   * - Returns safe defaults if quadtree not initialized
-   *
-   * Use cases:
-   * - Performance monitoring and debugging
-   * - Verifying quadtree is being rebuilt correctly
-   * - Server admin dashboard
-   * - Diagnostic logging
-   *
-   * Expected values:
-   * - size: Should equal playerCount + zombieCount
-   * - bounds: Should match ROOM_WIDTH × ROOM_HEIGHT
-   *
-   * Performance impact:
-   * - Minimal: just reads quadtree properties
-   * - Safe to call for monitoring
-   *
-   * @example
-   *   // Monitor quadtree health
-   *   const stats = collisionManager.getQuadtreeStats();
-   *   console.log(`Quadtree contains ${stats.size} entities`);
-   *   console.log(`Coverage: ${stats.bounds.width}×${stats.bounds.height}`);
-   *
-   * @example
-   *   // Debug quadtree rebuild
-   *   collisionManager.rebuildQuadtree();
-   *   const stats = collisionManager.getQuadtreeStats();
-   *   console.assert(stats.size > 0, 'Quadtree should contain entities');
+   * Retourne les stats de diagnostic du quadtree ({size, bounds}).
+   * @returns {{size: number, bounds: Object|null}}
    */
   getQuadtreeStats() {
     return {

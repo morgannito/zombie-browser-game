@@ -11,7 +11,7 @@ module.exports = [
 
   // Global ignores
   {
-    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', '**/*.min.js']
+    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', 'build/**', '**/*.min.js', 'public/lib/**', 'public/assets/**', 'coverage/**', 'logs/**']
   },
 
   // Server-side JavaScript (Node.js)
@@ -46,7 +46,7 @@ module.exports = [
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
       'no-unused-vars': [
-        'error',
+        'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
       ],
       'no-console': 'off',

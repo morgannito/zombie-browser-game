@@ -241,3 +241,87 @@ describe('Container.initialize', () => {
     expect(db).toBeDefined();
   });
 });
+
+describe('Container.lifecycle', () => {
+  test('test_singleton_resolvedTwice_returnsSameInstance', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    container.initialize();
+
+    const a = container.resolve('createPlayerUseCase');
+    const b = container.resolve('createPlayerUseCase');
+
+    expect(a).toBe(b);
+  });
+
+  test('test_transient_resolvedTwice_returnsDifferentInstances', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    let n = 0;
+    container.register('transientThing', () => ({ id: ++n }), 'transient');
+
+    const a = container.resolve('transientThing');
+    const b = container.resolve('transientThing');
+
+    expect(a).not.toBe(b);
+  });
+
+  test('test_lazy_notInitialized_beforeFirstResolve', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    const factory = jest.fn().mockReturnValue({ _type: 'lazy' });
+    container.register('lazyDep', factory);
+
+    expect(factory).not.toHaveBeenCalled();
+    container.resolve('lazyDep');
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Container.circularDependency', () => {
+  test('test_resolve_circularDep_throwsError', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    container.register('circA', () => container.resolve('circB'));
+    container.register('circB', () => container.resolve('circA'));
+
+    expect(() => container.resolve('circA')).toThrow(/[Cc]ircular/);
+  });
+});
+
+describe('Container.override', () => {
+  test('test_override_replacesRegistration', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    container.initialize();
+    const mock = { _type: 'mockService' };
+    container.override('accountProgressionService', mock);
+
+    expect(container.get('accountProgressionService')).toBe(mock);
+  });
+});
+
+describe('Container.auditOrphans', () => {
+  test('test_auditOrphans_afterNoResolve_returnsAllRegistered', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    container.initialize();
+
+    const orphans = container.auditOrphans();
+
+    // At least the session use-cases are registered but not resolved yet
+    expect(orphans).toContain('recoverSessionUseCase');
+    expect(orphans).toContain('disconnectSessionUseCase');
+  });
+
+  test('test_auditOrphans_afterResolve_removesAccessed', () => {
+    const { getInstance } = getContainerModule();
+    const container = getInstance();
+    container.initialize();
+    container.get('createPlayerUseCase');
+
+    const orphans = container.auditOrphans();
+
+    expect(orphans).not.toContain('createPlayerUseCase');
+  });
+});

@@ -52,7 +52,9 @@ function updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityM
 
     // Spawner plusieurs zombies autour du boss (avec limite performance)
     for (let i = 0; i < bossType.spawnCount; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
+      let zombieCount = 0; for (const _ in gameState.zombies) {
+zombieCount++;
+}
       if (perfIntegration.canSpawnZombie(zombieCount) && zombieManager.spawnSingleZombie()) {
         createParticles(zombie.x, zombie.y, bossType.color, 15, entityManager);
       }
@@ -241,7 +243,9 @@ function updateBossRoi(
 
     // Invoquer 5 zombies normaux (avec limite performance)
     for (let i = 0; i < 5; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
+      let zombieCount = 0; for (const _ in gameState.zombies) {
+zombieCount++;
+}
       if (perfIntegration.canSpawnZombie(zombieCount)) {
         zombieManager.spawnSingleZombie();
       }
@@ -410,7 +414,9 @@ function updateBossOmega(
   ) {
     zombie.lastSummon = now;
     for (let i = 0; i < 8; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) zombieCount++;
+      let zombieCount = 0; for (const _ in gameState.zombies) {
+zombieCount++;
+}
       if (perfIntegration.canSpawnZombie(zombieCount)) {
         zombieManager.spawnSingleZombie();
       }

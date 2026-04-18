@@ -1,5 +1,7 @@
 # Zombie Multiplayer Game
 
+[![CI](https://github.com/morgannito/zombie-browser-game/actions/workflows/ci.yml/badge.svg)](https://github.com/morgannito/zombie-browser-game/actions/workflows/ci.yml)
+
 Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression permanente.
 
 **Stack:** Node.js, Express, Socket.IO, SQLite, Canvas HTML5, Clean Architecture
@@ -45,213 +47,27 @@ Le projet suit une Clean Architecture avec separation stricte des couches. Les d
 
 ```
 zombie-multiplayer-game/
-├── server.js                # Point d'entree Express + Socket.IO
-├── config/                  # Variables d'environnement, rate limits
-├── middleware/               # Helmet, CORS, rate limiting, error handlers
-├── routes/                  # API REST (auth, health, leaderboard, players, etc.)
-├── sockets/                 # Events WebSocket (move, shoot, progression)
+├── server.js          # Express + Socket.IO
 ├── lib/
-│   ├── domain/              # Coeur metier - zero dependances externes
-│   │   ├── entities/        # Player, GameSession, Achievement, AccountProgression
-│   │   ├── repositories/    # Interfaces (IPlayerRepository, ISessionRepository, etc.)
-│   │   └── errors/          # DomainErrors (PlayerNotFound, InvalidInput, etc.)
-│   ├── application/         # Orchestration
-│   │   ├── Container.js     # Injection de dependances (singleton)
-│   │   ├── use-cases/       # 10 use cases (CreatePlayer, BuyUpgrade, SubmitScore...)
-│   │   └── *Service.js      # AccountProgressionService, AchievementService
-│   ├── infrastructure/      # Implementations techniques
-│   │   ├── repositories/    # 6 repos SQLite (prepared statements)
-│   │   ├── auth/            # JwtService
-│   │   ├── validation/      # Schemas Joi
-│   │   ├── Logger.js        # Winston (fichiers rotatifs en prod)
-│   │   └── MetricsCollector.js
-│   ├── database/
-│   │   └── DatabaseManager.js # SQLite WAL, migrations, backup
-│   └── server/              # Managers de jeu
-│       ├── ConfigManager.js       # Config armes, zombies, powerups, shop
-│       ├── EntityManager.js       # Object pooling (bullets, particles)
-│       ├── CollisionManager.js    # Broad-phase + narrow-phase (Quadtree)
-│       ├── NetworkManager.js      # Delta compression, batching, RTT
-│       ├── PlayerManager.js       # Etat joueurs
-│       ├── RoomManager.js         # Generation procedurale de salles
-│       ├── ZombieManager.js       # Spawn, difficulte, elites
-│       └── ...                    # RunMutator, Performance, BinaryProtocol
-├── game/                    # Logique de jeu serveur
-│   ├── gameLoop.js          # Boucle principale (60 FPS adaptatif)
-│   ├── gameState.js         # Etat global (players, zombies, bullets, wave...)
-│   ├── gameConstants.js     # Constantes gameplay
-│   └── modules/             # Sous-systemes modulaires
-│       ├── zombie/          # ZombieUpdater, BossUpdater, SpawnManager, Effects
-│       ├── bullet/          # BulletUpdater, CollisionHandler, BulletEffects
-│       ├── wave/            # WaveManager
-│       ├── loot/            # LootUpdater, PowerupUpdater
-│       ├── player/          # PlayerUpdater, PlayerProgression, PlayerEffects, AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler
-│       ├── hazards/         # HazardManager
-│       └── admin/           # AdminCommands
-├── public/                  # Client (Canvas HTML5)
-│   ├── index.html           # 81 scripts charges en ordre
-│   ├── style.css            # CSS variables, responsive
-│   ├── modules/
-│   │   ├── core/            # GameEngine, Constants, SessionManager
-│   │   ├── managers/        # GameState, Input, UI, Camera, Audio, Mobile
-│   │   ├── systems/         # Network, Combo, Leaderboard, Toast
-│   │   ├── game/            # Renderers, PlayerController
-│   │   ├── rendering/       # FrustumCuller
-│   │   ├── environment/     # Weather, DayNight, Lighting, Parallax
-│   │   ├── entities/        # DestructibleObstacles, Props
-│   │   ├── audio/           # OptimizedAudioCore, SoundEffects, Ambient
-│   │   └── utils/           # initHelpers
-│   └── *.js                 # Systemes standalone (achievements, gems, skins, etc.)
-├── assets/                  # Assets graphiques (manifest.json)
-├── database/                # Schema SQL, migrations, seed
-├── __tests__/               # Tests Jest (unit: domain, application, game, lib)
-├── Dockerfile               # Node 20-alpine
-├── docker-compose.yml
-├── fly.toml                 # Fly.io (CDG Paris)
-├── railway.json             # Railway
-└── render.yaml              # Render
+│   ├── domain/        # Entites, repositories (interfaces), DomainErrors
+│   ├── application/   # Container DI, 10 use-cases, services
+│   ├── infrastructure/# SQLite repos, JwtService, Joi, Winston, Metrics
+│   ├── database/      # DatabaseManager (WAL, migrations, backup)
+│   └── server/        # Managers: Entity, Collision(Quadtree), Network, Room, Zombie
+├── game/              # gameLoop (60 FPS), gameState, modules/ (zombie/bullet/wave/player)
+├── public/            # Canvas HTML5 — modules/core|managers|systems|game|rendering
+├── assets/            # manifest.json + PNG/SVG par categorie
+└── __tests__/         # Jest (domain, application, game, lib)
 ```
 
-## Stack technique
+## Debug
 
-| Composant | Technologie |
-|-----------|------------|
-| Serveur | Node.js + Express |
-| Temps reel | Socket.IO (WebSockets) |
-| Base de donnees | SQLite (better-sqlite3, WAL mode) |
-| Rendu client | Canvas HTML5 2D |
-| Authentification | JWT (jsonwebtoken) |
-| Validation | Joi |
-| Logging | Winston |
-| Serialisation | MessagePack (@msgpack/msgpack) |
-| Securite | Helmet, express-rate-limit |
-| Tests | Jest |
-| Lint | ESLint + Prettier |
-| CI/CD | GitHub Actions, Husky (pre-commit) |
+```bash
+# Overlay perf client (FPS, latence, entites) — appuyer sur F3 en jeu
 
-## Systeme d'assets
-
-Les assets sont declares dans `assets/manifest.json` et organises par categorie.
-
+# Mode debug serveur (logs verbeux + metriques etendues)
+ADMIN_DEBUG=true npm run dev
 ```
-assets/
-├── manifest.json            # Registre central de tous les assets
-├── backgrounds/             # Fonds de biomes (PNG)
-│   ├── bg_city.png
-│   ├── bg_forest.png
-│   ├── bg_lab.png
-│   ├── bg_cemetery.png
-│   └── bg_wasteland.png
-├── icons/                   # Icones UI et armes (SVG, 44 fichiers)
-│   ├── pistol.svg, shotgun.svg, rifle.svg, sniper.svg...
-│   ├── zombie-normal.svg, zombie-fast.svg, zombie-tank.svg, zombie-boss.svg
-│   └── trophy.svg, gem.svg, coin.svg, shield.svg, star.svg...
-├── sprites/
-│   ├── effects/             # Effets visuels (PNG)
-│   │   ├── explosion_sheet.png, muzzle_flash.png
-│   │   ├── blood_splatter.png, bullet_trail.png
-│   │   └── poison_cloud.png, ice_effect.png, fire_effect.png
-│   ├── items/               # Loot et powerups (PNG)
-│   │   ├── coin_gold.png, coin_gem.png
-│   │   ├── health_potion.png, ammo_crate.png
-│   │   └── powerup_speed.png, powerup_damage.png, powerup_shield.png...
-│   ├── players/             # Sprites joueur (PNG)
-│   │   ├── player_default.png
-│   │   └── player_damaged.png
-│   └── zombies/             # Sprites zombies (PNG, 15 types)
-│       ├── zombie_normal.png, zombie_fast.png, zombie_tank.png
-│       ├── zombie_explosive.png, zombie_healer.png, zombie_poison.png
-│       ├── zombie_boss.png, zombie_elite.png
-│       └── ...
-└── tiles/                   # Tuiles de sol et murs (PNG, 10 fichiers)
-    ├── floor_concrete.png, floor_dirt.png, floor_metal.png...
-    └── wall_brick.png, wall_metal.png, wall_damaged.png...
-```
-
-Le `manifest.json` mappe chaque asset a son chemin URL pour un chargement centralise par l'`AssetManager` client.
-
-## Systeme de rendu (Client)
-
-Le rendu est decompose en modules specialises dans `public/modules/game/` et `public/modules/rendering/`.
-
-| Renderer | Responsabilite |
-|----------|---------------|
-| `Renderer.js` | Orchestrateur principal, boucle de rendu Canvas 2D |
-| `EntityRenderer.js` | Rendu des joueurs, zombies, bullets, loot, powerups |
-| `BackgroundRenderer.js` | Fond de biome, grille de sol, tuiles |
-| `EffectsRenderer.js` | Particules, explosions, trainées, effets visuels |
-| `UIRenderer.js` | HUD (vie, score, vague, arme), barres de vie, labels |
-| `MinimapRenderer.js` | Mini-carte temps reel avec positions des entites |
-| `FrustumCuller.js` | Culling des entites hors champ camera (-60 a -80% entites rendues) |
-
-Modules environnementaux complementaires :
-
-| Module | Responsabilite |
-|--------|---------------|
-| `WeatherSystem.js` | Pluie, neige, brouillard dynamiques |
-| `DayNightCycle.js` | Cycle jour/nuit avec eclairage progressif |
-| `LightingSystem.js` | Eclairage dynamique, ombres |
-| `ParallaxBackground.js` | Parallaxe multi-couches pour la profondeur |
-| `EnvironmentalParticles.js` | Particules ambiantes (feuilles, cendres, poussieres) |
-
-## Systeme de vagues et boss
-
-Le jeu utilise un systeme de salles rogue-like avec vagues progressives.
-
-**Progression :** 3 salles par run, generation procedurale, permadeath.
-
-- Chaque salle contient des vagues de zombies avec spawn progressif
-- Un boss apparait apres les zombies reguliers de chaque salle
-- La porte vers la salle suivante s'ouvre apres la mort du boss
-- Difficulte progressive : plus de zombies, types varies, stats augmentees
-- Cap de difficulte a la vague 130
-
-**Types de zombies (100+) :**
-
-| Categorie | Types |
-|-----------|-------|
-| Basiques | Normal, Rapide, Tank |
-| Speciaux | Explosif, Soigneur, Ralentisseur, Poison, Shooter, Teleporter, Summoner, Shielded, Berserker |
-| Elites | 10 variantes avec stats augmentees |
-| Boss | 5 boss avec capacites uniques (charge, AOE, invocations) |
-
-Le `WaveManager` (serveur) orchestre le spawn via le `ZombieSpawnManager`, tandis que le `BossUpdater` gere l'IA et les capacites speciales des boss.
-
-## Systeme d'armes et upgrades
-
-### Armes (12+)
-
-| Arme | Degats | Cadence | Particularite |
-|------|--------|---------|--------------|
-| Pistolet | 40 | 180ms | Arme de base, precis |
-| Shotgun | 25x5 | 600ms | 5 projectiles, dispersion |
-| Mitraillette (SMG) | 30 | 80ms | Cadence elevee |
-| Rifle | - | - | Polyvalent |
-| Sniper | - | - | Degats eleves, cadence lente |
-| Rocket Launcher | - | - | Degats AOE explosifs |
-| Minigun | - | - | Cadence extreme |
-| Flamethrower | - | - | Degats continus, cone |
-| Laser | - | - | Tir instantane |
-
-### Upgrades de level-up (pendant le run)
-
-A chaque montee de niveau, choix de 1 amelioration parmi 3 :
-
-- **Communes (60%)** : PV max, degats, vitesse, cadence, collecte, soin
-- **Rares (30%)** : Regeneration, balles percantes, vol de vie, critique, esquive, epines
-- **Legendaires (10%)** : Munitions explosives, tir multiple
-
-### Upgrades permanents (shop entre les salles)
-
-Achetes avec l'or et conserves apres la mort : vie max, degats, vitesse, cadence de tir.
-
-### Meta-progression
-
-- Arbre de competences permanent (`metaProgression.js`)
-- Systeme de prestige (`AccountProgressionService`)
-- Succes et deblocages (`achievementSystem.js`, `unlockSystem.js`)
-- Synergies armes/upgrades (`synergySystem.js`)
-- Defis quotidiens, contrats hebdomadaires, missions
 
 ## API REST
 
@@ -279,41 +95,12 @@ Rate limit : 100 req/15min par IP. Events socket rate-limited individuellement.
 
 Session recovery : 5min apres deconnexion. Rate limiting par event par socket.
 
-## Base de donnees
-
-SQLite avec WAL mode, prepared statements, 10MB cache.
-
-**Tables runtime :** `players`, `sessions`, `permanent_upgrades`, `leaderboard`, `account_progression`, `skill_tree`, `achievements`, `player_achievements`
-
-Migrations automatiques au demarrage. Backup/vacuum/analyze via DatabaseManager.
-
-## Optimisations Performance
-
-| Optimisation | Impact |
-|-------------|--------|
-| Object Pooling (bullets, particles) | -50-60% GC |
-| Delta Compression reseau | -80-90% bande passante |
-| Frustum Culling client | -60-80% entites rendues |
-| Quadtree collision | O(n log n) vs O(n^2) |
-| SQLite WAL + prepared statements | 100x concurrence, 10x queries |
-| Adaptive FPS serveur | Scale selon charge |
-| MessagePack serialisation | Paquets plus compacts que JSON |
-
-## Securite
-
-- Helmet.js (CSP, XSS, clickjacking)
-- Rate limiting par IP et par event socket
-- CORS configurable par environnement
-- JWT authentification
-- Body size limit 10KB
-- Prepared statements (zero SQL injection)
-- Sanitization des donnees joueur avant broadcast
-
 ## Scripts NPM
 
 ```bash
 npm start              # Production (node server.js)
 npm run dev            # Dev avec nodemon (hot reload)
+
 npm test               # Tests Jest + coverage
 npm run test:unit      # Tests unitaires uniquement
 npm run lint           # ESLint
@@ -324,80 +111,114 @@ npm run db:rollback    # Rollback migration
 npm run db:status      # Statut des migrations
 npm run db:backup      # Backup horodate de la base (voir section Database operations)
 npm run deploy:server  # Serveur webhook CI/CD
+
+npm run test:e2e       # Smoke tests E2E Playwright (headless Chromium)
 ```
 
-## Database operations
+## Smoke tests E2E
 
-### Migrations
+Fichier : `e2e/smoke-canvas.spec.js`
+
+Vérifie au démarrage :
+- `GET /` → HTTP 200 + contient `<canvas>`
+- `GET /health` → HTTP 200
+- `GET /openapi.yaml` → HTTP 200
+- Canvas visible dans le DOM
+- Screenshot sauvegardé dans `/tmp/smoke.png`
+- 0 erreurs console JavaScript
 
 ```bash
-# Appliquer toutes les migrations en attente
-npm run db:migrate
+# Serveur doit tourner avant de lancer les tests
+npm start &
+npm run test:e2e -- e2e/smoke-canvas.spec.js
 
-# Rollback de la derniere migration
-npm run db:rollback
-
-# Rollback des 3 dernieres migrations
-node database/scripts/migrate.js down 3
-
-# Statut des migrations
-npm run db:status
+# En CI (port custom)
+PLAYWRIGHT_BASE_URL=http://localhost:3001 npx playwright test e2e/smoke-canvas.spec.js
 ```
 
-Les migrations sont idempotentes : chaque `CREATE TABLE` utilise `IF NOT EXISTS` et les `INSERT` utilisent `OR IGNORE`. Re-executer une migration est un no-op.
-
-Fichiers par migration :
-
-| Fichier | Description |
-|---------|-------------|
-| `001_initial_schema.sql` | Tables de base (players, sessions, leaderboard) |
-| `002_account_progression.sql` | Progression, skill tree, achievements |
-| `003_achievements_data.sql` | Seed des 25 achievements par defaut |
-| `004_performance_indexes.sql` | Index composites pour les requetes critiques |
-
-Chaque migration dispose d'un fichier de rollback `.down.sql`.
-
-### Backup
+## Detection memory leak
 
 ```bash
-# Backup avec timestamp vers ./data/backups/ (garde 7 derniers)
-npm run db:backup
+# 5 bots, 5 minutes, sample toutes les 30s, seuil 50MB
+node scripts/leak-test.js
 
-# Destination et retention personnalisees
-node scripts/backup.js --dest /mnt/backup/zombie --keep 14
+# Options
+node scripts/leak-test.js --bots=5 --duration=300s --sample=30s --threshold=50 --port=3001
 ```
 
-Le script `scripts/backup.js` utilise l'API async de better-sqlite3 v12 (`.backup()` retourne une Promise). La retention supprime automatiquement les backups les plus anciens au-dela du seuil `--keep`.
+Sortie : graph ASCII heap over time + `[LEAK DETECTED]` (exit 1) si delta > seuil.
 
-Variables d'environnement :
+## Docker
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_PATH` | `./data/game.db` | Base source a sauvegarder |
+Build multi-stage `node:20-alpine` — stage builder (toutes les deps) + stage runtime (prod only). Healthcheck via `curl /health`. Utilisateur non-root `node`.
+
+```bash
+# Démarrage
+docker-compose up -d
+
+# Logs
+docker-compose logs -f zombie-game
+
+# Arrêt
+docker-compose down
+
+# Rebuild après changement de code
+docker-compose up -d --build
+```
+
+La DB SQLite est persistée dans `./data/` (volume monté). Copier `.env.example` vers `.env` et ajuster les variables avant le premier lancement.
 
 ## Deploiement
 
-### Docker
-
 ```bash
-docker-compose up -d
-# Health check: http://localhost:3000/health
+docker-compose up -d        # Docker (Node 20-alpine)
+pm2 start ecosystem.config.js --env production  # PM2 (port 3000)
 ```
 
-Voir [DOCKER.md](./DOCKER.md) pour la configuration complete.
+Plateformes : **Fly.io** (`fly.toml`, CDG), **Railway** (`railway.json`), **Render** (`render.yaml`).
+CI/CD : GitHub Actions -> ghcr.io sur push main. Voir [DOCKER.md](./DOCKER.md).
 
-### Plateformes supportees
+## Backup & Restore
 
-- **Docker** - Dockerfile (Node 20-alpine) + docker-compose inclus
-- **Fly.io** - `fly.toml` (region CDG Paris, 256MB)
-- **Railway** - `railway.json`
-- **Render** - `render.yaml`
+### Backup manuel
 
-### CI/CD
+```bash
+./scripts/backup-db.sh
+# Cree backups/zombie-YYYY-MM-DD_HHMM.db.gz
+# Rotation automatique : 14 derniers backups conserves
+```
 
-GitHub Actions build et push l'image Docker vers ghcr.io sur push main.
-Webhook GitHub pour auto-deploy sur serveur dedie.
-Husky + lint-staged en pre-commit (ESLint + Prettier).
+### Restore
+
+```bash
+./scripts/restore-db.sh backups/zombie-2026-04-18_1200.db.gz
+# Verifie l'integrite SQLite + checksum SHA-256 avant restore
+# Sauvegarde l'ancienne DB sous data/game.db.before-restore.*
+```
+
+### Cron (backup automatique)
+
+Scripts d'installation automatique (idempotents) :
+
+```bash
+# Installer le cron toutes les 6h
+./scripts/install-cron.sh
+
+# Verifier
+crontab -l | grep zombie-backup
+
+# Desinstaller
+./scripts/uninstall-cron.sh
+```
+
+Ou manuellement avec `crontab -e` :
+
+```cron
+# Backup toutes les 6h
+0 */6 * * * /chemin/vers/zombie-browser-game/scripts/backup-db.sh >> /var/log/zombie-backup.log 2>&1 # zombie-backup
+```
+
+---
 
 ## Configuration
 
@@ -422,6 +243,56 @@ Variables principales :
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architecture detaillee, patterns, flux de donnees, principes SOLID
 - [README.GAMEPLAY.md](./README.GAMEPLAY.md) - Documentation gameplay complete (controles, zombies, armes, strategies)
 - [DOCKER.md](./DOCKER.md) - Guide Docker et deploiement
+
+## Performance profiling
+
+### CPU profiling (V8 --prof)
+
+Lance le serveur avec le flag `--prof`, attend N secondes, puis génère `profile.txt` :
+
+```bash
+# Durée par défaut 30s
+./scripts/profile.sh
+
+# Durée personnalisée (ex: 60s)
+./scripts/profile.sh 60
+
+# Entrée personnalisée
+./scripts/profile.sh 30 deploy-server.js
+```
+
+Le fichier `profile.txt` contient le flamegraph textuel processé par `node --prof-process`.
+Les fichiers `isolate-*.log` intermédiaires peuvent être supprimés après analyse.
+
+### Heap snapshot
+
+Envoie SIGUSR2 au processus Node pour déclencher un heap snapshot (`Heap-*.heapsnapshot`) :
+
+```bash
+# Avec PID explicite
+./scripts/heap-snapshot.sh 12345
+
+# Auto-détection du serveur en cours
+./scripts/heap-snapshot.sh
+```
+
+Le fichier `.heapsnapshot` peut être ouvert dans Chrome DevTools → Memory → Load snapshot.
+
+> Note : pour que heap-snapshot fonctionne, le serveur doit appeler `v8.writeHeapSnapshot()` sur réception de SIGUSR2 (via `process.on('SIGUSR2', ...)`).
+
+## Mode spectateur
+
+Un client peut se connecter en mode spectateur en passant `spectator: true` dans `socket.handshake.auth` :
+
+```js
+const socket = io(SERVER_URL, { auth: { spectator: true } });
+```
+
+Comportement côté serveur :
+- Le spectateur **n'est pas créé** dans `gameState.players` → invisible des autres joueurs, non compté dans le cap `maxPlayers`.
+- Il reçoit normalement les snapshots `gameState` et les deltas → peut visualiser la partie en temps réel.
+- Les events `playerMove`, `playerMoveBatch` et `shoot` sont silencieusement ignorés (`return early`).
+- Le flag `socket.spectator = true` est positionné à la connexion depuis `socket.handshake.auth.spectator`.
 
 ## Licence
 

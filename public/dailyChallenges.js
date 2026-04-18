@@ -17,6 +17,8 @@ class DailyChallengeSystem {
     this.initializeChallenges();
     this.checkAndResetChallenges();
     this.updateLoginStreak();
+    // Sync daily challenges from server (seed-based, consistent across players)
+    this.fetchDailyChallengesFromServer();
   }
 
   // Définir tous les types de défis possibles
@@ -150,7 +152,7 @@ class DailyChallengeSystem {
     ];
   }
 
-  // Générer défis quotidiens aléatoires
+  // Générer défis quotidiens — seed déterministe côté serveur (fallback local si API indisponible)
   generateDailyChallenges() {
     const shuffled = [...this.availableDailyChallenges].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3).map(challenge => ({
@@ -159,6 +161,68 @@ class DailyChallengeSystem {
       completed: false,
       claimed: false
     }));
+  }
+
+  /** Charge les défis quotidiens depuis le serveur et met à jour l'état local */
+  async fetchDailyChallengesFromServer() {
+    const playerId = window.gameState?.playerId;
+    if (!playerId) {
+return;
+}
+    try {
+      const res = await fetch(`/api/v1/daily-challenges/${playerId}`, { credentials: 'include' });
+      if (!res.ok) {
+return;
+}
+      const { data } = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+return;
+}
+      this.dailyChallenges = data.map(c => ({
+        ...c,
+        completed: !!c.completed,
+        claimed: !!c.rewardClaimed
+      }));
+      this.saveChallenges();
+      this.refreshPanel();
+    } catch (_) { /* réseau indisponible — fallback localStorage */ }
+  }
+
+  /** Envoie un event delta au serveur (non-bloquant) */
+  async pushEventToServer(eventType, delta = 1, meta = {}) {
+    const playerId = window.gameState?.playerId;
+    if (!playerId) {
+return;
+}
+    try {
+      await fetch(`/api/v1/daily-challenges/${playerId}/event`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventType, delta, meta })
+      });
+    } catch (_) { /* fire-and-forget */ }
+  }
+
+  /** Claim récompense via serveur (atomic) */
+  async claimRewardServer(challengeId) {
+    const playerId = window.gameState?.playerId;
+    if (!playerId) {
+return null;
+}
+    try {
+      const res = await fetch(`/api/v1/daily-challenges/${playerId}/claim`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId })
+      });
+      if (!res.ok) {
+return null;
+}
+      const { data } = await res.json();
+      return data?.reward ?? null;
+    } catch (_) {
+ return null;
+}
   }
 
   // Générer défi hebdomadaire aléatoire
@@ -286,53 +350,45 @@ class DailyChallengeSystem {
   updateProgress(type, value, metadata = {}) {
     let updated = false;
 
-    // Mettre à jour défis quotidiens
+    // Mettre à jour défis quotidiens (local + push serveur)
     this.dailyChallenges.forEach(challenge => {
       if (challenge.completed) {
-        return;
-      }
-
-      if (challenge.type === type) {
-        // Vérifier les conditions spécifiques
-        if (type === 'zombies_killed_type' && metadata.zombieType !== challenge.zombieType) {
-          return;
-        }
-
-        challenge.progress += value;
-
-        if (challenge.progress >= challenge.target) {
-          challenge.progress = challenge.target;
-          challenge.completed = true;
-          this.showChallengeComplete(challenge, 'daily');
-        }
-
-        updated = true;
-      }
+return;
+}
+      if (challenge.type !== type) {
+return;
+}
+      if (type === 'zombies_killed_type' && metadata.zombieType !== challenge.zombieType) {
+return;
+}
+      challenge.progress = Math.min((challenge.progress || 0) + value, challenge.target);
+      if (challenge.progress >= challenge.target) {
+ challenge.completed = true; this.showChallengeComplete(challenge, 'daily');
+}
+      updated = true;
     });
+    if (updated) {
+this.pushEventToServer(type, value, metadata);
+}
 
-    // Mettre à jour défis hebdomadaires
+    // Mettre à jour défis hebdomadaires (localStorage uniquement)
     this.weeklyChallenges.forEach(challenge => {
       if (challenge.completed) {
-        return;
-      }
-
-      if (challenge.type === type) {
-        challenge.progress += value;
-
-        if (challenge.progress >= challenge.target) {
-          challenge.progress = challenge.target;
-          challenge.completed = true;
-          this.showChallengeComplete(challenge, 'weekly');
-        }
-
-        updated = true;
-      }
+return;
+}
+      if (challenge.type !== type) {
+return;
+}
+      challenge.progress += value;
+      if (challenge.progress >= challenge.target) {
+ challenge.progress = challenge.target; challenge.completed = true; this.showChallengeComplete(challenge, 'weekly');
+}
+      updated = true;
     });
 
     if (updated) {
-      this.saveChallenges();
-      this.refreshPanel();
-    }
+ this.saveChallenges(); this.refreshPanel();
+}
   }
 
   // Afficher notification de défi complété
@@ -377,19 +433,30 @@ class DailyChallengeSystem {
     }, 6000);
   }
 
-  // Récupérer récompense
+  // Récupérer récompense — atomic via serveur pour daily, localStorage pour weekly
   claimReward(challengeId, period) {
     const challenges = period === 'daily' ? this.dailyChallenges : this.weeklyChallenges;
     const challenge = challenges.find(c => c.id === challengeId);
-
     if (!challenge || !challenge.completed || challenge.claimed) {
-      return null;
+return null;
+}
+
+    if (period === 'daily') {
+      this.claimRewardServer(challengeId).then(reward => {
+        if (!reward) {
+return;
+} // double-claim bloqué côté serveur
+        challenge.claimed = true;
+        this.saveChallenges();
+        this.applyReward(reward, `Défi quotidien: ${challenge.name}`);
+        this.refreshPanel();
+      });
+      return challenge.reward; // optimistic UI
     }
 
     challenge.claimed = true;
     this.saveChallenges();
-
-    this.applyReward(challenge.reward, `Défi ${period === 'daily' ? 'quotidien' : 'hebdomadaire'}: ${challenge.name}`);
+    this.applyReward(challenge.reward, `Défi hebdomadaire: ${challenge.name}`);
     return challenge.reward;
   }
 

@@ -291,8 +291,8 @@ describe('spawnSingleZombie', () => {
     zm.spawnSingleZombie();
 
     const zombie = Object.values(gs.zombies)[0];
-    expect(zombie.lastHeal).not.toBeNull();
-    expect(zombie.lastShot).toBeNull();
+    expect(zombie.lastHeal).not.toBeUndefined();
+    expect(zombie.lastShot).toBeUndefined();
   });
 
   test('initialises type-specific attributes for shooter type', () => {
@@ -303,8 +303,8 @@ describe('spawnSingleZombie', () => {
     zm.spawnSingleZombie();
 
     const zombie = Object.values(gs.zombies)[0];
-    expect(zombie.lastShot).not.toBeNull();
-    expect(zombie.lastHeal).toBeNull();
+    expect(zombie.lastShot).not.toBeUndefined();
+    expect(zombie.lastHeal).toBeUndefined();
   });
 
   test('increments nextZombieId for each spawned zombie', () => {

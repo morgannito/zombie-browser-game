@@ -165,73 +165,62 @@ function gameLoop(
   gameLoopRunning = true;
   const frameStart = perf.now();
 
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  function safeContext(label, fn) {
+    try {
+      fn();
+    } catch (err) {
+      logger.error(`Game loop error [${label}]`, {
+        error: err.message,
+        ...(isDev ? { stack: err.stack } : {})
+      });
+      if (metricsCollector && typeof metricsCollector.incrementError === 'function') {
+        metricsCollector.incrementError(label);
+      }
+    }
+  }
+
   try {
     const now = frameStart;
-    // Store deltaMultiplier in gameState for subsystems that need it
     gameState._deltaMultiplier = deltaMultiplier;
     gameState._deltaTime = deltaTime;
 
     updateMetrics(gameState, metricsCollector);
-
-    // Rebuild quadtree BEFORE entity updates so collision queries read current-tick positions.
-    // (Previously rebuilt after updatePlayers/updateZombies — one tick behind.)
     collisionManager.rebuildQuadtree();
 
-    updatePlayers(
-      gameState,
-      now,
-      io,
-      collisionManager,
-      entityManager,
-      deltaMultiplier,
-      zombieManager
-    );
-    updateZombies(
-      gameState,
-      now,
-      io,
-      collisionManager,
-      entityManager,
-      zombieManager,
-      perfIntegration
-    );
+    safeContext('player_update', () => updatePlayers(
+      gameState, now, io, collisionManager, entityManager, deltaMultiplier, zombieManager
+    ));
+    safeContext('zombie_update', () => updateZombies(
+      gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration
+    ));
+    safeContext('hazard_update', () => gameState.hazardManager.update(now));
+    safeContext('poison_trails', () => updatePoisonTrails(gameState, now, collisionManager, entityManager));
+    safeContext('poison_zombies', () => updatePoisonedZombies(gameState, now, entityManager, io, zombieManager));
+    safeContext('frozen_zombies', () => updateFrozenSlowedZombies(gameState, now));
+    safeContext('bullet_update', () => updateBullets(
+      gameState, now, io, collisionManager, entityManager, zombieManager, perfIntegration
+    ));
+    safeContext('particle_update', () => updateParticles(gameState, deltaMultiplier));
+    safeContext('entity_cleanup', () => entityManager.cleanupExpiredEntities(now));
+    safeContext('orphan_cleanup', () => cleanupOrphanedTrackingData(gameState, now));
+    safeContext('powerup_update', () => updatePowerups(gameState, now, entityManager));
+    safeContext('loot_update', () => updateLoot(gameState, now, io, entityManager));
 
-    // Now do collision-based updates with accurate quadtree
-    gameState.hazardManager.update(now);
-    updatePoisonTrails(gameState, now, collisionManager, entityManager);
-    updatePoisonedZombies(gameState, now, entityManager, io, zombieManager);
-    updateFrozenSlowedZombies(gameState, now);
-    updateBullets(
-      gameState,
-      now,
-      io,
-      collisionManager,
-      entityManager,
-      zombieManager,
-      perfIntegration
-    );
-    updateParticles(gameState, deltaMultiplier);
-
-    entityManager.cleanupExpiredEntities(now);
-
-    // CRITICAL FIX: Cleanup memory leaks from deleted entities
-    cleanupOrphanedTrackingData(gameState, now);
-
-    updatePowerups(gameState, now, entityManager);
-    updateLoot(gameState, now, io, entityManager);
     if (!gameState._lastDeathQueueProcess || now - gameState._lastDeathQueueProcess > 5000) {
       gameState._lastDeathQueueProcess = now;
-      processFailedDeathQueue(gameState, logger);
+      safeContext('death_queue', () => processFailedDeathQueue(gameState, logger));
     }
   } catch (error) {
-    logger.error('Game loop error', {
+    logger.error('Game loop fatal error', {
       error: error.message,
-      stack: error.stack,
+      ...(isDev ? { stack: error.stack } : {}),
       timestamp: frameStart
     });
-
-    // metricsCollector.incrementError() doesn't exist on the current MetricsCollector;
-    // skip silently rather than spamming a TypeError every frame.
+    if (metricsCollector && typeof metricsCollector.incrementError === 'function') {
+      metricsCollector.incrementError('game_loop_fatal');
+    }
   } finally {
     const frameTime = perf.now() - frameStart;
     metricsCollector.recordFrameTime(frameTime);

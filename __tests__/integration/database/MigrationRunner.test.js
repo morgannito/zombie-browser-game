@@ -43,11 +43,12 @@ describe('MigrationRunner integration', () => {
       '001_initial_schema.sql',
       '002_account_progression.sql',
       '003_achievements_data.sql',
-      '004_performance_indexes.sql'
+      '004_performance_indexes.sql',
+      '005_daily_challenges.sql'
     ]);
 
     const status = runner.status();
-    expect(status.applied).toBe(4);
+    expect(status.applied).toBe(5);
     expect(status.pending).toBe(0);
 
     const achievementCount = db.prepare('SELECT COUNT(*) as count FROM achievements').get().count;
@@ -61,10 +62,10 @@ describe('MigrationRunner integration', () => {
     runner.up();
 
     const rollback = runner.down(1);
-    expect(rollback.rolledBack).toEqual(['004_performance_indexes.sql']);
+    expect(rollback.rolledBack).toEqual(['005_daily_challenges.sql']);
 
     const reapply = runner.up();
-    expect(reapply.applied).toEqual(['004_performance_indexes.sql']);
+    expect(reapply.applied).toEqual(['005_daily_challenges.sql']);
 
     const countAfterReapply = db.prepare('SELECT COUNT(*) as count FROM achievements').get().count;
     expect(countAfterReapply).toBe(25);

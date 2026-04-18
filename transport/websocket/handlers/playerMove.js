@@ -21,10 +21,90 @@ const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
 const MAX_BUDGET = PIXELS_PER_MS * 2000;
 const ACCRUAL_FACTOR = 1.5;
 const MIN_ALLOWANCE = 100;
-// Anti-cheat leaky-bucket disabled: it was causing rubber-band corrections
-// fighting the client prediction. Reactivate later when the movement pipeline
-// is stable by flipping this back to false (or gating on an env var).
-const DISABLE_ANTICHEAT = true;
+// Anti-cheat leaky-bucket: disabled by default. Set ENABLE_ANTICHEAT=true to activate.
+const ENABLE_ANTICHEAT = process.env.ENABLE_ANTICHEAT === 'true';
+
+/**
+ * Returns false if the player is not eligible to move (alive, nickname, rate-limit).
+ * @param {object} socket
+ * @param {object} data
+ * @param {object} player
+ * @returns {boolean}
+ */
+function _validateAndRateLimit(socket, data, player) {
+  if (!player || !player.alive || !player.hasNickname) {
+return false;
+}
+  if (!checkRateLimit(socket.id, 'playerMove')) {
+return false;
+}
+  return true;
+}
+
+/**
+ * Clamps validated position to world bounds.
+ * @param {object} player
+ * @param {object} validatedData
+ * @param {object} config
+ * @returns {{ newX: number, newY: number }}
+ */
+function _resolveMovementPosition(player, validatedData, config) {
+  const wallThickness = config.WALL_THICKNESS || 40;
+  const playerSize = config.PLAYER_SIZE || 20;
+  const newX = Math.max(
+    wallThickness + playerSize,
+    Math.min(config.ROOM_WIDTH - wallThickness - playerSize, validatedData.x)
+  );
+  const newY = Math.max(
+    wallThickness + playerSize,
+    Math.min(config.ROOM_HEIGHT - wallThickness - playerSize, validatedData.y)
+  );
+  return { newX, newY };
+}
+
+/**
+ * Handles stun state. Returns true if the move must be rejected due to active stun.
+ * @param {object} player
+ * @param {object} socket
+ * @param {number} now
+ * @returns {boolean}
+ */
+function _applyStunCheck(player, socket, now) {
+  if (player.stunned && player.stunnedUntil > now) {
+    socket.emit(SOCKET_EVENTS.SERVER.STUNNED, { duration: player.stunnedUntil - now });
+    return true;
+  }
+  if (player.stunned && player.stunnedUntil <= now) {
+    player.stunned = false;
+    delete player.stunnedUntil;
+    delete player.stunnedBy;
+  }
+  return false;
+}
+
+/**
+ * Applies newX/newY to player with wall-slide fallback.
+ * @param {object} player
+ * @param {number} newX
+ * @param {number} newY
+ * @param {object} roomManager
+ */
+function _applyMovementToPlayer(player, newX, newY, roomManager) {
+  // Accept client position if walkable, else slide along the walkable axis.
+  // No positionCorrection emit — the broadcast stream carries x/y and the
+  // client reconciles from there when drift is large.
+  if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
+    player.x = newX;
+    player.y = newY;
+  } else {
+    if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE)) {
+      player.x = newX;
+    }
+    if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE)) {
+      player.y = newY;
+    }
+  }
+}
 
 /**
  * Process a single validated move payload through the full anti-cheat pipeline.
@@ -46,8 +126,8 @@ function _processSingleMove(socket, gameState, roomManager, data) {
   if (player && data && typeof data.seq === 'number') {
     const lastSeq = player.lastMoveSeq || 0;
     if (data.seq <= lastSeq) {
-      return;
-    }
+return;
+}
     player.lastMoveSeq = data.seq;
   }
 
@@ -58,32 +138,24 @@ function _processSingleMove(socket, gameState, roomManager, data) {
   }
 
   const validatedData = validateMovementData(absoluteData);
-  if (!validatedData) return;
-  if (!checkRateLimit(socket.id, 'playerMove')) return;
-  if (!player || !player.alive || !player.hasNickname) return;
+  if (!validatedData) {
+return;
+}
+  if (!_validateAndRateLimit(socket, data, player)) {
+return;
+}
 
-  const wallThickness = CONFIG.WALL_THICKNESS || 40;
-  const playerSize = CONFIG.PLAYER_SIZE || 20;
+  const now = Date.now();
+  const lastMoveTime = player.lastMoveTime || now;
+  const timeDelta = Math.min(now - lastMoveTime, 500);
+  player.lastMoveTime = now;
 
-  const newX = Math.max(
-    wallThickness + playerSize,
-    Math.min(CONFIG.ROOM_WIDTH - wallThickness - playerSize, validatedData.x)
-  );
-  const newY = Math.max(
-    wallThickness + playerSize,
-    Math.min(CONFIG.ROOM_HEIGHT - wallThickness - playerSize, validatedData.y)
-  );
+  if (_applyStunCheck(player, socket, now)) {
+return;
+}
 
-  // PERF: squared distance avoids Math.sqrt in ~80% of moves that pass budget.
-  const dx = newX - player.x;
-  const dy = newY - player.y;
-  const distanceSq = dx * dx + dy * dy;
-
-  if (!DISABLE_ANTICHEAT && player.speedMultiplier > 5) {
-    logger.warn('Anti-cheat: Suspicious speedMultiplier detected', {
-      player: player.nickname || socket.id,
-      speedMultiplier: player.speedMultiplier
-    });
+  if (ENABLE_ANTICHEAT && player.speedMultiplier > 5) {
+    logger.warn('Anti-cheat: Suspicious speedMultiplier detected', { player: player.nickname || socket.id, speedMultiplier: player.speedMultiplier });
     _mc.recordCheatAttempt('speed_multiplier');
     if (_mc.recordViolation(socket.id)) {
       _mc.metrics.anticheat.player_disconnects_total++;
@@ -94,46 +166,23 @@ function _processSingleMove(socket, gameState, roomManager, data) {
     player.speedMultiplier = 1;
   }
 
-  const now = Date.now();
-  const lastMoveTime = player.lastMoveTime || now;
-  const timeDelta = Math.min(now - lastMoveTime, 500);
-  player.lastMoveTime = now;
-
-  if (player.stunned && player.stunnedUntil > now) {
-    socket.emit(SOCKET_EVENTS.SERVER.STUNNED, { duration: player.stunnedUntil - now });
-    return;
-  } else if (player.stunned && player.stunnedUntil <= now) {
-    player.stunned = false;
-    delete player.stunnedUntil;
-    delete player.stunnedBy;
-  }
-
   if (typeof player.moveBudget === 'undefined') {
-    player.moveBudget = MAX_BUDGET;
-  }
-
+player.moveBudget = MAX_BUDGET;
+}
   const speedMultiplier = player.speedMultiplier || 1;
-  const hasSpeedBoost = player.speedBoost && now < player.speedBoost;
-  const boostMultiplier = hasSpeedBoost ? 2 : 1;
-  const accrued = timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR;
+  const boostMultiplier = (player.speedBoost && now < player.speedBoost) ? 2 : 1;
+  player.moveBudget = Math.min(MAX_BUDGET, player.moveBudget + timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR);
 
-  player.moveBudget += accrued;
-  if (player.moveBudget > MAX_BUDGET) {
-    player.moveBudget = MAX_BUDGET;
-  }
+  const { newX, newY } = _resolveMovementPosition(player, validatedData, CONFIG);
 
-  // Leaky-bucket movement budget disabled. Re-enable by wrapping this block
-  // with `if (!DISABLE_ANTICHEAT)` once the prediction + interpolation loop
-  // is stable.
-  if (!DISABLE_ANTICHEAT) {
+  if (ENABLE_ANTICHEAT) {
+    const dx = newX - player.x;
+    const dy = newY - player.y;
+    const distanceSq = dx * dx + dy * dy;
     const budgetPlusAllowance = player.moveBudget + MIN_ALLOWANCE;
     if (distanceSq > budgetPlusAllowance * budgetPlusAllowance) {
       const distance = Math.sqrt(distanceSq);
-      logger.warn('Anti-cheat: Movement rejected - exceeded budget', {
-        player: player.nickname || socket.id,
-        distance: Math.round(distance),
-        budget: Math.round(player.moveBudget)
-      });
+      logger.warn('Anti-cheat: Movement rejected - exceeded budget', { player: player.nickname || socket.id, distance: Math.round(distance), budget: Math.round(player.moveBudget) });
       _mc.recordCheatAttempt('movement_budget');
       _mc.recordMovementCorrection();
       if (_mc.recordViolation(socket.id)) {
@@ -145,29 +194,10 @@ function _processSingleMove(socket, gameState, roomManager, data) {
       socket.emit(SOCKET_EVENTS.SERVER.POSITION_CORRECTION, { x: player.x, y: player.y });
       return;
     }
-    const distance = Math.sqrt(distanceSq);
-    player.moveBudget -= distance;
-    if (player.moveBudget < -100) {
-      player.moveBudget = -100;
-    }
+    player.moveBudget = Math.max(-100, player.moveBudget - Math.sqrt(distanceSq));
   }
 
-  // Wall collision: accept client position if walkable, else slide along the
-  // axis that IS walkable, else keep server position. No explicit
-  // positionCorrection emit — the regular broadcast stream carries x/y and
-  // the client reconciles from there when the drift is large.
-  if (!roomManager.checkWallCollision(newX, newY, CONFIG.PLAYER_SIZE)) {
-    player.x = newX;
-    player.y = newY;
-  } else {
-    if (!roomManager.checkWallCollision(newX, player.y, CONFIG.PLAYER_SIZE)) {
-      player.x = newX;
-    }
-    if (!roomManager.checkWallCollision(player.x, newY, CONFIG.PLAYER_SIZE)) {
-      player.y = newY;
-    }
-  }
-
+  _applyMovementToPlayer(player, newX, newY, roomManager);
   player.angle = validatedData.angle;
   player.lastActivityTime = Date.now();
 }
@@ -176,7 +206,12 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE,
     safeHandler('playerMove', function (data) {
-      if (!data || typeof data !== 'object') return;
+      if (socket.spectator) {
+return;
+}
+      if (!data || typeof data !== 'object') {
+return;
+}
       _processSingleMove(socket, gameState, roomManager, data);
     })
   );
@@ -185,6 +220,9 @@ function registerPlayerMoveHandler(socket, gameState, roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.PLAYER_MOVE_BATCH,
     safeHandler('playerMoveBatch', function (batch) {
+      if (socket.spectator) {
+return;
+}
       if (!Array.isArray(batch) || batch.length === 0 || batch.length > 8) {
         logger.warn('Invalid playerMoveBatch payload', { socketId: socket.id, len: batch?.length });
         return;

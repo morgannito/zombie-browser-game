@@ -243,7 +243,8 @@ describe('handleZombieBulletCollisions', () => {
     const player = { alive: true, hasNickname: true, x: 10, y: 0, health: 100 };
     const gameState = { players: { p1: player } };
     const em = { destroyBullet: jest.fn() };
-    handleZombieBulletCollisions(bullet, 'b1', gameState, em);
+    const cm = { findPlayersInRadius: jest.fn(() => [player]) };
+    handleZombieBulletCollisions(bullet, 'b1', gameState, em, cm);
     expect(player.health).toBe(75);
     expect(em.destroyBullet).toHaveBeenCalled();
   });
@@ -255,7 +256,8 @@ describe('handleZombieBulletCollisions', () => {
     const protectedP = { alive: true, hasNickname: true, x: 10, y: 0, health: 100, spawnProtection: true };
     const gameState = { players: { a: dead, b: noNick, c: protectedP } };
     const em = { destroyBullet: jest.fn() };
-    handleZombieBulletCollisions(bullet, 'b1', gameState, em);
+    const cm = { findPlayersInRadius: jest.fn(() => [dead, noNick, protectedP]) };
+    handleZombieBulletCollisions(bullet, 'b1', gameState, em, cm);
     expect(dead.health).toBe(100);
     expect(noNick.health).toBe(100);
     expect(protectedP.health).toBe(100);

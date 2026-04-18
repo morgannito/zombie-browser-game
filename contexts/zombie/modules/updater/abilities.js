@@ -10,6 +10,9 @@ const { createParticles } = require('../../../../game/lootFunctions');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
+// PERF: Healer scans nearby zombies only every HEALER_SCAN_INTERVAL ms.
+const HEALER_SCAN_INTERVAL = 500;
+
 function processHealerAbility(zombie, zombieId, now, collisionManager, entityManager) {
   if (zombie.type !== 'healer') {
     return;
@@ -20,11 +23,16 @@ function processHealerAbility(zombie, zombieId, now, collisionManager, entityMan
   }
   zombie.lastHeal = now;
 
-  const nearbyZombies = collisionManager.findZombiesInRadius(
-    zombie.x, zombie.y, healerType.healRadius, zombieId
-  );
-  for (const other of nearbyZombies) {
-    if (other.health >= other.maxHealth) {
+  // Refresh scan cache only every HEALER_SCAN_INTERVAL ms
+  if (!zombie._healScanAt || now - zombie._healScanAt >= HEALER_SCAN_INTERVAL) {
+    zombie._healScanAt = now;
+    zombie._healTargets = collisionManager.findZombiesInRadius(
+      zombie.x, zombie.y, healerType.healRadius, zombieId
+    );
+  }
+
+  for (const other of (zombie._healTargets || [])) {
+    if (!other || other.health >= other.maxHealth) {
       continue;
     }
     other.health = Math.min(other.health + healerType.healAmount, other.maxHealth);

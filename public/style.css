@@ -70,6 +70,12 @@
   --shadow-glow-accent: 0 0 20px rgba(255, 215, 0, 0.5);
   --shadow-glow-cyan: 0 0 30px rgba(0, 255, 255, 0.8);
 
+  /* Addiction / Panel Theme */
+  --color-panel-border: #4a90e2;
+  --color-panel-border-light: #6ab7ff;
+  --bg-panel: #1a1a2e;
+  --bg-panel-alt: #16213e;
+
   /* Z-index Scale */
   --z-canvas: 0;
   --z-ui: 10;
@@ -477,8 +483,8 @@ body {
 }
 
 @keyframes re-lineSweep {
-  0% { width: 0; opacity: 0; }
-  100% { width: 80%; opacity: 1; }
+  0% { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
 }
 
 @keyframes re-statsSlide {
@@ -600,6 +606,7 @@ body {
     transparent 100%
   );
   margin: 0 auto 25px;
+  transform-origin: left;
   animation: re-lineSweep 1.5s ease-out 2.2s both;
 }
 
@@ -2229,6 +2236,23 @@ body {
   will-change: transform;
 }
 
+#health-bar.low-health,
+.boss-health-bar-fill,
+#wave-announcement,
+.kill-feed-item,
+.combo-wrapper,
+.combo-count,
+#boss-name,
+#joystick-base.active,
+#joystick-stick {
+  will-change: transform, opacity;
+}
+
+.re-death-line,
+#game-over {
+  will-change: opacity, transform;
+}
+
 /* Use containment for isolated components */
 #shop,
 #stats-panel,
@@ -2297,6 +2321,48 @@ body {
 
 #joystick-stick.active {
   animation: stick-pulse 0.8s ease-in-out infinite;
+}
+
+/* Aim Joystick (right side) */
+#aim-joystick-container {
+  position: absolute;
+  bottom: calc(2rem + var(--safe-area-bottom));
+  right: calc(9rem + var(--safe-area-right));
+  width: 130px;
+  height: 130px;
+  pointer-events: auto;
+}
+
+#aim-joystick-base {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(255, 100, 0, 0.2) 0%, rgba(255, 100, 0, 0.05) 70%, transparent 100%);
+  border: 3px solid rgba(255, 100, 0, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 100, 0, 0.3), inset 0 0 20px rgba(255, 100, 0, 0.1);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  transition: all 0.3s ease;
+}
+
+#aim-joystick-base.active {
+  border-color: rgba(255, 100, 0, 0.8);
+}
+
+#aim-joystick-stick {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, rgba(255, 100, 0, 0.9) 0%, rgba(255, 60, 0, 0.6) 100%);
+  border: 3px solid rgba(255, 100, 0, 1);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 15px rgba(255, 100, 0, 0.8);
+  transition: all 0.1s ease-out;
+  will-change: transform;
 }
 
 /* Auto-shoot button */
@@ -4004,4 +4070,37 @@ body {
 }
 @keyframes reconnect-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   ACCESSIBILITY — Skip link
+   ============================================ */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  background: #000;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  z-index: 99999;
+  text-decoration: none;
+  border-radius: 0 0 4px 4px;
+}
+.skip-link:focus { top: 0; }
+
+/* ============================================
+   ACCESSIBILITY — prefers-contrast: more
+   ============================================ */
+@media (prefers-contrast: more) {
+  *:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px #000;
+  }
+  #stats, #kill-feed, #wave-progress-container {
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+  }
+  button, .menu-btn { border: 2px solid #fff !important; }
 }

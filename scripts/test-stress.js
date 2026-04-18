@@ -15,7 +15,15 @@ function login(username) {
     const req = http.request(BASE + '/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': body.length }
-    }, r => { let d=''; r.on('data', c => d += c); r.on('end', () => { try { resolve(JSON.parse(d)); } catch(e){reject(e);} }); });
+    }, r => {
+ let d=''; r.on('data', c => d += c); r.on('end', () => {
+ try {
+ resolve(JSON.parse(d));
+} catch (e) {
+reject(e);
+}
+});
+});
     req.on('error', reject); req.write(body); req.end();
   });
 }
@@ -38,8 +46,12 @@ async function run() {
     myId = d.playerId;
     socket.emit('setNickname', { nickname: 'stress_' + Date.now().toString().slice(-4) });
   });
-  socket.on('gameState', s => { stats.fullCount++; stats.bytesIn += JSON.stringify(s).length; });
-  socket.on('gameStateDelta', d => { stats.deltaCount++; stats.bytesIn += JSON.stringify(d).length; });
+  socket.on('gameState', s => {
+ stats.fullCount++; stats.bytesIn += JSON.stringify(s).length;
+});
+  socket.on('gameStateDelta', d => {
+ stats.deltaCount++; stats.bytesIn += JSON.stringify(d).length;
+});
   socket.on('positionCorrection', () => stats.correctionsReceived++);
 
   await new Promise(r => setTimeout(r, 1500));
@@ -47,17 +59,25 @@ async function run() {
   let playerState = null;
   socket.on('gameStateDelta', d => {
     const p = d.updated?.players?.[myId];
-    if (p && typeof p.x === 'number') playerState = { x: p.x, y: p.y };
-    if (p && typeof p.health === 'number' && p.health < stats.healthMin) stats.healthMin = p.health;
+    if (p && typeof p.x === 'number') {
+playerState = { x: p.x, y: p.y };
+}
+    if (p && typeof p.health === 'number' && p.health < stats.healthMin) {
+stats.healthMin = p.health;
+}
   });
   socket.on('gameState', s => {
     const p = s.players?.[myId];
     if (p) {
       playerState = { x: p.x, y: p.y };
-      if (typeof p.health === 'number' && p.health < stats.healthMin) stats.healthMin = p.health;
+      if (typeof p.health === 'number' && p.health < stats.healthMin) {
+stats.healthMin = p.health;
+}
     }
     stats.zombiesEnd = Object.keys(s.zombies || {}).length;
-    if (stats.zombiesStart === 0) stats.zombiesStart = stats.zombiesEnd;
+    if (stats.zombiesStart === 0) {
+stats.zombiesStart = stats.zombiesEnd;
+}
   });
 
   // Initial position
@@ -71,7 +91,9 @@ async function run() {
   // Ping loop (measure RTT)
   const pingLoop = setInterval(() => {
     const s = Date.now();
-    socket.emit('app:ping', { t: s }, () => { pingTimes.push(Date.now() - s); });
+    socket.emit('app:ping', { t: s }, () => {
+ pingTimes.push(Date.now() - s);
+});
   }, 500);
 
   // Shoot + move loop
@@ -100,7 +122,7 @@ async function run() {
   clearInterval(pingLoop);
 
   const elapsed = (Date.now() - t0) / 1000;
-  const avgPing = pingTimes.length ? pingTimes.reduce((a,b)=>a+b, 0) / pingTimes.length : 0;
+  const avgPing = pingTimes.length ? pingTimes.reduce((a,b) => a+b, 0) / pingTimes.length : 0;
   const maxPing = pingTimes.length ? Math.max(...pingTimes) : 0;
 
   console.log('\n=== STRESS RESULTS ===');
@@ -118,4 +140,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(e => {
+ console.error(e); process.exit(1);
+});

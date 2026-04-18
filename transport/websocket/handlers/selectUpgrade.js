@@ -11,6 +11,7 @@ const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { validateUpgradeData } = require('../../../game/validationFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const logger = require('../../../infrastructure/logging/Logger');
+const { getTelemetryCollector } = require('../../../infrastructure/telemetry/TelemetryCollector');
 
 const { LEVEL_UP_UPGRADES } = ConfigManager;
 
@@ -66,6 +67,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
       player.pendingUpgradeChoices = batches;
 
       upgrade.effect(player);
+      getTelemetryCollector().record('upgrade_select');
 
       player.invisible = false;
       player.invisibleEndTime = 0;

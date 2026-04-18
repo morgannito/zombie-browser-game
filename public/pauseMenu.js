@@ -139,7 +139,7 @@ class PauseMenu {
 
   quit() {
     // Confirm quit action
-    const confirmed = confirm('Êtes-vous sûr de vouloir quitter ? Votre progression sera perdue.');
+    const confirmed = confirm(typeof I18n !== 'undefined' ? I18n.t('quit.confirm') : 'Êtes-vous sûr de vouloir quitter ? Votre progression sera perdue.');
 
     if (confirmed) {
       this.isPaused = false;

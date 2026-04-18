@@ -84,6 +84,9 @@ function executeTeleport(zombie, closestPlayer, teleporterType, now, gameState, 
 
 /**
  * Update summoner zombie
+ * PERF: minionCount maintenu de façon incrémentale — on ne scanne que si le
+ *       cache n'est pas encore initialisé (premier tick) ou si un recount
+ *       est demandé explicitement (summonerDirty).
  */
 function updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManager, gameState) {
   if (zombie.type !== 'summoner') {
@@ -91,18 +94,20 @@ function updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManage
   }
 
   const summonerType = ZOMBIE_TYPES.summoner;
-  const currentMinions = countMinions(zombie, zombieId, gameState);
-  zombie.minionCount = currentMinions;
+  if (zombie.minionCount === null || zombie.minionCount === undefined || zombie.summonerDirty) {
+    zombie.minionCount = countMinions(zombieId, gameState);
+    zombie.summonerDirty = false;
+  }
 
-  if (shouldSpawnMinions(zombie, currentMinions, summonerType, now)) {
-    spawnMinions(zombie, zombieId, currentMinions, summonerType, zombieManager, entityManager, now);
+  if (shouldSpawnMinions(zombie, zombie.minionCount, summonerType, now)) {
+    spawnMinions(zombie, zombieId, zombie.minionCount, summonerType, zombieManager, entityManager, now);
   }
 }
 
 /**
- * Count current minions for summoner
+ * Count current minions — full scan, used only for cache init/recount.
  */
-function countMinions(zombie, zombieId, gameState) {
+function countMinions(zombieId, gameState) {
   let count = 0;
   for (const zId in gameState.zombies) {
     if (gameState.zombies[zId].summonerId === zombieId) {

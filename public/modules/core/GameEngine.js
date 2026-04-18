@@ -185,7 +185,11 @@ class GameEngine {
     }
 
     window.socket = socket;
-    window.networkManager = new NetworkManager(socket);
+    const _nmDeps = {};
+    for (const k of ['gameState','gameUI','playerController','comboSystem','screenEffects','biomeSystem','runMutatorsSystem','advancedAudio','toastManager','timerManager']) {
+      Object.defineProperty(_nmDeps, k, { get: () => window[k], enumerable: true });
+    }
+    window.networkManager = new NetworkManager(socket, _nmDeps);
     window.gameUI = new UIManager(window.gameState);
 
     // Initialize account progression manager (meta progression, skills, XP)
@@ -331,6 +335,18 @@ class GameEngine {
 
   render(deltaTime = 16) {
     const _t0 = performance.now();
+
+    // Frame-budget guard: skip render if we're already over 8ms into this frame
+    // (e.g. update() was heavy). Preserves interactivity under CPU load.
+    // Allow once every 3 skips max to avoid visual freeze under sustained load.
+    if (!this._renderSkipCount) {
+ this._renderSkipCount = 0;
+}
+    if (_t0 - this.lastFrameTime > 8 && this._renderSkipCount < 3) {
+      this._renderSkipCount++;
+      return;
+    }
+    this._renderSkipCount = 0;
 
     // Apply visual interpolation for smooth movement BEFORE rendering
     window.gameState.applyInterpolation();

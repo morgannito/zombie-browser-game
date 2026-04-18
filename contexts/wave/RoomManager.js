@@ -1,14 +1,85 @@
 /**
  * ROOM MANAGER - Gestion de la génération procédurale des salles
  * Génère et gère les salles Rogue-like avec obstacles et portes
- * @version 1.0.0
+ * @version 1.1.0 — spatial grid index pour checkWallCollision O(log n)
  */
+
+const GRID_CELL_SIZE = 200; // px par cellule de la grille spatiale
 
 class RoomManager {
   constructor(gameState, config, io) {
     this.gameState = gameState;
     this.config = config;
     this.io = io;
+    /** @type {Map<string, Set<Object>>} grille spatiale indexée par "col,row" */
+    this._grid = new Map();
+    this._gridCols = 0;
+    this._gridRows = 0;
+  }
+
+  /**
+   * Construit la grille spatiale à partir d'une liste de murs.
+   * Chaque mur est inséré dans toutes les cellules qu'il chevauche.
+   * Complexité de construction : O(n * k) avec k = nb de cellules couvertes par mur.
+   * @param {Array<Object>} walls
+   */
+  _buildSpatialIndex(walls) {
+    this._grid = new Map();
+    const W = this.config.ROOM_WIDTH || 3000;
+    const H = this.config.ROOM_HEIGHT || 2400;
+    this._gridCols = Math.ceil(W / GRID_CELL_SIZE);
+    this._gridRows = Math.ceil(H / GRID_CELL_SIZE);
+
+    for (const wall of walls) {
+      // Hash AABB précalculé pour identification rapide
+      wall.hash = `${wall.x}|${wall.y}|${wall.width}|${wall.height}`;
+
+      const minCol = Math.max(0, Math.floor(wall.x / GRID_CELL_SIZE));
+      const maxCol = Math.min(this._gridCols - 1, Math.floor((wall.x + wall.width) / GRID_CELL_SIZE));
+      const minRow = Math.max(0, Math.floor(wall.y / GRID_CELL_SIZE));
+      const maxRow = Math.min(this._gridRows - 1, Math.floor((wall.y + wall.height) / GRID_CELL_SIZE));
+
+      for (let c = minCol; c <= maxCol; c++) {
+        for (let r = minRow; r <= maxRow; r++) {
+          const key = `${c},${r}`;
+          if (!this._grid.has(key)) {
+this._grid.set(key, new Set());
+}
+          this._grid.get(key).add(wall);
+        }
+      }
+    }
+  }
+
+  /**
+   * Retourne les murs candidats pour une AABB (x±size, y±size).
+   * Accès O(1) par cellule, nombre de cellules touchées constant ≤ 4 pour entités standard.
+   * @param {number} x @param {number} y @param {number} size
+   * @returns {Set<Object>}
+   */
+  _wallsInRegion(x, y, size) {
+    // Lazy build: si la grille est vide mais qu'il y a des murs (ex: tests unitaires directs)
+    if (this._grid.size === 0 && this.gameState.walls.length > 0) {
+      this._buildSpatialIndex(this.gameState.walls);
+    }
+
+    const minCol = Math.max(0, Math.floor((x - size) / GRID_CELL_SIZE));
+    const maxCol = Math.min(this._gridCols - 1, Math.floor((x + size) / GRID_CELL_SIZE));
+    const minRow = Math.max(0, Math.floor((y - size) / GRID_CELL_SIZE));
+    const maxRow = Math.min(this._gridRows - 1, Math.floor((y + size) / GRID_CELL_SIZE));
+
+    const candidates = new Set();
+    for (let c = minCol; c <= maxCol; c++) {
+      for (let r = minRow; r <= maxRow; r++) {
+        const bucket = this._grid.get(`${c},${r}`);
+        if (bucket) {
+for (const w of bucket) {
+candidates.add(w);
+}
+}
+      }
+    }
+    return candidates;
   }
 
   /**
@@ -242,6 +313,9 @@ class RoomManager {
     // Charger tous les murs (extérieurs + obstacles)
     this.gameState.walls = [...room.walls, ...room.obstacles];
 
+    // Reconstruire l'index spatial pour ce roomId
+    this._buildSpatialIndex(this.gameState.walls);
+
     // Nettoyer les zombies existants
     this.gameState.zombies = {};
 
@@ -308,7 +382,9 @@ class RoomManager {
    *   }
    */
   checkWallCollision(x, y, size) {
-    for (const wall of this.gameState.walls) {
+    // O(log n) via index spatial — ne parcourt que les candidats de la région AABB
+    const candidates = this._wallsInRegion(x, y, size);
+    for (const wall of candidates) {
       if (x + size > wall.x &&
         x - size < wall.x + wall.width &&
         y + size > wall.y &&
@@ -341,7 +417,8 @@ class RoomManager {
     let maxPenetration = 0;
     let wallCount = 0;
 
-    for (const wall of this.gameState.walls) {
+    const candidates = this._wallsInRegion(x, y, size);
+    for (const wall of candidates) {
       // Find closest point on wall rectangle to entity center
       const closestX = Math.max(wall.x, Math.min(x, wall.x + wall.width));
       const closestY = Math.max(wall.y, Math.min(y, wall.y + wall.height));

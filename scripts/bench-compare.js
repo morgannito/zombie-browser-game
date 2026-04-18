@@ -29,9 +29,13 @@ function parseArgs() {
   for (let i = 2; i < process.argv.length; i++) {
     const a = process.argv[i];
     const next = process.argv[i + 1];
-    if (a === '--tolerance') { args.tolerance = Number(next); i++; }
-    else if (a === '--fail-on-regression') { args.failOnRegression = true; }
-    else positional.push(a);
+    if (a === '--tolerance') {
+ args.tolerance = Number(next); i++;
+} else if (a === '--fail-on-regression') {
+ args.failOnRegression = true;
+} else {
+positional.push(a);
+}
   }
   [args.baseline, args.candidate] = positional;
   if (!args.baseline || !args.candidate) {
@@ -47,15 +51,25 @@ function loadReport(file) {
 }
 
 function fmt(n) {
-  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1000) return n.toFixed(0);
-  if (Math.abs(n) >= 10) return n.toFixed(1);
+  if (n === null || n === undefined || !Number.isFinite(n)) {
+return '—';
+}
+  if (Math.abs(n) >= 1000) {
+return n.toFixed(0);
+}
+  if (Math.abs(n) >= 10) {
+return n.toFixed(1);
+}
   return n.toFixed(2);
 }
 
 function pctDelta(baseline, candidate) {
-  if (baseline === null || baseline === undefined || baseline === 0) return null;
-  if (candidate === null || candidate === undefined) return null;
+  if (baseline === null || baseline === undefined || baseline === 0) {
+return null;
+}
+  if (candidate === null || candidate === undefined) {
+return null;
+}
   return (candidate - baseline) / baseline;
 }
 
@@ -64,18 +78,30 @@ function pctDelta(baseline, candidate) {
  * regression beyond `tolerance`. Returns {regressed, improved, neutral}.
  */
 function classify(metricKey, delta, tolerance) {
-  if (delta === null || Number.isNaN(delta)) return 'neutral';
-  if (Math.abs(delta) < tolerance) return 'neutral';
+  if (delta === null || Number.isNaN(delta)) {
+return 'neutral';
+}
+  if (Math.abs(delta) < tolerance) {
+return 'neutral';
+}
   const isLowerBetter = LOWER_IS_BETTER.has(metricKey);
   const isHigherBetter = HIGHER_IS_BETTER.has(metricKey);
-  if (isLowerBetter) return delta > 0 ? 'regressed' : 'improved';
-  if (isHigherBetter) return delta < 0 ? 'regressed' : 'improved';
+  if (isLowerBetter) {
+return delta > 0 ? 'regressed' : 'improved';
+}
+  if (isHigherBetter) {
+return delta < 0 ? 'regressed' : 'improved';
+}
   return 'neutral';
 }
 
 function tagFor(cls) {
-  if (cls === 'regressed') return 'REGRESS';
-  if (cls === 'improved') return 'IMPROVE';
+  if (cls === 'regressed') {
+return 'REGRESS';
+}
+  if (cls === 'improved') {
+return 'IMPROVE';
+}
   return 'same   ';
 }
 
@@ -94,7 +120,7 @@ function main() {
   const candidate = loadReport(opts.candidate);
 
   console.log('');
-  console.log(`Benchmark comparison`);
+  console.log('Benchmark comparison');
   console.log(`  baseline:  ${opts.baseline}  (ref ${baseline.meta?.gitRef || '?'})`);
   console.log(`  candidate: ${opts.candidate} (ref ${candidate.meta?.gitRef || '?'})`);
   console.log(`  tolerance: ±${(opts.tolerance * 100).toFixed(0)}%`);

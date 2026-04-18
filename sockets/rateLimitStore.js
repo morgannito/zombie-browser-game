@@ -9,11 +9,14 @@ const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 const rateLimits = new Map();
 
-// All socket rate limits disabled — small indie game, no spam defence needed.
+// Rate limits disabled globally except for shop/upgrade events (anti double-buy)
 const RATE_LIMITS_DISABLED = true;
+const SHOP_RATE_LIMITED = new Set(['buyItem', 'selectUpgrade', 'shopOpened']);
 
 function checkRateLimit(socketId, eventName) {
-  if (RATE_LIMITS_DISABLED) return true;
+  if (RATE_LIMITS_DISABLED && !SHOP_RATE_LIMITED.has(eventName)) {
+return true;
+}
   const config = RATE_LIMIT_CONFIG[eventName];
   if (!config) {
     return true;

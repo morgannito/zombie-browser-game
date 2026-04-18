@@ -239,6 +239,14 @@ function initSocketHandlers(
       }
     }
     socket.sessionId = sessionId || null;
+    socket.spectator = socket.handshake.auth?.spectator === true;
+
+    if (socket.spectator) {
+      logger.info('Spectator connected', { socketId: socket.id, traceId });
+      emitInitSnapshot(socket, gameState, false);
+      registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId, networkManager, () => {});
+      return;
+    }
 
     const recovered = tryRecoverSession(socket, sessionId, accountId, gameState);
     if (!recovered) {

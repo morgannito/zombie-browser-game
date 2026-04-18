@@ -11,6 +11,8 @@ class MinimapRenderer {
     // Heatmap offscreen canvas for zombie density
     this._heatCanvas = null;
     this._heatCtx = null;
+    // Throttle: max 10 Hz (100 ms between renders)
+    this._lastRenderTime = 0;
   }
 
   /**
@@ -50,6 +52,13 @@ class MinimapRenderer {
     if (!gameState.config.ROOM_WIDTH) {
       return;
     }
+
+    // Throttle to 10 Hz (100 ms min between renders)
+    const now = performance.now();
+    if (now - this._lastRenderTime < 100) {
+      return;
+    }
+    this._lastRenderTime = now;
 
     const pixelRatio = window.devicePixelRatio || 1;
     minimapCtx.save();

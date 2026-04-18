@@ -118,7 +118,7 @@ describe('safeHandler', () => {
   });
 
   function makeSocket(id = 'sock-1') {
-    return { id, emit: jest.fn() };
+    return { id, emit: jest.fn(), disconnect: jest.fn() };
   }
 
   test('test_sync_handler_called_with_args', () => {

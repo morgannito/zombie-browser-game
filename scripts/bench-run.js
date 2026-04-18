@@ -26,15 +26,22 @@ function parseArgs() {
   for (let i = 2; i < process.argv.length; i++) {
     const a = process.argv[i];
     const next = process.argv[i + 1];
-    if (a === '--clients') { args.clients = Number(next); i++; }
-    else if (a === '--duration') { args.duration = Number(next); i++; }
-    else if (a === '--out') { args.out = next; i++; }
-    else if (a === '--port') { args.port = Number(next); i++; }
+    if (a === '--clients') {
+ args.clients = Number(next); i++;
+} else if (a === '--duration') {
+ args.duration = Number(next); i++;
+} else if (a === '--out') {
+ args.out = next; i++;
+} else if (a === '--port') {
+ args.port = Number(next); i++;
+}
   }
   return args;
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) {
+ return new Promise(r => setTimeout(r, ms));
+}
 
 function waitForHealth(port, timeoutMs) {
   // Accept 200 (healthy) or 503 (db down — expected under DB_SKIP=1).
@@ -48,10 +55,14 @@ function waitForHealth(port, timeoutMs) {
           return resolve();
         }
         res.resume();
-        if (Date.now() > deadline) return reject(new Error(`health timeout (last=${res.statusCode})`));
+        if (Date.now() > deadline) {
+return reject(new Error(`health timeout (last=${res.statusCode})`));
+}
         setTimeout(tick, 250);
       }).on('error', () => {
-        if (Date.now() > deadline) return reject(new Error('health timeout (connect)'));
+        if (Date.now() > deadline) {
+return reject(new Error('health timeout (connect)'));
+}
         setTimeout(tick, 250);
       });
     };
@@ -89,13 +100,17 @@ function parseHistogram(text, name) {
 }
 
 function quantile(hist, q) {
-  if (!hist.count) return null;
+  if (!hist.count) {
+return null;
+}
   const target = hist.count * q;
   let prevCount = 0;
   let prevLe = 0;
   for (const b of hist.buckets) {
     if (target <= b.count) {
-      if (b.le === Infinity) return prevLe;
+      if (b.le === Infinity) {
+return prevLe;
+}
       const frac = b.count === prevCount ? 0 : (target - prevCount) / (b.count - prevCount);
       return prevLe + frac * (b.le - prevLe);
     }
@@ -141,7 +156,9 @@ function runBots(count, durationMs, serverUrl) {
         s.emit('setNickname', { nickname: `bot_${i}` });
       });
       const moveTimer = setInterval(() => {
-        if (!s.connected) return;
+        if (!s.connected) {
+return;
+}
         const batch = [];
         for (let k = 0; k < 2; k++) {
           batch.push({
@@ -189,7 +206,9 @@ async function main() {
   server.stderr.on('data', d => process.stderr.write(d));
 
   let exitEarly = null;
-  server.on('exit', code => { exitEarly = code; });
+  server.on('exit', code => {
+ exitEarly = code;
+});
 
   try {
     await waitForHealth(port, 8000);
@@ -242,7 +261,9 @@ async function main() {
   } finally {
     server.kill('SIGTERM');
     await sleep(500);
-    if (exitEarly === null) server.kill('SIGKILL');
+    if (exitEarly === null) {
+server.kill('SIGKILL');
+}
   }
 }
 

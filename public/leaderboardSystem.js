@@ -190,13 +190,13 @@ class LeaderboardSystem {
             </div>
           </div>
         ` : ''}
-        <div class="leaderboard-list" id="leaderboard-list">
-          ${this.renderLeaderboard('all')}
-        </div>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
       </div>
     `;
 
     document.body.appendChild(container);
+    const list = container.querySelector('#leaderboard-list');
+    list.replaceChildren(...this.renderLeaderboard('all'));
 
     // Event listeners
     container.querySelector('.leaderboard-close-btn').addEventListener('click', () => {
@@ -226,33 +226,36 @@ class LeaderboardSystem {
     const scores = this.getTopScores(50, period);
 
     if (scores.length === 0) {
-      return '<div class="leaderboard-empty">Aucun score pour le moment</div>';
+      const empty = document.createElement('div');
+      empty.className = 'leaderboard-empty';
+      empty.textContent = 'Aucun score pour le moment';
+      return [empty];
     }
 
-    return scores.map((entry, index) => {
-      const rank = index + 1;
-      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-      const isPersonal = this.personalBest && entry.score === this.personalBest.score;
+    return scores.map((entry, index) => this._buildEntryElement(entry, index + 1));
+  }
 
-      return `
-        <div class="leaderboard-entry ${isPersonal ? 'personal' : ''} ${rank <= 3 ? 'top3' : ''}">
-          <div class="leaderboard-rank">${medal}</div>
-          <div class="leaderboard-player">${entry.playerName}</div>
-          <div class="leaderboard-score">${entry.score.toLocaleString()}</div>
-          <div class="leaderboard-details">
-            V${entry.wave} | Lv${entry.level} | ${entry.zombiesKilled} zombies
-          </div>
-          <div class="leaderboard-date">${entry.date}</div>
-        </div>
-      `;
-    }).join('');
+  // Construire un élément DOM pour une entrée (sans innerHTML)
+  _buildEntryElement(entry, rank) {
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const isPersonal = this.personalBest && entry.score === this.personalBest.score;
+    const div = document.createElement('div');
+    div.className = `leaderboard-entry${isPersonal ? ' personal' : ''}${rank <= 3 ? ' top3' : ''}`;
+    const rankEl = document.createElement('div'); rankEl.className = 'leaderboard-rank'; rankEl.textContent = medal;
+    const playerEl = document.createElement('div'); playerEl.className = 'leaderboard-player'; playerEl.textContent = entry.playerName;
+    const scoreEl = document.createElement('div'); scoreEl.className = 'leaderboard-score'; scoreEl.textContent = entry.score.toLocaleString();
+    const detailsEl = document.createElement('div'); detailsEl.className = 'leaderboard-details';
+    detailsEl.textContent = `V${entry.wave} | Lv${entry.level} | ${entry.zombiesKilled} zombies`;
+    const dateEl = document.createElement('div'); dateEl.className = 'leaderboard-date'; dateEl.textContent = entry.date;
+    div.append(rankEl, playerEl, scoreEl, detailsEl, dateEl);
+    return div;
   }
 
   // Afficher leaderboard par période
   showLeaderboard(period) {
     const list = document.getElementById('leaderboard-list');
     if (list) {
-      list.innerHTML = this.renderLeaderboard(period);
+      list.replaceChildren(...this.renderLeaderboard(period));
     }
   }
 
@@ -262,7 +265,7 @@ class LeaderboardSystem {
     if (list) {
       const activeTab = document.querySelector('.leaderboard-tab.active');
       const period = activeTab ? activeTab.dataset.period : 'all';
-      list.innerHTML = this.renderLeaderboard(period);
+      list.replaceChildren(...this.renderLeaderboard(period));
     }
   }
 
@@ -282,30 +285,25 @@ class LeaderboardSystem {
 
     const topScores = this.getTopScores(5, 'all');
 
-    widget.innerHTML = `
-      <div class="leaderboard-widget-header">
-        <h3>🏆 Top 5</h3>
-        <button class="leaderboard-widget-expand">Voir tout →</button>
-      </div>
-      <div class="leaderboard-widget-list">
-        ${topScores.map((entry, index) => {
-    const rank = index + 1;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-    return `
-            <div class="leaderboard-widget-entry">
-              <span class="rank">${medal}</span>
-              <span class="player">${entry.playerName}</span>
-              <span class="score">${entry.score.toLocaleString()}</span>
-            </div>
-          `;
-  }).join('')}
-      </div>
-    `;
-
-    widget.querySelector('.leaderboard-widget-expand').addEventListener('click', () => {
-      this.openPanel();
+    const header = document.createElement('div'); header.className = 'leaderboard-widget-header';
+    const h3 = document.createElement('h3'); h3.textContent = '🏆 Top 5';
+    const expandBtn = document.createElement('button'); expandBtn.className = 'leaderboard-widget-expand'; expandBtn.textContent = 'Voir tout →';
+    header.append(h3, expandBtn);
+    const listEl = document.createElement('div'); listEl.className = 'leaderboard-widget-list';
+    topScores.forEach((entry, index) => {
+      const rank = index + 1;
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+      const entryEl = document.createElement('div'); entryEl.className = 'leaderboard-widget-entry';
+      const rankEl = document.createElement('span'); rankEl.className = 'rank'; rankEl.textContent = medal;
+      const playerEl = document.createElement('span'); playerEl.className = 'player'; playerEl.textContent = entry.playerName;
+      const scoreEl = document.createElement('span'); scoreEl.className = 'score'; scoreEl.textContent = entry.score.toLocaleString();
+      entryEl.append(rankEl, playerEl, scoreEl);
+      listEl.appendChild(entryEl);
     });
-
+    widget.append(header, listEl);
+    expandBtn.addEventListener('click', () => {
+ this.openPanel();
+});
     return widget;
   }
 }

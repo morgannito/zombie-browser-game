@@ -48,18 +48,16 @@ const API_LIMITER_CONFIG = {
   legacyHeaders: false
 };
 
-// Auth rate limiter — kept permissive while the game is in active development.
+// Auth rate limiter — 20 attempts / 15 min per IP (brute-force protection).
 // `message` is an OBJECT so express-rate-limit responds with JSON (prevents
 // the "Unexpected token <" / "pattern" error clients saw on 429).
-// Raise `max` back down and harden this once the game opens publicly.
+// Set DISABLE_AUTH_RATE_LIMIT=1 in CI / integration tests to bypass.
 const AUTH_LIMITER_CONFIG = {
   windowMs: 15 * 60 * 1000,
-  max: 2000,
+  max: 20,
   message: { error: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  // `skip: () => true` would fully bypass; we keep the shell but effectively
-  // disable throttling via a very high cap.
   skip: () => process.env.DISABLE_AUTH_RATE_LIMIT === '1'
 };
 

@@ -58,11 +58,43 @@ class EntityRenderer {
     // Key: "${color}|${isBoss}|${isElite}|${sizeBucket}"
     // LRU eviction: hard cap at 40 sprites
     this._zombieSpriteCache = new Map();
-    this._zombieSpriteCacheLRU = []; // ordered oldest→newest by key
+    this._zombieSpriteCacheLRU = new Map(); // key → true, Map insertion order = LRU oldest→newest
 
     // measureText cache: label string -> pixel width (invalidated on font change)
     this._textWidthCache = new Map();
     this._textWidthCacheFont = '';
+
+    // Style dedup: track last written fillStyle/strokeStyle to skip redundant writes
+    this._lastFill = null;
+    this._lastStroke = null;
+
+    // Per-frame collections (reused to avoid GC pressure)
+    this._visibleZombies = [];
+    this._auraBuckets = new Map();
+  }
+
+  /**
+   * Set fillStyle only if changed — avoids redundant GPU state writes.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} color
+   */
+  _setFill(ctx, color) {
+    if (this._lastFill !== color) {
+      ctx.fillStyle = color;
+      this._lastFill = color;
+    }
+  }
+
+  /**
+   * Set strokeStyle only if changed.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} color
+   */
+  _setStroke(ctx, color) {
+    if (this._lastStroke !== color) {
+      ctx.strokeStyle = color;
+      this._lastStroke = color;
+    }
   }
 
   /**
@@ -78,21 +110,19 @@ class EntityRenderer {
     const isBoss = zombie.isBoss ? 1 : 0;
     const key = `${zombie.color}|${isBoss}|${isElite}|${sizeBucket}`;
 
-    // LRU hit: move to end
+    // LRU hit: move to end (delete + re-insert maintains insertion order)
     if (this._zombieSpriteCache.has(key)) {
-      const idx = this._zombieSpriteCacheLRU.indexOf(key);
-      if (idx !== -1) {
-        this._zombieSpriteCacheLRU.splice(idx, 1);
-        this._zombieSpriteCacheLRU.push(key);
-      }
+      this._zombieSpriteCacheLRU.delete(key);
+      this._zombieSpriteCacheLRU.set(key, true);
       return this._zombieSpriteCache.get(key);
     }
 
     // Evict oldest if at cap
     const SPRITE_CACHE_CAP = 40;
     if (this._zombieSpriteCache.size >= SPRITE_CACHE_CAP) {
-      const evictKey = this._zombieSpriteCacheLRU.shift();
+      const evictKey = this._zombieSpriteCacheLRU.keys().next().value;
       if (evictKey) {
+        this._zombieSpriteCacheLRU.delete(evictKey);
         this._zombieSpriteCache.delete(evictKey);
       }
     }
@@ -162,7 +192,7 @@ class EntityRenderer {
     }
 
     this._zombieSpriteCache.set(key, offscreen);
-    this._zombieSpriteCacheLRU.push(key);
+    this._zombieSpriteCacheLRU.set(key, true);
     return offscreen;
   }
 
@@ -328,6 +358,21 @@ class EntityRenderer {
       return;
     }
 
+    // Cache darkenColor results per base color (reset each call is fine — small set)
+    if (!this._darkenCache) {
+ this._darkenCache = new Map();
+}
+    const darkenCache = this._darkenCache;
+    darkenCache.clear();
+    const getDark = (color, pct) => {
+      const key = color + pct;
+      let v = darkenCache.get(key);
+      if (v === undefined) {
+ v = this.darkenColor(color, pct); darkenCache.set(key, v);
+}
+      return v;
+    };
+
     obstacles.forEach(obstacle => {
       if (obstacle.destroyed) {
         return;
@@ -353,8 +398,9 @@ class EntityRenderer {
       );
       ctx.fill();
 
-      ctx.fillStyle = obstacle.color || '#8B4513';
-      ctx.strokeStyle = this.darkenColor(obstacle.color || '#8B4513', 30);
+      const baseColor = obstacle.color || '#8B4513';
+      ctx.fillStyle = baseColor;
+      ctx.strokeStyle = getDark(baseColor, 30);
       ctx.lineWidth = 2;
 
       if (obstacle.type === 'barrel') {
@@ -381,7 +427,7 @@ class EntityRenderer {
         ctx.fill();
         ctx.stroke();
 
-        ctx.strokeStyle = this.darkenColor(obstacle.color, 40);
+        ctx.strokeStyle = getDark(baseColor, 40);
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(-obstacle.width / 2, -5);
@@ -416,14 +462,15 @@ class EntityRenderer {
         ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
         ctx.strokeRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
 
-        ctx.strokeStyle = this.darkenColor(obstacle.color, 40);
+        ctx.strokeStyle = getDark(baseColor, 40);
         ctx.lineWidth = 2;
+        // Batch all vertical lines into a single path instead of one stroke per line
+        ctx.beginPath();
         for (let i = -obstacle.width / 2 + 10; i < obstacle.width / 2; i += 10) {
-          ctx.beginPath();
           ctx.moveTo(i, -obstacle.height / 2);
           ctx.lineTo(i, obstacle.height / 2);
-          ctx.stroke();
         }
+        ctx.stroke();
       }
 
       if (obstacle.icon) {
@@ -1168,57 +1215,62 @@ class EntityRenderer {
     timestamp = timestamp || performance.now();
     const now = Date.now();
 
+    // Collect visible zombies + batch auras by color to minimize state changes
+    // Reset style dedup cache: drawZombieSprite may call ctx.restore() which
+    // changes fillStyle/strokeStyle without going through _setFill/_setStroke.
+    this._lastFill = null;
+    this._lastStroke = null;
+    const visibleZombies = this._visibleZombies;
+    const auraBuckets = this._auraBuckets;
+    visibleZombies.length = 0;
+    auraBuckets.clear();
+
     for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
-      if (
-        !zombie ||
-        zombie.health <= 0 ||
-        !Number.isFinite(zombie.x) ||
-        !Number.isFinite(zombie.y)
-      ) {
-        continue;
-      }
-
+      if (!zombie || zombie.health <= 0 || !Number.isFinite(zombie.x) || !Number.isFinite(zombie.y)) {
+continue;
+}
       const cullMargin = zombie.isBoss ? zombie.size * 4 : zombie.size * 2;
       if (!camera.isInViewport(zombie.x, zombie.y, cullMargin)) {
-        continue;
-      }
+continue;
+}
+      visibleZombies.push(zombie);
 
+      // Accumulate aura batches (non-elite, non-boss with known danger type)
+      if (!zombie.isElite && !zombie.isBoss) {
+        const auraColor = DANGER_AURA_COLORS[zombie.type];
+        if (auraColor) {
+          let bucket = auraBuckets.get(auraColor);
+          if (!bucket) {
+ bucket = []; auraBuckets.set(auraColor, bucket);
+}
+          bucket.push(zombie);
+        }
+      }
+    }
+
+    // Draw sprites + health bars first (no save/restore needed here)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < visibleZombies.length; i++) {
+      const zombie = visibleZombies[i];
       this.drawZombieSprite(ctx, zombie, timestamp, now);
 
       if (zombie.maxHealth) {
         const healthPercent = zombie.health / zombie.maxHealth;
         const barWidth = zombie.size * 1.6;
         const barY = zombie.y - zombie.size - 10;
+        const barColor = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
 
-        ctx.fillStyle =
-          healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+        this._setFill(ctx, barColor);
         ctx.fillRect(zombie.x - barWidth / 2, barY, barWidth * healthPercent, 5);
-        ctx.strokeStyle = '#fff';
+        this._setStroke(ctx, '#fff');
         ctx.lineWidth = 1;
         ctx.strokeRect(zombie.x - barWidth / 2, barY, barWidth, 5);
       }
 
-      // Aura par type dangereux (non-élite, non-boss) — lisibilité spatiale rapide.
-      if (!zombie.isElite && !zombie.isBoss) {
-        const auraColor = DANGER_AURA_COLORS[zombie.type];
-        if (auraColor) {
-          ctx.save();
-          const pulse = 0.25 + Math.sin(timestamp / 220) * 0.1;
-          ctx.globalAlpha = pulse;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = auraColor;
-          ctx.strokeStyle = auraColor;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(zombie.x, zombie.y, zombie.size + 8, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-
       if (zombie.isElite) {
-        ctx.save();
+        // Elite aura: no batch (gold shadow unique), but avoid save/restore via explicit reset
         ctx.globalAlpha = 0.4 + Math.sin(timestamp / 200) * 0.2;
         ctx.shadowBlur = 20;
         ctx.shadowColor = '#ffd700';
@@ -1227,13 +1279,13 @@ class EntityRenderer {
         ctx.beginPath();
         ctx.arc(zombie.x, zombie.y, zombie.size + 15, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.restore();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
 
         ctx.fillStyle = '#ffd700';
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.font = 'bold 20px Arial';
-        ctx.textAlign = 'center';
         ctx.strokeText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
         ctx.fillText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
       }
@@ -1242,7 +1294,6 @@ class EntityRenderer {
         const bossName = CONSTANTS.BOSS_NAMES[zombie.type] || 'BOSS';
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'center';
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 3;
         ctx.strokeText(bossName, zombie.x, zombie.y - zombie.size - 25);
@@ -1251,13 +1302,29 @@ class EntityRenderer {
 
       this.renderZombieSpecialIndicator(ctx, zombie, now);
     }
+
+    // Batched aura pass: one shadowBlur setup per color, N arcs per batch
+    const auraPulse = 0.25 + Math.sin(timestamp / 220) * 0.1;
+    ctx.lineWidth = 2;
+    for (const [auraColor, bucket] of auraBuckets) {
+      ctx.globalAlpha = auraPulse;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = auraColor;
+      ctx.strokeStyle = auraColor;
+      ctx.beginPath();
+      for (let i = 0; i < bucket.length; i++) {
+        const z = bucket[i];
+        ctx.moveTo(z.x + z.size + 8, z.y);
+        ctx.arc(z.x, z.y, z.size + 8, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 
   renderZombieSpecialIndicator(ctx, zombie, now) {
     now = now || Date.now();
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
 
     if (zombie.type === 'explosive') {
       ctx.fillStyle = '#fff';

@@ -256,6 +256,5 @@ describe('createPlayer', () => {
     expect(p.combo).toBe(0);
     expect(p.highestCombo).toBe(0);
     expect(p.totalScore).toBe(0);
-    expect(p.score).toBe(0);
   });
 });

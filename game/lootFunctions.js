@@ -23,6 +23,14 @@ const ConfigManager = require('../lib/server/ConfigManager');
 const { CONFIG, POWERUP_TYPES } = ConfigManager;
 const logger = require('../infrastructure/logging/Logger');
 
+// PERF: cache powerup type keys once at module load — POWERUP_TYPES is static
+const _POWERUP_TYPE_KEYS = Object.keys(POWERUP_TYPES);
+
+// Drop rate per wave: base 15% + 1% per wave, capped at 60%
+function _powerupDropChance(wave) {
+  return Math.min(0.15 + (wave - 1) * 0.01, 0.6);
+}
+
 /**
  * Spawn des power-ups
  * BUG FIX: Added validation for required parameters
@@ -49,7 +57,13 @@ function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector)
     return;
   }
 
-  const types = Object.keys(POWERUP_TYPES);
+  // Drop rate balanced par wave
+  const wave = gameState.wave || 1;
+  if (Math.random() > _powerupDropChance(wave)) {
+    return;
+  }
+
+  const types = _POWERUP_TYPE_KEYS;
   if (types.length === 0) {
     logger.error('[POWERUP] No powerup types defined');
     return;

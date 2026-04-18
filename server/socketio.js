@@ -6,6 +6,34 @@
  */
 
 const { getSocketIOCorsConfig } = require('../middleware/cors');
+const logger = require('../infrastructure/logging/Logger');
+
+// Broadcast bytes sampler — logs once every BYTES_LOG_SAMPLE ticks (≈ 1/100).
+// Counts raw Engine.IO packet lengths emitted server→client on the WS transport.
+// Not an exact msgpack wire size but gives the right order-of-magnitude trend.
+const BYTES_LOG_SAMPLE = 100;
+let _bytesSampleCounter = 0;
+let _bytesAccumulator = 0;
+
+function _attachBytesSampler(io) {
+  if (!io || !io.engine || typeof io.engine.on !== 'function') {
+    return;
+  }
+  io.engine.on('packet', packet => {
+    if (packet.type === 'message' && packet.data) {
+      const len = Buffer.isBuffer(packet.data)
+        ? packet.data.length
+        : Buffer.byteLength(String(packet.data), 'utf8');
+      _bytesAccumulator += len;
+    }
+    _bytesSampleCounter++;
+    if (_bytesSampleCounter >= BYTES_LOG_SAMPLE) {
+      logger.info('[broadcast] bytes last 100 packets', { bytes: _bytesAccumulator });
+      _bytesSampleCounter = 0;
+      _bytesAccumulator = 0;
+    }
+  });
+}
 
 /**
  * Build the Socket.IO server bound to an http.Server instance.
@@ -36,6 +64,9 @@ function createSocketIOServer(httpServer) {
     // Les navigateurs modernes + CF supportent WS nativement.
     transports: ['websocket'],
     allowUpgrades: false,
+    // pingInterval: ping natif Socket.IO (keep-alive). Indépendant du latency tracking
+    // (géré par app:ping client-driven dans handlers/ping.js). 10s est raisonnable
+    // pour gaming — ne pas réduire sous 5s (risque de faux disconnects sur mobile).
     pingInterval: 10000,
     pingTimeout: 20000,
     connectTimeout: 45000,
@@ -46,6 +77,10 @@ function createSocketIOServer(httpServer) {
     maxHttpBufferSize: 1e6,
     ...parserOption
   });
+
+  // Attach broadcast bytes sampler (log 1/100 packets for bandwidth measurement).
+  _attachBytesSampler(io);
+
   return io;
 }
 

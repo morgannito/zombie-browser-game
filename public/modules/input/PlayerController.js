@@ -122,6 +122,8 @@ class PlayerController {
     const size = this.gameState.config.PLAYER_SIZE;
     let finalX = player.x;
     let finalY = player.y;
+    let blockedX = false;
+    let blockedY = false;
 
     if (!this.checkWallCollision(newX, newY, size)) {
       finalX = newX;
@@ -129,11 +131,23 @@ class PlayerController {
     } else {
       if (!this.checkWallCollision(newX, player.y, size)) {
         finalX = newX;
+      } else {
+        blockedX = true;
       }
       if (!this.checkWallCollision(player.x, newY, size)) {
         finalY = newY;
+      } else {
+        blockedY = true;
       }
     }
+
+    // Cancel velocity on blocked axes to avoid drift vs server clamp.
+    if (blockedX) {
+this.velocity.x = 0;
+}
+    if (blockedY) {
+this.velocity.y = 0;
+}
 
     const wt = this.gameState.config.WALL_THICKNESS || 40;
     const ps = this.gameState.config.PLAYER_SIZE || 20;
@@ -172,8 +186,12 @@ class PlayerController {
       finalY - this.lastSentPosition.y
     );
     const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
-    if (now - this.lastNetworkUpdate < this.NET_INTERVAL_MOVING) return;
-    if (positionDelta <= this.positionThreshold && angleDelta <= this.angleThreshold) return;
+    if (now - this.lastNetworkUpdate < this.NET_INTERVAL_MOVING) {
+return;
+}
+    if (positionDelta <= this.positionThreshold && angleDelta <= this.angleThreshold) {
+return;
+}
 
     this.network.playerMove({
       x: finalX,

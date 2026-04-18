@@ -3,367 +3,496 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Zombie Game</title>
+  <title>Admin — Zombie Game</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0a0e27;
-      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      background: #0d0d0d;
+      color: #c8ff00;
+      min-height: 100vh;
       padding: 20px;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 10px;
     }
 
     h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
-    }
-
-    .status {
-      display: inline-block;
-      padding: 5px 15px;
-      border-radius: 20px;
-      font-size: 0.9em;
-      font-weight: bold;
-    }
-
-    .status.healthy {
-      background: #10b981;
-    }
-
-    .status.unhealthy {
-      background: #ef4444;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+      font-size: 1.4rem;
+      letter-spacing: 0.1em;
+      color: #ff4444;
+      border-bottom: 1px solid #333;
+      padding-bottom: 8px;
       margin-bottom: 20px;
     }
 
-    .card {
-      background: #1a1f3a;
-      border-radius: 10px;
-      padding: 20px;
-      border: 1px solid #2d3561;
+    /* Auth form */
+    #auth-screen {
+      max-width: 400px;
+      margin: 80px auto;
+      border: 1px solid #333;
+      padding: 32px;
+      background: #111;
     }
 
-    .card-header {
+    #auth-screen label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    #auth-screen input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      color: #c8ff00;
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    #auth-screen input[type="password"]:focus { border-color: #c8ff00; }
+
+    #auth-screen button {
+      width: 100%;
+      padding: 10px;
+      background: #ff4444;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+
+    #auth-screen button:hover { background: #cc2222; }
+
+    #auth-error {
+      color: #ff4444;
+      font-size: 0.8rem;
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* Dashboard */
+    #dashboard { display: none; }
+
+    .toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #667eea;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: #555;
+    }
+
+    #refresh-countdown { color: #888; }
+
+    button.logout-btn {
+      padding: 4px 12px;
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    button.logout-btn:hover { border-color: #ff4444; color: #ff4444; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #222;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: #555;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+
+    .tab-btn:hover { color: #c8ff00; }
+    .tab-btn.active { border-color: #333; border-bottom: 1px solid #0d0d0d; color: #c8ff00; background: #111; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards / data grid */
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: #111;
+      border: 1px solid #222;
+      padding: 16px;
     }
 
     .card-title {
-      font-size: 1.2em;
-      font-weight: bold;
-      color: #667eea;
+      font-size: 0.75rem;
+      color: #555;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      text-transform: uppercase;
     }
 
-    .metric {
+    .kv-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #2d3561;
+      padding: 5px 0;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 0.85rem;
     }
 
-    .metric:last-child {
-      border-bottom: none;
+    .kv-row:last-child { border-bottom: none; }
+    .kv-key { color: #666; }
+    .kv-val { color: #c8ff00; }
+
+    /* Pre / raw JSON */
+    .raw-block {
+      background: #111;
+      border: 1px solid #222;
+      padding: 16px;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      overflow: auto;
+      max-height: 60vh;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
 
-    .metric-label {
-      color: #94a3b8;
+    /* Error list */
+    .error-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .error-item {
+      background: #111;
+      border-left: 3px solid #ff4444;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      word-break: break-word;
     }
 
-    .metric-value {
-      font-weight: bold;
-      font-size: 1.1em;
-    }
+    .error-item .err-meta { color: #555; font-size: 0.75rem; margin-bottom: 4px; }
+    .error-item .err-msg  { color: #ffaaaa; }
 
-    .metric-value.good {
-      color: #10b981;
-    }
-
-    .metric-value.warning {
-      color: #f59e0b;
-    }
-
-    .metric-value.danger {
-      color: #ef4444;
-    }
-
-    .refresh-info {
-      text-align: center;
-      padding: 15px;
-      background: #1a1f3a;
-      border-radius: 10px;
-      color: #94a3b8;
+    .status-bar {
       margin-top: 20px;
+      font-size: 0.75rem;
+      color: #444;
     }
 
-    .loading {
-      text-align: center;
-      padding: 50px;
-      font-size: 1.5em;
-      color: #667eea;
-    }
-
-    .error {
-      text-align: center;
-      padding: 50px;
-      font-size: 1.5em;
-      color: #ef4444;
-      background: #1a1f3a;
-      border-radius: 10px;
-      border: 2px solid #ef4444;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    .pulse {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
+    .spinner { color: #555; font-size: 0.85rem; margin: 40px auto; text-align: center; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🎮 Zombie Game - Admin Dashboard</h1>
-      <p id="server-status" class="status healthy">Chargement...</p>
-    </header>
 
-    <div id="loading" class="loading pulse">
-      Chargement des métriques...
-    </div>
+<!-- Auth screen -->
+<div id="auth-screen">
+  <h1>// ZOMBIE ADMIN</h1>
+  <label for="token-input">Bearer token</label>
+  <input type="password" id="token-input" placeholder="*" autocomplete="current-password">
+  <button id="auth-btn">CONNEXION</button>
+  <p id="auth-error">Token invalide ou acces refuse.</p>
+</div>
 
-    <div id="error" class="error" style="display: none;">
-      ❌ Erreur de connexion au serveur
-    </div>
-
-    <div id="dashboard" style="display: none;">
-      <!-- Game State -->
-      <div class="grid">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🎮 État du Jeu</div>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Joueurs actuels</span>
-            <span class="metric-value" id="players-current">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Pic de joueurs</span>
-            <span class="metric-value" id="players-peak">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Zombies actifs</span>
-            <span class="metric-value" id="zombies-current">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Vague actuelle</span>
-            <span class="metric-value" id="wave-current">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Sessions actives</span>
-            <span class="metric-value" id="sessions-active">-</span>
-          </div>
-        </div>
-
-        <!-- Performance -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">⚡ Performance</div>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Mode</span>
-            <span class="metric-value" id="perf-mode">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">FPS Serveur</span>
-            <span class="metric-value" id="fps">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Temps frame (avg)</span>
-            <span class="metric-value" id="frame-avg">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Temps frame (max)</span>
-            <span class="metric-value" id="frame-max">-</span>
-          </div>
-        </div>
-
-        <!-- System Resources -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">💻 Ressources Système</div>
-          </div>
-          <div class="metric">
-            <span class="metric-label">RAM Heap Utilisée</span>
-            <span class="metric-value" id="mem-heap">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">RAM Total (RSS)</span>
-            <span class="metric-value" id="mem-rss">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Système (%)</span>
-            <span class="metric-value" id="mem-system">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Cores CPU</span>
-            <span class="metric-value" id="cpu-cores">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Load Average (1m)</span>
-            <span class="metric-value" id="cpu-load">-</span>
-          </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">📊 Statistiques</div>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Zombies tués</span>
-            <span class="metric-value" id="zombies-killed">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Total joueurs</span>
-            <span class="metric-value" id="players-total">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Uptime</span>
-            <span class="metric-value" id="uptime">-</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Database</span>
-            <span class="metric-value" id="db-status">-</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="refresh-info">
-        🔄 Actualisation automatique toutes les 2 secondes
-      </div>
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="toolbar">
+    <h1>// ZOMBIE ADMIN</h1>
+    <div class="toolbar-right">
+      <span id="refresh-countdown">refresh: 5s</span>
+      <button class="logout-btn" id="logout-btn">DECONNEXION</button>
     </div>
   </div>
 
-  <script>
-    let refreshInterval;
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard-tab">DASHBOARD</button>
+    <button class="tab-btn" data-tab="metrics-tab">METRICS</button>
+    <button class="tab-btn" data-tab="errors-tab">ERRORS</button>
+    <button class="tab-btn" data-tab="telemetry-tab">TELEMETRY</button>
+  </div>
 
-    async function fetchMetrics() {
-      try {
-        const response = await fetch('/health');
-        if (!response.ok) throw new Error('Server error');
+  <div id="dashboard-tab" class="tab-panel active">
+    <div id="dashboard-content" class="section-grid"></div>
+  </div>
+  <div id="metrics-tab" class="tab-panel">
+    <pre id="metrics-content" class="raw-block"></pre>
+  </div>
+  <div id="errors-tab" class="tab-panel">
+    <div id="errors-content" class="error-list"></div>
+  </div>
+  <div id="telemetry-tab" class="tab-panel">
+    <pre id="telemetry-content" class="raw-block"></pre>
+  </div>
 
-        const data = await response.json();
-        updateDashboard(data);
+  <div class="status-bar" id="status-bar">-</div>
+</div>
 
-        // Masquer loading/error, afficher dashboard
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('error').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
+<script>
+(function () {
+  'use strict';
 
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error);
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('error').style.display = 'block';
-        document.getElementById('dashboard').style.display = 'none';
+  var SESSION_KEY = 'admin_token';
+  var token = sessionStorage.getItem(SESSION_KEY) || '';
+  var refreshTimer = null;
+  var countdown = 5;
+  var countdownTimer = null;
+
+  var authScreen  = document.getElementById('auth-screen');
+  var dashboard   = document.getElementById('dashboard');
+  var tokenInput  = document.getElementById('token-input');
+  var authBtn     = document.getElementById('auth-btn');
+  var authError   = document.getElementById('auth-error');
+  var logoutBtn   = document.getElementById('logout-btn');
+  var statusBar   = document.getElementById('status-bar');
+  var countdownEl = document.getElementById('refresh-countdown');
+
+  // ── DOM helpers (no innerHTML with user data) ─────────────────
+
+  function clearEl(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function makeCard(title) {
+    var card = document.createElement('div'); card.className = 'card';
+    var h    = document.createElement('div'); h.className = 'card-title';
+    h.textContent = title;
+    card.appendChild(h);
+    return card;
+  }
+
+  function makeKV(key, val) {
+    var row = document.createElement('div'); row.className = 'kv-row';
+    var k   = document.createElement('span'); k.className = 'kv-key'; k.textContent = key;
+    var v   = document.createElement('span'); v.className = 'kv-val'; v.textContent = val;
+    row.appendChild(k); row.appendChild(v);
+    return row;
+  }
+
+  function makeSpinner(msg) {
+    var d = document.createElement('div'); d.className = 'spinner';
+    d.textContent = msg || 'Chargement...';
+    return d;
+  }
+
+  function flattenObject(obj, prefix) {
+    prefix = prefix || '';
+    var rows = [];
+    Object.keys(obj).forEach(function (k) {
+      var v   = obj[k];
+      var key = prefix ? prefix + '.' + k : k;
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+        rows = rows.concat(flattenObject(v, key));
+      } else {
+        rows.push([key, Array.isArray(v) ? JSON.stringify(v) : String(v)]);
       }
-    }
+    });
+    return rows;
+  }
 
-    function updateDashboard(data) {
-      // Server status
-      const statusEl = document.getElementById('server-status');
-      statusEl.textContent = data.status === 'healthy' ? '✅ Serveur Opérationnel' : '❌ Serveur en Difficulté';
-      statusEl.className = 'status ' + data.status;
+  // ── Auth ──────────────────────────────────────────────────────
 
-      // Game state
-      document.getElementById('players-current').textContent = data.game.players.current;
-      document.getElementById('players-peak').textContent = data.game.players.peak;
-      document.getElementById('zombies-current').textContent = data.game.zombies.current;
-      document.getElementById('wave-current').textContent = data.game.wave;
-      document.getElementById('sessions-active').textContent = data.game.activeSessions;
+  function showAuth() {
+    authScreen.style.display = '';
+    dashboard.style.display  = 'none';
+    authError.style.display  = 'none';
+    tokenInput.value = '';
+    stopRefresh();
+  }
 
-      // Performance
-      document.getElementById('perf-mode').textContent = data.performanceMode.toUpperCase();
+  function showDashboard() {
+    authScreen.style.display = 'none';
+    dashboard.style.display  = '';
+    startRefresh();
+  }
 
-      const fpsEl = document.getElementById('fps');
-      const actualFps = data.performance.fps.actual;
-      const targetFps = data.performance.fps.target;
-      fpsEl.textContent = `${actualFps} / ${targetFps}`;
-      fpsEl.className = 'metric-value ' + (actualFps >= targetFps * 0.9 ? 'good' : actualFps >= targetFps * 0.7 ? 'warning' : 'danger');
+  function tryLogin() {
+    var candidate = tokenInput.value.trim();
+    if (!candidate) return;
+    probe(candidate, function (ok) {
+      if (ok) {
+        token = candidate;
+        sessionStorage.setItem(SESSION_KEY, token);
+        showDashboard();
+      } else {
+        authError.style.display = '';
+      }
+    });
+  }
 
-      document.getElementById('frame-avg').textContent = data.performance.frameTime.avg.toFixed(2) + ' ms';
+  function probe(t, cb) {
+    fetch('/dashboard', { headers: { Authorization: 'Bearer ' + t } })
+      .then(function (r) { cb(r.status !== 401 && r.status !== 403); })
+      .catch(function () { cb(false); });
+  }
 
-      const frameMaxEl = document.getElementById('frame-max');
-      const frameMax = data.performance.frameTime.max;
-      frameMaxEl.textContent = frameMax.toFixed(2) + ' ms';
-      frameMaxEl.className = 'metric-value ' + (frameMax < 50 ? 'good' : frameMax < 100 ? 'warning' : 'danger');
+  function logout() {
+    token = '';
+    sessionStorage.removeItem(SESSION_KEY);
+    showAuth();
+  }
 
-      // System
-      const heapMB = parseFloat(data.system.memory.heapUsedMB);
-      const heapTotalMB = parseFloat(data.system.memory.heapTotalMB);
-      document.getElementById('mem-heap').textContent = `${heapMB.toFixed(0)} / ${heapTotalMB.toFixed(0)} MB`;
+  // ── API fetch ─────────────────────────────────────────────────
 
-      document.getElementById('mem-rss').textContent = data.system.memory.rssMB + ' MB';
+  function apiFetch(url) {
+    return fetch(url, { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) {
+        if (r.status === 401 || r.status === 403) { logout(); throw new Error('auth'); }
+        return r;
+      });
+  }
 
-      const memUsageEl = document.getElementById('mem-system');
-      const memUsage = parseFloat(data.system.memory.systemUsagePercent);
-      memUsageEl.textContent = memUsage.toFixed(1) + '%';
-      memUsageEl.className = 'metric-value ' + (memUsage < 70 ? 'good' : memUsage < 85 ? 'warning' : 'danger');
+  // ── Loaders ───────────────────────────────────────────────────
 
-      document.getElementById('cpu-cores').textContent = data.system.cpu.cores;
-      document.getElementById('cpu-load').textContent = data.system.cpu.loadAverage[0].toFixed(2);
+  function loadDashboard() {
+    var el = document.getElementById('dashboard-content');
+    clearEl(el);
+    el.appendChild(makeSpinner());
+    apiFetch('/dashboard')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        clearEl(el);
+        var rows = flattenObject(data);
+        var chunkSize = 6;
+        for (var i = 0; i < rows.length; i += chunkSize) {
+          var card = makeCard('INFO ' + (Math.floor(i / chunkSize) + 1));
+          rows.slice(i, i + chunkSize).forEach(function (pair) {
+            card.appendChild(makeKV(pair[0], pair[1]));
+          });
+          el.appendChild(card);
+        }
+        if (!rows.length) el.appendChild(makeSpinner('Aucune donnee.'));
+      })
+      .catch(function (e) {
+        if (e.message !== 'auth') { clearEl(el); el.appendChild(makeSpinner('Erreur dashboard.')); }
+      });
+  }
 
-      // Stats
-      document.getElementById('zombies-killed').textContent = data.game.zombies.killed || '-';
-      document.getElementById('players-total').textContent = data.game.players.peak; // Using peak as approximation
-      document.getElementById('uptime').textContent = formatUptime(data.uptime);
-      document.getElementById('db-status').textContent = data.database === 'healthy' ? '✅ Connectée' : '❌ Déconnectée';
-    }
+  function loadMetrics() {
+    var el = document.getElementById('metrics-content');
+    el.textContent = 'Chargement...';
+    apiFetch('/api/v1/metrics')
+      .then(function (r) { return r.text(); })
+      .then(function (t) { el.textContent = t; })
+      .catch(function (e) { if (e.message !== 'auth') el.textContent = 'Erreur metrics.'; });
+  }
 
-    function formatUptime(seconds) {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hours}h ${minutes}m ${secs}s`;
-    }
+  function loadErrors() {
+    var el = document.getElementById('errors-content');
+    clearEl(el);
+    el.appendChild(makeSpinner());
+    apiFetch('/debug/errors')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        clearEl(el);
+        var list = Array.isArray(data) ? data : (data.errors || []);
+        if (!list.length) {
+          var ok = document.createElement('p');
+          ok.style.color = '#4cff88';
+          ok.textContent = 'Aucune erreur enregistree.';
+          el.appendChild(ok);
+          return;
+        }
+        list.forEach(function (err) {
+          var item = document.createElement('div'); item.className = 'error-item';
+          var meta = document.createElement('div'); meta.className = 'err-meta';
+          meta.textContent = (err.timestamp || '') + (err.type ? '  [' + err.type + ']' : '');
+          var msg  = document.createElement('div'); msg.className = 'err-msg';
+          msg.textContent = err.message || err.msg || JSON.stringify(err);
+          item.appendChild(meta);
+          item.appendChild(msg);
+          el.appendChild(item);
+        });
+      })
+      .catch(function (e) {
+        if (e.message !== 'auth') { clearEl(el); el.appendChild(makeSpinner('Erreur errors.')); }
+      });
+  }
 
-    // Fetch initial data
-    fetchMetrics();
+  function loadTelemetry() {
+    var el = document.getElementById('telemetry-content');
+    el.textContent = 'Chargement...';
+    apiFetch('/api/v1/metrics/telemetry')
+      .then(function (r) { return r.json(); })
+      .then(function (data) { el.textContent = JSON.stringify(data, null, 2); })
+      .catch(function (e) { if (e.message !== 'auth') el.textContent = 'Erreur telemetry.'; });
+  }
 
-    // Auto-refresh every 2 seconds
-    refreshInterval = setInterval(fetchMetrics, 2000);
-  </script>
+  // ── Refresh cycle ─────────────────────────────────────────────
+
+  function refreshAll() {
+    loadDashboard();
+    loadMetrics();
+    loadErrors();
+    loadTelemetry();
+    statusBar.textContent = 'Derniere mise a jour : ' + new Date().toLocaleTimeString();
+    countdown = 5;
+  }
+
+  function startRefresh() {
+    stopRefresh();
+    refreshAll();
+    refreshTimer   = setInterval(refreshAll, 5000);
+    countdownTimer = setInterval(function () {
+      countdown = Math.max(0, countdown - 1);
+      countdownEl.textContent = 'refresh: ' + countdown + 's';
+    }, 1000);
+  }
+
+  function stopRefresh() {
+    clearInterval(refreshTimer);
+    clearInterval(countdownTimer);
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────
+
+  var tabBtns   = document.querySelectorAll('.tab-btn');
+  var tabPanels = document.querySelectorAll('.tab-panel');
+
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(function (b) { b.classList.remove('active'); });
+      tabPanels.forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── Listeners ─────────────────────────────────────────────────
+
+  authBtn.addEventListener('click', tryLogin);
+  tokenInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryLogin(); });
+  logoutBtn.addEventListener('click', logout);
+
+  // ── Boot ──────────────────────────────────────────────────────
+
+  if (token) {
+    probe(token, function (ok) { if (ok) showDashboard(); else showAuth(); });
+  } else {
+    showAuth();
+  }
+
+}());
+</script>
 </body>
 </html>

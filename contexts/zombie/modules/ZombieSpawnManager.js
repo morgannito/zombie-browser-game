@@ -9,6 +9,8 @@ const { ZOMBIE_TYPES } = ConfigManager;
 class ZombieSpawnManager {
   constructor() {
     this.waveConfig = this.buildWaveProgression();
+    // PERF: cache { elites, normals } splits per wave to avoid re-filtering on every spawn
+    this._eliteCache = new Map();
   }
 
   /**
@@ -149,24 +151,27 @@ class ZombieSpawnManager {
   }
 
   /**
-   * Sélection pondérée avec augmentation élites aux waves élevées
+   * Sélection pondérée avec augmentation élites aux waves élevées.
+   * PERF: élites/normals splits cached par (wave, types-key) — recalc une seule fois par wave.
    */
   weightedSelection(availableTypes, currentWave) {
-    // Probabilité élites augmente avec wave
-    const eliteChance = Math.min(0.5, currentWave / 200); // Max 50% à wave 100+
+    const eliteChance = Math.min(0.5, currentWave / 200);
 
-    // Filtrer élites vs normaux
-    const elites = availableTypes.filter(type => ZOMBIE_TYPES[type]?.isElite);
-    const normals = availableTypes.filter(type => !ZOMBIE_TYPES[type]?.isElite);
-
-    // Roll pour élite
-    if (elites.length > 0 && Math.random() < eliteChance) {
-      return elites[Math.floor(Math.random() * elites.length)];
+    const cacheKey = currentWave + '|' + availableTypes.join(',');
+    let split = this._eliteCache.get(cacheKey);
+    if (!split) {
+      split = {
+        elites: availableTypes.filter(type => ZOMBIE_TYPES[type]?.isElite),
+        normals: availableTypes.filter(type => !ZOMBIE_TYPES[type]?.isElite)
+      };
+      this._eliteCache.set(cacheKey, split);
     }
 
-    // Sinon zombie normal
-    return normals.length > 0
-      ? normals[Math.floor(Math.random() * normals.length)]
+    if (split.elites.length > 0 && Math.random() < eliteChance) {
+      return split.elites[Math.floor(Math.random() * split.elites.length)];
+    }
+    return split.normals.length > 0
+      ? split.normals[Math.floor(Math.random() * split.normals.length)]
       : availableTypes[Math.floor(Math.random() * availableTypes.length)];
   }
 

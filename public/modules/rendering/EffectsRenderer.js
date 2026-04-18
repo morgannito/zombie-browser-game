@@ -13,6 +13,12 @@ class EffectsRenderer {
     this._scorchedExplosionIds = new Set();
     this.SCORCH_LIFETIME_MS = 8000;
     this.SCORCH_MAX = 48;
+    // Reusable map for particle color batching (avoids new Map() each frame)
+    this._particleByColor = new Map();
+    // Path2D cache: trailId/poolId → { path, radius } — avoids re-creating per frame
+    this._trailPaths = new Map();
+    this._poolPaths = new Map();
+    this._toxicIdSet = new Set(); // preallocated, cleared per frame
   }
 
   _spawnScorchDecal(explosion, now) {
@@ -74,10 +80,24 @@ class EffectsRenderer {
       return;
     }
 
-    // Batch particles by color: 1 beginPath/fill per color group
-    const byColor = new Map();
+    // LOD: skip every other particle when FPS < 50
+    const fps = window.performanceSettings ? window.performanceSettings.currentFPS : 60;
+    const skipAlt = fps < 50;
+
+    // Batch particles by color: 1 beginPath/fill per color group (reuse instance map)
+    const byColor = this._particleByColor;
+    byColor.clear();
+    const HARD_CAP = 1000;
+    let rendered = 0;
     for (const particleId in particles) {
+      if (rendered >= HARD_CAP) {
+break;
+}
+      if (skipAlt && (rendered & 1) === 1) {
+ rendered++; continue;
+}
       const particle = particles[particleId];
+      rendered++;
       if (!camera.isInViewport(particle.x, particle.y, 50)) {
         continue;
       }
@@ -169,34 +189,43 @@ class EffectsRenderer {
     now = now || Date.now();
     const trails = poisonTrails || {};
 
+    // Evict stale Path2D cache entries for trails no longer present
+    for (const id of this._trailPaths.keys()) {
+      if (!trails[id]) {
+this._trailPaths.delete(id);
+}
+    }
+
     for (const trailId in trails) {
       const trail = trails[trailId];
       if (!camera.isInViewport(trail.x, trail.y, trail.radius * 2)) {
-        continue;
+continue;
+}
+
+      // Reuse or create Path2D (never recreate if position/radius unchanged)
+      let cached = this._trailPaths.get(trailId);
+      if (!cached || cached.x !== trail.x || cached.y !== trail.y || cached.r !== trail.radius) {
+        const outer = new Path2D(); outer.arc(trail.x, trail.y, trail.radius, 0, Math.PI * 2);
+        const inner = new Path2D(); inner.arc(trail.x, trail.y, trail.radius * 0.6, 0, Math.PI * 2);
+        cached = { outer, inner, x: trail.x, y: trail.y, r: trail.radius };
+        this._trailPaths.set(trailId, cached);
       }
 
       const pulseAmount = Math.sin(now / 300) * 0.1;
-      const age = now - trail.createdAt;
-      const fadeAmount = Math.max(0, 1 - age / trail.duration);
+      const fadeAmount = Math.max(0, 1 - (now - trail.createdAt) / trail.duration);
 
       ctx.fillStyle = '#22ff22';
       ctx.globalAlpha = (0.15 + pulseAmount) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(trail.x, trail.y, trail.radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fill(cached.outer);
 
       ctx.fillStyle = '#11dd11';
       ctx.globalAlpha = (0.3 + pulseAmount * 0.5) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(trail.x, trail.y, trail.radius * 0.6, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fill(cached.inner);
 
       ctx.strokeStyle = '#00ff00';
       ctx.lineWidth = 2;
       ctx.globalAlpha = (0.4 + pulseAmount) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(trail.x, trail.y, trail.radius, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.stroke(cached.outer);
 
       ctx.globalAlpha = 1;
     }
@@ -204,56 +233,46 @@ class EffectsRenderer {
 
   renderToxicPools(ctx, camera, toxicPools, now) {
     if (!toxicPools || !Array.isArray(toxicPools)) {
-      return;
-    }
-
+return;
+}
     now = now || Date.now();
 
-    toxicPools.forEach(pool => {
+    // Evict stale cache entries
+    this._toxicIdSet.clear();
+    for (const p of toxicPools) this._toxicIdSet.add(p.id);
+    for (const id of this._poolPaths.keys()) {
+      if (!this._toxicIdSet.has(id)) {
+this._poolPaths.delete(id);
+}
+    }
+
+    for (const pool of toxicPools) {
       if (!camera.isInViewport(pool.x, pool.y, pool.radius * 2)) {
-        return;
+continue;
+}
+
+      // Reuse or build Path2D cache
+      let c = this._poolPaths.get(pool.id);
+      if (!c || c.x !== pool.x || c.y !== pool.y || c.r !== pool.radius) {
+        const mk = (r) => {
+ const p = new Path2D(); p.arc(pool.x, pool.y, r, 0, Math.PI * 2); return p;
+};
+        c = { outer: mk(pool.radius * 1.2), mid: mk(pool.radius), inner: mk(pool.radius * 0.5), core: mk(pool.radius * 0.3), x: pool.x, y: pool.y, r: pool.radius };
+        this._poolPaths.set(pool.id, c);
       }
 
       const pulseAmount = Math.sin(now / 200) * 0.15;
-      const age = now - pool.createdAt;
-      const fadeAmount = Math.max(0, 1 - age / pool.duration);
+      const fadeAmount = Math.max(0, 1 - (now - pool.createdAt) / pool.duration);
 
       ctx.save();
-
-      ctx.fillStyle = '#00ff00';
-      ctx.globalAlpha = (0.2 + pulseAmount) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(pool.x, pool.y, pool.radius * 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#22ff22';
-      ctx.globalAlpha = (0.4 + pulseAmount * 0.8) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#00dd00';
-      ctx.globalAlpha = (0.6 + pulseAmount * 1.2) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(pool.x, pool.y, pool.radius * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#00ff00';
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = (0.6 + pulseAmount * 1.5) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = '#00ff00';
-      ctx.globalAlpha = (0.3 + pulseAmount) * fadeAmount;
-      ctx.beginPath();
-      ctx.arc(pool.x, pool.y, pool.radius * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-
+      ctx.fillStyle = '#00ff00';   ctx.globalAlpha = (0.2 + pulseAmount) * fadeAmount;           ctx.fill(c.outer);
+      ctx.fillStyle = '#22ff22';   ctx.globalAlpha = (0.4 + pulseAmount * 0.8) * fadeAmount;     ctx.fill(c.mid);
+      ctx.fillStyle = '#00dd00';   ctx.globalAlpha = (0.6 + pulseAmount * 1.2) * fadeAmount;     ctx.fill(c.inner);
+      ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 3; ctx.globalAlpha = (0.6 + pulseAmount * 1.5) * fadeAmount; ctx.stroke(c.mid);
+      ctx.shadowBlur = 20; ctx.shadowColor = '#00ff00';
+      ctx.globalAlpha = (0.3 + pulseAmount) * fadeAmount;                                         ctx.fill(c.core);
       ctx.restore();
-    });
+    }
   }
 
   renderExplosions(ctx, camera, explosions, now) {

@@ -11,6 +11,8 @@ class MobileControlsManager {
     this.isMobile = this.detectMobile();
     this.joystickActive = false;
     this.joystickVector = { dx: 0, dy: 0 };
+    this.aimActive = false;
+    this.aimVector = { dx: 0, dy: 0 };
     this.autoShootActive = false;
     this.autoShootInterval = null;
     this.lastAutoShootTime = 0;
@@ -31,6 +33,7 @@ class MobileControlsManager {
     if (this.isMobile) {
       this.showMobileControls();
       this.setupJoystick();
+      this.setupAimJoystick();
       this.setupAutoShoot();
       this.setupAdvancedGestures();
     }
@@ -166,6 +169,78 @@ class MobileControlsManager {
     this.joystickVector = { dx: ndx, dy: ndy };
   }
 
+  setupAimJoystick() {
+    const base = document.getElementById('aim-joystick-base');
+    const stick = document.getElementById('aim-joystick-stick');
+    if (!base || !stick) {
+return;
+}
+
+    this.elements.aimBase = base;
+    this.elements.aimStick = stick;
+
+    let touchId = null;
+    const maxDistance = 40;
+
+    const onStart = e => {
+      e.preventDefault();
+      touchId = e.touches[0].identifier;
+      this.aimActive = true;
+      base.classList.add('active');
+      this._updateAim(e.touches[0], base, stick, maxDistance);
+    };
+    const onMove = e => {
+      e.preventDefault();
+      const t = Array.from(e.touches).find(t => t.identifier === touchId);
+      if (t) {
+this._updateAim(t, base, stick, maxDistance);
+}
+    };
+    const onEnd = e => {
+      e.preventDefault();
+      const lifted = Array.from(e.changedTouches).find(t => t.identifier === touchId);
+      if (touchId !== null && !lifted) {
+return;
+}
+      touchId = null;
+      this.aimActive = false;
+      this.aimVector = { dx: 0, dy: 0 };
+      base.classList.remove('active');
+      stick.style.transform = 'translate(-50%, -50%)';
+    };
+
+    this.handlers.aimStart = onStart;
+    this.handlers.aimMove = onMove;
+    this.handlers.aimEnd = onEnd;
+
+    base.addEventListener('touchstart', onStart, { passive: false });
+    base.addEventListener('touchmove', onMove, { passive: false });
+    base.addEventListener('touchend', onEnd, { passive: false });
+    base.addEventListener('touchcancel', onEnd, { passive: false });
+  }
+
+  _updateAim(touch, base, stick, maxDistance) {
+    const rect = base.getBoundingClientRect();
+    let dx = touch.clientX - (rect.left + rect.width / 2);
+    let dy = touch.clientY - (rect.top + rect.height / 2);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxDistance) {
+      const a = Math.atan2(dy, dx);
+      dx = Math.cos(a) * maxDistance;
+      dy = Math.sin(a) * maxDistance;
+    }
+    stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    this.aimVector = { dx: dx / maxDistance, dy: dy / maxDistance };
+  }
+
+  getAimVector() {
+    return this.aimVector;
+  }
+
+  isAimActive() {
+    return this.aimActive;
+  }
+
   setupAutoShoot() {
     const autoShootBtn = document.getElementById('auto-shoot-btn');
     if (!autoShootBtn) {
@@ -237,13 +312,21 @@ class MobileControlsManager {
       return;
     }
 
-    // Find nearest zombie and shoot at it
-    const nearestZombie = this.findNearestZombie(player);
-    this.currentTarget = nearestZombie; // Store for visual indicator
+    // Aim joystick overrides auto-target when active
+    let angle;
+    if (this.aimActive && (Math.abs(this.aimVector.dx) > 0.1 || Math.abs(this.aimVector.dy) > 0.1)) {
+      angle = Math.atan2(this.aimVector.dy, this.aimVector.dx);
+      this.currentTarget = null;
+    } else {
+      const nearestZombie = this.findNearestZombie(player);
+      this.currentTarget = nearestZombie;
+      if (!nearestZombie) {
+return;
+}
+      angle = Math.atan2(nearestZombie.y - player.y, nearestZombie.x - player.x);
+    }
 
-    if (nearestZombie) {
-      const angle = Math.atan2(nearestZombie.y - player.y, nearestZombie.x - player.x);
-      // Mettre à jour l'angle visuel du canon
+    if (angle !== undefined) {
       player.angle = angle;
       window.networkManager.shoot(angle);
 
@@ -325,6 +408,7 @@ class MobileControlsManager {
 
     // Swipe detection for pause menu (from edge)
     const handleGestureTouchStart = e => {
+      e.preventDefault(); // Prevent scroll on canvas
       const touch = e.touches[0];
       this.swipeStartX = touch.clientX;
       this.swipeStartY = touch.clientY;
@@ -337,6 +421,7 @@ class MobileControlsManager {
     };
 
     const handleGestureTouchMove = e => {
+      e.preventDefault(); // Prevent scroll/zoom on canvas
       // Cancel long press if moved
       if (this.longPressTimer) {
         const touch = e.touches[0];
@@ -374,9 +459,9 @@ class MobileControlsManager {
     this.handlers.gestureTouchMove = handleGestureTouchMove;
     this.handlers.gestureTouchEnd = handleGestureTouchEnd;
 
-    canvas.addEventListener('touchstart', handleGestureTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', handleGestureTouchMove, { passive: true });
-    canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: true });
+    canvas.addEventListener('touchstart', handleGestureTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleGestureTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: false });
 
     // Double-tap on auto-shoot for burst mode
     const autoShootBtn = this.elements.autoShootBtn || document.getElementById('auto-shoot-btn');
@@ -442,6 +527,14 @@ class MobileControlsManager {
       this.elements.joystickBase.removeEventListener('touchmove', this.handlers.joystickMove);
       this.elements.joystickBase.removeEventListener('touchend', this.handlers.joystickEnd);
       this.elements.joystickBase.removeEventListener('touchcancel', this.handlers.joystickEnd);
+    }
+
+    // Remove aim joystick event listeners
+    if (this.elements.aimBase && this.handlers.aimStart) {
+      this.elements.aimBase.removeEventListener('touchstart', this.handlers.aimStart);
+      this.elements.aimBase.removeEventListener('touchmove', this.handlers.aimMove);
+      this.elements.aimBase.removeEventListener('touchend', this.handlers.aimEnd);
+      this.elements.aimBase.removeEventListener('touchcancel', this.handlers.aimEnd);
     }
 
     // Remove auto-shoot event listener

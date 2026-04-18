@@ -3,6 +3,7 @@
  */
 
 const { GAMEPLAY_CONSTANTS } = require('../../../lib/server/ConfigManager');
+const { getTelemetryCollector } = require('../../../infrastructure/telemetry/TelemetryCollector');
 
 const RETRY_INTERVAL_MS = 30000;
 const MAX_RETRIES = 3;
@@ -43,6 +44,12 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
 
   player.health = 0;
   const revived = gameState.progressionIntegration?.checkSecondChance(player);
+
+  const tc = getTelemetryCollector();
+  tc.record('death');
+  if (isBoss) {
+tc.record('boss_kill');
+}
 
   if (!revived) {
     _markPlayerDead(player, gameState, now, isBoss, playerId, logger);
@@ -226,8 +233,16 @@ function cleanupOrphanedTrackingData(gameState, now) {
   }
   gameState._lastTrackingCleanup = now;
 
-  const activeZombieIds = new Set(Object.keys(gameState.zombies));
-  const activePoisonTrailIds = new Set(Object.keys(gameState.poisonTrails || {}));
+  // PERF: build Sets without intermediate Object.keys() array allocation
+  const activeZombieIds = new Set();
+  for (const id in gameState.zombies) {
+ activeZombieIds.add(id);
+}
+  const activePoisonTrailIds = new Set();
+  const trails = gameState.poisonTrails || {};
+  for (const id in trails) {
+ activePoisonTrailIds.add(id);
+}
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
