@@ -271,6 +271,12 @@
             } else if (loot.type === 'xp' && window.onXPGain) {
               window.onXPGain(loot.x, loot.y, loot.amount);
               dispatchGameEvent('xp_gained', { amount: loot.amount || 0, x: loot.x, y: loot.y });
+            } else if (loot.type === 'health_pack' || loot.type === 'health') {
+              spawnPickupBurst(loot.x, loot.y, '#66ff66');
+              if (window.advancedAudio) window.advancedAudio.playSound('collect', 'health');
+            } else if (loot.type === 'ammo') {
+              spawnPickupBurst(loot.x, loot.y, '#ff9800');
+              if (window.advancedAudio) window.advancedAudio.playSound('collect', 'ammo');
             }
             spawnPickupLabel(loot.x, loot.y, loot.type, loot.amount);
           }
@@ -282,6 +288,19 @@
         Object.keys(oldState.powerups).forEach(pid => {
           if (!newState.powerups[pid]) {
             const pw = oldState.powerups[pid];
+            const POWERUP_COLORS = {
+              health: '#66ff66',
+              speed: '#ffffff',
+              shotgun: '#00e5ff',
+              machinegun: '#00e5ff',
+              rocketlauncher: '#ff4444'
+            };
+            const burstColor = POWERUP_COLORS[pw.type] || '#ffd700';
+            spawnPickupBurst(pw.x, pw.y, burstColor);
+            const isWeapon = ['shotgun', 'machinegun', 'rocketlauncher'].includes(pw.type);
+            if (window.advancedAudio) {
+              window.advancedAudio.playSound('collect', isWeapon ? 'weapon' : pw.type);
+            }
             spawnPickupLabel(pw.x, pw.y, pw.type, null);
           }
         });
@@ -364,6 +383,12 @@
      * @param {string} type - Loot or powerup type key
      * @param {number|null} amount - Numeric amount (gold, xp…) or null for powerups
      */
+    function spawnPickupBurst(x, y, color) {
+      if (window.enhancedEffects && window.enhancedEffects.particles) {
+        window.enhancedEffects.particles.createExplosion(x, y, color, 9, 3);
+      }
+    }
+
     function spawnPickupLabel(x, y, type, amount) {
       const renderer = window.renderer;
       if (!renderer || typeof renderer.addPickupLabel !== 'function') {

@@ -27,11 +27,20 @@ class CameraManager {
     this.deadZone = 0.5;
     this._deadZoneSq = 0.5 * 0.5;
 
-    // Look-ahead
+    // Look-ahead (velocity-based)
     this.lookAheadEnabled = true;
     this.lookAheadFactor = 0.15;
     this.lastPlayerX = 0;
     this.lastPlayerY = 0;
+
+    // Mouse/crosshair look-ahead
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.mouseLookAheadFactor = 0.18; // fraction of player→mouse offset added to target
+    this.mouseLookAheadMax = 120;     // px cap
+
+    // Room bounds (set via setBounds; null = unlimited)
+    this.bounds = null; // { minX, minY, maxX, maxY } in world coords
 
     // EMA velocity smoothing (absorbs server corrections)
     this.smoothVelX = 0;
@@ -89,8 +98,21 @@ class CameraManager {
     this.lastPlayerX = player.x;
     this.lastPlayerY = player.y;
 
-    const targetX = player.x + lookAheadX - canvasWidth / 2;
-    const targetY = player.y + lookAheadY - canvasHeight / 2;
+    // Mouse/crosshair look-ahead: shift camera slightly toward where player is aiming
+    const mla = this.mouseLookAheadMax;
+    const mlf = this.mouseLookAheadFactor;
+    const mOffX = Math.max(-mla, Math.min(mla, (this.mouseX - canvasWidth / 2) * mlf));
+    const mOffY = Math.max(-mla, Math.min(mla, (this.mouseY - canvasHeight / 2) * mlf));
+
+    let targetX = player.x + lookAheadX + mOffX - canvasWidth / 2;
+    let targetY = player.y + lookAheadY + mOffY - canvasHeight / 2;
+
+    // Clamp target to room bounds so camera never shows outside the map
+    if (this.bounds) {
+      const { minX, minY, maxX, maxY } = this.bounds;
+      targetX = Math.max(minX, Math.min(maxX - canvasWidth, targetX));
+      targetY = Math.max(minY, Math.min(maxY - canvasHeight, targetY));
+    }
 
     const dx = targetX - this.x;
     const dy = targetY - this.y;
@@ -112,8 +134,9 @@ class CameraManager {
     this.height = canvasHeight;
 
     this._updateShake(deltaTime);
-    const camX = this.x + this.shakeOffset.x;
-    const camY = this.y + this.shakeOffset.y;
+    // Anti-jitter: round to integer pixels to prevent sub-pixel blur
+    const camX = Math.round(this.x + this.shakeOffset.x);
+    const camY = Math.round(this.y + this.shakeOffset.y);
     this._invalidateCache(camX, camY);
 
     return { x: camX, y: camY };
@@ -244,6 +267,31 @@ class CameraManager {
 
   getRawPosition() {
     return { x: this.x, y: this.y };
+  }
+
+  /**
+   * Set the world-space room bounds. Camera will be clamped inside.
+   * @param {number} minX
+   * @param {number} minY
+   * @param {number} maxX - room width in world px
+   * @param {number} maxY - room height in world px
+   */
+  setBounds(minX, minY, maxX, maxY) {
+    this.bounds = { minX, minY, maxX, maxY };
+  }
+
+  clearBounds() {
+    this.bounds = null;
+  }
+
+  /**
+   * Update the mouse/crosshair position in screen-space (call every frame from PlayerController).
+   * @param {number} sx - screen x
+   * @param {number} sy - screen y
+   */
+  setMouse(sx, sy) {
+    this.mouseX = sx;
+    this.mouseY = sy;
   }
 
   setSmoothingSpeed(speed) {

@@ -55,7 +55,7 @@ return;
     socket.on('connect_error', () => {});
     // Keep alive until process exits
     return socket;
-  } catch (_) {}
+  } catch (_) { /* ignore connect errors */ }
 }
 
 // --- ASCII graph ---

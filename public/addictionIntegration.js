@@ -76,6 +76,7 @@ class AddictionIntegration {
 
     if (window.leaderboardSystem) {
       window.leaderboardSystem.createLeaderboardUI();
+      window.leaderboardSystem.createMiniLeaderboard();
     }
 
     if (window.unlockSystem) {

@@ -12,6 +12,7 @@ class ToastManager {
     this.toasts = [];
     this._queue = [];
     this._rafPending = false;
+    this.MAX_VISIBLE = 5;
   }
 
   show(options) {
@@ -61,6 +62,11 @@ return;
       toInsert.push({ toast, duration });
     }
     this._queue = [];
+    // Evict oldest toasts if cap exceeded
+    while (this.toasts.length + toInsert.length > this.MAX_VISIBLE) {
+      const oldest = this.toasts.shift();
+      if (oldest) this.remove(oldest);
+    }
     this.container.appendChild(fragment);
     for (const { toast, duration } of toInsert) {
       this.toasts.push(toast);

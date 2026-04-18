@@ -62,6 +62,11 @@ class NetworkManager {
     this._reconnectMaxBackoffMs = 30000;
     this._reconnectTimer = null;
 
+    // Input buffer: playerMove events queued while disconnected, flushed on reconnect.
+    // Capped at 60 entries (~1s at 60fps) to avoid stale burst replay after long outage.
+    this._moveBuffer = [];
+    this._moveBufferMax = 60;
+
     this.setupSocketListeners();
     this.setupLatencyMonitoring();
   }
@@ -241,7 +246,9 @@ class NetworkManager {
     // Add to ring buffer (zero-alloc)
     this._latencyBuf[this._latencyBufIdx] = latency;
     this._latencyBufIdx = (this._latencyBufIdx + 1) % this._latencyBuf.length;
-    if (this._latencyBufCount < this._latencyBuf.length) this._latencyBufCount++;
+    if (this._latencyBufCount < this._latencyBuf.length) {
+this._latencyBufCount++;
+}
 
     // Update UI indicator if available
     this.updateLatencyIndicator();
@@ -267,7 +274,9 @@ class NetworkManager {
       return 0;
     }
     let sum = 0;
-    for (let i = 0; i < this._latencyBufCount; i++) sum += this._latencyBuf[i];
+    for (let i = 0; i < this._latencyBufCount; i++) {
+sum += this._latencyBuf[i];
+}
     return Math.round(sum / this._latencyBufCount);
   }
 
@@ -335,6 +344,7 @@ class NetworkManager {
         }
         // Re-sync: request full authoritative state. Silent no-op if server does not support it.
         this._syncFullState();
+        this._flushMoveBuffer();
       }
     });
 
@@ -382,6 +392,7 @@ class NetworkManager {
       }
       // Re-sync: request full authoritative state. Silent no-op if server does not support it.
       this._syncFullState();
+      this._flushMoveBuffer();
     });
 
     this.on('reconnect_attempt', attemptNumber => {
@@ -621,6 +632,9 @@ class NetworkManager {
     snapshot.localPlayerState = { x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle };
     snapshot.prevHealth = localPlayer.health;
     snapshot.prevMaxHealth = localPlayer.maxHealth;
+    snapshot.prevKills = localPlayer.zombiesKilled || localPlayer.kills || 0;
+    snapshot.prevGold = localPlayer.gold || 0;
+    snapshot.prevAlive = localPlayer.alive !== false;
     return snapshot;
   }
 
@@ -742,6 +756,29 @@ p.angle = serverPatch.angle;
     }
   }
 
+  _detectSessionAchievementEvents(context) {
+    const { prevKills, prevGold, prevAlive } = context;
+    if (prevKills === undefined || !this._deps.gameState.state.players) {
+      return;
+    }
+    const player = this._deps.gameState.state.players[this._deps.gameState.playerId];
+    if (!player) {
+      return;
+    }
+    const currKills = player.zombiesKilled || player.kills || 0;
+    const currGold = player.gold || 0;
+    const currAlive = player.alive !== false;
+    if (currKills > prevKills) {
+      document.dispatchEvent(new CustomEvent('session_kill', { detail: { kills: currKills, delta: currKills - prevKills } }));
+    }
+    if (!currAlive && prevAlive) {
+      document.dispatchEvent(new CustomEvent('session_death'));
+    }
+    if (currGold > prevGold) {
+      document.dispatchEvent(new CustomEvent('session_gold', { detail: { gold: currGold } }));
+    }
+  }
+
   _detectBossDeath(delta) {
     if (!this._deps.screenEffects) {
       return;
@@ -764,9 +801,9 @@ p.angle = serverPatch.angle;
     if (delta.serverTime) {
       this._deps.gameState.updateServerTime(delta.serverTime);
     }
-    const { localPlayerState, prevHealth, prevMaxHealth } = this._captureLocalPlayerSnapshot();
+    const { localPlayerState, prevHealth, prevMaxHealth, prevKills, prevGold, prevAlive } = this._captureLocalPlayerSnapshot();
     const packetServerTime = delta.serverTime || undefined;
-    return { localPlayerState, prevHealth, prevMaxHealth, packetServerTime };
+    return { localPlayerState, prevHealth, prevMaxHealth, prevKills, prevGold, prevAlive, packetServerTime };
   }
 
   /**
@@ -801,6 +838,7 @@ p.angle = serverPatch.angle;
     }
 
     this._detectLocalPlayerDamage(prevHealth, prevMaxHealth);
+    this._detectSessionAchievementEvents(context);
     this._detectBossDeath(delta);
 
     if (this._deps.gameUI) {
@@ -809,6 +847,10 @@ p.angle = serverPatch.angle;
   }
 
   handleGameStateDelta(delta) {
+    // Track last delta payload size for debug overlay
+    try {
+      this.lastDeltaSize = JSON.stringify(delta).length;
+    } catch (_) { this.lastDeltaSize = 0; }
     const context = this._prepareDeltaContext(delta);
     this._processDeltaEntities(delta, context);
     this._handlePostDeltaEvents(delta, context);
@@ -972,8 +1014,9 @@ p.angle = serverPatch.angle;
         this._deps.toastManager.show({ message: '✅ Achat réussi !', type: 'success', duration: 2000 });
       }
 
-      // Refresh shop if open
+      // Refresh shop if open, then flash bought item
       if (this._deps.gameUI && this._deps.gameUI.shopOpen) {
+        if (data.itemId) this._deps.gameUI._lastBoughtItem = data.itemId;
         this._deps.gameUI.populateShop();
       }
     } else {
@@ -1073,13 +1116,36 @@ p.angle = serverPatch.angle;
 
   /**
    * Emit a single absolute player move to the server.
+   * If disconnected, buffers the move (capped at _moveBufferMax) so it can be
+   * flushed on reconnect instead of being silently dropped.
    * @param {{x:number,y:number,angle:number,seq:number}} move
    */
   playerMove(move) {
     if (!move) {
-return;
-}
+      return;
+    }
+    if (!this.socket.connected) {
+      // Keep only the most-recent moves (drop oldest) to avoid stale burst on reconnect.
+      if (this._moveBuffer.length >= this._moveBufferMax) {
+        this._moveBuffer.shift();
+      }
+      this._moveBuffer.push(move);
+      return;
+    }
     this.socket.emit('playerMove', move);
+  }
+
+  /** Flush buffered moves after reconnect. Emits only the last position (dedup). @private */
+  _flushMoveBuffer() {
+    if (this._moveBuffer.length === 0) {
+      return;
+    }
+    // Only the final position matters for state sync; intermediate moves are stale.
+    const last = this._moveBuffer[this._moveBuffer.length - 1];
+    this._moveBuffer = [];
+    if (this.socket.connected) {
+      this.socket.emit('playerMove', last);
+    }
   }
 
   /**

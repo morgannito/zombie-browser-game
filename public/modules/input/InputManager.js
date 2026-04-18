@@ -114,9 +114,9 @@ return;
     this.keys[key] = true;
     this.movementDirty = true;
 
-    // TAB key for stats panel (already prevented above)
+    // TAB key: show stats panel while held
     if (e.key === 'Tab' && window.gameUI) {
-      window.gameUI.toggleStatsPanel();
+      window.gameUI.showStatsPanel();
     }
   }
 
@@ -126,6 +126,11 @@ return;
     this.movementDirty = true;
     this.lastInputTime = performance.now();
     this.isIdle = false;
+
+    // TAB key: hide stats panel on release
+    if (e.key === 'Tab' && window.gameUI) {
+      window.gameUI.hideStatsPanel();
+    }
   }
 
   handleBlur() {

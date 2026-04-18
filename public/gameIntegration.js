@@ -67,6 +67,10 @@ function initializeEnhancedSystems() {
  * Hook appelé lors d'un tir
  */
 window.onPlayerShoot = function (x, y, angle, weaponType) {
+  // Muzzle flash at barrel tip with per-weapon sizing
+  if (window.gameEngine && window.gameEngine.renderer && window.gameEngine.renderer.effectsRenderer) {
+    window.gameEngine.renderer.effectsRenderer.addMuzzleFlash(x, y, angle, weaponType);
+  }
   if (window.enhancedEffects) {
     window.enhancedEffects.onPlayerShoot(x, y, angle, weaponType);
   }
@@ -75,6 +79,18 @@ window.onPlayerShoot = function (x, y, angle, weaponType) {
   }
   if (window.enhancedUI) {
     window.enhancedUI.onPlayerShoot();
+  }
+  // Recoil shake: heavier weapons kick more
+  if (window.screenEffects && window.gameSettings && window.gameSettings.screenShakeEnabled !== false) {
+    if (weaponType === 'rocketlauncher') {
+      window.screenEffects.shake.shake(4, 120);
+    } else if (weaponType === 'shotgun') {
+      window.screenEffects.shake.shake(3, 100);
+    } else if (weaponType === 'machinegun') {
+      window.screenEffects.shake.shake(1.5, 60);
+    } else {
+      window.screenEffects.shake.shake(2, 80);
+    }
   }
 };
 
@@ -203,9 +219,10 @@ window.onPlayerDamage = function (x, y, damage) {
   if (window.enhancedUI) {
     window.enhancedUI.onPlayerDamage();
   }
-  if (window.screenEffects) {
-    // Heavy shake on lethal hit, light shake otherwise
-    if (damage && damage >= 50) {
+  if (window.screenEffects && window.gameSettings && window.gameSettings.screenShakeEnabled !== false) {
+    if (damage && damage >= 80) {
+      window.screenEffects.shake.shakeHeavy();
+    } else if (damage && damage >= 30) {
       window.screenEffects.shake.shakeMedium();
     } else {
       window.screenEffects.shake.shakeLight();

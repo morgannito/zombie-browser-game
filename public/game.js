@@ -24,11 +24,15 @@ if (document.readyState === 'loading') {
     initInstructionsToggle();
     initMinimapToggle();
     initCameraRecenter();
+    window.helpMenu = new HelpMenu();
     new GameEngine();
+    window.screenshotManager = new ScreenshotManager();
   });
 } else {
   initInstructionsToggle();
   initMinimapToggle();
   initCameraRecenter();
+  window.helpMenu = new HelpMenu();
   new GameEngine();
+  window.screenshotManager = new ScreenshotManager();
 }

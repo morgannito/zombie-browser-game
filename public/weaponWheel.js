@@ -35,6 +35,11 @@ class WeaponWheel {
   setup() {
     this.setupEventListeners();
     this.renderWeapons();
+    // Restore last selected weapon
+    const last = window.loadPref ? window.loadPref('pref_last_weapon', 0) : 0;
+    if (last > 0 && this.weapons[last]?.unlocked) {
+      this.currentWeaponIndex = last;
+    }
   }
 
   setupEventListeners() {
@@ -58,6 +63,19 @@ return;
 
       if (key === 'escape' && this.isOpen) {
         this.close();
+        return;
+      }
+
+      // Numeric shortcuts 1-9: direct weapon select (no wheel open needed)
+      const numMatch = e.key.match(/^[1-9]$/);
+      if (numMatch) {
+        const targetIndex = parseInt(e.key, 10) - 1;
+        if (targetIndex < this.weapons.length && this.weapons[targetIndex].unlocked) {
+          this.selectWeapon(targetIndex);
+          if (this.isOpen) {
+            this.close();
+          }
+        }
         return;
       }
 
@@ -121,6 +139,38 @@ return;
     };
     document.addEventListener('mousemove', this._onMousemove);
     this._listeners.push({ target: document, event: 'mousemove', handler: this._onMousemove });
+
+    // Mouse wheel to cycle through unlocked weapons
+    this._onWheel = (e) => {
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+        return;
+      }
+      // Only active during gameplay (no blocking modal)
+      const pauseOpen = document.getElementById('pause-menu')?.classList.contains('is-open');
+      const levelUpActive = document.getElementById('upgrade-choices')?.children.length > 0;
+      const shopEl = document.getElementById('shop');
+      const shopOpen = shopEl?.style.display === 'flex' || shopEl?.style.display === 'block';
+      const gameOverEl = document.getElementById('game-over');
+      const gameOverOpen = gameOverEl?.style.display === 'flex' || gameOverEl?.style.display === 'block';
+      if (pauseOpen || levelUpActive || shopOpen || gameOverOpen) {
+        return;
+      }
+
+      e.preventDefault();
+      const direction = e.deltaY > 0 ? 1 : -1;
+      const unlockedIndices = this.weapons
+        .map((w, i) => w.unlocked ? i : -1)
+        .filter(i => i !== -1);
+      if (unlockedIndices.length < 2) {
+        return;
+      }
+      const currentPos = unlockedIndices.indexOf(this.currentWeaponIndex);
+      const nextPos = (currentPos + direction + unlockedIndices.length) % unlockedIndices.length;
+      this.selectWeapon(unlockedIndices[nextPos]);
+    };
+    document.addEventListener('wheel', this._onWheel, { passive: false });
+    this._listeners.push({ target: document, event: 'wheel', handler: this._onWheel });
   }
 
   destroy() {
@@ -270,6 +320,7 @@ return;
     }
 
     this.currentWeaponIndex = index;
+    if (window.savePref) window.savePref('pref_last_weapon', index);
 
     // Update selected class
     const slots = document.querySelectorAll('.weapon-slot');

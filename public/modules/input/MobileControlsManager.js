@@ -40,10 +40,13 @@ class MobileControlsManager {
   }
 
   detectMobile() {
-    // Check for touch support and screen size
+    // Prefer CSS media query pointer:coarse (tablets included), fallback to UA+size
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      return true;
+    }
     const isTouchDevice =
       'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
-    const isSmallScreen = window.innerWidth <= 768;
+    const isSmallScreen = window.innerWidth <= 1024;
     return isTouchDevice && isSmallScreen;
   }
 

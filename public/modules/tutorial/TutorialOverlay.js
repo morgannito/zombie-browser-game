@@ -6,21 +6,28 @@ class TutorialOverlay {
   static STORAGE_KEY = 'zbg:tutorial:completed';
 
   static STEPS = [
-    { text: 'WASD pour bouger' },
-    { text: 'Clic souris pour tirer' },
-    { text: 'Survis aux vagues, choisis tes upgrades' }
+    { text: 'Bouge avec WASD / ZQSD', hint: 'Déplace-toi pour continuer', waitEvent: 'zbg:moved' },
+    { text: 'Clique pour tirer sur les zombies', hint: 'Tue un zombie pour continuer', waitEvent: 'zbg:kill' },
+    { text: 'E pour changer d\'arme · P pour ouvrir le shop', hint: null, waitEvent: null }
   ];
 
   constructor() {
     this.current = 0;
-    if (this._isCompleted()) return;
+    this._stepUnlocked = false;
+    if (this._isCompleted()) {
+return;
+}
     this._inject();
+    this._bindGameEvents();
     this._show();
   }
 
   _isCompleted() {
-    try { return !!localStorage.getItem(TutorialOverlay.STORAGE_KEY); }
-    catch { return true; }
+    try {
+ return !!localStorage.getItem(TutorialOverlay.STORAGE_KEY);
+} catch {
+ return true;
+}
   }
 
   _inject() {
@@ -76,11 +83,52 @@ class TutorialOverlay {
     document.head.appendChild(s);
   }
 
+  _bindGameEvents() {
+    // Movement detection (WASD / ZQSD / arrows)
+    const moveKeys = new Set(['w','a','s','d','z','q','arrowup','arrowdown','arrowleft','arrowright']);
+    this._onKey = e => {
+      if (moveKeys.has(e.key.toLowerCase())) {
+        document.dispatchEvent(new CustomEvent('zbg:moved'));
+      }
+    };
+    document.addEventListener('keydown', this._onKey);
+
+    // Kill detection via custom game event (dispatched by game engine)
+    this._onKill = () => document.dispatchEvent(new CustomEvent('zbg:kill'));
+    document.addEventListener('zbg:zombie:killed', this._onKill);
+  }
+
   _show() {
     const total = TutorialOverlay.STEPS.length;
+    const step = TutorialOverlay.STEPS[this.current];
     this.stepEl.textContent = `Étape ${this.current + 1} / ${total}`;
-    this.textEl.textContent = TutorialOverlay.STEPS[this.current].text;
-    this.nextBtn.textContent = this.current === total - 1 ? 'Commencer !' : 'Suivant →';
+    this.textEl.textContent = step.text;
+    this._stepUnlocked = !step.waitEvent; // étapes sans condition sont débloquées d'emblée
+
+    const isLast = this.current === total - 1;
+    this.nextBtn.textContent = isLast ? 'Commencer !' : 'Suivant →';
+    this.nextBtn.disabled = !this._stepUnlocked;
+    this.nextBtn.style.opacity = this._stepUnlocked ? '1' : '0.4';
+    this.nextBtn.style.cursor = this._stepUnlocked ? 'pointer' : 'not-allowed';
+
+    if (step.hint) {
+      this.stepEl.textContent += ` — ${step.hint}`;
+    }
+
+    // Listen for the step's unlock event
+    if (step.waitEvent) {
+      const unlock = () => {
+        this._stepUnlocked = true;
+        this.nextBtn.disabled = false;
+        this.nextBtn.style.opacity = '1';
+        this.nextBtn.style.cursor = 'pointer';
+        if (step.hint) {
+          this.stepEl.textContent = `Étape ${this.current + 1} / ${total} — Bien joué !`;
+        }
+        document.removeEventListener(step.waitEvent, unlock);
+      };
+      document.addEventListener(step.waitEvent, unlock);
+    }
   }
 
   _advance() {
@@ -93,18 +141,26 @@ class TutorialOverlay {
   }
 
   _complete() {
-    try { localStorage.setItem(TutorialOverlay.STORAGE_KEY, '1'); } catch {}
+    try {
+ localStorage.setItem(TutorialOverlay.STORAGE_KEY, '1');
+} catch { /* ignore */ }
+    if (this._onKey) document.removeEventListener('keydown', this._onKey);
+    if (this._onKill) document.removeEventListener('zbg:zombie:killed', this._onKill);
     this.el.remove();
   }
 
   /** Public: reset depuis SettingsMenu */
   static reset() {
-    try { localStorage.removeItem(TutorialOverlay.STORAGE_KEY); } catch {}
+    try {
+ localStorage.removeItem(TutorialOverlay.STORAGE_KEY);
+} catch { /* ignore */ }
   }
 }
 
 if (typeof window !== 'undefined') {
-  const init = () => { window.tutorialOverlay = new TutorialOverlay(); };
+  const init = () => {
+ window.tutorialOverlay = new TutorialOverlay();
+};
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

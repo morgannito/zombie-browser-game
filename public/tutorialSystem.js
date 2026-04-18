@@ -5,7 +5,7 @@
 
 class TutorialSystem {
   constructor() {
-    this.storageKey = 'zombie-game-tutorial-completed';
+    this.storageKey = 'zbg:tutorial:completed';
     this.currentStep = 0;
     this.isActive = false;
     this.hasCompleted = this.checkCompletion();

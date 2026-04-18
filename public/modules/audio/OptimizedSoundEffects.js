@@ -218,6 +218,12 @@ class OptimizedSoundEffects {
         volume: 0.25,
         waveType: 'sine'
       });
+    } else if (type === 'health') {
+      // Soft rising heal chime
+      this.core.playTone({ type: 'collect', frequency: 600, frequencyEnd: 900, duration: 0.25, volume: 0.3, waveType: 'sine' });
+    } else if (type === 'weapon' || type === 'ammo') {
+      // Short metallic click
+      this.core.playTone({ type: 'collect', frequency: 300, frequencyEnd: 200, duration: 0.08, volume: 0.35, waveType: 'square' });
     } else if (type === 'powerup') {
       this.core.playTone({
         type: 'collect',
@@ -429,6 +435,180 @@ class OptimizedSoundEffects {
       waveType: 'square'
     });
   }
+
+  // ─── AMBIENT SYSTEMS ────────────────────────────────────────────────────────
+
+  /**
+   * WIND AMBIENT — filtered noise loop, very low volume
+   */
+  startWind() {
+    if (!this.core?.audioContext || this._windNodes) return;
+    const ctx = this.core.audioContext;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // Long looping noise buffer (4s)
+    const sr = ctx.sampleRate;
+    const buf = ctx.createBuffer(1, sr * 4, sr);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    // Band-pass: keep wind whoosh ~200-800 Hz
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 400;
+    bp.Q.value = 0.5;
+
+    // Low-pass for extra warmth
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 800;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.04; // very quiet
+
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(gain);
+    gain.connect(this.core.masterGain);
+    src.start();
+
+    this._windNodes = { src, bp, lp, gain };
+  }
+
+  stopWind() {
+    if (!this._windNodes) return;
+    try { this._windNodes.src.stop(); } catch { /* ignore */ }
+    try { this._windNodes.gain.disconnect(); } catch { /* ignore */ }
+    this._windNodes = null;
+  }
+
+  /**
+   * DISTANT ZOMBIE GROANS — random every 5-15s, panned, low volume
+   */
+  startZombieGroans() {
+    if (!this.core?.audioContext || this._groanTimer !== undefined) return;
+    const scheduleNext = () => {
+      const delay = 5000 + Math.random() * 10000;
+      this._groanTimer = (window.setManagedTimeout || setTimeout)(() => {
+        this._playDistantGroan();
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
+  }
+
+  stopZombieGroans() {
+    if (this._groanTimer) {
+      clearTimeout(this._groanTimer);
+      this._groanTimer = undefined;
+    }
+  }
+
+  _playDistantGroan() {
+    if (!this.core?.audioContext) return;
+    const ctx = this.core.audioContext;
+    if (ctx.state === 'suspended') return;
+
+    const pan = (Math.random() * 2 - 1) * 0.8; // -0.8 to 0.8
+    const pitchFactor = 0.85 + Math.random() * 0.3;
+    const duration = 0.6 + Math.random() * 0.4;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(90 * pitchFactor, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(60 * pitchFactor, ctx.currentTime + duration);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 500;
+    filter.Q.value = 2;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.08);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = pan;
+
+    osc.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(panner);
+    panner.connect(this.core.masterGain);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration + 0.05);
+  }
+
+  /**
+   * HEARTBEAT — low thump loop, starts when HP < 30
+   */
+  startHeartbeat() {
+    if (!this.core?.audioContext || this._heartbeatInterval) return;
+    this._heartbeatInterval = setInterval(() => this._playHeartThump(), 480);
+  }
+
+  stopHeartbeat() {
+    if (this._heartbeatInterval) {
+      clearInterval(this._heartbeatInterval);
+      this._heartbeatInterval = null;
+    }
+  }
+
+  _playHeartThump() {
+    if (!this.core?.audioContext) return;
+    const ctx = this.core.audioContext;
+    if (ctx.state === 'suspended') return;
+
+    // Double thump: lub-dub
+    [0, 0.12].forEach((offset, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(i === 0 ? 55 : 48, ctx.currentTime + offset);
+      osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + offset + 0.15);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(i === 0 ? 0.45 : 0.28, ctx.currentTime + offset + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.core.masterGain);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.2);
+    });
+  }
+
+  /**
+   * WAVE START RUMBLE — sub-bass 50Hz brief burst
+   */
+  playWaveRumble() {
+    if (!this.core?.audioContext) return;
+    const ctx = this.core.audioContext;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(50, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.6);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    osc.connect(gain);
+    gain.connect(this.core.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.65);
+  }
+
+  // ─── END AMBIENT ────────────────────────────────────────────────────────────
 
   /**
    * Distance attenuation calculation

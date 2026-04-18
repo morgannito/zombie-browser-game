@@ -21,11 +21,11 @@ class PlayerController {
     this.lastUpdateTime = performance.now();
     this.targetFrameTime = 1000 / 60; // Base calculations on 60 FPS
 
-    // Simple fixed network rate — 30Hz when moving, 20Hz when only aiming.
+    // Network rate — 60Hz when moving (every rAF), 20Hz when only aiming.
     // Emit absolute {x, y, angle, seq}. No batching, no reconciliation:
     // the server broadcasts player positions and the client trusts them.
     this.lastNetworkUpdate = 0;
-    this.NET_INTERVAL_MOVING = 1000 / 30;
+    this.NET_INTERVAL_MOVING = 1000 / 60;
     this.NET_INTERVAL_IDLE = 1000 / 20;
 
     this.lastMovementVector = { dx: 0, dy: 0 };
@@ -35,8 +35,9 @@ class PlayerController {
     this._nextSeq = 1;
 
     // Velocity smoothing for local prediction (client-only).
+    // 1.0 = no smoothing (instant response), lower = smoother but more lag.
     this.velocity = { x: 0, y: 0 };
-    this.velocitySmoothing = 0.8;
+    this.velocitySmoothing = 1.0;
   }
 
   // Reconciliation removed: the server's broadcast stream is authoritative and
@@ -225,6 +226,7 @@ return;
     const deltaFactor = deltaTime / this.targetFrameTime;
 
     // Always update camera even before game starts
+    this.camera.setMouse(this.input.mouse.x, this.input.mouse.y);
     this.camera.follow(player, canvasWidth, canvasHeight, deltaTime);
     if (!this.gameStarted) {
       return;

@@ -105,9 +105,14 @@ class PauseMenu {
       } catch (e) {
         console.warn('gameEngine.pause() failed:', e);
       }
+    } else if (window.gameEngine && window.gameEngine._rafId) {
+      // Fallback: cancel animation frame to stop render loop CPU usage
+      cancelAnimationFrame(window.gameEngine._rafId);
+      window.gameEngine._rafId = null;
     }
 
     this.updateStats();
+    this.showMultiplayerWarning();
     this.show();
   }
 
@@ -134,6 +139,9 @@ class PauseMenu {
       } catch (e) {
         console.warn('gameEngine.resume() failed:', e);
       }
+    } else if (window.gameEngine && typeof window.gameEngine.gameLoop === 'function' && !window.gameEngine._rafId) {
+      // Restart RAF if we stopped it during pause
+      window.gameEngine._rafId = requestAnimationFrame(window.gameEngine.gameLoop.bind(window.gameEngine));
     }
   }
 
@@ -281,6 +289,14 @@ class PauseMenu {
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+  }
+
+  showMultiplayerWarning() {
+    const warning = document.getElementById('pause-multiplayer-warning');
+    if (!warning) return;
+    // Show only in multiplayer sessions (socket connected)
+    const isMultiplayer = window.socket && window.socket.connected;
+    warning.style.display = isMultiplayer ? 'block' : 'none';
   }
 
   // Public method to mark game start

@@ -71,8 +71,8 @@ class Renderer {
   }
 
   // Proxy: kill feed (public API)
-  addKillFeedItem(killer, victim, type) {
-    this.uiRenderer.addKillFeedItem(killer, victim, type);
+  addKillFeedItem(killer, victim, type, weapon, isOwnKill) {
+    this.uiRenderer.addKillFeedItem(killer, victim, type, weapon, isOwnKill);
   }
 
   // Proxy: access damageNumbers array
@@ -123,12 +123,22 @@ class Renderer {
     // from the save stack, but re-assert here in case the context was re-created).
     this.ctx.imageSmoothingEnabled = false;
 
-    const player = gameState.state.players[playerId];
+    let player = gameState.state.players[playerId];
+    // Spectator mode: use targeted player as render anchor (no local player)
+    if (!player && window.spectatorManager && window.spectatorManager.active) {
+      const sid = window.spectatorManager.targetPlayerId;
+      player = (sid && gameState.state.players[sid]) ||
+        Object.values(gameState.state.players || {}).find(p => p && p.alive !== false) ||
+        null;
+    }
     if (!player) {
       this.renderWaitingMessage();
       this.ctx.restore();
       return;
     }
+
+    // Reset per-frame culling counters before any entity rendering
+    this.entityRenderer.resetCullingStats();
 
     const cameraPos = this.camera.getPosition();
 
@@ -230,8 +240,29 @@ class Renderer {
     const bulletsToRender = gameState.getAllBulletsForRendering
       ? gameState.getAllBulletsForRendering()
       : gameState.state.bullets;
+
+    // Track bullet removal → spawn ghost + impact spark
+    if (!this._prevBulletIds) this._prevBulletIds = new Map(); // id → {x, y, color, size}
+    const prevBullets = this._prevBulletIds;
+    for (const [id, snap] of prevBullets) {
+      if (!bulletsToRender[id]) {
+        this.effectsRenderer.addBulletGhost(snap, snap.color);
+        this.effectsRenderer.addBulletImpact(snap.x, snap.y, snap.color);
+      }
+    }
+    prevBullets.clear();
+    for (const id in bulletsToRender) {
+      const b = bulletsToRender[id];
+      if (b) prevBullets.set(id, { x: b.x, y: b.y, color: b.color || '#ffff00', size: b.size || 5 });
+    }
+
     this.entityRenderer.renderBullets(this.ctx, this.camera, bulletsToRender, gameState.config);
+
+    // Render bullet ghosts and impact sparks
+    this.effectsRenderer.renderBulletEffects(this.ctx, this.camera, dateNow);
     this.entityRenderer.renderZombies(this.ctx, this.camera, gameState.state.zombies, timestamp);
+    // Blood pools + splatter particles (rendered above floor, above zombies)
+    this.effectsRenderer.renderBloodEffects(this.ctx, this.camera, dateNow);
     this.entityRenderer.renderPlayers(
       this.ctx,
       this.camera,
@@ -241,6 +272,9 @@ class Renderer {
       dateNow,
       timestamp
     );
+
+    // Muzzle flashes — drawn above entities, below UI
+    this.effectsRenderer.renderMuzzleFlashes(this.ctx, this.camera, dateNow);
 
     // Render dynamic lights AFTER entities (additive blending)
     this.effectsRenderer.renderDynamicLights(this.ctx, this.camera, gameState.state.lighting);
@@ -253,6 +287,9 @@ class Renderer {
     );
     this.effectsRenderer.renderWeather(this.ctx, this.camera, gameState.state.weather);
     this.entityRenderer.renderTargetIndicator(this.ctx, player);
+
+    // Gore: detect zombie hits/deaths and spawn blood
+    this.effectsRenderer.processZombieGore(gameState.state.zombies);
 
     // Check zombie damage for damage numbers and hit markers
     this.uiRenderer.checkZombieDamage(gameState.state.zombies);
@@ -283,6 +320,9 @@ class Renderer {
     this.uiRenderer.updateWaveProgress(gameState);
 
     this.ctx.restore(); // Restore pixelRatio scaling
+
+    // POST-PROCESS: vignette + blood overlay (CSS-pixel space, no scaling needed)
+    this._renderPostProcess(player);
 
     // Boss offscreen indicators — CSS-pixel screen space
     const pixelRatioForIndicators =
@@ -326,6 +366,58 @@ class Renderer {
         effectivePixelRatio
       );
       this.ctx.restore();
+    }
+
+    // Expose culling stats for DebugOverlay
+    window._cullingStats = this.entityRenderer.getCullingStats();
+  }
+
+  /**
+   * Post-process compositing: dynamic vignette + blood overlay based on player HP.
+   * Drawn in canvas buffer space (no pixelRatio scale applied here).
+   * @param {Object} player - Local player state
+   */
+  _renderPostProcess(player) {
+    const ctx = this.ctx;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    const maxHp = player.maxHealth || player.maxHp || 100;
+    const hp = player.health ?? player.hp ?? maxHp;
+    const hpRatio = Math.max(0, Math.min(1, hp / maxHp));
+
+    // --- Dynamic vignette ---
+    // Base vignette always present (subtle), intensifies and turns red below 30 HP
+    const lowHp = hpRatio < 0.3;
+    const baseAlpha = 0.45 + (1 - hpRatio) * 0.35; // 0.45 at full HP → 0.8 at 0 HP
+
+    // Pulsing red when critically low
+    let vignetteColor;
+    if (lowHp) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+      const red = Math.round(180 + pulse * 75);
+      vignetteColor = `rgba(${red},0,0,${(baseAlpha * (0.7 + pulse * 0.3)).toFixed(3)})`;
+    } else {
+      vignetteColor = `rgba(0,0,0,${baseAlpha.toFixed(3)})`;
+    }
+
+    const vgRadius = Math.hypot(w, h) * 0.5;
+    const vgInner = Math.min(w, h) * 0.38;
+    const grad = ctx.createRadialGradient(w / 2, h / 2, vgInner, w / 2, h / 2, vgRadius);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, vignetteColor);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // --- Blood overlay: red edge bleed at low HP ---
+    if (hpRatio < 0.5) {
+      const bloodAlpha = (0.5 - hpRatio) * 0.7; // 0 at 50 HP → 0.35 at 0 HP
+      const bloodGrad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, vgRadius);
+      bloodGrad.addColorStop(0, 'rgba(120,0,0,0)');
+      bloodGrad.addColorStop(0.6, 'rgba(160,0,0,0)');
+      bloodGrad.addColorStop(1, `rgba(200,0,0,${bloodAlpha.toFixed(3)})`);
+      ctx.fillStyle = bloodGrad;
+      ctx.fillRect(0, 0, w, h);
     }
   }
 

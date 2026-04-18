@@ -15,7 +15,10 @@ class OptimizedAudioCore {
 
     this.audioContext = null;
     this.masterGain = null;
+    this.masterCompressor = null;
     this.enabled = true;
+    this._muted = false;
+    this._volumeBeforeMute = 0.8;
 
     // Configuration
     this.config = {
@@ -88,10 +91,35 @@ class OptimizedAudioCore {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      // Master gain
+      // Master compressor (anti-clipping)
+      this.masterCompressor = this.audioContext.createDynamicsCompressor();
+      this.masterCompressor.threshold.value = -18;
+      this.masterCompressor.knee.value = 10;
+      this.masterCompressor.ratio.value = 6;
+      this.masterCompressor.attack.value = 0.003;
+      this.masterCompressor.release.value = 0.15;
+      this.masterCompressor.connect(this.audioContext.destination);
+
+      // Master gain — restore persisted volume
       this.masterGain = this.audioContext.createGain();
-      this.masterGain.gain.value = 0.8;
-      this.masterGain.connect(this.audioContext.destination);
+      const savedVolume = parseFloat(localStorage.getItem('audioMasterVolume') ?? '0.8');
+      this.masterGain.gain.value = Math.max(0, Math.min(1, savedVolume));
+      this._volumeBeforeMute = this.masterGain.gain.value;
+      this.masterGain.connect(this.masterCompressor);
+
+      // Restore mute state
+      if (localStorage.getItem('audioMuted') === 'true') {
+        this._muted = true;
+        this.masterGain.gain.value = 0;
+      }
+
+      // Global mute toggle on key M
+      this._onKeyMute = (e) => {
+        if (e.code === 'KeyM' && !e.target.matches('input,textarea')) {
+          this.toggleMute();
+        }
+      };
+      document.addEventListener('keydown', this._onKeyMute);
 
       // Create shared reverb
       this.createSharedReverb();
@@ -594,12 +622,34 @@ class OptimizedAudioCore {
   }
 
   /**
-   * Set master volume
+   * Set master volume and persist to localStorage
    */
   setMasterVolume(volume) {
-    if (this.masterGain) {
-      this.masterGain.gain.value = Math.max(0, Math.min(1, volume));
+    if (!this.masterGain) return;
+    const clamped = Math.max(0, Math.min(1, volume));
+    this._volumeBeforeMute = clamped;
+    if (!this._muted) {
+      this.masterGain.gain.value = clamped;
     }
+    localStorage.setItem('audioMasterVolume', String(clamped));
+  }
+
+  /**
+   * Toggle global mute and persist state
+   */
+  toggleMute() {
+    if (!this.masterGain) return;
+    this._muted = !this._muted;
+    this.masterGain.gain.value = this._muted ? 0 : this._volumeBeforeMute;
+    localStorage.setItem('audioMuted', String(this._muted));
+    return this._muted;
+  }
+
+  /**
+   * Get mute state
+   */
+  isMuted() {
+    return this._muted;
   }
 
   /**
@@ -644,6 +694,10 @@ class OptimizedAudioCore {
 
     if (this._onVisibility) {
       document.removeEventListener('visibilitychange', this._onVisibility);
+    }
+
+    if (this._onKeyMute) {
+      document.removeEventListener('keydown', this._onKeyMute);
     }
 
     this.stopAllSounds();

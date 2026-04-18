@@ -16,11 +16,18 @@ class SettingsMenu {
         quality: 'medium',
         particles: true,
         screenShake: true,
-        blood: true
+        blood: true,
+        customCursor: true
+      },
+      controls: {
+        azerty: false
       }
     };
 
+    this.THEME_KEY = 'pref_theme';
+
     this.currentSettings = this.loadSettings();
+    this.applyTheme(localStorage.getItem(this.THEME_KEY) || 'dark');
     this.init();
   }
 
@@ -170,6 +177,12 @@ class SettingsMenu {
       this.currentSettings.graphics.screenShake = toggle.checked;
     } else if (toggle.id === 'blood-toggle') {
       this.currentSettings.graphics.blood = toggle.checked;
+    } else if (toggle.id === 'custom-cursor-toggle') {
+      this.currentSettings.graphics.customCursor = toggle.checked;
+      if (window.CursorManager) window.CursorManager.setEnabled(toggle.checked);
+    } else if (toggle.id === 'azerty-toggle') {
+      if (!this.currentSettings.controls) this.currentSettings.controls = {};
+      this.currentSettings.controls.azerty = toggle.checked;
     }
   }
 
@@ -177,6 +190,8 @@ class SettingsMenu {
     // Update settings object
     if (select.id === 'graphics-quality') {
       this.currentSettings.graphics.quality = select.value;
+    } else if (select.id === 'ui-theme') {
+      this.applyTheme(select.value);
     }
   }
 
@@ -250,6 +265,24 @@ class SettingsMenu {
     if (qualitySelect) {
       qualitySelect.value = this.currentSettings.graphics.quality;
     }
+
+    // Update theme select
+    const themeSelect = document.getElementById('ui-theme');
+    if (themeSelect) {
+      themeSelect.value = localStorage.getItem(this.THEME_KEY) || 'dark';
+    }
+
+    // Update custom cursor toggle
+    const customCursorToggle = document.getElementById('custom-cursor-toggle');
+    if (customCursorToggle) {
+      customCursorToggle.checked = this.currentSettings.graphics.customCursor ?? true;
+    }
+
+    // Update AZERTY toggle
+    const azertyToggle = document.getElementById('azerty-toggle');
+    if (azertyToggle) {
+      azertyToggle.checked = this.currentSettings.controls?.azerty ?? false;
+    }
   }
 
   applySettings() {
@@ -258,6 +291,12 @@ class SettingsMenu {
 
     // Apply graphics settings
     this.applyGraphicsSettings();
+
+    // Apply control settings (AZERTY flag for InputManager)
+    const azerty = this.currentSettings.controls?.azerty ?? false;
+    if (window.gameSettings) window.gameSettings.azerty = azerty;
+    // Propagate to SettingsManager if present
+    if (window.settingsManager) window.settingsManager.set('controls.azerty', azerty);
 
     // Update UI to reflect settings
     this.updateUI();
@@ -289,6 +328,10 @@ class SettingsMenu {
     window.gameSettings.particlesEnabled = particles;
     window.gameSettings.screenShakeEnabled = screenShake;
     window.gameSettings.bloodEnabled = blood;
+
+    const customCursor = this.currentSettings.graphics.customCursor ?? true;
+    window.gameSettings.customCursor = customCursor;
+    if (window.CursorManager) window.CursorManager.setEnabled(customCursor);
 
     // Apply quality presets
     switch (quality) {
@@ -333,6 +376,15 @@ class SettingsMenu {
 
   getSettings() {
     return this.currentSettings;
+  }
+
+  applyTheme(theme) {
+    const classes = ['theme-dark', 'theme-neon', 'theme-retro'];
+    document.documentElement.classList.remove(...classes);
+    document.body.classList.remove(...classes);
+    document.documentElement.classList.add(`theme-${theme}`);
+    document.body.classList.add(`theme-${theme}`);
+    localStorage.setItem(this.THEME_KEY, theme);
   }
 }
 

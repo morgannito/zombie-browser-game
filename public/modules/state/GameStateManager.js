@@ -208,11 +208,9 @@ return 100;
   }
 
   _adaptiveInterpDelay() {
-    // Minimal buffer: we want bullets-hit-what-you-see above smoothness.
-    // With a 60Hz server broadcast (16.7ms spacing), 40ms covers two-packet
-    // jitter comfortably. On high-latency links, bump up gently so entities
-    // don't freeze between sparse packets.
-    const base = 40;
+    // Minimal buffer: 30ms covers ~2 server packets at 20Hz (50ms spacing)
+    // on a stable link. On high-latency/jittery links, bump up gently.
+    const base = 30;
     if (this.networkLatency > 300) {
 return 150;
 }
@@ -479,7 +477,7 @@ return 70;
    * @param {boolean} skipExtrapolation
    */
   _stepEntity(state, entity, now, _smoothFactor, skipExtrapolation) {
-    // Adaptive interp delay: 100ms on stable link, 200ms when jitter > 50ms.
+    // Adaptive interp delay: 30ms on stable link, up to 150ms on high-latency.
     const renderTime = now - this._adaptiveInterpDelay();
     const snaps = state.snapshots;
 
@@ -666,19 +664,22 @@ return 70;
   cleanupOrphanedEntities() {
     const now = Date.now();
     const ORPHAN_TIMEOUT = 10000;
+    // Particles are short-lived VFX — expire them fast to avoid stale visual trails
+    const PARTICLE_TIMEOUT = 2000;
 
     ['zombies', 'bullets', 'particles', 'powerups', 'loot', 'explosions', 'poisonTrails'].forEach(
       type => {
         if (!this.state[type]) {
           return;
         }
+        const timeout = type === 'particles' ? PARTICLE_TIMEOUT : ORPHAN_TIMEOUT;
 
         for (const [id, entity] of Object.entries(this.state[type])) {
           if (!entity._lastSeen) {
             entity._lastSeen = now;
           }
 
-          if (now - entity._lastSeen > ORPHAN_TIMEOUT) {
+          if (now - entity._lastSeen > timeout) {
             delete this.state[type][id];
           }
         }

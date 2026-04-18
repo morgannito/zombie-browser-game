@@ -12,6 +12,7 @@ class UIRenderer {
     // Damage numbers system
     this.damageNumbers = [];
     this.lastZombieHealthCheck = {};
+    this.pendingHits = {}; // zombieId -> {damage, type, x, y, timer}
 
     // Hit markers system
     this.hitMarkers = [];
@@ -27,7 +28,23 @@ class UIRenderer {
 
     // Kill feed system
     this.lastZombieCount = 0;
+    this.lastPlayerKills = 0;
     this.killFeedItems = [];
+
+    // Weapon icons map
+    this.WEAPON_ICONS = {
+      pistol: '🔫',
+      shotgun: '💥',
+      rifle: '🎯',
+      sniper: '🔭',
+      smg: '⚡',
+      machinegun: '🔥',
+      minigun: '🌀',
+      rpg: '💣',
+      grenade: '💣',
+      knife: '🔪',
+      default: '☠️',
+    };
 
     // Combo tracking
     this.lastComboValue = 0;
@@ -108,17 +125,33 @@ class UIRenderer {
     const MAX_FONT_SIZE = 32;
     const fontSize = Math.min(BASE_FONT_SIZE + Math.sqrt(damage) * 0.6, MAX_FONT_SIZE);
 
+    // Magnitude-based color override (takes priority over type for white/normal)
+    let color = DAMAGE_COLORS[type] || DAMAGE_COLORS.normal;
+    if (type === 'normal') {
+      if (damage > 100) color = '#ff4444';        // red: massive
+      else if (damage > 40) color = '#ffdd00';    // yellow: crit-like
+    }
+
+    // Random Y offset so stacked hits don't overlap perfectly
+    const yOffset = Math.random() * 20 - 10;
+    const startY = y + yOffset;
+
+    const isCritical = type === 'critical' || type === 'boss' || damage > 40;
     this.damageNumbers.push({
       x,
-      y,
+      startY,
+      y: startY,
       damage: Math.ceil(damage),
-      color: DAMAGE_COLORS[type] || DAMAGE_COLORS.normal,
-      isCritical: type === 'critical' || type === 'boss',
+      color,
+      isCritical,
       fontSize,
       opacity: 1,
       createdAt: Date.now(),
       lifetime: DAMAGE_LIFETIME
     });
+    if (isCritical) {
+      document.dispatchEvent(new CustomEvent('crit_damage'));
+    }
 
     if (this.damageNumbers.length > 50) {
       this.damageNumbers.shift();
@@ -149,6 +182,9 @@ class UIRenderer {
    * @param {object} zombies - Current zombies state
    */
   checkZombieDamage(zombies) {
+    const now = Date.now();
+    const BATCH_WINDOW = 50; // ms — group hits within this window
+
     for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
 
@@ -159,7 +195,19 @@ class UIRenderer {
         if (currentHealth < lastHealth) {
           const damage = lastHealth - currentHealth;
           const damageType = zombie.isBoss ? 'boss' : 'normal';
-          this.addDamageNumber(zombie.x, zombie.y - zombie.size, damage, damageType);
+
+          // Accumulate into pending batch
+          if (this.pendingHits[zombieId]) {
+            this.pendingHits[zombieId].damage += damage;
+          } else {
+            this.pendingHits[zombieId] = {
+              damage,
+              type: damageType,
+              x: zombie.x,
+              y: zombie.y - zombie.size,
+              flushAt: now + BATCH_WINDOW
+            };
+          }
           this.addHitMarker(zombie.x, zombie.y, zombie.isBoss);
         }
       }
@@ -167,10 +215,20 @@ class UIRenderer {
       this.lastZombieHealthCheck[zombieId] = zombie.health;
     }
 
+    // Flush pending hits whose window has expired
+    for (const zombieId in this.pendingHits) {
+      const pending = this.pendingHits[zombieId];
+      if (now >= pending.flushAt) {
+        this.addDamageNumber(pending.x, pending.y, pending.damage, pending.type);
+        delete this.pendingHits[zombieId];
+      }
+    }
+
     // Clean up dead zombies from tracking
     for (const zombieId in this.lastZombieHealthCheck) {
       if (!zombies[zombieId]) {
         delete this.lastZombieHealthCheck[zombieId];
+        delete this.pendingHits[zombieId];
       }
     }
   }
@@ -181,7 +239,8 @@ class UIRenderer {
    */
   updateDamageNumbers(_deltaTime) {
     const now = Date.now();
-    const FLOAT_SPEED = 1.2; // px per frame (upward)
+    const FLOAT_DISTANCE = 30; // px total upward travel
+    const FLOAT_DURATION = 800; // ms over which float occurs
 
     for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
       const dmg = this.damageNumbers[i];
@@ -192,12 +251,13 @@ class UIRenderer {
         continue;
       }
 
-      // Cubic ease-out: fast at start, slows down
-      const t = age / dmg.lifetime;
-      const eased = 1 - Math.pow(1 - t, 3);
-      dmg.y -= FLOAT_SPEED * (1 - eased * 0.8);
+      // Time-based position: ease-out float for first FLOAT_DURATION ms
+      const floatT = Math.min(age / FLOAT_DURATION, 1);
+      const eased = 1 - Math.pow(1 - floatT, 3); // cubic ease-out
+      dmg.y = dmg.startY - eased * FLOAT_DISTANCE;
 
-      // Fade out only in last 40% of lifetime
+      // Fade out in last 40% of lifetime
+      const t = age / dmg.lifetime;
       const fadeStart = 0.6;
       dmg.opacity = t < fadeStart ? 1 : 1 - (t - fadeStart) / (1 - fadeStart);
     }
@@ -515,7 +575,16 @@ class UIRenderer {
         currentZombieCount++;
       }
       if (currentZombieCount < this.lastZombieCount) {
-        this.addKillFeedItem(player.nickname || 'Player', 'Zombie');
+        const playerKills = player.zombiesKilled || player.kills || 0;
+        const isOwnKill = playerKills > this.lastPlayerKills;
+        this.lastPlayerKills = playerKills;
+        this.addKillFeedItem(
+          player.nickname || 'Player',
+          'Zombie',
+          'normal',
+          player.weapon || 'pistol',
+          isOwnKill
+        );
       }
       this.lastZombieCount = currentZombieCount;
       this._zombieCountFrame = 0;
@@ -524,7 +593,7 @@ class UIRenderer {
     this.updateKillFeed();
   }
 
-  addKillFeedItem(killer, victim, type) {
+  addKillFeedItem(killer, victim, type, weapon, isOwnKill) {
     type = type || 'normal';
 
     const feedEl = this.getUiElement('kill-feed', 'kill-feed');
@@ -540,15 +609,20 @@ class UIRenderer {
     if (type === 'boss') {
       item.classList.add('boss');
     }
+    if (isOwnKill) {
+      item.classList.add('own-kill');
+    }
 
     const safeType = String(type).replace(/[^a-zA-Z0-9_-]/g, '');
+    const weaponIcon = (weapon && this.WEAPON_ICONS[weapon]) || this.WEAPON_ICONS.default;
     const wrap = document.createElement('div');
     wrap.className = 'kill-feed-text';
     const k = document.createElement('span');
     k.className = 'kill-feed-killer';
     k.textContent = String(killer);
     const sk = document.createElement('span');
-    sk.textContent = '\u2620';
+    sk.className = 'kill-feed-icon';
+    sk.textContent = weaponIcon;
     const v = document.createElement('span');
     v.className = `kill-feed-victim ${safeType}`;
     v.textContent = String(victim);

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Gauntlet fist (red/orange armored glove) -->
+  <!-- Fingers -->
+  <rect x="8"  y="6"  width="4" height="8" rx="2" fill="#cc2200"/>
+  <rect x="13" y="5"  width="4" height="9" rx="2" fill="#cc2200"/>
+  <rect x="18" y="5"  width="4" height="9" rx="2" fill="#cc2200"/>
+  <rect x="23" y="6"  width="4" height="8" rx="2" fill="#cc2200"/>
+  <!-- Knuckle plate -->
+  <rect x="7" y="12" width="21" height="5" rx="1.5" fill="#ff3300"/>
+  <!-- Palm -->
+  <rect x="7" y="16" width="21" height="11" rx="3" fill="#cc2200"/>
+  <!-- Thumb -->
+  <rect x="2" y="14" width="6" height="7" rx="3" fill="#cc2200"/>
+  <!-- Highlight lines -->
+  <line x1="10" y1="17" x2="10" y2="26" stroke="#ff6644" stroke-width="1" opacity="0.5"/>
+  <line x1="15" y1="17" x2="15" y2="26" stroke="#ff6644" stroke-width="1" opacity="0.5"/>
+  <line x1="20" y1="17" x2="20" y2="26" stroke="#ff6644" stroke-width="1" opacity="0.5"/>
+  <line x1="25" y1="17" x2="25" y2="26" stroke="#ff6644" stroke-width="1" opacity="0.5"/>
+</svg>

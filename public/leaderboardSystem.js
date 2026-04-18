@@ -306,6 +306,75 @@ class LeaderboardSystem {
 });
     return widget;
   }
+
+  // ===============================================
+  // MINI-LEADERBOARD IN-GAME (coin droit)
+  // ===============================================
+
+  createMiniLeaderboard() {
+    if (document.getElementById('mini-leaderboard')) return;
+
+    const el = document.createElement('div');
+    el.id = 'mini-leaderboard';
+
+    const title = document.createElement('div');
+    title.className = 'mini-lb-title';
+    title.textContent = '🏆 TOP 5';
+
+    const list = document.createElement('ol');
+    list.className = 'mini-lb-list';
+    list.id = 'mini-lb-list';
+
+    el.append(title, list);
+    document.body.appendChild(el);
+
+    // Toggle touche L
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'l' || e.key === 'L') {
+        el.classList.toggle('mini-lb-hidden');
+      }
+    });
+
+    this._miniLeaderboardEl = el;
+    this._fetchAndRenderMini();
+    this._miniInterval = setInterval(() => this._fetchAndRenderMini(), 10000);
+  }
+
+  async _fetchAndRenderMini() {
+    try {
+      const res = await fetch('/api/v1/leaderboard?limit=5', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const entries = data.entries || data.global || data || [];
+      this._renderMiniList(entries.slice(0, 5));
+    } catch (_) {
+      this._renderMiniList(this.getTopScores(5));
+    }
+  }
+
+  _renderMiniList(entries) {
+    const list = document.getElementById('mini-lb-list');
+    if (!list) return;
+    const localName = document.getElementById('nickname-input')?.value?.trim() ||
+      document.getElementById('player-name-display')?.textContent?.replace('🎮 ', '').trim() || '';
+    list.replaceChildren(...entries.map((entry, i) => {
+      const name = entry.playerName || entry.name || '?';
+      const kills = entry.kills ?? entry.zombiesKilled ?? 0;
+      const li = document.createElement('li');
+      li.className = 'mini-lb-entry' + (localName && name === localName ? ' mini-lb-local' : '');
+      const rankEl = document.createElement('span'); rankEl.className = 'mini-lb-rank'; rankEl.textContent = `#${i + 1}`;
+      const nameEl = document.createElement('span'); nameEl.className = 'mini-lb-name'; nameEl.textContent = name;
+      const killsEl = document.createElement('span'); killsEl.className = 'mini-lb-kills'; killsEl.textContent = `\u2620 ${kills}`;
+      li.append(rankEl, nameEl, killsEl);
+      return li;
+    }));
+  }
+
+  destroyMiniLeaderboard() {
+    if (this._miniInterval) clearInterval(this._miniInterval);
+    document.getElementById('mini-leaderboard')?.remove();
+    this._miniLeaderboardEl = null;
+  }
 }
 
 // Initialiser le système global

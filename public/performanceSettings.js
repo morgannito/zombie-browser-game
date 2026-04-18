@@ -30,6 +30,12 @@ class PerformanceSettingsManager {
     this.fpsHistory = [];
     this.autoAdjust = false; // Disabled: web game must keep full 60fps
 
+    // Adaptive quality: track sustained FPS windows
+    this.adaptiveQualityEnabled = true; // User-toggleable
+    this.adaptiveQualityActive = false; // Whether quality is currently reduced
+    this._lowFpsStart = null;  // Timestamp when FPS first dropped below 45
+    this._highFpsStart = null; // Timestamp when FPS first rose above 55
+
     // MEMORY LEAK FIX: Track FPS monitoring interval
     this.fpsMonitoringInterval = null;
 
@@ -201,6 +207,16 @@ class PerformanceSettingsManager {
           </label>
           <p style="color: #aaa; font-size: 12px; margin: 0;">
             Ajuste automatiquement la qualité si les FPS chutent
+          </p>
+        </div>
+
+        <div class="setting-item" style="margin-top: 15px;">
+          <label style="color: #fff; display: block; margin-bottom: 10px;">
+            <input type="checkbox" id="adaptive-quality-checkbox" ${this.adaptiveQualityEnabled ? 'checked' : ''}>
+            Qualité adaptative (FPS &lt; 45 → réduit auto)
+          </label>
+          <p style="color: #aaa; font-size: 12px; margin: 0;">
+            Si FPS &lt; 45 pendant 3s : particles + effets désactivés. Restaure si FPS &gt; 55 pendant 5s.
           </p>
         </div>
       </div>
@@ -638,6 +654,7 @@ class PerformanceSettingsManager {
     const immersiveMode = document.getElementById('immersive-mode-checkbox').checked;
     const minimapPosition = document.getElementById('minimap-position-select').value;
     const autoAdjust = document.getElementById('auto-adjust-checkbox').checked;
+    const adaptiveQuality = document.getElementById('adaptive-quality-checkbox')?.checked ?? true;
     const fullscreenEnabled = document.getElementById('fullscreen-checkbox').checked;
     const minimapSize = document.getElementById('minimap-size-select').value;
     const minimapOpacity = parseInt(document.getElementById('minimap-opacity-slider').value) / 100;
@@ -657,6 +674,13 @@ class PerformanceSettingsManager {
     };
 
     this.autoAdjust = autoAdjust;
+    this.adaptiveQualityEnabled = adaptiveQuality;
+
+    // Reset adaptive state when user disables the feature
+    if (!adaptiveQuality) {
+      this._lowFpsStart = null;
+      this._highFpsStart = null;
+    }
   }
 
   /**
@@ -904,8 +928,9 @@ class PerformanceSettingsManager {
     this.fpsMonitoringInterval = setInterval(() => {
       this.updateFPS();
 
-      // Auto-adjust if enabled and FPS is low. 5s cooldown avoids spam.
       const now = Date.now();
+
+      // Legacy auto-adjust (kept for backward compat, at FPS < 40 hard limit)
       if (
         this.autoAdjust &&
         this.currentFPS > 0 &&
@@ -914,6 +939,35 @@ class PerformanceSettingsManager {
       ) {
         this.autoAdjustPerformance();
         this.autoAdjustCooldown = now;
+      }
+
+      // Adaptive quality: sustained FPS window logic
+      if (this.adaptiveQualityEnabled && this.currentFPS > 0) {
+        if (!this.adaptiveQualityActive) {
+          // Watching for sustained low FPS (< 45 for 3s)
+          if (this.currentFPS < 45) {
+            if (!this._lowFpsStart) this._lowFpsStart = now;
+            else if (now - this._lowFpsStart >= 3000) {
+              this._lowFpsStart = null;
+              this._highFpsStart = null;
+              this._applyAdaptiveQualityLow();
+            }
+          } else {
+            this._lowFpsStart = null;
+          }
+        } else {
+          // Watching for recovery (> 55 for 5s)
+          if (this.currentFPS > 55) {
+            if (!this._highFpsStart) this._highFpsStart = now;
+            else if (now - this._highFpsStart >= 5000) {
+              this._highFpsStart = null;
+              this._lowFpsStart = null;
+              this._applyAdaptiveQualityRestore();
+            }
+          } else {
+            this._highFpsStart = null;
+          }
+        }
       }
     }, 1000);
   }
@@ -972,6 +1026,57 @@ class PerformanceSettingsManager {
           fpsValue.style.color = '#ffd700';
         }
       }
+    }
+  }
+
+  /**
+   * Adaptive quality: reduce quality after sustained low FPS
+   */
+  _applyAdaptiveQualityLow() {
+    this.adaptiveQualityActive = true;
+
+    // Snapshot original settings for later restore
+    this._adaptiveSnapshot = {
+      particlesEnabled: this.settings.particlesEnabled,
+      bloodEnabled: window.gameSettings?.bloodEnabled,
+      screenShakeEnabled: window.gameSettings?.screenShakeEnabled
+    };
+
+    this.settings.particlesEnabled = false;
+
+    if (window.gameSettings) {
+      window.gameSettings.bloodEnabled = false;
+      window.gameSettings.screenShakeEnabled = false;
+    }
+
+    this.saveSettings();
+    if (window.gameEngine) window.gameEngine.onPerformanceSettingsChanged(this.settings);
+
+    if (window.toastManager) {
+      window.toastManager.show({ message: '⚡ Qualité auto-réduite (FPS bas)', type: 'warning', duration: 4000 });
+    }
+  }
+
+  /**
+   * Adaptive quality: restore settings after FPS recovery
+   */
+  _applyAdaptiveQualityRestore() {
+    this.adaptiveQualityActive = false;
+
+    if (this._adaptiveSnapshot) {
+      this.settings.particlesEnabled = this._adaptiveSnapshot.particlesEnabled;
+      if (window.gameSettings) {
+        window.gameSettings.bloodEnabled = this._adaptiveSnapshot.bloodEnabled ?? true;
+        window.gameSettings.screenShakeEnabled = this._adaptiveSnapshot.screenShakeEnabled ?? true;
+      }
+      this._adaptiveSnapshot = null;
+    }
+
+    this.saveSettings();
+    if (window.gameEngine) window.gameEngine.onPerformanceSettingsChanged(this.settings);
+
+    if (window.toastManager) {
+      window.toastManager.show({ message: '✅ Qualité restaurée', type: 'success', duration: 3000 });
     }
   }
 

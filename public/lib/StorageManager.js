@@ -93,3 +93,7 @@ class StorageManager {
 }
 
 window.storageManager = new StorageManager('');
+
+// Helpers centralisés pour les préférences utilisateur
+window.loadPref = (key, defaultValue = null) => window.storageManager.get(key, defaultValue);
+window.savePref = (key, value) => window.storageManager.set(key, value);

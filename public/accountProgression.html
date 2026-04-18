@@ -132,21 +132,87 @@
 
     .skill-card.unlocked {
       border-color: #10b981;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, #0a0e27 100%);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, #0a0e27 100%);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
     }
 
     .skill-card.locked {
-      opacity: 0.6;
+      opacity: 0.45;
+      filter: grayscale(60%);
+      border-color: #4b5563;
+    }
+
+    .skill-card.locked .skill-icon::after {
+      content: ' 🔒';
+      font-size: 0.5em;
+      vertical-align: top;
     }
 
     .skill-card.available {
-      border-color: #667eea;
+      border-color: #f59e0b;
       cursor: pointer;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
     }
 
     .skill-card.available:hover {
       transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.5);
+    }
+
+    .skill-card .skill-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0a0e27;
+      border: 1px solid #667eea;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.82em;
+      color: #cbd5e1;
+      width: 220px;
+      z-index: 100;
+      pointer-events: none;
+      white-space: normal;
+      text-align: left;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+
+    .skill-card {
+      position: relative;
+    }
+
+    .skill-card:hover .skill-tooltip {
+      display: block;
+    }
+
+    .skill-prereqs {
+      margin-top: 6px;
+      color: #f59e0b;
+      font-size: 0.85em;
+    }
+
+    .reset-skills-section {
+      text-align: center;
+      margin: 20px 0 10px;
+    }
+
+    .btn-reset {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      border: none;
+      padding: 10px 24px;
+      border-radius: 10px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.95em;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-reset:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.5);
     }
 
     .skill-icon {
@@ -269,7 +335,10 @@
       </div>
 
       <!-- Skill Tree -->
-      <h2 style="margin: 40px 0 20px 0; text-align: center; font-size: 2em;">🌳 Skill Tree</h2>
+      <h2 style="margin: 40px 0 10px 0; text-align: center; font-size: 2em;">🌳 Skill Tree</h2>
+      <div class="reset-skills-section">
+        <button class="btn-reset" onclick="resetSkills()">🔄 Reset Skills (500 🪙)</button>
+      </div>
 
       <div id="skill-tree-container"></div>
     </div>
@@ -389,7 +458,26 @@
             card.classList.add('locked');
           }
 
+          const prereqNames = (skill.prerequisites || []).map(pid => {
+            const found = skillTreeData.skills.find(s => s.skillId === pid);
+            return found ? found.skillName : pid;
+          });
+          const tooltipPrereqs = prereqNames.length
+            ? `<div class="skill-prereqs">Requires: ${prereqNames.join(', ')}</div>`
+            : '';
+          const statusBadge = unlocked
+            ? '<div style="margin-top:10px;color:#10b981;font-weight:bold;">\u2705 ACQUIRED</div>'
+            : canUnlock
+              ? '<div style="margin-top:10px;color:#f59e0b;font-weight:bold;">\ud83d\udd13 AVAILABLE</div>'
+              : '<div style="margin-top:10px;color:#6b7280;">\ud83d\udd12 LOCKED</div>';
+
           card.innerHTML = `
+            <div class="skill-tooltip">
+              <strong>${skill.skillName}</strong><br>
+              ${skill.description}
+              ${tooltipPrereqs}
+              <div style="margin-top:6px;color:#94a3b8;">Cost: ${skill.cost} SP &middot; Tier ${skill.tier}</div>
+            </div>
             <div class="skill-icon">${skill.icon}</div>
             <div class="skill-name">${skill.skillName}</div>
             <div class="skill-description">${skill.description}</div>
@@ -397,7 +485,7 @@
               <span class="skill-cost">${skill.cost} SP</span>
               <span class="skill-tier">Tier ${skill.tier}</span>
             </div>
-            ${unlocked ? '<div style="margin-top: 10px; color: #10b981;">✓ UNLOCKED</div>' : ''}
+            ${statusBadge}
           `;
 
           grid.appendChild(card);
@@ -456,6 +544,40 @@
       } catch (error) {
         console.error('Failed to prestige:', error);
         alert('Failed to prestige');
+      }
+    }
+
+    async function resetSkills() {
+      const RESET_COST = 500;
+      const gold = parseInt(localStorage.getItem('gold') || '0', 10);
+      if (gold < RESET_COST) {
+        alert(`Not enough gold! You need ${RESET_COST} 🪙 to reset skills (you have ${gold}).`);
+        return;
+      }
+      if (!confirm(`Reset all skills for ${RESET_COST} 🪙? Skill points will be refunded.`)) return;
+      try {
+        const playerId = localStorage.getItem('playerId') || 'test-player';
+        const res = await fetch(`/api/v1/progression/${playerId}/reset-skills`, {
+          method: 'POST',
+          headers: getAuthHeaders(true),
+          body: JSON.stringify({ goldCost: RESET_COST })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('gold', gold - RESET_COST);
+          alert('Skills reset! Skill points refunded.');
+          await loadProgression();
+        } else {
+          // Endpoint may not exist yet — optimistic client fallback
+          if (playerData) {
+            playerData.unlockedSkills = [];
+            renderSkillTree();
+          }
+          alert('Skills reset (local only — endpoint not available).');
+        }
+      } catch {
+        alert('Failed to contact server. Skills reset locally.');
+        if (playerData) { playerData.unlockedSkills = []; renderSkillTree(); }
       }
     }
 

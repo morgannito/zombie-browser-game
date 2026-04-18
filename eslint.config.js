@@ -71,7 +71,7 @@ module.exports = [
   {
     files: ['public/**/*.js'],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: 2022,
       sourceType: 'script',
       globals: {
         window: 'readonly',
@@ -146,11 +146,30 @@ module.exports = [
         initMinimapToggle: 'readonly',
         initCameraRecenter: 'readonly',
         logger: 'readonly',
-        storageManager: 'readonly'
+        storageManager: 'readonly',
+        I18n: 'readonly',
+        Path2D: 'readonly',
+        structuredClone: 'readonly',
+        TutorialOverlay: 'readonly'
       }
     },
     rules: {
       'no-redeclare': 'off'
+    }
+  },
+
+  // Service Worker
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        Response: 'readonly',
+        fetch: 'readonly',
+        addEventListener: 'readonly',
+        clients: 'readonly'
+      }
     }
   },
 

@@ -31,12 +31,70 @@ class NicknameManager {
     };
 
     this.setupEventListeners();
+
+    // Restore last used nickname
+    const saved = window.loadPref ? window.loadPref('pref_nickname', '') : '';
+    if (saved && this.nicknameInput) {
+      this.nicknameInput.value = saved;
+    }
+  }
+
+  _FORBIDDEN_WORDS = ['admin', 'root', 'server', 'system'];
+  _NICKNAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+  _validateNickname(nickname) {
+    if (nickname.length < CONSTANTS.NICKNAME.MIN_LENGTH) {
+      return `Pseudo trop court (min. ${CONSTANTS.NICKNAME.MIN_LENGTH} caractères)`;
+    }
+    if (nickname.length > CONSTANTS.NICKNAME.MAX_LENGTH) {
+      return `Pseudo trop long (max. ${CONSTANTS.NICKNAME.MAX_LENGTH} caractères)`;
+    }
+    if (!this._NICKNAME_REGEX.test(nickname)) {
+      return 'Caractère interdit (lettres, chiffres, - et _ uniquement)';
+    }
+    const lower = nickname.toLowerCase();
+    for (const word of this._FORBIDDEN_WORDS) {
+      if (lower.includes(word)) {
+        return `Pseudo interdit ("${word}" réservé)`;
+      }
+    }
+    return null;
+  }
+
+  _showError(message) {
+    let el = document.getElementById('nickname-error-msg');
+    if (!el) {
+      el = document.createElement('p');
+      el.id = 'nickname-error-msg';
+      el.style.cssText = 'color:#ff6b6b;font-size:0.85rem;margin-top:6px;text-align:center;';
+      if (this.nicknameInput && this.nicknameInput.parentNode) {
+        this.nicknameInput.parentNode.insertBefore(el, this.nicknameInput.nextSibling);
+      }
+    }
+    el.textContent = message || '';
+    clearTimeout(this._errorTimer);
+    if (message) {
+      this._errorTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+    }
+  }
+
+  _updateSubmitState() {
+    if (!this.startGameBtn) return;
+    const nickname = this.nicknameInput ? this.nicknameInput.value.trim() : '';
+    const error = this._validateNickname(nickname);
+    this._showError(error);
+    this.startGameBtn.disabled = !!error;
+    this.startGameBtn.style.opacity = error ? '0.5' : '';
+    this.startGameBtn.style.cursor = error ? 'not-allowed' : '';
   }
 
   setupEventListeners() {
     if (this.nicknameInput) {
       this.nicknameInput.addEventListener('keypress', this.handlers.keypress);
+      this.handlers.input = () => this._updateSubmitState();
+      this.nicknameInput.addEventListener('input', this.handlers.input);
     }
+    this._updateSubmitState();
 
     if (this.startGameBtn) {
       this.startGameBtn.addEventListener('click', this.handlers.startGame);
@@ -64,6 +122,9 @@ class NicknameManager {
     // Remove event listeners
     if (this.nicknameInput) {
       this.nicknameInput.removeEventListener('keypress', this.handlers.keypress);
+      if (this.handlers.input) {
+        this.nicknameInput.removeEventListener('input', this.handlers.input);
+      }
     }
 
     if (this.startGameBtn) {
@@ -84,25 +145,15 @@ class NicknameManager {
     this.isStarting = true;
     const nickname = this.nicknameInput.value.trim();
 
-    if (nickname.length < CONSTANTS.NICKNAME.MIN_LENGTH) {
-      alert(`Votre pseudo doit contenir au moins ${CONSTANTS.NICKNAME.MIN_LENGTH} caractères !`);
+    const validationError = this._validateNickname(nickname);
+    if (validationError) {
+      this._showError(validationError);
       this.isStarting = false;
       return;
     }
 
-    if (nickname.length > CONSTANTS.NICKNAME.MAX_LENGTH) {
-      alert(`Votre pseudo ne peut pas dépasser ${CONSTANTS.NICKNAME.MAX_LENGTH} caractères !`);
-      this.isStarting = false;
-      return;
-    }
-
-    // Validate nickname format (alphanumeric, spaces, underscores, hyphens only)
-    const nicknameRegex = /^[\w\s-]+$/u;
-    if (!nicknameRegex.test(nickname)) {
-      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.invalid') : 'Votre pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores !');
-      this.isStarting = false;
-      return;
-    }
+    // Persist nickname for next session
+    if (window.savePref) window.savePref('pref_nickname', nickname);
 
     let token = null;
     if (window.authManager) {
@@ -110,12 +161,12 @@ class NicknameManager {
         await window.authManager.login(nickname);
         token = window.authManager.getToken();
       } catch (error) {
-        alert(`Connexion impossible: ${error.message || 'authentification échouée'}`);
+        this._showError(`Connexion impossible : ${error.message || 'authentification échouée'}`);
         this.isStarting = false;
         return;
       }
     } else {
-      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.auth_unavailable') : 'Authentification non disponible');
+      this._showError(typeof I18n !== 'undefined' ? I18n.t('nickname.auth_unavailable') : 'Authentification non disponible');
       this.isStarting = false;
       return;
     }
@@ -125,12 +176,12 @@ class NicknameManager {
       try {
         await window.networkManager.connectWithAuth({ sessionId, token });
       } catch (error) {
-        alert(`Connexion au serveur impossible: ${error.message || 'erreur réseau'}`);
+        this._showError(`Serveur inaccessible : ${error.message || 'erreur réseau'}`);
         this.isStarting = false;
         return;
       }
     } else {
-      alert(typeof I18n !== 'undefined' ? I18n.t('nickname.network_unavailable') : 'Connexion réseau indisponible');
+      this._showError(typeof I18n !== 'undefined' ? I18n.t('nickname.network_unavailable') : 'Connexion réseau indisponible');
       this.isStarting = false;
       return;
     }
@@ -224,6 +275,10 @@ return;
   respawn() {
     this.playerController.respawn();
 
+    // Hide replay button on respawn
+    const replayBtn = document.getElementById('replay-btn');
+    if (replayBtn) replayBtn.style.display = 'none';
+
     const gameOverScreen = document.getElementById('game-over');
     if (gameOverScreen) {
       gameOverScreen.style.display = 'none';
@@ -239,6 +294,7 @@ return;
       this.nicknameInput.value = '';
       this.nicknameInput.focus();
     }
+    this._updateSubmitState();
     if (this.nicknameScreen) {
       this.nicknameScreen.style.display = 'flex';
     }

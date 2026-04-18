@@ -3,8 +3,6 @@
  * Covers: safeHandler, stringifyArgPreview
  */
 
-/* global setImmediate */
-
 jest.mock('../../../infrastructure/logging/Logger', () => ({
   error: jest.fn(),
   info: jest.fn(),

@@ -20,6 +20,14 @@ class UIManager {
         if (e.key === 'Escape' && this.shopOpen) {
           this.hideShop();
         }
+        // R or Space to respawn on game-over screen
+        if ((e.key === 'r' || e.key === 'R' || e.key === ' ') && this.els.gameOver?.style.display === 'block') {
+          const btn = document.getElementById('respawn-btn');
+          if (btn && !btn.disabled) {
+            e.preventDefault();
+            btn.click();
+          }
+        }
       }
     };
 
@@ -68,6 +76,7 @@ class UIManager {
 
     // Guard: prevent duplicate emissions before server acknowledges the first
     this._buyPending = false;
+    this._lastBoughtItem = null;
     // Guard: prevent duplicate upgrade selections before screen hides
     this._upgradePending = false;
 
@@ -149,6 +158,7 @@ class UIManager {
     const { els, _last: last } = this;
     if (last.healthPercent !== healthPercent) {
       els.healthFill.style.width = healthPercent + '%';
+      els.healthBar.setAttribute('aria-valuenow', Math.round(healthPercent));
       this._updateHealthGhost(healthPercent);
       last.healthPercent = healthPercent;
     }
@@ -200,11 +210,21 @@ class UIManager {
       // the player sees the recap before acting.
       if (wasHidden) {
         const respawnBtn = document.getElementById('respawn-btn');
+        const cdSpan = document.getElementById('respawn-countdown');
         if (respawnBtn && respawnBtn.disabled) {
-          setTimeout(() => {
-            respawnBtn.disabled = false;
-            respawnBtn.focus();
-          }, 1500);
+          let n = 3;
+          if (cdSpan) cdSpan.textContent = n;
+          const iv = setInterval(() => {
+            n--;
+            if (n > 0) {
+              if (cdSpan) cdSpan.textContent = n;
+            } else {
+              clearInterval(iv);
+              if (cdSpan) cdSpan.textContent = '';
+              respawnBtn.disabled = false;
+              respawnBtn.focus();
+            }
+          }, 500);
         }
       }
 
@@ -347,14 +367,32 @@ class UIManager {
     }
   }
 
-  _showAnnouncement(h1Text, pText, bg, duration) {
+  _showAnnouncement(h1Text, pText, bg, duration, withCountdown = false) {
     const el = document.getElementById('wave-announcement');
     el.querySelector('h1').textContent = h1Text;
-    el.querySelector('p').textContent = pText;
+    const pEl = el.querySelector('#wave-announcement-sub') || el.querySelector('p');
+    if (pEl) pEl.textContent = pText;
     el.style.background = bg;
     el.style.display = 'none';
     void el.offsetWidth;
     el.style.display = 'block';
+
+    // Animated countdown (3-2-1) when requested
+    const cdEl = document.getElementById('wave-countdown');
+    if (cdEl) {
+      cdEl.textContent = '';
+      if (withCountdown) {
+        let n = 3;
+        cdEl.textContent = n;
+        cdEl.classList.add('wave-countdown--active');
+        const iv = setInterval(() => {
+          n--;
+          if (n > 0) { cdEl.textContent = n; }
+          else { cdEl.textContent = ''; cdEl.classList.remove('wave-countdown--active'); clearInterval(iv); }
+        }, 1000);
+      }
+    }
+
     setTimeout(() => {
       el.style.display = 'none';
     }, duration);
@@ -374,7 +412,8 @@ class UIManager {
       `VAGUE ${wave}`,
       `${zombiesCount} zombies à éliminer !`,
       'rgba(0, 255, 100, 0.9)',
-      3000
+      3000,
+      true
     );
   }
 
@@ -520,14 +559,20 @@ return;
       const itemDiv = document.createElement('div');
       itemDiv.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
 
+      const tooltipLines = [item.description];
+      if (item.effect) tooltipLines.push(item.effect);
+      tooltipLines.push(`Niveau: ${currentLevel}/${item.maxLevel}`);
+      if (!isMaxed) tooltipLines.push(`Prochain niveau: ${cost} 💰`);
+
       itemDiv.innerHTML = `
+        <div class="shop-tooltip">${tooltipLines.join(' · ')}</div>
         <div class="shop-item-info">
           <div class="shop-item-name">${item.name}</div>
           <div class="shop-item-desc">${item.description}</div>
           <div class="shop-item-level">Niveau: ${currentLevel}/${item.maxLevel}</div>
         </div>
         <div class="shop-item-buy">
-          <div class="shop-item-price">${isMaxed ? 'MAX' : cost + ' 💰'}</div>
+          <div class="shop-item-price ${!isMaxed && !canAfford ? 'cant-afford' : ''}">${isMaxed ? 'MAX' : cost + ' 💰'}</div>
           <button class="shop-buy-btn" data-item-id="${key}" data-category="permanent" ${isMaxed || !canAfford ? 'disabled' : ''}>
             ${isMaxed ? 'MAX' : 'Acheter'}
           </button>
@@ -588,13 +633,16 @@ return;
       const itemDiv = document.createElement('div');
       itemDiv.className = 'shop-item';
 
+      const tooltipTemp = item.effect ? `${item.description} · ${item.effect}` : item.description;
+
       itemDiv.innerHTML = `
+        <div class="shop-tooltip">${tooltipTemp}</div>
         <div class="shop-item-info">
           <div class="shop-item-name">${item.name}</div>
           <div class="shop-item-desc">${item.description}</div>
         </div>
         <div class="shop-item-buy">
-          <div class="shop-item-price">${item.cost} 💰</div>
+          <div class="shop-item-price ${!canAfford ? 'cant-afford' : ''}">${item.cost} 💰</div>
           <button class="shop-buy-btn" data-item-id="${key}" data-category="temporary" ${!canAfford ? 'disabled' : ''}>
             Acheter
           </button>
@@ -629,18 +677,43 @@ return;
     }
 
     logger.debug('[Shop] Shop populated successfully');
+
+    // Flash the last bought item
+    if (this._lastBoughtItem) {
+      const btn = document.querySelector(`.shop-buy-btn[data-item-id="${this._lastBoughtItem}"]`);
+      if (btn) {
+        const itemDiv = btn.closest('.shop-item');
+        if (itemDiv) {
+          itemDiv.classList.remove('bought-flash');
+          void itemDiv.offsetWidth; // force reflow
+          itemDiv.classList.add('bought-flash');
+          itemDiv.addEventListener('animationend', () => itemDiv.classList.remove('bought-flash'), { once: true });
+        }
+      }
+      this._lastBoughtItem = null;
+    }
   }
 
   toggleStatsPanel() {
     const statsPanel = document.getElementById('stats-panel');
     const isVisible = statsPanel.style.display === 'block';
-
     if (isVisible) {
       statsPanel.style.display = 'none';
     } else {
       statsPanel.style.display = 'block';
       this.updateStatsPanel();
     }
+  }
+
+  showStatsPanel() {
+    const statsPanel = document.getElementById('stats-panel');
+    statsPanel.style.display = 'block';
+    this.updateStatsPanel();
+  }
+
+  hideStatsPanel() {
+    const statsPanel = document.getElementById('stats-panel');
+    statsPanel.style.display = 'none';
   }
 
   updateStatsPanel() {
@@ -683,6 +756,43 @@ return;
 
     // Shop upgrades
     this.updateShopUpgrades(player);
+  }
+
+  updateScoreboard() {
+    const container = document.getElementById('scoreboard-players');
+    if (!container) return;
+    const players = Object.values(this.gameState.state.players || {})
+      .filter(p => p.hasNickname)
+      .map(p => ({
+        name: p.nickname || p.id,
+        score: p.totalScore || p.score || 0,
+        kills: p.zombiesKilled || p.kills || 0,
+        deaths: p.deaths || 0,
+        level: p.level || 1,
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    if (players.length <= 1) {
+      container.closest('.stats-section').style.display = 'none';
+      return;
+    }
+    container.closest('.stats-section').style.display = '';
+    container.innerHTML = `
+      <table class="scoreboard-table">
+        <thead><tr>
+          <th>#</th><th>Joueur</th><th>Score</th><th>Kills</th><th>Morts</th><th>Lvl</th>
+        </tr></thead>
+        <tbody>${players.map((p, i) => `
+          <tr class="${i === 0 ? 'scoreboard-first' : ''}">
+            <td class="stat-mono">${i + 1}</td>
+            <td>${p.name}</td>
+            <td class="stat-mono">${p.score.toLocaleString()}</td>
+            <td class="stat-mono">${p.kills}</td>
+            <td class="stat-mono">${p.deaths}</td>
+            <td class="stat-mono">${p.level}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
 
   updateActiveUpgrades(player) {

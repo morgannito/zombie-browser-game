@@ -30,7 +30,7 @@ throw new Error(`i18n: failed to load ${lang}`);
       const settings = raw ? JSON.parse(raw) : {};
       settings[LOCALE_KEY] = lang;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch (_) {}
+    } catch (_) { /* ignore storage errors */ }
   }
 
   function _readPersisted() {

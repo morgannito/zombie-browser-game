@@ -17,6 +17,15 @@
     return;
   }
 
+  // Silence verbose console output in production (non-localhost).
+  const _isLocalhost = /^(localhost|127\.|::1)/.test(location.hostname);
+  if (!_isLocalhost) {
+    /* eslint-disable no-console */
+    console.log = function () {};
+    console.debug = function () {};
+    /* eslint-enable no-console */
+  }
+
   let sentInWindow = 0;
   let windowResetAt = Date.now() + 60000;
   const recentSignatures = new Map();
@@ -148,6 +157,42 @@
       /* longtask not supported (Safari < 16) */
     }
   }
+
+  // Show a non-intrusive toast for unhandled runtime errors so the player
+  // knows something went wrong without the game freezing.
+  let _toastShownRecently = false;
+  function showErrorToast() {
+    if (_toastShownRecently) { return; }
+    _toastShownRecently = true;
+    setTimeout(function () { _toastShownRecently = false; }, 10000);
+
+    if (window.toastManager) {
+      window.toastManager.show({ message: 'Une erreur est survenue, le jeu continue', type: 'warning', duration: 4000 });
+      return;
+    }
+    // Fallback: lightweight DOM toast
+    const el = document.createElement('div');
+    el.textContent = 'Une erreur est survenue, le jeu continue';
+    el.style.cssText = [
+      'position:fixed', 'bottom:20px', 'left:50%', 'transform:translateX(-50%)',
+      'background:rgba(40,40,40,0.92)', 'color:#fff', 'padding:10px 20px',
+      'border-radius:6px', 'font-size:14px', 'z-index:99999',
+      'pointer-events:none', 'transition:opacity 0.4s'
+    ].join(';');
+    document.body.appendChild(el);
+    setTimeout(function () {
+      el.style.opacity = '0';
+      setTimeout(function () { el.parentNode && el.parentNode.removeChild(el); }, 500);
+    }, 4000);
+  }
+
+  window.addEventListener('error', function (event) {
+    showErrorToast();
+  });
+
+  window.addEventListener('unhandledrejection', function () {
+    showErrorToast();
+  });
 
   window.__errorTracker = { report: report };
 })();

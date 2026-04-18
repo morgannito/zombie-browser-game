@@ -15,7 +15,7 @@ class GameEngine {
       // Debug mode toggle (F3). Stored on `this.handlers` so cleanup() can
       // detach it — anonymous closures can't be removed.
       debugKeydown: e => {
-        if (e.key === 'F3' && !e.repeat) {
+        if ((e.key === 'F3' || e.key === 'F4' || e.key === '`') && !e.repeat) {
           if (!document.querySelector('input:focus')) {
             e.preventDefault();
             window.gameState.toggleDebug();
@@ -136,6 +136,11 @@ class GameEngine {
     window.inputManager = new InputManager();
     this.camera = new CameraManager(); // Store camera reference for external access
     const camera = this.camera; // Keep local reference for compatibility
+    // Clamp camera to room bounds (uses GameStateManager config defined at line ~37)
+    const _cfg = window.gameState && window.gameState.config;
+    if (_cfg) {
+      camera.setBounds(0, 0, _cfg.ROOM_WIDTH, _cfg.ROOM_HEIGHT);
+    }
 
     // Socket.IO client configuration optimized for low latency and stability
     // Try WebSocket first but allow polling fallback for reliability
@@ -272,6 +277,7 @@ class GameEngine {
     this.renderer.setCamera(camera);
 
     this.nicknameManager = new NicknameManager(this.playerController);
+    window.spectatorManager = new SpectatorManager();
 
     // Mouse events (only if not mobile)
     if (!this.mobileControls.isMobile) {
@@ -432,50 +438,71 @@ class GameEngine {
     const stats = window.gameState.debugStats;
     const pixelRatio = window.devicePixelRatio || 1;
 
+    // --- collect extra data ---
+    const myId = window.gameState.playerId;
+    const player = myId && window.gameState.state && window.gameState.state.players && window.gameState.state.players[myId];
+    const px = player ? Math.round(player.x) : '?';
+    const py = player ? Math.round(player.y) : '?';
+    const interpState = myId && window.gameState.interpolation && window.gameState.interpolation.entityStates
+      ? window.gameState.interpolation.entityStates.players && window.gameState.interpolation.entityStates.players.get(myId)
+      : null;
+    const pvx = interpState ? interpState.velocityX.toFixed(1) : '?';
+    const pvy = interpState ? interpState.velocityY.toFixed(1) : '?';
+
+    const camX = this.camera ? Math.round(this.camera.x) : '?';
+    const camY = this.camera ? Math.round(this.camera.y) : '?';
+
+    const net = window.networkManager;
+    const connected = net && net.socket ? (net.socket.connected ? 'yes' : 'no') : '?';
+    const ping = net ? Math.round(net.latency || 0) : 0;
+    const deltaSize = net ? (net.lastDeltaSize || 0) : 0;
+
     ctx.save();
     ctx.scale(pixelRatio, pixelRatio);
 
     // Semi-transparent background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(10, 10, 250, 200);
+    ctx.fillRect(10, 10, 260, 270);
 
-    // Text styling
-    ctx.fillStyle = '#00ff00';
-    ctx.font = '14px monospace';
+    ctx.font = '13px monospace';
     ctx.textAlign = 'left';
 
     let y = 30;
-    const lineHeight = 20;
+    const lineHeight = 19;
 
     // Title
     ctx.fillStyle = '#ffff00';
-    ctx.fillText('DEBUG MODE (F3 to toggle)', 20, y);
-    y += lineHeight * 1.5;
+    ctx.fillText('DEBUG  [F3/F4/`] to toggle', 20, y);
+    y += lineHeight * 1.4;
 
-    // Entity counts
+    // Player
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText(`Pos:  ${px}, ${py}`, 20, y); y += lineHeight;
+    ctx.fillText(`Vel:  ${pvx}, ${pvy}`, 20, y); y += lineHeight;
+
+    // Camera
+    ctx.fillStyle = '#aaffff';
+    ctx.fillText(`Cam:  ${camX}, ${camY}`, 20, y); y += lineHeight;
+
+    // Entities
+    y += 4;
     ctx.fillStyle = '#00ff00';
-    ctx.fillText(`Players: ${stats.entitiesCount.players || 0}`, 20, y);
-    y += lineHeight;
-    ctx.fillText(`Zombies: ${stats.entitiesCount.zombies || 0}`, 20, y);
-    y += lineHeight;
-    ctx.fillText(`Bullets: ${stats.entitiesCount.bullets || 0}`, 20, y);
-    y += lineHeight;
-    ctx.fillText(`Particles: ${stats.entitiesCount.particles || 0}`, 20, y);
-    y += lineHeight;
-    ctx.fillText(`Powerups: ${stats.entitiesCount.powerups || 0}`, 20, y);
-    y += lineHeight;
-    ctx.fillText(`Loot: ${stats.entitiesCount.loot || 0}`, 20, y);
-    y += lineHeight;
+    ctx.fillText(`Zombies:   ${stats.entitiesCount.zombies || 0}`, 20, y); y += lineHeight;
+    ctx.fillText(`Bullets:   ${stats.entitiesCount.bullets || 0}`, 20, y); y += lineHeight;
+    ctx.fillText(`Particles: ${stats.entitiesCount.particles || 0}`, 20, y); y += lineHeight;
+    ctx.fillText(`Players:   ${stats.entitiesCount.players || 0}`, 20, y); y += lineHeight;
 
-    // Network info
-    y += 5;
+    // Server / network
+    y += 4;
     ctx.fillStyle = '#00ffff';
-    ctx.fillText(`Last Update: ${stats.lastUpdate}ms ago`, 20, y);
-    y += lineHeight;
+    ctx.fillText(`Connected: ${connected}`, 20, y); y += lineHeight;
+    ctx.fillText(`Ping:      ${ping}ms`, 20, y); y += lineHeight;
+    ctx.fillText(`Delta:     ${deltaSize}B`, 20, y); y += lineHeight;
 
-    // Interpolation status
+    // Interpolation
     const interpStatus = window.gameState.interpolation.enabled ? 'ON' : 'OFF';
-    ctx.fillText(`Interpolation: ${interpStatus}`, 20, y);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText(`Interp:    ${interpStatus}`, 20, y);
 
     ctx.restore();
   }
@@ -530,6 +557,9 @@ class GameEngine {
 
   start() {
     console.log('🎮 Zombie Survival - Game Engine Started');
+    if (typeof ReplayRecorder !== 'undefined') {
+      window.replayRecorder = new ReplayRecorder();
+    }
     this.gameLoop();
   }
 

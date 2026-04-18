@@ -54,7 +54,10 @@ return;
   _collectStats(gsm, net) {
     const counts = gsm && gsm.debugStats && gsm.debugStats.entitiesCount
       ? gsm.debugStats.entitiesCount : {};
-    const ping = net ? Math.round(net.latency || 0) : 0;
+    const nm = window.networkManager || net;
+    const ping = nm && typeof nm.getAverageLatency === 'function'
+      ? Math.round(nm.getAverageLatency())
+      : nm ? Math.round(nm.latency || 0) : 0;
 
     const myId = gsm && gsm.playerId;
     const player = myId && gsm.state.players[myId];
@@ -71,12 +74,14 @@ return;
     const z = s.counts.zombies || 0;
     const b = s.counts.bullets || 0;
     const p = s.counts.particles || 0;
+    const cull = window._cullingStats || { culled: 0, rendered: 0 };
     this._panel.textContent =
       '[DEBUG] F3 to hide\n' +
       `FPS: ${this._fps}  ft: ${this._frameTime}ms\n` +
       `Ping: ${s.ping}ms\n` +
       `Pos: ${s.cx}, ${s.cy}  drift: ${s.dx},${s.dy}\n` +
-      `Z: ${z}  B: ${b}  P: ${p}`;
+      `Z: ${z}  B: ${b}  P: ${p}\n` +
+      `Rendered: ${cull.rendered}  Culled: ${cull.culled}`;
   }
 
   /**

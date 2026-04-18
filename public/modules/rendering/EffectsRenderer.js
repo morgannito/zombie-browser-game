@@ -7,7 +7,52 @@
  */
 
 class EffectsRenderer {
+  // ── Particle Pool ────────────────────────────────────────────────────────
+  static POOL_SIZE = 500;
+  static MAX_ACTIVE = 300;
+
+  _initPool() {
+    this._pool = new Array(EffectsRenderer.POOL_SIZE);
+    for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+      this._pool[i] = { active: false, x: 0, y: 0, vx: 0, vy: 0, size: 0, color: '', createdAt: 0, lifetime: 0, kind: '' };
+    }
+    this._poolHead = 0;
+    this._activeCount = 0;
+  }
+
+  _acquireParticle() {
+    if (this._activeCount >= EffectsRenderer.MAX_ACTIVE) {
+      // Evict oldest active particle
+      for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+        if (this._pool[i].active) {
+          this._pool[i].active = false;
+          this._activeCount--;
+          break;
+        }
+      }
+    }
+    // Find next free slot (circular)
+    for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+      const idx = (this._poolHead + i) % EffectsRenderer.POOL_SIZE;
+      if (!this._pool[idx].active) {
+        this._poolHead = (idx + 1) % EffectsRenderer.POOL_SIZE;
+        this._pool[idx].active = true;
+        this._activeCount++;
+        return this._pool[idx];
+      }
+    }
+    // All slots taken (shouldn't reach here after eviction, but fallback)
+    const p = this._pool[this._poolHead];
+    p.active = true;
+    this._poolHead = (this._poolHead + 1) % EffectsRenderer.POOL_SIZE;
+    return p;
+  }
+
   constructor() {
+    this._initPool();
+    // Muzzle flashes — client-only, triggered on shoot
+    this._muzzleFlashes = [];
+
     // Scorch decals — client-only persistent marks left after explosions fade.
     this.scorchDecals = [];
     this._scorchedExplosionIds = new Set();
@@ -19,6 +64,14 @@ class EffectsRenderer {
     this._trailPaths = new Map();
     this._poolPaths = new Map();
     this._toxicIdSet = new Set(); // preallocated, cleared per frame
+
+    // --- GORE SYSTEM ---
+    // _bloodParticles replaced by shared particle pool (kind='blood')
+    this._bloodPools = [];       // { x, y, radius, createdAt }
+    this._zombieLastHealth = {}; // zombieId → last known health
+    this.BLOOD_POOL_LIFETIME = 3000;
+    this.BLOOD_PARTICLE_LIFETIME = 800;
+    this.BLOOD_POOL_MAX = 32;
   }
 
   _spawnScorchDecal(explosion, now) {
@@ -239,7 +292,9 @@ return;
 
     // Evict stale cache entries
     this._toxicIdSet.clear();
-    for (const p of toxicPools) this._toxicIdSet.add(p.id);
+    for (const p of toxicPools) {
+this._toxicIdSet.add(p.id);
+}
     for (const id of this._poolPaths.keys()) {
       if (!this._toxicIdSet.has(id)) {
 this._poolPaths.delete(id);
@@ -549,6 +604,264 @@ continue;
 
       ctx.restore();
     }
+  }
+  // ── Muzzle Flash ────────────────────────────────────────────────────────
+
+  /** Barrel tip offsets (local x along weapon axis) and flash config per weapon type */
+  static _MUZZLE_CFG = {
+    pistol:        { offset: 31, radius: 12, duration: 70  },
+    shotgun:       { offset: 42, radius: 18, duration: 80  },
+    machinegun:    { offset: 45, radius: 15, duration: 60  },
+    rocketlauncher:{ offset: 48, radius: 32, duration: 100 },
+  };
+
+  /**
+   * Register a muzzle flash at the barrel tip.
+   * @param {number} x  - player world x
+   * @param {number} y  - player world y
+   * @param {number} angle - firing angle (radians)
+   * @param {string} weaponType
+   */
+  addMuzzleFlash(x, y, angle, weaponType) {
+    const cfg = EffectsRenderer._MUZZLE_CFG[weaponType] || EffectsRenderer._MUZZLE_CFG.pistol;
+    const tx = x + Math.cos(angle) * cfg.offset;
+    const ty = y + Math.sin(angle) * cfg.offset;
+    this._muzzleFlashes.push({ x: tx, y: ty, radius: cfg.radius, duration: cfg.duration, startTime: performance.now() });
+  }
+
+  /**
+   * Draw all active muzzle flashes (call after players are drawn).
+   */
+  renderMuzzleFlashes(ctx, camera, now) {
+    now = now || performance.now();
+    for (let i = this._muzzleFlashes.length - 1; i >= 0; i--) {
+      const f = this._muzzleFlashes[i];
+      const elapsed = now - f.startTime;
+      if (elapsed >= f.duration) {
+        this._muzzleFlashes.splice(i, 1);
+        continue;
+      }
+      const alpha = 1 - elapsed / f.duration;
+      const sx = f.x - camera.x;
+      const sy = f.y - camera.y;
+
+      ctx.save();
+      // Outer glow (radial gradient, ~50px)
+      const glowR = f.radius * 3.5;
+      const grd = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+      grd.addColorStop(0,   `rgba(255, 220, 80, ${alpha * 0.9})`);
+      grd.addColorStop(0.25,`rgba(255, 140, 20, ${alpha * 0.6})`);
+      grd.addColorStop(1,   `rgba(255, 80,  0,  0)`);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright core
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(255, 255, 200, ${alpha * 0.95})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, f.radius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  // ── GORE SYSTEM ─────────────────────────────────────────────────────────
+
+  _isGoreEnabled() {
+    return !window.gameSettings || window.gameSettings.bloodEnabled !== false;
+  }
+
+  _spawnBloodParticles(x, y, count, speedMult) {
+    const now = Date.now();
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = (1 + Math.random() * 3) * (speedMult || 1);
+      const p = this._acquireParticle();
+      p.x = x; p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed - 1.5;
+      p.size = 2 + Math.random() * 3;
+      p.color = '';
+      p.createdAt = now;
+      p.lifetime = this.BLOOD_PARTICLE_LIFETIME;
+      p.kind = 'blood';
+    }
+  }
+
+  _spawnBloodPool(x, y, radius) {
+    const now = Date.now();
+    if (this._bloodPools.length >= this.BLOOD_POOL_MAX) {
+      this._bloodPools.shift();
+    }
+    this._bloodPools.push({ x, y, radius: radius || 12, createdAt: now });
+  }
+
+  /**
+   * Called each render frame with current zombie state.
+   * Detects hits and deaths, spawns gore accordingly.
+   */
+  processZombieGore(zombies) {
+    if (!this._isGoreEnabled()) return;
+
+    for (const id in zombies) {
+      const z = zombies[id];
+      if (!z) continue;
+
+      const last = this._zombieLastHealth[id];
+      const hp = z.health;
+
+      if (last !== undefined && hp < last) {
+        const isDead = hp <= 0;
+        if (isDead) {
+          const isBoss = z.isBoss;
+          const count = isBoss ? 20 : (10 + Math.floor(Math.random() * 6));
+          this._spawnBloodParticles(z.x, z.y, count, isBoss ? 2.5 : 1);
+          this._spawnBloodPool(z.x, z.y, isBoss ? 28 : 14);
+          if (isBoss && window.screenEffects && window.gameSettings && window.gameSettings.screenShakeEnabled !== false) {
+            window.screenEffects.shake.shakeHeavy();
+          }
+        } else {
+          // Hit: 2-3 droplets
+          this._spawnBloodParticles(z.x, z.y, 2 + Math.floor(Math.random() * 2), 0.7);
+        }
+      }
+
+      if (hp > 0) {
+        this._zombieLastHealth[id] = hp;
+      } else {
+        delete this._zombieLastHealth[id];
+      }
+    }
+
+    // Clean up stale entries for removed zombies
+    for (const id in this._zombieLastHealth) {
+      if (!zombies[id]) delete this._zombieLastHealth[id];
+    }
+  }
+
+  renderBloodEffects(ctx, camera, now) {
+    if (!this._isGoreEnabled()) return;
+    now = now || Date.now();
+
+    // Blood pools (persistent, floor level)
+    for (let i = this._bloodPools.length - 1; i >= 0; i--) {
+      const pool = this._bloodPools[i];
+      const age = now - pool.createdAt;
+      if (age >= this.BLOOD_POOL_LIFETIME) { this._bloodPools.splice(i, 1); continue; }
+      if (!camera.isInViewport(pool.x, pool.y, pool.radius * 2)) continue;
+
+      const fade = 1 - age / this.BLOOD_POOL_LIFETIME;
+      ctx.save();
+      ctx.globalAlpha = 0.3 * fade;
+      ctx.fillStyle = '#6b0000';
+      ctx.beginPath();
+      ctx.ellipse(pool.x, pool.y, pool.radius, pool.radius * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Blood particles (gravity + fade) — pooled, active flag used instead of splice
+    const GRAVITY = 0.15;
+    ctx.save();
+    ctx.fillStyle = '#cc0000';
+    for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+      const p = this._pool[i];
+      if (!p.active || p.kind !== 'blood') continue;
+      const age = now - p.createdAt;
+      if (age >= p.lifetime) { p.active = false; this._activeCount--; continue; }
+
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += GRAVITY;
+      p.vx *= 0.92;
+
+      if (!camera.isInViewport(p.x, p.y, 10)) continue;
+
+      ctx.globalAlpha = (1 - age / p.lifetime) * 0.85;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  // --- Bullet impact sparks + ghost trails ---
+
+  addBulletImpact(x, y, color) {
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 4;
+      const p = this._acquireParticle();
+      p.x = x; p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.size = 2;
+      p.color = color;
+      p.createdAt = now;
+      p.lifetime = 120;
+      p.kind = 'impact';
+    }
+  }
+
+  addBulletGhost(bullet, color) {
+    const p = this._acquireParticle();
+    p.x = bullet.x; p.y = bullet.y;
+    p.vx = 0; p.vy = 0;
+    p.size = bullet.size || 5;
+    p.color = color;
+    p.createdAt = Date.now();
+    p.lifetime = 100;
+    p.kind = 'ghost';
+  }
+
+  renderBulletEffects(ctx, camera, now) {
+    now = now || Date.now();
+
+    // Render impact sparks — pooled
+    ctx.save();
+    ctx.shadowBlur = 6;
+    for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+      const s = this._pool[i];
+      if (!s.active || s.kind !== 'impact') continue;
+      const age = now - s.createdAt;
+      if (age >= s.lifetime) { s.active = false; this._activeCount--; continue; }
+      if (!camera.isInViewport(s.x, s.y, 20)) continue;
+      const t = age / s.lifetime;
+      s.x += s.vx * (1 - t);
+      s.y += s.vy * (1 - t);
+      ctx.globalAlpha = (1 - t) * 0.9;
+      ctx.shadowColor = s.color;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, Math.max(0.5, s.size * (1 - t * 0.7)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Render ghost remnants — pooled
+    ctx.save();
+    ctx.shadowBlur = 8;
+    for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
+      const g = this._pool[i];
+      if (!g.active || g.kind !== 'ghost') continue;
+      const age = now - g.createdAt;
+      if (age >= g.lifetime) { g.active = false; this._activeCount--; continue; }
+      if (!camera.isInViewport(g.x, g.y, 20)) continue;
+      const t = age / g.lifetime;
+      ctx.globalAlpha = (1 - t) * 0.5;
+      ctx.shadowColor = g.color;
+      ctx.fillStyle = g.color;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.size * (1 - t * 0.4), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 }
 

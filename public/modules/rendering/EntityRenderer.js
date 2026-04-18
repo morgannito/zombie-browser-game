@@ -54,6 +54,9 @@ class EntityRenderer {
     // Hit flash state: zombieId -> { startTime, duration }
     this._hitFlashes = new Map();
 
+    // Death animation: playerId -> { startTime, x, y, angle, duration }
+    this._deathAnimations = new Map();
+
     // Offscreen sprite cache: cacheKey -> OffscreenCanvas (or regular canvas fallback)
     // Key: "${color}|${isBoss}|${isElite}|${sizeBucket}"
     // LRU eviction: hard cap at 40 sprites
@@ -68,9 +71,152 @@ class EntityRenderer {
     this._lastFill = null;
     this._lastStroke = null;
 
+    // Offscreen powerup icon cache: "type|color" -> offscreen canvas (base icon at nominal size)
+    this._powerupSpriteCache = new Map();
+
+    // Offscreen player body cache: 'current'|'other' -> offscreen canvas (static torso+head)
+    this._playerBodyCache = new Map();
+
     // Per-frame collections (reused to avoid GC pressure)
     this._visibleZombies = [];
     this._auraBuckets = new Map();
+
+    // Frustum culling stats (reset each frame via resetCullingStats)
+    this._culledEntities = 0;
+    this._renderedEntities = 0;
+  }
+
+  /**
+   * Returns (from cache or freshly rendered) an offscreen canvas for a powerup base icon.
+   * Renders filled circle + white symbol at nominal size; caller scales via drawImage.
+   */
+  _getPowerupSprite(type, color, size, symbol) {
+    const key = `${type}|${color}`;
+    if (this._powerupSpriteCache.has(key)) return this._powerupSpriteCache.get(key);
+
+    const dim = (size + 2) * 2;
+    let offscreen;
+    try {
+      offscreen = new OffscreenCanvas(dim, dim);
+    } catch (_) {
+      offscreen = document.createElement('canvas');
+      offscreen.width = dim;
+      offscreen.height = dim;
+    }
+    const oc = offscreen.getContext('2d', { willReadFrequently: false });
+    const cx = dim / 2;
+
+    oc.fillStyle = color;
+    oc.beginPath();
+    oc.arc(cx, cx, size, 0, Math.PI * 2);
+    oc.fill();
+    oc.strokeStyle = '#fff';
+    oc.lineWidth = 2;
+    oc.stroke();
+    oc.fillStyle = '#fff';
+    oc.font = 'bold 12px Arial';
+    oc.textAlign = 'center';
+    oc.textBaseline = 'middle';
+    oc.fillText(symbol, cx, cx);
+
+    this._powerupSpriteCache.set(key, offscreen);
+    return offscreen;
+  }
+
+  /**
+   * Returns (from cache or freshly rendered) an offscreen canvas for the static player body.
+   * Renders torso + head + hat at 64x64; caller places via drawImage.
+   */
+  _getPlayerBodySprite(isCurrentPlayer) {
+    const key = isCurrentPlayer ? 'current' : 'other';
+    if (this._playerBodyCache.has(key)) return this._playerBodyCache.get(key);
+
+    const dim = 64;
+    const cx = dim / 2;
+    const cy = dim / 2 + 4;
+
+    let offscreen;
+    try {
+      offscreen = new OffscreenCanvas(dim, dim);
+    } catch (_) {
+      offscreen = document.createElement('canvas');
+      offscreen.width = dim;
+      offscreen.height = dim;
+    }
+    const oc = offscreen.getContext('2d', { willReadFrequently: false });
+    const baseSize = 20 / 20;
+    const primaryColor = isCurrentPlayer ? '#0088ff' : '#ff8800';
+    const borderColor = isCurrentPlayer ? '#00ffff' : '#ffaa00';
+
+    oc.save();
+    oc.translate(cx, cy);
+
+    // Body
+    const bodyWidth = 16 * baseSize;
+    const bodyHeight = 18 * baseSize;
+    oc.fillStyle = primaryColor;
+    oc.strokeStyle = '#000';
+    oc.lineWidth = 1.5;
+    oc.fillRect(-bodyWidth / 2, -4 * baseSize, bodyWidth, bodyHeight);
+    oc.strokeRect(-bodyWidth / 2, -4 * baseSize, bodyWidth, bodyHeight);
+    oc.strokeStyle = borderColor;
+    oc.lineWidth = 1;
+    oc.beginPath();
+    oc.moveTo(0, -4 * baseSize);
+    oc.lineTo(0, -4 * baseSize + bodyHeight);
+    oc.stroke();
+
+    // Head
+    const headRadius = 8 * baseSize;
+    oc.fillStyle = '#ffcc99';
+    oc.strokeStyle = '#000';
+    oc.lineWidth = 1.5;
+    oc.beginPath();
+    oc.arc(0, -8 * baseSize, headRadius, 0, Math.PI * 2);
+    oc.fill();
+    oc.stroke();
+
+    // Eyes
+    const eyeSize = 2;
+    const eyeOffset = 3 * baseSize;
+    oc.fillStyle = '#fff';
+    oc.beginPath();
+    oc.arc(-eyeOffset, -9 * baseSize, eyeSize, 0, Math.PI * 2);
+    oc.arc(eyeOffset, -9 * baseSize, eyeSize, 0, Math.PI * 2);
+    oc.fill();
+    oc.fillStyle = '#000';
+    oc.beginPath();
+    oc.arc(-eyeOffset, -9 * baseSize, eyeSize / 2, 0, Math.PI * 2);
+    oc.arc(eyeOffset, -9 * baseSize, eyeSize / 2, 0, Math.PI * 2);
+    oc.fill();
+
+    // Smile
+    oc.strokeStyle = '#000';
+    oc.lineWidth = 1;
+    oc.beginPath();
+    oc.arc(0, -6 * baseSize, 3 * baseSize, 0.2, Math.PI - 0.2);
+    oc.stroke();
+
+    // Hat
+    oc.fillStyle = borderColor;
+    oc.beginPath();
+    oc.arc(0, -12 * baseSize, headRadius * 0.8, Math.PI, Math.PI * 2);
+    oc.fill();
+
+    oc.restore();
+    this._playerBodyCache.set(key, offscreen);
+    return offscreen;
+  }
+
+  /** Reset per-frame culling counters. Call at start of each render frame. */
+  resetCullingStats() {
+    this._culledEntities = 0;
+    this._renderedEntities = 0;
+  }
+
+  /** @returns {{ culled: number, rendered: number }} */
+  getCullingStats() {
+    return { culled: this._culledEntities, rendered: this._renderedEntities };
   }
 
   /**
@@ -205,7 +351,7 @@ class EntityRenderer {
   _drawZombieSprited(ctx, zombie) {
     const sprite = this._getOrBuildZombieSprite(zombie);
     const canvasSize = sprite.width;
-    ctx.drawImage(sprite, zombie.x - canvasSize / 2, zombie.y - canvasSize / 2);
+    ctx.drawImage(sprite, Math.round(zombie.x - canvasSize / 2), Math.round(zombie.y - canvasSize / 2));
   }
 
   /**
@@ -278,8 +424,10 @@ class EntityRenderer {
 
       // Cull before reading powerup.type or powerupTypes lookup
       if (!camera.isInViewport(powerup.x, powerup.y, cullRadius)) {
+        this._culledEntities++;
         continue;
       }
+      this._renderedEntities++;
 
       const type = powerupTypes[powerup.type];
       if (!type) {
@@ -287,16 +435,24 @@ class EntityRenderer {
         continue;
       }
 
-      ctx.fillStyle = type.color;
+      // Outer glow ring pulsating for visibility
+      const glowAlpha = (Math.sin(now / 400) + 1) / 2;
+      ctx.globalAlpha = 0.3 + glowAlpha * 0.5;
+      ctx.strokeStyle = type.color;
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(powerup.x, powerup.y, pulse, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#fff';
+      ctx.arc(powerup.x, powerup.y, pulse + 5 + glowAlpha * 4, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 2;
 
-      ctx.fillStyle = '#fff';
-      ctx.fillText(symbols[powerup.type] || '?', powerup.x, powerup.y);
+      // Blit pre-rendered base icon (circle+symbol), scaled to current pulse radius
+      const symbol = symbols[powerup.type] || '?';
+      const baseSprite = this._getPowerupSprite(powerup.type, type.color, config.POWERUP_SIZE, symbol);
+      const nomDim = (config.POWERUP_SIZE + 2) * 2;
+      const scale = (pulse * 2) / nomDim;
+      const drawDim = nomDim * scale;
+      ctx.drawImage(baseSprite, powerup.x - drawDim / 2, powerup.y - drawDim / 2, drawDim, drawDim);
     }
   }
 
@@ -325,8 +481,10 @@ class EntityRenderer {
 
       // Cull before ctx.save / translate / rotate
       if (!camera.isInViewport(item.x, item.y, 30)) {
+        this._culledEntities++;
         continue;
       }
+      this._renderedEntities++;
 
       ctx.save();
       ctx.globalAlpha = pulseAlpha * 0.35; // soft halo at 35% opacity
@@ -379,10 +537,11 @@ class EntityRenderer {
       }
 
       if (!camera.isInViewport(obstacle.x, obstacle.y, obstacle.width * 2)) {
+        this._culledEntities++;
         return;
       }
+      this._renderedEntities++;
 
-      ctx.save();
       ctx.translate(obstacle.x, obstacle.y);
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -505,7 +664,7 @@ class EntityRenderer {
         ctx.strokeRect(-barWidth / 2, barY, barWidth, barHeight);
       }
 
-      ctx.restore();
+      ctx.translate(-obstacle.x, -obstacle.y);
     });
   }
 
@@ -518,10 +677,22 @@ class EntityRenderer {
     if (!this._bulletsByColor) {
       this._bulletsByColor = new Map();
     }
+    if (!this._bulletTrailHistory) {
+      this._bulletTrailHistory = new Map(); // id → [{x,y}]
+    }
     const bulletsByColor = this._bulletsByColor;
     bulletsByColor.clear();
     const defaultColor = '#ffff00';
     const defaultSize = config.BULLET_SIZE || 5;
+    const TRAIL_MAX = 7;
+
+    // Evict history for bullets no longer present
+    const trailHistory = this._bulletTrailHistory;
+    for (const id of trailHistory.keys()) {
+      if (!bullets[id]) {
+        trailHistory.delete(id);
+      }
+    }
 
     for (const id in bullets) {
       const bullet = bullets[id];
@@ -529,8 +700,23 @@ class EntityRenderer {
         continue;
       }
       if (!camera.isInViewport(bullet.x, bullet.y, 50)) {
+        this._culledEntities++;
         continue;
       }
+      this._renderedEntities++;
+
+      // Update trail history (tag bullet with its map key for fast lookup)
+      bullet._trailId = id;
+      let hist = trailHistory.get(id);
+      if (!hist) {
+        hist = [];
+        trailHistory.set(id, hist);
+      }
+      hist.push({ x: bullet.x, y: bullet.y });
+      if (hist.length > TRAIL_MAX) {
+        hist.shift();
+      }
+
       const color = bullet.color || defaultColor;
       let arr = bulletsByColor.get(color);
       if (!arr) {
@@ -539,6 +725,34 @@ class EntityRenderer {
       }
       arr.push(bullet);
     }
+
+    // Draw gradient trails (behind bullets)
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const [color, colorBullets] of bulletsByColor) {
+      for (let i = 0; i < colorBullets.length; i++) {
+        const bullet = colorBullets[i];
+        const hist = trailHistory.get(bullet._trailId);
+        if (!hist || hist.length < 2) continue;
+        const tail = hist[0];
+        const head = hist[hist.length - 1];
+        if (tail.x === head.x && tail.y === head.y) continue;
+        const grad = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, color);
+        ctx.globalAlpha = 0.75;
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = (bullet.size || defaultSize) * 0.9;
+        ctx.beginPath();
+        ctx.moveTo(tail.x, tail.y);
+        for (let j = 1; j < hist.length; j++) {
+          ctx.lineTo(hist[j].x, hist[j].y);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
     // One beginPath + N arc() + one fill per color group
     ctx.shadowBlur = 10;
@@ -1232,8 +1446,10 @@ continue;
 }
       const cullMargin = zombie.isBoss ? zombie.size * 4 : zombie.size * 2;
       if (!camera.isInViewport(zombie.x, zombie.y, cullMargin)) {
-continue;
-}
+        this._culledEntities++;
+        continue;
+      }
+      this._renderedEntities++;
       visibleZombies.push(zombie);
 
       // Accumulate aura batches (non-elite, non-boss with known danger type)
@@ -1249,6 +1465,9 @@ continue;
       }
     }
 
+    // Y-sort for correct depth (painter's algorithm: higher Y = drawn later = in front)
+    visibleZombies.sort((a, b) => a.y - b.y);
+
     // Draw sprites + health bars first (no save/restore needed here)
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1256,8 +1475,8 @@ continue;
       const zombie = visibleZombies[i];
       this.drawZombieSprite(ctx, zombie, timestamp, now);
 
-      if (zombie.maxHealth) {
-        const healthPercent = zombie.health / zombie.maxHealth;
+      if (zombie.maxHealth && zombie.health != null) {
+        const healthPercent = Math.max(0, Math.min(1, zombie.health / zombie.maxHealth));
         const barWidth = zombie.size * 1.6;
         const barY = zombie.y - zombie.size - 10;
         const barColor = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
@@ -1951,20 +2170,20 @@ continue;
   }
 
   drawPlayerSprite(ctx, player, isCurrentPlayer, timestamp) {
-    ctx.save();
-    ctx.translate(player.x, player.y);
-
     const velocity = Math.sqrt((player.vx || 0) ** 2 + (player.vy || 0) ** 2);
     const isMoving = velocity > 0.5;
 
-    const walkCycle = isMoving ? Math.sin(timestamp / 150) * 0.3 : 0;
+    // Idle: subtle vertical bob + arm sway when stationary
+    const idleBob = isMoving ? 0 : Math.sin(timestamp / 600) * 1.5;
+    const walkCycle = isMoving ? Math.sin(timestamp / 150) * 0.3 : Math.sin(timestamp / 700) * 0.07;
+
+    ctx.save();
+    ctx.translate(player.x, player.y + idleBob);
     const baseSize = 20 / 20;
 
-    const primaryColor = isCurrentPlayer ? '#0088ff' : '#ff8800';
     const secondaryColor = isCurrentPlayer ? '#0066cc' : '#cc6600';
-    const borderColor = isCurrentPlayer ? '#00ffff' : '#ffaa00';
+    const primaryColor = isCurrentPlayer ? '#0088ff' : '#ff8800';
 
-    ctx.fillStyle = primaryColor;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
 
@@ -1992,21 +2211,9 @@ continue;
     ctx.fillRect(-legWidth / 2, legHeight - 2, legWidth, 2);
     ctx.restore();
 
-    const bodyWidth = 16 * baseSize;
-    const bodyHeight = 18 * baseSize;
-    ctx.fillStyle = primaryColor;
-    ctx.fillRect(-bodyWidth / 2, -4 * baseSize, bodyWidth, bodyHeight);
-    ctx.strokeRect(-bodyWidth / 2, -4 * baseSize, bodyWidth, bodyHeight);
-
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, -4 * baseSize);
-    ctx.lineTo(0, -4 * baseSize + bodyHeight);
-    ctx.stroke();
-
     const armWidth = 4 * baseSize;
     const armHeight = 12 * baseSize;
+    const bodyWidth = 16 * baseSize;
     const armOffset = bodyWidth / 2 + 1 * baseSize;
 
     ctx.fillStyle = primaryColor;
@@ -2037,39 +2244,10 @@ continue;
     ctx.stroke();
     ctx.restore();
 
-    const headRadius = 8 * baseSize;
-    ctx.fillStyle = '#ffcc99';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, -8 * baseSize, headRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    const eyeSize = 2;
-    const eyeOffset = 3 * baseSize;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(-eyeOffset, -9 * baseSize, eyeSize, 0, Math.PI * 2);
-    ctx.arc(eyeOffset, -9 * baseSize, eyeSize, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(-eyeOffset, -9 * baseSize, eyeSize / 2, 0, Math.PI * 2);
-    ctx.arc(eyeOffset, -9 * baseSize, eyeSize / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, -6 * baseSize, 3 * baseSize, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-
-    ctx.fillStyle = borderColor;
-    ctx.beginPath();
-    ctx.arc(0, -12 * baseSize, headRadius * 0.8, Math.PI, Math.PI * 2);
-    ctx.fill();
+    // Blit pre-rendered static body (torso + head + hat) — replaces ~20 canvas primitives
+    const bodySprite = this._getPlayerBodySprite(isCurrentPlayer);
+    const dim = 64;
+    ctx.drawImage(bodySprite, -dim / 2, -dim / 2 - 4, dim, dim);
 
     ctx.restore();
   }
@@ -2090,8 +2268,30 @@ continue;
       const isCurrentPlayer = pid === currentPlayerId;
 
       if (!p.alive) {
+        // Trigger death animation once per death
+        if (!this._deathAnimations.has(pid)) {
+          this._deathAnimations.set(pid, { startTime: timestamp, x: p.x, y: p.y, duration: 800 });
+        }
+        const da = this._deathAnimations.get(pid);
+        const t = Math.min(1, (timestamp - da.startTime) / da.duration);
+        if (t < 1) {
+          // easeIn fade + clockwise fall rotation
+          const alpha = 1 - t * t;
+          const rot = t * Math.PI * 0.5;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(da.x, da.y);
+          ctx.rotate(rot);
+          this.drawPlayerSprite(ctx, { ...p, x: 0, y: 0 }, isCurrentPlayer, timestamp);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        } else {
+          this._deathAnimations.delete(pid);
+        }
         continue;
       }
+      // Clear stale death entry when player respawns
+      this._deathAnimations.delete(pid);
 
       if (!p.hasNickname && !isCurrentPlayer) {
         continue;
@@ -2099,8 +2299,10 @@ continue;
 
       // Cull non-local players before any draw work
       if (!isCurrentPlayer && !camera.isInViewport(p.x, p.y, cullMargin)) {
+        this._culledEntities++;
         continue;
       }
+      this._renderedEntities++;
 
       if (p.speedBoost && dateNow < p.speedBoost) {
         ctx.shadowBlur = 20;

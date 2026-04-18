@@ -36,7 +36,7 @@ function login(username) {
 // --- Single bot ---
 async function runBot(id) {
   const stats = { deltaCount: 0, rttSum: 0, rttCount: 0, errors: 0, disconnects: 0, bytes: 0, startTime: Date.now() };
-  let token, socket, myId, me;
+  let token, myId, me;
 
   try {
     const auth = await login('bot_' + id + '_' + Date.now().toString().slice(-4));
@@ -48,7 +48,7 @@ throw new Error('No token: ' + JSON.stringify(auth));
  stats.errors++; return stats;
 }
 
-  socket = io(BASE, { auth: { token }, transports: ['websocket'], parser: msgpackParser });
+  const socket = io(BASE, { auth: { token }, transports: ['websocket'], parser: msgpackParser });
 
   socket.on('connect_error', () => stats.errors++);
   socket.on('disconnect', () => stats.disconnects++);

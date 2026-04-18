@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
+  <script>
+    (function(){var t=localStorage.getItem('pref_theme')||'dark';document.documentElement.classList.add('theme-'+t);})();
+  </script>
+      <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jeu de Zombie Multijoueur</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
@@ -11,6 +14,45 @@
     <link rel="stylesheet" href="addictionStyles.css?v=a86016d">
 </head>
 <body>
+    <!-- Loading screen: visible during script parse, hidden when DOM is ready -->
+    <div id="loading-screen">
+      <div class="ls-content">
+        <div class="ls-logo">🧟</div>
+        <div class="ls-title">ZOMBIE SURVIVAL</div>
+        <div class="ls-spinner"></div>
+        <div class="ls-tip" id="ls-tip">Chargement…</div>
+      </div>
+    </div>
+    <script>
+      (function(){
+        var tips = [
+          "Visez la tête pour infliger plus de dégâts.",
+          "Les zombies ralentissent au froid — utilisez les biomes à votre avantage.",
+          "Achetez des upgrades permanents entre les vagues.",
+          "Le mode auto-shoot est utile sur mobile.",
+          "Encercler les zombies est fatal — gardez toujours une sortie.",
+          "Montez de niveau pour débloquer de nouvelles armes.",
+          "Les boss lâchent plus d'or — prenez vos risques.",
+          "Combinez des synergies pour des dégâts explosifs.",
+          "Les défis quotidiens rapportent des gemmes bonus.",
+          "Le dash vous rend invulnérable pendant une fraction de seconde.",
+        ];
+        var el = document.getElementById('ls-tip');
+        if(el) el.textContent = tips[Math.floor(Math.random()*tips.length)];
+        // Rotate tips every 2s while loading
+        var interval = setInterval(function(){
+          if(el) el.style.opacity=0;
+          setTimeout(function(){
+            if(el){ el.textContent = tips[Math.floor(Math.random()*tips.length)]; el.style.opacity=1; }
+          }, 300);
+        }, 2500);
+        document.addEventListener('DOMContentLoaded', function(){
+          clearInterval(interval);
+          var ls = document.getElementById('loading-screen');
+          if(ls){ ls.classList.add('ls-hide'); setTimeout(function(){ ls.remove(); }, 600); }
+        });
+      }());
+    </script>
     <a href="#gameCanvas" id="skip-to-content" class="skip-link">Passer au jeu</a>
     <div id="ui">
         <div id="nickname-screen" style="display: flex;">
@@ -47,7 +89,7 @@
             <div id="player-name-display"></div>
             <div id="health-container">
                 <span>Vie:</span>
-                <div id="health-bar">
+                <div id="health-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Points de vie">
                     <div id="health-ghost"></div>
                     <div id="health-fill"></div>
                 </div>
@@ -114,7 +156,8 @@
 
         <div id="wave-announcement" style="display: none;">
             <h1>VAGUE <span id="wave-number">2</span></h1>
-            <p>Préparez-vous!</p>
+            <p id="wave-announcement-sub">Préparez-vous!</p>
+            <div class="wave-countdown" id="wave-countdown"></div>
         </div>
 
         <!-- RESIDENT EVIL STYLE DEATH SCREEN -->
@@ -165,7 +208,7 @@
                     </div>
                     <div class="pb-banner" id="pb-banner" style="display:none;">🏆 NOUVEAU RECORD</div>
                 </div>
-                <button id="respawn-btn" aria-label="Respawn et continuer la partie" disabled>CONTINUER ?</button>
+                <button id="respawn-btn" aria-label="Respawn et continuer la partie" disabled>CONTINUER ? <span id="respawn-countdown" class="respawn-countdown">3</span></button>
             </div>
         </div>
 
@@ -200,12 +243,16 @@
         <div id="stats-panel" style="display: none;">
             <div class="stats-panel-header">
                 <h2>📊 STATISTIQUES</h2>
-                <p class="stats-hint">Appuyez sur TAB pour fermer</p>
+                <p class="stats-hint">Maintenez TAB pour afficher</p>
             </div>
             <div class="stats-panel-content">
                 <div class="stats-section">
                     <h3>🎯 Stats de Base</h3>
                     <div id="base-stats"></div>
+                </div>
+                <div class="stats-section" id="scoreboard-section">
+                    <h3>🏅 Classement</h3>
+                    <div id="scoreboard-players"></div>
                 </div>
                 <div class="stats-section">
                     <h3>⬆️ Améliorations Actives</h3>
@@ -320,6 +367,14 @@
                     <div class="settings-tab-content" id="settings-graphics">
                         <div class="settings-section">
                             <div class="setting-item">
+                                <label for="ui-theme">Thème UI</label>
+                                <select id="ui-theme" class="settings-select">
+                                    <option value="dark">Sombre (défaut)</option>
+                                    <option value="neon">Neon (cyan/magenta)</option>
+                                    <option value="retro">Rétro (CRT vert)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
                                 <label for="graphics-quality">Qualité Graphique</label>
                                 <select id="graphics-quality" class="settings-select">
                                     <option value="low">Basse</option>
@@ -349,6 +404,13 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                            <div class="setting-item">
+                                <label for="custom-cursor-toggle">Curseur Personnalisé</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="custom-cursor-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -360,7 +422,7 @@
                                 <div class="control-mapping">
                                     <div class="control-row">
                                         <span class="control-action">Déplacement</span>
-                                        <span class="control-keys">WASD / Flèches</span>
+                                        <span class="control-keys">WASD / ZQSD / Flèches</span>
                                     </div>
                                     <div class="control-row">
                                         <span class="control-action">Tirer</span>
@@ -369,6 +431,14 @@
                                     <div class="control-row">
                                         <span class="control-action">Viser</span>
                                         <span class="control-keys">Souris</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Roue des armes</span>
+                                        <span class="control-keys">E</span>
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-action">Recharger / Respawn</span>
+                                        <span class="control-keys">R / Espace</span>
                                     </div>
                                     <div class="control-row">
                                         <span class="control-action">Stats</span>
@@ -384,6 +454,17 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="settings-section">
+                            <h3>⌨️ Disposition du clavier</h3>
+                            <div class="setting-item">
+                                <label for="azerty-toggle">Mode AZERTY (Z/Q/S/D)</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="azerty-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <p style="font-size:0.8em;opacity:0.7;margin-top:4px;">WASD et ZQSD fonctionnent tous les deux par défaut.</p>
                         </div>
                     </div>
                 </div>
@@ -445,6 +526,10 @@
                     <button id="pause-quit-btn" class="pause-btn pause-btn-quit">
                         🚪 Quitter
                     </button>
+                </div>
+
+                <div id="pause-multiplayer-warning" class="pause-multiplayer-warning" style="display: none;">
+                    ⚠️ Mode multijoueur : le serveur continue de tourner pendant la pause.
                 </div>
 
                 <div class="pause-hint">
@@ -570,8 +655,11 @@
     <script src="modules/managers/CameraManager.js"></script>
     <script src="modules/ui/UIManager.js"></script>
     <script src="modules/ui/NicknameManager.js"></script>
+    <script src="modules/ui/HelpMenu.js"></script>
     <script src="modules/systems/ComboSystem.js"></script>
     <script src="modules/systems/ToastManager.js"></script>
+    <script src="modules/systems/ScreenshotManager.js"></script>
+    <script src="modules/systems/SessionAchievements.js"></script>
     <script src="modules/systems/LeaderboardSystem.js"></script>
     <script src="modules/network/NetworkManager.js"></script>
     <script src="modules/systems/AccountProgressionManager.js"></script>
@@ -593,15 +681,19 @@
     <script src="modules/input/PlayerController.js"></script>
     <script src="modules/game/Renderer.js"></script>
     <script src="modules/core/GameEngine.js"></script>
+    <script src="modules/systems/ReplayRecorder.js"></script>
     <script src="modules/utils/initHelpers.js"></script>
     <script src="tutorialSystem.js"></script>
     <script src="modules/tutorial/TutorialOverlay.js"></script>
     <script src="settingsMenu.js"></script>
+    <script src="cursorManager.js"></script>
     <script src="pauseMenu.js"></script>
     <script src="weaponWheel.js"></script>
     <script src="enemyMarkers.js"></script>
+    <script src="modules/ui/SpectatorManager.js"></script>
     <script src="game.js"></script>
     <script src="gamePatch.js"></script>
+    <script src="emoteWheel.js"></script>
 
     <!-- Portrait-hint body class: toggled on game start/over/death -->
     <script>
