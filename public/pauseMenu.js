@@ -155,9 +155,17 @@ class PauseMenu {
 
     modal.style.display = 'flex';
 
-    const onYes = () => { cleanup(); this._doQuit(); };
-    const onNo = () => { cleanup(); modal.style.display = 'none'; };
-    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); onNo(); } };
+    const onYes = () => {
+ cleanup(); this._doQuit();
+};
+    const onNo = () => {
+ cleanup(); modal.style.display = 'none';
+};
+    const onKey = e => {
+ if (e.key === 'Escape') {
+ e.stopPropagation(); onNo();
+}
+};
 
     const cleanup = () => {
       document.getElementById('quit-confirm-yes')?.removeEventListener('click', onYes);
@@ -310,7 +318,9 @@ class PauseMenu {
 
   showMultiplayerWarning() {
     const warning = document.getElementById('pause-multiplayer-warning');
-    if (!warning) return;
+    if (!warning) {
+return;
+}
     // Show only in multiplayer sessions (socket connected)
     const isMultiplayer = window.socket && window.socket.connected;
     warning.style.display = isMultiplayer ? 'block' : 'none';

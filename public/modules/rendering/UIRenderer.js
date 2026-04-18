@@ -43,7 +43,7 @@ class UIRenderer {
       rpg: '💣',
       grenade: '💣',
       knife: '🔪',
-      default: '☠️',
+      default: '☠️'
     };
 
     // Combo tracking
@@ -128,8 +128,11 @@ class UIRenderer {
     // Magnitude-based color override (takes priority over type for white/normal)
     let color = DAMAGE_COLORS[type] || DAMAGE_COLORS.normal;
     if (type === 'normal') {
-      if (damage > 100) color = '#ff4444';        // red: massive
-      else if (damage > 40) color = '#ffdd00';    // yellow: crit-like
+      if (damage > 100) {
+        color = '#ff4444'; // red: massive
+      } else if (damage > 40) {
+        color = '#ffdd00'; // yellow: crit-like
+      }
     }
 
     // Random Y offset so stacked hits don't overlap perfectly

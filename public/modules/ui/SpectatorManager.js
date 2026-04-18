@@ -25,7 +25,9 @@ class SpectatorManager {
 
   _injectUI() {
     const btn = document.getElementById('start-game-btn');
-    if (!btn) return;
+    if (!btn) {
+return;
+}
 
     const watchBtn = document.createElement('button');
     watchBtn.id = 'spectate-btn';
@@ -37,8 +39,12 @@ class SpectatorManager {
       'font-size:0.9rem', 'cursor:pointer', 'transition:background 0.2s'
     ].join(';');
     // Store handler refs so they can be cleaned up
-    this._watchBtnEnter = () => { watchBtn.style.background = 'rgba(255,255,255,0.15)'; };
-    this._watchBtnLeave = () => { watchBtn.style.background = 'rgba(255,255,255,0.08)'; };
+    this._watchBtnEnter = () => {
+ watchBtn.style.background = 'rgba(255,255,255,0.15)';
+};
+    this._watchBtnLeave = () => {
+ watchBtn.style.background = 'rgba(255,255,255,0.08)';
+};
     this._watchBtnClick = () => this._enterSpectatorMode();
     watchBtn.addEventListener('mouseenter', this._watchBtnEnter);
     watchBtn.addEventListener('mouseleave', this._watchBtnLeave);
@@ -51,12 +57,18 @@ class SpectatorManager {
 
   _enterSpectatorMode() {
     const nicknameScreen = document.getElementById('nickname-screen');
-    if (nicknameScreen) nicknameScreen.style.display = 'none';
+    if (nicknameScreen) {
+nicknameScreen.style.display = 'none';
+}
 
     // Hide skins button like normal join
-    if (window.hideSkinsButton) window.hideSkinsButton();
+    if (window.hideSkinsButton) {
+window.hideSkinsButton();
+}
     const skinsMenu = document.getElementById('skins-menu');
-    if (skinsMenu) skinsMenu.style.display = 'none';
+    if (skinsMenu) {
+skinsMenu.style.display = 'none';
+}
 
     this.active = true;
     this._hideWeaponHUD();
@@ -71,8 +83,12 @@ class SpectatorManager {
   exit() {
     this.active = false;
     this._detachInputs();
-    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-    if (this._banner) { this._banner.remove(); this._banner = null; }
+    if (this._rafId) {
+ cancelAnimationFrame(this._rafId); this._rafId = null;
+}
+    if (this._banner) {
+ this._banner.remove(); this._banner = null;
+}
     this._showWeaponHUD();
   }
 
@@ -95,12 +111,16 @@ class SpectatorManager {
 
   _hideWeaponHUD() {
     const ww = document.getElementById('weapon-wheel');
-    if (ww) ww.dataset.specHidden = ww.style.display || '';
+    if (ww) {
+ww.dataset.specHidden = ww.style.display || '';
+}
     // weapon-wheel is display:none by default (only shown on keypress), no action needed
     // Hide stats HUD elements irrelevant to spectator
     ['spawn-protection'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.dataset.specHidden = el.style.display || ''; el.style.display = 'none'; }
+      if (el) {
+ el.dataset.specHidden = el.style.display || ''; el.style.display = 'none';
+}
     });
   }
 
@@ -117,7 +137,9 @@ class SpectatorManager {
   // ─── Banner ───────────────────────────────────────────────────────────────
 
   _createBanner() {
-    if (this._banner) return;
+    if (this._banner) {
+return;
+}
     const el = document.createElement('div');
     el.id = 'spectator-banner';
     el.style.cssText = [
@@ -134,14 +156,18 @@ class SpectatorManager {
   }
 
   _updateBanner(text) {
-    if (this._banner) this._banner.textContent = text;
+    if (this._banner) {
+this._banner.textContent = text;
+}
   }
 
   // ─── Player cycling (Tab) ─────────────────────────────────────────────────
 
   _getAlivePlayers() {
     const players = window.gameState && window.gameState.state && window.gameState.state.players;
-    if (!players) return [];
+    if (!players) {
+return [];
+}
     return Object.entries(players)
       .filter(([, p]) => p && p.alive !== false)
       .map(([id, p]) => ({ id, name: p.nickname || p.name || id }));
@@ -173,7 +199,9 @@ class SpectatorManager {
 
   _attachInputs() {
     this._tabHandler = (e) => {
-      if (!this.active) return;
+      if (!this.active) {
+return;
+}
       if (e.key === 'Tab') {
         e.preventDefault();
         this._cycleToNextPlayer();
@@ -196,15 +224,21 @@ class SpectatorManager {
   }
 
   _detachInputs() {
-    if (this._tabHandler) { window.removeEventListener('keydown', this._tabHandler, true); this._tabHandler = null; }
-    if (this._keyupHandler) { window.removeEventListener('keyup', this._keyupHandler, true); this._keyupHandler = null; }
+    if (this._tabHandler) {
+ window.removeEventListener('keydown', this._tabHandler, true); this._tabHandler = null;
+}
+    if (this._keyupHandler) {
+ window.removeEventListener('keyup', this._keyupHandler, true); this._keyupHandler = null;
+}
   }
 
   // ─── Camera tick ──────────────────────────────────────────────────────────
 
   _tickLoop() {
     const tick = (ts) => {
-      if (!this.active) return;
+      if (!this.active) {
+return;
+}
       const dt = Math.min(ts - (this._lastTick || ts), 100) / 1000;
       this._lastTick = ts;
       this._updateCamera(dt);
@@ -215,17 +249,27 @@ class SpectatorManager {
 
   _updateCamera(dt) {
     const cam = window.gameEngine && window.gameEngine.camera;
-    if (!cam) return;
+    if (!cam) {
+return;
+}
 
     if (this.freeCam) {
       // WASD free camera — directly mutate camera position
       const spd = this.freeCamSpeed * dt;
       const k = this._keys;
       let dx = 0, dy = 0;
-      if (k.a) dx -= spd;
-      if (k.d) dx += spd;
-      if (k.w) dy -= spd;
-      if (k.s) dy += spd;
+      if (k.a) {
+dx -= spd;
+}
+      if (k.d) {
+dx += spd;
+}
+      if (k.w) {
+dy -= spd;
+}
+      if (k.s) {
+dy += spd;
+}
       if (dx || dy) {
         cam.x += dx;
         cam.y += dy;

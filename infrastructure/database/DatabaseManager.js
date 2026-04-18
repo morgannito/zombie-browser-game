@@ -268,7 +268,9 @@ class DatabaseManager {
    * @returns {Promise<void>}
    */
   async backup(backupPath) {
-    if (!this.db) return;
+    if (!this.db) {
+return;
+}
     try {
       await this.db.backup(backupPath);
       logger.info('Database backup created', { path: backupPath });

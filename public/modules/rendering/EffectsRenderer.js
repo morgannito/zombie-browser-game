@@ -363,7 +363,9 @@ continue;
     for (let i = this._hazardBubbles.length - 1; i >= 0; i--) {
       const b = this._hazardBubbles[i];
       const age = now - b.createdAt;
-      if (age >= b.lifetime) { this._hazardBubbles.splice(i, 1); continue; }
+      if (age >= b.lifetime) {
+ this._hazardBubbles.splice(i, 1); continue;
+}
       b.y += b.vy;
       const t = age / b.lifetime;
       ctx.globalAlpha = b.alpha * (1 - t);
@@ -659,7 +661,7 @@ continue;
     pistol:        { offset: 31, radius: 12, duration: 70  },
     shotgun:       { offset: 42, radius: 18, duration: 80  },
     machinegun:    { offset: 45, radius: 15, duration: 60  },
-    rocketlauncher:{ offset: 48, radius: 32, duration: 100 },
+    rocketlauncher:{ offset: 48, radius: 32, duration: 100 }
   };
 
   /**
@@ -698,7 +700,7 @@ continue;
       const grd = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
       grd.addColorStop(0,   `rgba(255, 220, 80, ${alpha * 0.9})`);
       grd.addColorStop(0.25,`rgba(255, 140, 20, ${alpha * 0.6})`);
-      grd.addColorStop(1,   `rgba(255, 80,  0,  0)`);
+      grd.addColorStop(1,   'rgba(255, 80,  0,  0)');
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = grd;
       ctx.beginPath();
@@ -750,11 +752,15 @@ continue;
    * Detects hits and deaths, spawns gore accordingly.
    */
   processZombieGore(zombies) {
-    if (!this._isGoreEnabled()) return;
+    if (!this._isGoreEnabled()) {
+return;
+}
 
     for (const id in zombies) {
       const z = zombies[id];
-      if (!z) continue;
+      if (!z) {
+continue;
+}
 
       const last = this._zombieLastHealth[id];
       const hp = z.health;
@@ -784,20 +790,28 @@ continue;
 
     // Clean up stale entries for removed zombies
     for (const id in this._zombieLastHealth) {
-      if (!zombies[id]) delete this._zombieLastHealth[id];
+      if (!zombies[id]) {
+delete this._zombieLastHealth[id];
+}
     }
   }
 
   renderBloodEffects(ctx, camera, now) {
-    if (!this._isGoreEnabled()) return;
+    if (!this._isGoreEnabled()) {
+return;
+}
     now = now || Date.now();
 
     // Blood pools (persistent, floor level)
     for (let i = this._bloodPools.length - 1; i >= 0; i--) {
       const pool = this._bloodPools[i];
       const age = now - pool.createdAt;
-      if (age >= this.BLOOD_POOL_LIFETIME) { this._bloodPools.splice(i, 1); continue; }
-      if (!camera.isInViewport(pool.x, pool.y, pool.radius * 2)) continue;
+      if (age >= this.BLOOD_POOL_LIFETIME) {
+ this._bloodPools.splice(i, 1); continue;
+}
+      if (!camera.isInViewport(pool.x, pool.y, pool.radius * 2)) {
+continue;
+}
 
       const fade = 1 - age / this.BLOOD_POOL_LIFETIME;
       ctx.save();
@@ -815,16 +829,22 @@ continue;
     ctx.fillStyle = '#cc0000';
     for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
       const p = this._pool[i];
-      if (!p.active || p.kind !== 'blood') continue;
+      if (!p.active || p.kind !== 'blood') {
+continue;
+}
       const age = now - p.createdAt;
-      if (age >= p.lifetime) { p.active = false; this._activeCount--; continue; }
+      if (age >= p.lifetime) {
+ p.active = false; this._activeCount--; continue;
+}
 
       p.x += p.vx;
       p.y += p.vy;
       p.vy += GRAVITY;
       p.vx *= 0.92;
 
-      if (!camera.isInViewport(p.x, p.y, 10)) continue;
+      if (!camera.isInViewport(p.x, p.y, 10)) {
+continue;
+}
 
       ctx.globalAlpha = (1 - age / p.lifetime) * 0.85;
       ctx.beginPath();
@@ -871,10 +891,16 @@ continue;
     ctx.shadowBlur = 6;
     for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
       const s = this._pool[i];
-      if (!s.active || s.kind !== 'impact') continue;
+      if (!s.active || s.kind !== 'impact') {
+continue;
+}
       const age = now - s.createdAt;
-      if (age >= s.lifetime) { s.active = false; this._activeCount--; continue; }
-      if (!camera.isInViewport(s.x, s.y, 20)) continue;
+      if (age >= s.lifetime) {
+ s.active = false; this._activeCount--; continue;
+}
+      if (!camera.isInViewport(s.x, s.y, 20)) {
+continue;
+}
       const t = age / s.lifetime;
       s.x += s.vx * (1 - t);
       s.y += s.vy * (1 - t);
@@ -894,10 +920,16 @@ continue;
     ctx.shadowBlur = 8;
     for (let i = 0; i < EffectsRenderer.POOL_SIZE; i++) {
       const g = this._pool[i];
-      if (!g.active || g.kind !== 'ghost') continue;
+      if (!g.active || g.kind !== 'ghost') {
+continue;
+}
       const age = now - g.createdAt;
-      if (age >= g.lifetime) { g.active = false; this._activeCount--; continue; }
-      if (!camera.isInViewport(g.x, g.y, 20)) continue;
+      if (age >= g.lifetime) {
+ g.active = false; this._activeCount--; continue;
+}
+      if (!camera.isInViewport(g.x, g.y, 20)) {
+continue;
+}
       const t = age / g.lifetime;
       ctx.globalAlpha = (1 - t) * 0.5;
       ctx.shadowColor = g.color;
@@ -921,32 +953,44 @@ continue;
    * @param {number} now
    */
   renderHazardWarning(ctx, camera, player, toxicPools, poisonTrails, now) {
-    if (!player) return;
+    if (!player) {
+return;
+}
     now = now || Date.now();
 
     let inHazard = false;
     if (Array.isArray(toxicPools)) {
       for (const p of toxicPools) {
         const dx = player.x - p.x, dy = player.y - p.y;
-        if (dx * dx + dy * dy < p.radius * p.radius) { inHazard = true; break; }
+        if (dx * dx + dy * dy < p.radius * p.radius) {
+ inHazard = true; break;
+}
       }
     }
     if (!inHazard && poisonTrails) {
       for (const id in poisonTrails) {
         const t = poisonTrails[id];
         const dx = player.x - t.x, dy = player.y - t.y;
-        if (dx * dx + dy * dy < t.radius * t.radius) { inHazard = true; break; }
+        if (dx * dx + dy * dy < t.radius * t.radius) {
+ inHazard = true; break;
+}
       }
     }
 
-    if (!this._inHazardPrev && inHazard) this._hazardWarningStart = now;
+    if (!this._inHazardPrev && inHazard) {
+this._hazardWarningStart = now;
+}
     this._inHazardPrev = inHazard;
-    if (!inHazard) return;
+    if (!inHazard) {
+return;
+}
 
     const elapsed = now - this._hazardWarningStart;
     // Pulse: fast blink for first 1s, then slower
     const blinkRate = elapsed < 1000 ? 150 : 400;
-    if (Math.floor(now / blinkRate) % 2 === 0) return;
+    if (Math.floor(now / blinkRate) % 2 === 0) {
+return;
+}
 
     const sx = player.x - camera.x;
     const sy = player.y - camera.y - 36; // above player head

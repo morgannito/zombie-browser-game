@@ -29,13 +29,17 @@ class ReplayRecorder {
   _push(snapshot) {
     this._buf[this._head] = snapshot;
     this._head = (this._head + 1) % ReplayRecorder.BUFFER_SIZE;
-    if (this._count < ReplayRecorder.BUFFER_SIZE) this._count++;
+    if (this._count < ReplayRecorder.BUFFER_SIZE) {
+this._count++;
+}
   }
 
   _getOrdered() {
     const out = [];
     if (this._count < ReplayRecorder.BUFFER_SIZE) {
-      for (let i = 0; i < this._count; i++) out.push(this._buf[i]);
+      for (let i = 0; i < this._count; i++) {
+out.push(this._buf[i]);
+}
     } else {
       for (let i = 0; i < ReplayRecorder.BUFFER_SIZE; i++) {
         out.push(this._buf[(this._head + i) % ReplayRecorder.BUFFER_SIZE]);
@@ -48,7 +52,9 @@ class ReplayRecorder {
 
   _startCapture() {
     this._captureInterval = setInterval(() => {
-      if (!window.gameState?.state?.players) return;
+      if (!window.gameState?.state?.players) {
+return;
+}
       const pid = window.gameState.playerId;
       const ps  = window.gameState.state.players;
       const snap = { t: Date.now(), players: {} };
@@ -56,7 +62,9 @@ class ReplayRecorder {
         const p = ps[id];
         snap.players[id] = { x: p.x, y: p.y, angle: p.angle, health: p.health, alive: p.alive };
       }
-      if (pid) snap.localId = pid;
+      if (pid) {
+snap.localId = pid;
+}
       this._push(snap);
     }, 1000 / ReplayRecorder.CAPTURE_HZ);
   }
@@ -69,7 +77,9 @@ class ReplayRecorder {
   }
 
   _onDeath() {
-    if (this._replayBtn) this._replayBtn.style.display = 'block';
+    if (this._replayBtn) {
+this._replayBtn.style.display = 'block';
+}
   }
 
   /* ── UI ──────────────────────────────────────────── */
@@ -93,7 +103,7 @@ class ReplayRecorder {
       border:        '2px solid #0f0',
       borderRadius:  '6px',
       cursor:        'pointer',
-      letterSpacing: '0.05em',
+      letterSpacing: '0.05em'
     });
     this._replayBtn.textContent = '▶ Watch replay';
     this._replayBtn.addEventListener('click', () => this._startReplay());
@@ -110,7 +120,7 @@ class ReplayRecorder {
       background:      'rgba(0,0,0,0.88)',
       flexDirection:   'column',
       alignItems:      'center',
-      justifyContent:  'center',
+      justifyContent:  'center'
     });
 
     this._replayCanvas = document.createElement('canvas');
@@ -120,7 +130,7 @@ class ReplayRecorder {
       border:       '2px solid #0f0',
       borderRadius: '4px',
       maxWidth:     '90vw',
-      maxHeight:    '70vh',
+      maxHeight:    '70vh'
     });
     this._replayCtx = this._replayCanvas.getContext('2d');
 
@@ -128,7 +138,7 @@ class ReplayRecorder {
     Object.assign(controls.style, {
       marginTop: '14px',
       display:   'flex',
-      gap:       '12px',
+      gap:       '12px'
     });
 
     const btnStyle = {
@@ -139,7 +149,7 @@ class ReplayRecorder {
       color:        '#fff',
       border:       '1px solid #555',
       borderRadius: '4px',
-      cursor:       'pointer',
+      cursor:       'pointer'
     };
 
     const skipBtn = document.createElement('button');
@@ -157,7 +167,7 @@ class ReplayRecorder {
       color:      '#aaa',
       fontSize:   '13px',
       fontFamily: 'monospace',
-      alignSelf:  'center',
+      alignSelf:  'center'
     });
     label.textContent = 'Last 30s — 10× speed';
 
@@ -174,7 +184,9 @@ class ReplayRecorder {
 
   _startReplay() {
     const frames = this._getOrdered();
-    if (frames.length < 2) return;
+    if (frames.length < 2) {
+return;
+}
 
     this._replayBtn.style.display     = 'none';
     this._replayOverlay.style.display = 'flex';
@@ -190,13 +202,17 @@ class ReplayRecorder {
     const step = (now) => {
       const elapsed   = now - pbStart;            // playback elapsed ms
       const gameElapsed = elapsed * speed;          // equivalent game ms
-      if (gameElapsed > duration) { this._stopReplay(); return; }
+      if (gameElapsed > duration) {
+ this._stopReplay(); return;
+}
 
       const targetT = startT + gameElapsed;
       // find two frames to interpolate
       let lo = frames[0], hi = frames[1];
       for (let i = 1; i < frames.length; i++) {
-        if (frames[i].t >= targetT) { lo = frames[i - 1]; hi = frames[i]; break; }
+        if (frames[i].t >= targetT) {
+ lo = frames[i - 1]; hi = frames[i]; break;
+}
         lo = hi = frames[i];
       }
       const alpha = (hi.t > lo.t) ? (targetT - lo.t) / (hi.t - lo.t) : 0;
@@ -208,7 +224,9 @@ class ReplayRecorder {
   }
 
   _stopReplay() {
-    if (this._animId) { cancelAnimationFrame(this._animId); this._animId = null; }
+    if (this._animId) {
+ cancelAnimationFrame(this._animId); this._animId = null;
+}
     this._replayOverlay.style.display = 'none';
   }
 
@@ -226,22 +244,38 @@ class ReplayRecorder {
     ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (let x = 0; x < W; x += 40) {
+ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+}
+    for (let y = 0; y < H; y += 40) {
+ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+}
 
     // compute bounds from all players to auto-zoom
     const allPts = [];
     for (const id in lo.players) {
       const lp = lo.players[id], hp = hi.players[id];
-      if (!hp) continue;
+      if (!hp) {
+continue;
+}
       allPts.push({ x: lp.x + (hp.x - lp.x) * alpha, y: lp.y + (hp.y - lp.y) * alpha });
     }
-    if (allPts.length === 0) return;
+    if (allPts.length === 0) {
+return;
+}
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const pt of allPts) {
-      if (pt.x < minX) minX = pt.x; if (pt.x > maxX) maxX = pt.x;
-      if (pt.y < minY) minY = pt.y; if (pt.y > maxY) maxY = pt.y;
+      if (pt.x < minX) {
+minX = pt.x;
+} if (pt.x > maxX) {
+maxX = pt.x;
+}
+      if (pt.y < minY) {
+minY = pt.y;
+} if (pt.y > maxY) {
+maxY = pt.y;
+}
     }
     const margin = 80;
     const rangeX = Math.max(maxX - minX, 200);
@@ -256,7 +290,9 @@ class ReplayRecorder {
     const localId = lo.localId;
     for (const id in lo.players) {
       const lp = lo.players[id], hp = hi.players[id];
-      if (!hp) continue;
+      if (!hp) {
+continue;
+}
       const ix = lp.x + (hp.x - lp.x) * alpha;
       const iy = lp.y + (hp.y - lp.y) * alpha;
       const { sx, sy } = toScreen(ix, iy);
@@ -295,7 +331,9 @@ class ReplayRecorder {
 
   destroy() {
     clearInterval(this._captureInterval);
-    if (this._animId) cancelAnimationFrame(this._animId);
+    if (this._animId) {
+cancelAnimationFrame(this._animId);
+}
     if (this._deathHandler) {
       document.removeEventListener('session_death', this._deathHandler);
       this._deathHandler = null;

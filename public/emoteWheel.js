@@ -12,7 +12,7 @@ class EmoteWheel {
       { id: 'thumbs', icon: '👍', label: 'Thumbs'  },
       { id: 'angry',  icon: '😡', label: 'Angry'   },
       { id: 'skull',  icon: '☠️', label: 'Skull'   },
-      { id: 'target', icon: '🎯', label: 'Target'  },
+      { id: 'target', icon: '🎯', label: 'Target'  }
     ];
     this._el = null;
     this._onKeydown = this._onKeydown.bind(this);
@@ -70,7 +70,9 @@ class EmoteWheel {
     overlay.appendChild(wheel);
 
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) this.close();
+      if (e.target === overlay) {
+this.close();
+}
     });
 
     document.body.appendChild(overlay);
@@ -78,49 +80,69 @@ class EmoteWheel {
   }
 
   _onKeydown(e) {
-    if (e.repeat) return;
+    if (e.repeat) {
+return;
+}
     const ae = document.activeElement;
-    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+return;
+}
 
     const key = e.key.toLowerCase();
 
-    if (key === 'escape' && this.isOpen) { this.close(); return; }
+    if (key === 'escape' && this.isOpen) {
+ this.close(); return;
+}
 
     if (['b', 'n', 'm', ','].includes(key)) {
-      if (this.isOpen) { this.close(); return; }
+      if (this.isOpen) {
+ this.close(); return;
+}
       this.open();
     }
   }
 
   open() {
-    if (this._el) this._el.style.display = 'flex';
+    if (this._el) {
+this._el.style.display = 'flex';
+}
     this.isOpen = true;
   }
 
   close() {
-    if (this._el) this._el.style.display = 'none';
+    if (this._el) {
+this._el.style.display = 'none';
+}
     this.isOpen = false;
   }
 
   _select(index) {
     const emote = this.emotes[index];
-    if (!emote) return;
+    if (!emote) {
+return;
+}
     this.close();
     this._showEmoteOnPlayer(emote);
 
     // Optional server broadcast (no-op if socket not available)
     try {
       const socket = window.networkManager && window.networkManager.socket;
-      if (socket) socket.emit('emote', { id: emote.id });
+      if (socket) {
+socket.emit('emote', { id: emote.id });
+}
     } catch (_) { /* silent */ }
   }
 
   _showEmoteOnPlayer(emote) {
     const canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+return;
+}
 
     const player = window.gameState && window.gameState.getPlayer && window.gameState.getPlayer();
-    if (!player) return;
+    if (!player) {
+return;
+}
 
     const camera = window.gameEngine && window.gameEngine.camera;
     const camX = camera ? (camera.x + ((camera.shakeOffset && camera.shakeOffset.x) || 0)) : 0;
@@ -185,7 +207,7 @@ class EmoteWheel {
     '  0%   { opacity: 1; transform: translateY(0)     scale(1);    }',
     '  20%  { opacity: 1; transform: translateY(-6px)  scale(1.15); }',
     '  100% { opacity: 0; transform: translateY(-30px) scale(0.9);  }',
-    '}',
+    '}'
   ].join('\n');
   document.head.appendChild(style);
 }());

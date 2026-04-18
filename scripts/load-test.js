@@ -22,7 +22,9 @@ const activeSockets = [];
 /** Disconnect all active sockets and exit. */
 function shutdown() {
   for (const s of activeSockets) {
-    try { s.disconnect(); } catch (_) { /* ignore */ }
+    try {
+ s.disconnect();
+} catch (_) { /* ignore */ }
   }
   process.exit(0);
 }
@@ -44,7 +46,11 @@ function login(username) {
         let d = '';
         rs.on('data', c => d += c);
         rs.on('end', () => {
-          try { res(JSON.parse(d)); } catch (e) { rej(e); }
+          try {
+ res(JSON.parse(d));
+} catch (e) {
+ rej(e);
+}
         });
       }
     );
@@ -70,7 +76,9 @@ async function runBot(id) {
   try {
     const auth = await login('bot_' + id + '_' + Date.now().toString().slice(-4));
     token = auth.token;
-    if (!token) throw new Error('No token: ' + JSON.stringify(auth));
+    if (!token) {
+throw new Error('No token: ' + JSON.stringify(auth));
+}
   } catch (_e) {
     stats.errors++;
     return stats;
@@ -88,7 +96,9 @@ async function runBot(id) {
   });
 
   socket.on('gameState', s => {
-    if (s.players?.[myId]) me = s.players[myId];
+    if (s.players?.[myId]) {
+me = s.players[myId];
+}
     stats.deltaCount++;
     stats.bytes += JSON.stringify(s).length;
   });
@@ -96,7 +106,9 @@ async function runBot(id) {
   socket.on('gameStateDelta', d => {
     if (d.updated?.players?.[myId]) {
       const p = d.updated.players[myId];
-      if (me && typeof p.x === 'number') { me.x = p.x; me.y = p.y; }
+      if (me && typeof p.x === 'number') {
+ me.x = p.x; me.y = p.y;
+}
     }
     stats.deltaCount++;
     stats.bytes += JSON.stringify(d).length;
@@ -105,15 +117,21 @@ async function runBot(id) {
   await new Promise(r => setTimeout(r, 1500));
 
   const loop = setInterval(() => {
-    if (!me) return;
+    if (!me) {
+return;
+}
     const x = me.x + (Math.random() - 0.5) * 10;
     const y = me.y + (Math.random() - 0.5) * 10;
     const angle = Math.random() * Math.PI * 2;
     socket.emit('playerMove', { x, y, angle });
-    if (Math.random() < 0.4) socket.emit('shoot', { angle, x, y });
+    if (Math.random() < 0.4) {
+socket.emit('shoot', { angle, x, y });
+}
 
     const t0 = Date.now();
-    socket.emit('ping', {}, () => { stats.rttSum += Date.now() - t0; stats.rttCount++; });
+    socket.emit('ping', {}, () => {
+ stats.rttSum += Date.now() - t0; stats.rttCount++;
+});
   }, 100);
 
   await new Promise(r => setTimeout(r, DURATION));
@@ -169,4 +187,6 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch(e => {
+ console.error(e); process.exit(1);
+});

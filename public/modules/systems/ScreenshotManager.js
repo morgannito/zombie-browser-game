@@ -32,8 +32,12 @@ class ScreenshotManager {
   _drawWatermark(ctx, width, height) {
     const { wave, score } = this._getGameInfo();
     const parts = ['Zombie Survival'];
-    if (wave !== null) parts.push(`Wave ${wave}`);
-    if (score !== null) parts.push(`Score ${score.toLocaleString()}`);
+    if (wave !== null) {
+parts.push(`Wave ${wave}`);
+}
+    if (score !== null) {
+parts.push(`Score ${score.toLocaleString()}`);
+}
     const text = parts.join('  •  ');
 
     const padding = 8;
@@ -58,7 +62,9 @@ class ScreenshotManager {
 
   capture() {
     const source = document.getElementById('gameCanvas');
-    if (!source) return;
+    if (!source) {
+return;
+}
 
     // Create offscreen copy with watermark
     const offscreen = document.createElement('canvas');
@@ -69,7 +75,9 @@ class ScreenshotManager {
     this._drawWatermark(ctx, offscreen.width, offscreen.height);
 
     offscreen.toBlob(blob => {
-      if (!blob) return;
+      if (!blob) {
+return;
+}
       const url = URL.createObjectURL(blob);
       this._showToast(url, blob);
     }, 'image/png');
@@ -77,10 +85,16 @@ class ScreenshotManager {
 
   _showToast(objectUrl, blob) {
     const container = document.getElementById('toast-container');
-    if (!container) { URL.revokeObjectURL(objectUrl); return; }
+    if (!container) {
+ URL.revokeObjectURL(objectUrl); return;
+}
 
     let revoked = false;
-    const revoke = () => { if (!revoked) { revoked = true; URL.revokeObjectURL(objectUrl); } };
+    const revoke = () => {
+ if (!revoked) {
+ revoked = true; URL.revokeObjectURL(objectUrl);
+}
+};
 
     const toast = document.createElement('div');
     toast.className = 'toast success screenshot-toast';
@@ -122,7 +136,9 @@ class ScreenshotManager {
     closeBtn.setAttribute('aria-label', 'Fermer');
     closeBtn.addEventListener('click', () => {
       toast.classList.add('removing');
-      setTimeout(() => { toast.remove(); revoke(); }, 300);
+      setTimeout(() => {
+ toast.remove(); revoke();
+}, 300);
     });
 
     content.appendChild(title);
@@ -135,7 +151,9 @@ class ScreenshotManager {
     // Auto-dismiss after 6 s
     setTimeout(() => {
       toast.classList.add('removing');
-      setTimeout(() => { toast.remove(); revoke(); }, 300);
+      setTimeout(() => {
+ toast.remove(); revoke();
+}, 300);
     }, 6000);
   }
 
@@ -145,7 +163,7 @@ class ScreenshotManager {
       try {
         await navigator.share({
           title: 'Zombie Survival',
-          files: [new File([blob], 'screenshot.png', { type: 'image/png' })],
+          files: [new File([blob], 'screenshot.png', { type: 'image/png' })]
         });
         return;
       } catch (_) {
@@ -167,7 +185,9 @@ class ScreenshotManager {
       this._download(objectUrl);
       btn.textContent = '✅ Downloaded!';
     }
-    setTimeout(() => { btn.textContent = '📤 Share'; }, 2000);
+    setTimeout(() => {
+ btn.textContent = '📤 Share';
+}, 2000);
   }
 
   _blobToDataUrl(blob) {

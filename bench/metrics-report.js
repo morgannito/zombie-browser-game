@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 const dataPath = process.argv[2] || path.join(__dirname, 'last-run.json');
+const baselinePath = path.join(__dirname, 'baseline.json');
 
 if (!fs.existsSync(dataPath)) {
   console.error(`No results file found at: ${dataPath}`);
@@ -26,6 +27,13 @@ try {
 } catch (err) {
   console.error('Failed to parse results file:', err.message);
   process.exit(1);
+}
+
+let baseline = null;
+if (fs.existsSync(baselinePath)) {
+  try {
+ baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+} catch (_) { /* ignore parse errors */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,5 +121,31 @@ if (connFail === 0 && p99 <= 150 && errors === 0) {
   console.log('  OK: All checks passed');
 }
 console.log('');
+
+// ---------------------------------------------------------------------------
+// Baseline compare (if baseline.json available)
+// ---------------------------------------------------------------------------
+if (baseline) {
+  console.log('-- Baseline Compare --');
+  const checks = [
+    { key: 'broadcast_ms', field: 'p99', label: 'Broadcast p99 ms', current: data.broadcast_ms && data.broadcast_ms.p99 },
+    { key: 'gc_pause_ms',  field: 'p99', label: 'GC pause p99 ms',  current: data.gc_pause_ms && data.gc_pause_ms.p99 },
+    { key: 'fps',          field: 'mean', label: 'FPS mean',         current: data.fps && data.fps.mean }
+  ];
+  for (const { key, field, label, current } of checks) {
+    if (current === null || current === undefined || !baseline[key]) {
+      continue;
+    }
+    const base = baseline[key][field];
+    if (base === null || base === undefined) {
+      continue;
+    }
+    const diffPct = (((current - base) / base) * 100).toFixed(1);
+    const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '=';
+    const sign  = diffPct > 0 ? '+' : '';
+    console.log(`  ${label.padEnd(20)}: ${String(current).padStart(8)}  baseline ${String(base).padStart(8)}  ${arrow} ${sign}${diffPct}%`);
+  }
+  console.log('');
+}
 
 process.exit(0);

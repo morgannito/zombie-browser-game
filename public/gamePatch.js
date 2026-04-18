@@ -283,10 +283,14 @@
               dispatchGameEvent('xp_gained', { amount: loot.amount || 0, x: loot.x, y: loot.y });
             } else if (loot.type === 'health_pack' || loot.type === 'health') {
               spawnPickupBurst(loot.x, loot.y, '#66ff66');
-              if (window.advancedAudio) window.advancedAudio.playSound('collect', 'health');
+              if (window.advancedAudio) {
+window.advancedAudio.playSound('collect', 'health');
+}
             } else if (loot.type === 'ammo') {
               spawnPickupBurst(loot.x, loot.y, '#ff9800');
-              if (window.advancedAudio) window.advancedAudio.playSound('collect', 'ammo');
+              if (window.advancedAudio) {
+window.advancedAudio.playSound('collect', 'ammo');
+}
             }
             spawnPickupLabel(loot.x, loot.y, loot.type, loot.amount);
           }

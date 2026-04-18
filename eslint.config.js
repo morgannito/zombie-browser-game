@@ -11,7 +11,7 @@ module.exports = [
 
   // Global ignores
   {
-    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', 'build/**', '**/*.min.js', 'public/lib/**', 'public/assets/**', 'coverage/**', 'logs/**']
+    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', 'build/**', '**/*.min.js', 'public/lib/**', 'public/assets/**', 'coverage/**', 'logs/**', 'public/app.bundle.js']
   },
 
   // Server-side JavaScript (Node.js)
@@ -150,7 +150,15 @@ module.exports = [
         I18n: 'readonly',
         Path2D: 'readonly',
         structuredClone: 'readonly',
-        TutorialOverlay: 'readonly'
+        TutorialOverlay: 'readonly',
+        HelpMenu: 'readonly',
+        ScreenshotManager: 'readonly',
+        SpectatorManager: 'readonly',
+        ReplayRecorder: 'readonly',
+        SOCKET_EVENTS: 'readonly',
+        Node: 'readonly',
+        File: 'readonly',
+        FileReader: 'readonly'
       }
     },
     rules: {
@@ -202,7 +210,8 @@ module.exports = [
       globals: {
         window: 'readonly',
         document: 'readonly',
-        URL: 'readonly'
+        URL: 'readonly',
+        localStorage: 'readonly'
       }
     }
   },

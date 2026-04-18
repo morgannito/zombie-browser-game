@@ -9,8 +9,8 @@ const { RATE_LIMIT_CONFIG } = require('../config/constants');
 
 const rateLimits = new Map();
 
-// Rate limits disabled globally except for shop/upgrade events (anti double-buy)
-const RATE_LIMITS_DISABLED = true;
+// All socket events are rate-limited
+const RATE_LIMITS_DISABLED = false;
 const SHOP_RATE_LIMITED = new Set(['buyItem', 'selectUpgrade', 'shopOpened']);
 
 /**

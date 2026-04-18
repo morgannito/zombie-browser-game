@@ -30,11 +30,12 @@ if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === 'production') {
 
 // Rate limiting configuration
 const RATE_LIMIT_CONFIG = {
-  shoot: { maxRequests: 20, windowMs: 1000 }, // Hard ceiling: fastest weapon ~20 rps
-  playerMove: { maxRequests: 100, windowMs: 1000 }, // Balanced for 60 FPS server with 30 FPS client updates
-  setNickname: { maxRequests: 3, windowMs: 10000 },
+  shoot: { maxRequests: 10, windowMs: 1000 }, // 10/s — covers fastest weapon
+  playerMove: { maxRequests: 60, windowMs: 1000 }, // 60/s — matches 60 FPS client updates
+  setNickname: { maxRequests: 3, windowMs: 60000 }, // 3/min — prevents nickname spam
+  emote: { maxRequests: 1, windowMs: 1000 }, // 1/s — cosmetic, no need for more
   selectUpgrade: { maxRequests: 10, windowMs: 5000 },
-  buyItem: { maxRequests: 20, windowMs: 5000 },
+  buyItem: { maxRequests: 20, windowMs: 5000 }, // 4/s eff. — within 5/s target
   shopOpened: { maxRequests: 5, windowMs: 10000 } // Prevent invisible-spam abuse
 };
 

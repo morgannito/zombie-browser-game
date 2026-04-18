@@ -122,10 +122,14 @@ describe('requireMetricsToken', () => {
   it('passes through when no token guard is configured (null METRICS_TOKEN)', () => {
     // Simulate the guard logic with metricsToken=null (dev mode)
     const guardFn = (metricsToken) => (req, res, next) => {
-      if (!metricsToken) return next();
+      if (!metricsToken) {
+return next();
+}
       const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
       const token = ext(req.headers.authorization);
-      if (!token || !tse(token, metricsToken)) return res.status(401).json({ error: 'Unauthorized' });
+      if (!token || !tse(token, metricsToken)) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
       return next();
     };
     const guard = guardFn(null);
@@ -138,10 +142,14 @@ describe('requireMetricsToken', () => {
   it('rejects request with no Authorization header when token env is set', () => {
     // Simulate the guard with a manually-crafted closure
     const guardFn = (metricsToken) => (req, res, next) => {
-      if (!metricsToken) return next();
+      if (!metricsToken) {
+return next();
+}
       const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
       const token = ext(req.headers.authorization);
-      if (!token || !tse(token, metricsToken)) return res.status(401).json({ error: 'Unauthorized' });
+      if (!token || !tse(token, metricsToken)) {
+return res.status(401).json({ error: 'Unauthorized' });
+}
       return next();
     };
     const guard = guardFn(validToken);

@@ -180,7 +180,9 @@ class AudioManager {
       osc.frequency.exponentialRampToValueAtTime(freq * 0.5, startTime + t + dur);
       gain.gain.setValueAtTime(0.15, startTime + t);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + t + dur);
-      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+      osc.onended = () => {
+ osc.disconnect(); gain.disconnect();
+};
       osc.start(startTime + t);
       osc.stop(startTime + t + dur);
     });

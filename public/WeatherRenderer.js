@@ -54,14 +54,20 @@ class WeatherRenderer {
   }
 
   _onRoomChanged() {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+return;
+}
     const types = ['clear', 'clear', 'rain', 'fog', 'snow'];
     this.type = types[Math.floor(Math.random() * types.length)];
   }
 
   _onWaveChanged(wave) {
-    if (!this.enabled) return;
-    if (wave == null) return;
+    if (!this.enabled) {
+return;
+}
+    if (wave === null || wave === undefined) {
+return;
+}
     this.type = wave % 2 === 0 ? 'rain' : 'fog';
   }
 
@@ -70,12 +76,18 @@ class WeatherRenderer {
    * ctx should be in screen-space (no camera transform).
    */
   render(ctx, w, h) {
-    if (!this.enabled || this.type === 'clear') return;
+    if (!this.enabled || this.type === 'clear') {
+return;
+}
     this._tick++;
 
-    if (this.type === 'rain') this._drawRain(ctx, w, h);
-    else if (this.type === 'snow') this._drawSnow(ctx, w, h);
-    else if (this.type === 'fog') this._drawFog(ctx, w, h);
+    if (this.type === 'rain') {
+this._drawRain(ctx, w, h);
+} else if (this.type === 'snow') {
+this._drawSnow(ctx, w, h);
+} else if (this.type === 'fog') {
+this._drawFog(ctx, w, h);
+}
   }
 
   _drawRain(ctx, w, h) {
@@ -84,7 +96,9 @@ class WeatherRenderer {
     ctx.lineWidth = 1;
     for (const d of this.rain) {
       d.y += d.speed;
-      if (d.y > 1) { Object.assign(d, this._newDrop(0)); }
+      if (d.y > 1) {
+ Object.assign(d, this._newDrop(0));
+}
       ctx.globalAlpha = d.alpha;
       ctx.beginPath();
       ctx.moveTo(d.x * w, d.y * h);
@@ -101,7 +115,9 @@ class WeatherRenderer {
     for (const f of this.snow) {
       f.y += f.speed;
       f.x += Math.sin(this._tick * f.freq + f.phase) * 0.0008;
-      if (f.y > 1) { Object.assign(f, this._newFlake(0)); }
+      if (f.y > 1) {
+ Object.assign(f, this._newFlake(0));
+}
       ctx.globalAlpha = f.alpha;
       ctx.beginPath();
       ctx.arc(f.x * w, f.y * h, f.radius, 0, Math.PI * 2);
@@ -123,7 +139,9 @@ class WeatherRenderer {
 
   setEnabled(flag) {
     this.enabled = flag;
-    if (!flag) this.type = 'clear';
+    if (!flag) {
+this.type = 'clear';
+}
   }
 }
 

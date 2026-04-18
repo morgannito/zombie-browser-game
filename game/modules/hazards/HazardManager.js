@@ -130,7 +130,9 @@ continue;
       if (canDamage) {
         let hit = false;
         for (const player of alivePlayers) {
-          if (!player.alive) continue; // skip players killed earlier this frame
+          if (!player.alive) {
+continue;
+} // skip players killed earlier this frame
           if (distance(hazard.x, hazard.y, player.x, player.y) < hazard.radius) {
             player.lastKillerType = hazard.type || 'hazard';
             player.health -= hazard.damage;
@@ -179,7 +181,9 @@ continue;
       if (canDamage) {
         let hit = false;
         for (const player of alivePlayers) {
-          if (!player.alive) continue; // skip players killed earlier this frame
+          if (!player.alive) {
+continue;
+} // skip players killed earlier this frame
           if (distance(pool.x, pool.y, player.x, player.y) < pool.radius) {
             player.lastKillerType = 'hazard';
             player.health -= pool.damage / 2;

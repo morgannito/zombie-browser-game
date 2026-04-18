@@ -330,7 +330,9 @@ return;
     }
 
     this.currentWeaponIndex = index;
-    if (window.savePref) window.savePref('pref_last_weapon', index);
+    if (window.savePref) {
+window.savePref('pref_last_weapon', index);
+}
 
     // Update selected class
     const slots = document.querySelectorAll('.weapon-slot');

@@ -7,7 +7,9 @@ const msgpackParser = require('socket.io-msgpack-parser');
 /** @type {import('socket.io-client').Socket|null} */
 let activeSocket = null;
 function shutdown() {
-  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  try {
+ activeSocket && activeSocket.disconnect();
+} catch (_) { /* ignore */ }
   process.exit(0);
 }
 process.on('SIGINT', shutdown);

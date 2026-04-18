@@ -74,12 +74,16 @@ class NicknameManager {
     el.textContent = message || '';
     clearTimeout(this._errorTimer);
     if (message) {
-      this._errorTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+      this._errorTimer = setTimeout(() => {
+ el.textContent = '';
+}, 4000);
     }
   }
 
   _updateSubmitState() {
-    if (!this.startGameBtn) return;
+    if (!this.startGameBtn) {
+return;
+}
     const nickname = this.nicknameInput ? this.nicknameInput.value.trim() : '';
     const error = this._validateNickname(nickname);
     this._showError(error);
@@ -153,7 +157,9 @@ class NicknameManager {
     }
 
     // Persist nickname for next session
-    if (window.savePref) window.savePref('pref_nickname', nickname);
+    if (window.savePref) {
+window.savePref('pref_nickname', nickname);
+}
 
     let token = null;
     if (window.authManager) {
@@ -277,7 +283,9 @@ return;
 
     // Hide replay button on respawn
     const replayBtn = document.getElementById('replay-btn');
-    if (replayBtn) replayBtn.style.display = 'none';
+    if (replayBtn) {
+replayBtn.style.display = 'none';
+}
 
     const gameOverScreen = document.getElementById('game-over');
     if (gameOverScreen) {

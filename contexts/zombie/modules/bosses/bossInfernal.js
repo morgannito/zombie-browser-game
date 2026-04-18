@@ -25,9 +25,13 @@ const FIRE_MINIONS_SPAWN_RADIUS = 150;
 function _pickRandomAlivePlayer(gameState) {
   let aliveCount = 0;
   for (const id in gameState.players) {
-    if (gameState.players[id].alive) aliveCount++;
+    if (gameState.players[id].alive) {
+aliveCount++;
+}
   }
-  if (aliveCount === 0) return null;
+  if (aliveCount === 0) {
+return null;
+}
 
   let pick = Math.floor(Math.random() * aliveCount);
   for (const id in gameState.players) {
@@ -46,17 +50,23 @@ function _pickRandomAlivePlayer(gameState) {
  * @param {object} gameState
  */
 function _applyFireAura(zombie, now, entityManager, gameState) {
-  if (zombie.lastAuraDamage && now - zombie.lastAuraDamage < FIRE_AURA_COOLDOWN) return;
+  if (zombie.lastAuraDamage && now - zombie.lastAuraDamage < FIRE_AURA_COOLDOWN) {
+return;
+}
   zombie.lastAuraDamage = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (!player.alive || player.spawnProtection || player.invisible) {
+continue;
+}
 
     if (distance(zombie.x, zombie.y, player.x, player.y) < FIRE_AURA_RADIUS) {
       applyDamage(player, FIRE_AURA_DAMAGE);
       createParticles(player.x, player.y, '#ff4500', 6, entityManager);
-      if (player.health <= 0) killPlayer(player);
+      if (player.health <= 0) {
+killPlayer(player);
+}
     }
   }
 
@@ -73,11 +83,15 @@ function _applyFireAura(zombie, now, entityManager, gameState) {
  * @param {object} gameState
  */
 function _launchMeteorStrike(zombie, zombieId, now, io, entityManager, gameState) {
-  if (zombie.lastMeteor && now - zombie.lastMeteor < METEOR_COOLDOWN) return;
+  if (zombie.lastMeteor && now - zombie.lastMeteor < METEOR_COOLDOWN) {
+return;
+}
   zombie.lastMeteor = now;
 
   const target = _pickRandomAlivePlayer(gameState);
-  if (!target) return;
+  if (!target) {
+return;
+}
 
   if (gameState.hazardManager) {
     gameState.hazardManager.createHazard('meteor', target.x, target.y, 100, 60, 2000);
@@ -101,14 +115,22 @@ function _launchMeteorStrike(zombie, zombieId, now, io, entityManager, gameState
  * @param {object} gameState
  */
 function _summonFireMinions(zombie, zombieId, now, healthPercent, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (healthPercent > 0.66) return;
-  if (zombie.lastFireMinions && now - zombie.lastFireMinions < FIRE_MINIONS_COOLDOWN) return;
+  if (healthPercent > 0.66) {
+return;
+}
+  if (zombie.lastFireMinions && now - zombie.lastFireMinions < FIRE_MINIONS_COOLDOWN) {
+return;
+}
   zombie.lastFireMinions = now;
 
   for (let i = 0; i < FIRE_MINIONS_COUNT; i++) {
     let zombieCount = 0;
-    for (const _ in gameState.zombies) zombieCount++;
-    if (!perfIntegration.canSpawnZombie(zombieCount)) continue;
+    for (const _ in gameState.zombies) {
+zombieCount++;
+}
+    if (!perfIntegration.canSpawnZombie(zombieCount)) {
+continue;
+}
 
     const angle = (Math.PI * 2 * i) / FIRE_MINIONS_COUNT;
     zombieManager.spawnSpecificZombie(
@@ -134,8 +156,12 @@ function _summonFireMinions(zombie, zombieId, now, healthPercent, io, zombieMana
  * @param {object} gameState
  */
 function updateBossInfernal(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossInfernal') return;
-  if (!ZOMBIE_TYPES.bossInfernal) return;
+  if (zombie.type !== 'bossInfernal') {
+return;
+}
+  if (!ZOMBIE_TYPES.bossInfernal) {
+return;
+}
 
   const healthPercent = zombie.health / zombie.maxHealth;
 

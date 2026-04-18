@@ -23,9 +23,13 @@ let samplerHandle = null;
 
 /** Disconnect all sockets and exit cleanly. */
 function shutdown() {
-  if (samplerHandle) clearInterval(samplerHandle);
+  if (samplerHandle) {
+clearInterval(samplerHandle);
+}
   for (const s of activeSockets) {
-    try { s && s.disconnect(); } catch (_) { /* ignore */ }
+    try {
+ s && s.disconnect();
+} catch (_) { /* ignore */ }
   }
   process.exit(0);
 }
@@ -47,7 +51,11 @@ function login(username) {
         let d = '';
         rs.on('data', c => d += c);
         rs.on('end', () => {
-          try { res(JSON.parse(d)); } catch (e) { rej(e); }
+          try {
+ res(JSON.parse(d));
+} catch (e) {
+ rej(e);
+}
         });
       }
     );
@@ -65,7 +73,9 @@ function login(username) {
 async function spawnBot(id) {
   try {
     const auth = await login('leak_bot_' + id + '_' + Date.now().toString().slice(-4));
-    if (!auth.token) return null;
+    if (!auth.token) {
+return null;
+}
     const socket = io(BASE, { auth: { token: auth.token }, transports: ['websocket'], parser: msgpackParser });
     socket.on('init', () => socket.emit('setNickname', { nickname: 'leakbot' + id }));
     socket.on('connect_error', () => {});
@@ -158,4 +168,6 @@ async function main() {
   printSummaryAndExit(samples);
 }
 
-main().catch(err => { console.error(err); process.exit(2); });
+main().catch(err => {
+ console.error(err); process.exit(2);
+});

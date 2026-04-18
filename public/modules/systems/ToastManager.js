@@ -70,7 +70,9 @@ return;
     // Evict oldest toasts if cap exceeded
     while (this.toasts.length + toInsert.length > this.MAX_VISIBLE) {
       const oldest = this.toasts.shift();
-      if (oldest) this.remove(oldest);
+      if (oldest) {
+this.remove(oldest);
+}
     }
     this.container.appendChild(fragment);
     for (const { toast, duration } of toInsert) {

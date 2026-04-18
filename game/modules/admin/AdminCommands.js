@@ -339,8 +339,8 @@ class AdminCommands {
     }
     const cfg = this.gameState.config;
     // Use explicit null-check instead of || to avoid bypassing a 0-valued dimension.
-    const maxX = cfg.ROOM_WIDTH != null ? cfg.ROOM_WIDTH : x;
-    const maxY = cfg.ROOM_HEIGHT != null ? cfg.ROOM_HEIGHT : y;
+    const maxX = cfg.ROOM_WIDTH !== null && cfg.ROOM_WIDTH !== undefined ? cfg.ROOM_WIDTH : x;
+    const maxY = cfg.ROOM_HEIGHT !== null && cfg.ROOM_HEIGHT !== undefined ? cfg.ROOM_HEIGHT : y;
     player.x = Math.max(0, Math.min(x, maxX));
     player.y = Math.max(0, Math.min(y, maxY));
     socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: true, message: `Teleported to (${player.x}, ${player.y})` });

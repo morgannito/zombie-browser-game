@@ -68,7 +68,9 @@ describe('POST /login (auth)', () => {
   });
 
   test('returns 500 when jwtService throws', async () => {
-    const badJwt = { generateToken: jest.fn(() => { throw new Error('jwt fail'); }) };
+    const badJwt = { generateToken: jest.fn(() => {
+ throw new Error('jwt fail');
+}) };
     const app = buildApp(initAuthRoutes(null, badJwt));
 
     const res = await request(app).post('/login').send({ username: 'Bob' });
@@ -135,7 +137,9 @@ describe('POST / (leaderboard score submission)', () => {
     });
     const container = { get: jest.fn(() => ({ execute: mockExecute })) };
     app = buildApp(initLeaderboardRoutes(container, {
-      requireAuth: (req, _res, next) => { req.userId = VALID_UUID; next(); }
+      requireAuth: (req, _res, next) => {
+ req.userId = VALID_UUID; next();
+}
     }));
   });
 
@@ -171,7 +175,9 @@ describe('GET /:id (players)', () => {
       getRepository: jest.fn(() => playerRepo)
     };
     app = buildApp(initPlayerRoutes(container, {
-      requireAuth: (req, _res, next) => { req.userId = VALID_UUID; next(); }
+      requireAuth: (req, _res, next) => {
+ req.userId = VALID_UUID; next();
+}
     }), '/');
   });
 

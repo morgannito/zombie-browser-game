@@ -25,7 +25,9 @@ const VOID_MINION_TYPES = ['voidwalker', 'shadowfiend'];
  * @param {object} gameState
  */
 function _createVoidRift(zombie, now, entityManager, gameState) {
-  if (zombie.lastRift && now - zombie.lastRift < VOID_RIFT_COOLDOWN) return;
+  if (zombie.lastRift && now - zombie.lastRift < VOID_RIFT_COOLDOWN) {
+return;
+}
   zombie.lastRift = now;
 
   if (gameState.hazardManager) {
@@ -43,14 +45,18 @@ function _createVoidRift(zombie, now, entityManager, gameState) {
  * @param {object|null} collisionManager
  */
 function _teleportNearPlayer(zombie, now, entityManager, gameState, collisionManager) {
-  if (zombie.lastTeleport && now - zombie.lastTeleport < TELEPORT_COOLDOWN) return;
+  if (zombie.lastTeleport && now - zombie.lastTeleport < TELEPORT_COOLDOWN) {
+return;
+}
   zombie.lastTeleport = now;
 
   const closestPlayer = collisionManager?.findClosestPlayer(zombie.x, zombie.y, Infinity, {
     ignoreSpawnProtection: true,
     ignoreInvisible: false
   });
-  if (!closestPlayer) return;
+  if (!closestPlayer) {
+return;
+}
 
   const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
   const newX = closestPlayer.x - Math.cos(angle) * TELEPORT_DISTANCE;
@@ -77,14 +83,22 @@ function _teleportNearPlayer(zombie, now, entityManager, gameState, collisionMan
  * @param {object} gameState
  */
 function _summonVoidMinions(zombie, zombieId, now, healthPercent, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (healthPercent > 0.66) return;
-  if (zombie.lastSummon && now - zombie.lastSummon < SUMMON_COOLDOWN) return;
+  if (healthPercent > 0.66) {
+return;
+}
+  if (zombie.lastSummon && now - zombie.lastSummon < SUMMON_COOLDOWN) {
+return;
+}
   zombie.lastSummon = now;
 
   for (let i = 0; i < SUMMON_COUNT; i++) {
     let zombieCount = 0;
-    for (const _ in gameState.zombies) zombieCount++;
-    if (!perfIntegration.canSpawnZombie(zombieCount)) continue;
+    for (const _ in gameState.zombies) {
+zombieCount++;
+}
+    if (!perfIntegration.canSpawnZombie(zombieCount)) {
+continue;
+}
 
     const angle = (Math.PI * 2 * i) / SUMMON_COUNT;
     zombieManager.spawnSpecificZombie(
@@ -109,13 +123,19 @@ function _summonVoidMinions(zombie, zombieId, now, healthPercent, io, zombieMana
  * @param {object} gameState
  */
 function _applyRealityWarp(zombie, zombieId, now, healthPercent, io, entityManager, gameState) {
-  if (healthPercent > 0.33) return;
-  if (zombie.lastRealityWarp && now - zombie.lastRealityWarp < REALITY_WARP_COOLDOWN) return;
+  if (healthPercent > 0.33) {
+return;
+}
+  if (zombie.lastRealityWarp && now - zombie.lastRealityWarp < REALITY_WARP_COOLDOWN) {
+return;
+}
   zombie.lastRealityWarp = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+continue;
+}
 
     player.controlsInverted = true;
     player.controlsInvertedUntil = now + REALITY_WARP_DURATION;
@@ -138,7 +158,9 @@ function _applyRealityWarp(zombie, zombieId, now, healthPercent, io, entityManag
  * @param {object|null} collisionManager
  */
 function updateBossNexus(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossNexus') return;
+  if (zombie.type !== 'bossNexus') {
+return;
+}
 
   const healthPercent = zombie.health / zombie.maxHealth;
 

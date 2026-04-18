@@ -21,7 +21,9 @@ const DURATION_S  = 30;
 
 const budget = JSON.parse(fs.readFileSync(BUDGET_FILE, 'utf8'));
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) {
+ return new Promise(r => setTimeout(r, ms));
+}
 
 function waitForHealth(port, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
@@ -29,11 +31,17 @@ function waitForHealth(port, timeoutMs) {
     const tick = () => {
       http.get(`http://127.0.0.1:${port}/health`, res => {
         res.resume();
-        if (res.statusCode === 200 || res.statusCode === 503) return resolve();
-        if (Date.now() > deadline) return reject(new Error(`health timeout (${res.statusCode})`));
+        if (res.statusCode === 200 || res.statusCode === 503) {
+return resolve();
+}
+        if (Date.now() > deadline) {
+return reject(new Error(`health timeout (${res.statusCode})`));
+}
         setTimeout(tick, 300);
       }).on('error', () => {
-        if (Date.now() > deadline) return reject(new Error('health timeout (connect)'));
+        if (Date.now() > deadline) {
+return reject(new Error('health timeout (connect)'));
+}
         setTimeout(tick, 300);
       });
     };
@@ -47,7 +55,11 @@ function fetchJson(url) {
       let data = '';
       res.on('data', c => (data += c));
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+        try {
+ resolve(JSON.parse(data));
+} catch (e) {
+ reject(e);
+}
       });
     }).on('error', reject);
   });
@@ -62,7 +74,9 @@ async function runLoadTest() {
       { stdio: ['ignore', 'pipe', 'inherit'] }
     );
     let stdout = '';
-    proc.stdout.on('data', d => { stdout += d; process.stdout.write(d); });
+    proc.stdout.on('data', d => {
+ stdout += d; process.stdout.write(d);
+});
     proc.on('exit', code => {
       // Parse "Total bytes received" and "Duration (s)" from load-test table
       // Format: | Total bytes received  | 1,234,567              |
@@ -72,7 +86,9 @@ async function runLoadTest() {
       if (bytesRow && durationRow) {
         const bytes   = parseInt(bytesRow[1].replace(/,/g, ''), 10);
         const elapsed = parseFloat(durationRow[1]);
-        if (elapsed > 0) stats.bytesPerSecMB = bytes / elapsed / (1024 * 1024);
+        if (elapsed > 0) {
+stats.bytesPerSecMB = bytes / elapsed / (1024 * 1024);
+}
       }
       resolve(stats);
     });
@@ -94,7 +110,7 @@ async function main() {
   );
   server.stdout.resume(); // drain
 
-  let violations = [];
+  const violations = [];
 
   try {
     await waitForHealth(PORT, 20_000);
@@ -124,12 +140,12 @@ async function main() {
 
     // --- Check heap ---
     const heapMB = health.memory && health.memory.heapUsed;
-    if (heapMB != null && heapMB > budget.heapMB) {
+    if (heapMB !== null && heapMB !== undefined && heapMB > budget.heapMB) {
       violations.push(`heapMB: ${heapMB.toFixed(2)} > budget ${budget.heapMB}`);
     }
 
     // --- Check bytes/s if load-test reported it ---
-    if (botStats.bytesPerSecMB != null) {
+    if (botStats.bytesPerSecMB !== null && botStats.bytesPerSecMB !== undefined) {
       if (botStats.bytesPerSecMB > budget.bytesPerSecMB) {
         violations.push(`bytesPerSecMB: ${botStats.bytesPerSecMB.toFixed(2)} > budget ${budget.bytesPerSecMB}`);
       }
@@ -144,7 +160,9 @@ async function main() {
 
   if (violations.length > 0) {
     console.error('\n[perf-check] BUDGET EXCEEDED:');
-    for (const v of violations) console.error('  ✗', v);
+    for (const v of violations) {
+console.error('  ✗', v);
+}
     process.exit(1);
   } else {
     console.log('\n[perf-check] All budgets OK.');

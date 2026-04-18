@@ -88,6 +88,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.0] — 2026-04-18
+
+> 8 refactor iterations (iter 1–8), ~100 bugs fixed, security hardening, production readiness.
+
+### Security
+- **CSP nonces** — `unsafe-inline` replaced by per-request nonces on all inline scripts/styles
+- **JWT timing-safe comparison** — replaced string equality with `crypto.timingSafeEqual` to prevent timing attacks
+- **X-Forwarded-For guard** — only trust `X-Forwarded-For` from whitelisted reverse proxies; prevents IP spoofing
+- **XSS fix LeaderboardSystem** — leaderboard entries sanitized via `textContent` instead of `innerHTML`
+- **Account takeover prevention** — always create fresh identity on login (no session fixation)
+- **Reflected XSS** — `err.status` escaped in HTML error pages
+- **Log redaction** — username, nickname, IP removed from logs (GDPR)
+- **JWT secret leak** — partial JWT secret removed from error logs
+- **Secret scan** — TruffleHog integrated in CI pipeline
+
+### Fixed
+- **Top 20 bugs**
+  1. Delta pool leak — server-internal fields excluded; fresh allocation per socket
+  2. Zombie freeze on far-exit — AI freeze bounds aligned with broadcast AOI
+  3. Zombie stutter on AOI re-entry — hard-snap to server position on re-entry
+  4. Rubber-banding — hard-snap on repeated `positionCorrection`; per-socket room tracking
+  5. Player teleport on lag — `_serverX/Y` stamped; rollback limited to anti-cheat path
+  6. Bullet spawn origin — client-predicted position used for long-range hit registration
+  7. Bullet lag compensation — first-tick fast-forward + `spawnCompensationMs` through EntityManager
+  8. AOI bypass in small rooms — AOI skipped when <5 players (particles/bullets now visible)
+  9. Client interpolation drift — `_serverTime` stamp every tick; RTT buffer scaling; `renderTime` aligned on server epoch
+  10. Session recovery — `pendingUpgradeChoices` preserved across reconnect
+  11. XP overflow — clamp before DB write prevents silent data corruption
+  12. Async errors in game loop — guarded tick; unhandled rejections no longer kill server
+  13. Circular dependency — lazy-load `handlePlayerDeathProgression` breaks import cycle
+  14. Memory leaks — event listeners, queues, bounded arrays, zombie death cleanup
+  15. Auth rate-limit response — returns JSON instead of HTML; `DISABLE_AUTH_RATE_LIMIT` dev flag
+  16. XSS kill feed — `textContent` replaces `innerHTML` in kill feed renderer
+  17. Crosshair misalignment on retina — `pixelRatio` scaling applied
+  18. Movement budget not enforced — server-side anti-cheat re-enabled after accidental disable
+  19. TOCTOU gold deduction — atomic gold deduction prevents double-spend in shop
+  20. `positionCorrection` hard-snap regression — snap only triggers after N consecutive corrections
+
+### Changed
+- **ObjectPool DI** — pools injected via Container; no more module-level singletons
+- **Event handler decomposition** — `DeathProgressionHandler`, `TeslaCoilHandler`, `PlayerUpdater`, `AutoTurretHandler` extracted from monolithic game loop
+- **Socket handler split** — `shopEvents` and `socketUtils` extracted from `socketHandlers`
+- **Logger migration** — all `console.*` replaced by Winston; consumers migrated to `infrastructure/logging/`
+- **NetworkManager refactor (Phase 7)** — `ZombieManager`/`BossAbilities`/`CollisionManager` decomposed into SRP modules
+- **ToastManager** — object-based API; legacy `/api/*` aliases removed
+- **Static asset caching** — `no-store` headers; esbuild bundle dropped in favour of direct script loading
+
+### Added
+- **`/health/ready`** — readiness probe endpoint for container orchestration
+- **Backup documentation** — runbook for DB backup/restore procedures
+- **JSDoc types** — key domain models and services annotated with `@typedef`/`@param`/`@returns`
+- **Secret scan CI step** — TruffleHog runs on every push
+- **`DISABLE_AUTH_RATE_LIMIT`** — dev convenience flag
+
+---
+
 ## [2.0.0] — Upcoming
 
 > Planned release tag grouping all changes above.

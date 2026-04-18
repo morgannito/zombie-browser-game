@@ -155,7 +155,9 @@ class UIManager {
    */
   update() {
     const player = this.gameState.getPlayer();
-    if (!player) return;
+    if (!player) {
+return;
+}
 
     this._maybeDispatchGameStarted(player);
     this._updateHUD(player);
@@ -171,7 +173,9 @@ class UIManager {
 
   /** Fires `game_started` once when the player becomes alive. @private */
   _maybeDispatchGameStarted(player) {
-    if (!player.alive || this.gameStartedDispatched) return;
+    if (!player.alive || this.gameStartedDispatched) {
+return;
+}
     document.dispatchEvent(new CustomEvent('game_started', {
       detail: {
         wave: this.gameState.state.wave || 1,
@@ -200,20 +204,32 @@ class UIManager {
       this._updateHealthGhost(healthPercent);
       last.healthPercent = healthPercent;
     }
-    if (last.healthRounded !== healthRounded) { els.healthText.textContent = healthRounded; last.healthRounded = healthRounded; }
-    if (last.lowHealth !== lowHealth) { els.healthBar.classList.toggle('low-health', lowHealth); last.lowHealth = lowHealth; }
+    if (last.healthRounded !== healthRounded) {
+ els.healthText.textContent = healthRounded; last.healthRounded = healthRounded;
+}
+    if (last.lowHealth !== lowHealth) {
+ els.healthBar.classList.toggle('low-health', lowHealth); last.lowHealth = lowHealth;
+}
 
     this._updateXPBar(player);
 
     // Stats — server increments `totalScore` on kills (combo-multiplied).
-    if (last.score !== score) { els.scoreValue.textContent = score; last.score = score; }
-    if (last.wave !== wave) { els.waveValue.textContent = wave; last.wave = wave; }
-    if (last.gold !== gold) { els.goldValue.textContent = gold; last.gold = gold; }
+    if (last.score !== score) {
+ els.scoreValue.textContent = score; last.score = score;
+}
+    if (last.wave !== wave) {
+ els.waveValue.textContent = wave; last.wave = wave;
+}
+    if (last.gold !== gold) {
+ els.goldValue.textContent = gold; last.gold = gold;
+}
   }
 
   /** Updates XP bar fill, level label and near-levelup highlight. @private */
   _updateXPBar(player) {
-    if (!player.level || player.xp === undefined) return;
+    if (!player.level || player.xp === undefined) {
+return;
+}
     const { els, _last: last } = this;
     const xpNeeded = this.getXPForLevel(player.level);
     const xpPercent = (player.xp / xpNeeded) * 100;
@@ -222,10 +238,18 @@ class UIManager {
     const nearLevelup = xpPercent > 85;
     const xpText = `${Math.floor(player.xp)}/${xpNeeded}`;
 
-    if (last.xpFillVal !== xpFillVal) { els.xpFill.style.width = xpFillVal + '%'; last.xpFillVal = xpFillVal; }
-    if (last.level !== player.level) { els.levelText.textContent = player.level; last.level = player.level; }
-    if (last.xpText !== xpText) { els.xpText.textContent = xpText; last.xpText = xpText; }
-    if (last.nearLevelup !== nearLevelup) { els.xpBar.classList.toggle('near-levelup', nearLevelup); last.nearLevelup = nearLevelup; }
+    if (last.xpFillVal !== xpFillVal) {
+ els.xpFill.style.width = xpFillVal + '%'; last.xpFillVal = xpFillVal;
+}
+    if (last.level !== player.level) {
+ els.levelText.textContent = player.level; last.level = player.level;
+}
+    if (last.xpText !== xpText) {
+ els.xpText.textContent = xpText; last.xpText = xpText;
+}
+    if (last.nearLevelup !== nearLevelup) {
+ els.xpBar.classList.toggle('near-levelup', nearLevelup); last.nearLevelup = nearLevelup;
+}
   }
 
   /** Renders game-over screen on first death frame. @private */
@@ -235,7 +259,9 @@ class UIManager {
     els.gameOver.style.display = 'block';
 
     if (wasHidden) {
-      if (window.audioManager) window.audioManager.play('death');
+      if (window.audioManager) {
+window.audioManager.play('death');
+}
       this._startRespawnCountdown();
       this._renderGameOverStats(player);
       this._renderPersonalBestComparison(player);
@@ -269,16 +295,24 @@ class UIManager {
   _startRespawnCountdown() {
     const respawnBtn = document.getElementById('respawn-btn');
     const cdSpan = document.getElementById('respawn-countdown');
-    if (!respawnBtn || !respawnBtn.disabled) return;
+    if (!respawnBtn || !respawnBtn.disabled) {
+return;
+}
     let n = 3;
-    if (cdSpan) cdSpan.textContent = n;
+    if (cdSpan) {
+cdSpan.textContent = n;
+}
     const iv = setInterval(() => {
       n--;
       if (n > 0) {
-        if (cdSpan) cdSpan.textContent = n;
+        if (cdSpan) {
+cdSpan.textContent = n;
+}
       } else {
         clearInterval(iv);
-        if (cdSpan) cdSpan.textContent = '';
+        if (cdSpan) {
+cdSpan.textContent = '';
+}
         respawnBtn.disabled = false;
         respawnBtn.focus();
       }
@@ -406,7 +440,9 @@ class UIManager {
     const el = document.getElementById('wave-announcement');
     el.querySelector('h1').textContent = h1Text;
     const pEl = el.querySelector('#wave-announcement-sub') || el.querySelector('p');
-    if (pEl) pEl.textContent = pText;
+    if (pEl) {
+pEl.textContent = pText;
+}
     el.style.background = bg;
     el.style.display = 'none';
     void el.offsetWidth;
@@ -422,8 +458,11 @@ class UIManager {
         cdEl.classList.add('wave-countdown--active');
         const iv = setInterval(() => {
           n--;
-          if (n > 0) { cdEl.textContent = n; }
-          else { cdEl.textContent = ''; cdEl.classList.remove('wave-countdown--active'); clearInterval(iv); }
+          if (n > 0) {
+ cdEl.textContent = n;
+} else {
+ cdEl.textContent = ''; cdEl.classList.remove('wave-countdown--active'); clearInterval(iv);
+}
         }, 1000);
       }
     }
@@ -629,7 +668,9 @@ return;
     const stats = window.WEAPON_STATS && window.WEAPON_STATS[weaponKey];
     const maxes = window.WEAPON_STATS_MAX;
     const panel = document.getElementById('weapon-stats-preview');
-    if (!stats || !panel) return;
+    if (!stats || !panel) {
+return;
+}
 
     document.getElementById('wsp-name').textContent = stats.name;
 
@@ -656,7 +697,9 @@ return;
 
   _hideWeaponPreview() {
     const panel = document.getElementById('weapon-stats-preview');
-    if (panel) panel.classList.remove('visible');
+    if (panel) {
+panel.classList.remove('visible');
+}
   }
 
   /**
@@ -676,9 +719,13 @@ return;
     itemDiv.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
 
     const tooltipLines = [item.description];
-    if (item.effect) tooltipLines.push(item.effect);
+    if (item.effect) {
+tooltipLines.push(item.effect);
+}
     tooltipLines.push(`Niveau: ${currentLevel}/${item.maxLevel}`);
-    if (!isMaxed) tooltipLines.push(`Prochain niveau: ${cost} 💰`);
+    if (!isMaxed) {
+tooltipLines.push(`Prochain niveau: ${cost} 💰`);
+}
 
     itemDiv.innerHTML = `
       <div class="shop-tooltip">${tooltipLines.join(' · ')}</div>
@@ -701,7 +748,9 @@ return;
       e.stopPropagation();
       if (btn.disabled) {
         const msg = isMaxed ? '⚠️ Niveau maximum atteint' : '⚠️ Or insuffisant';
-        if (window.toastManager) window.toastManager.show({ message: msg, type: 'warning', duration: 2000 });
+        if (window.toastManager) {
+window.toastManager.show({ message: msg, type: 'warning', duration: 2000 });
+}
         return;
       }
       window.buyItem(btn.dataset.itemId, btn.dataset.category);
@@ -748,7 +797,9 @@ return;
       e.preventDefault();
       e.stopPropagation();
       if (btn.disabled) {
-        if (window.toastManager) window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
+        if (window.toastManager) {
+window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
+}
         return;
       }
       window.buyItem(btn.dataset.itemId, btn.dataset.category);
@@ -824,7 +875,9 @@ return;
 
   updateScoreboard() {
     const container = document.getElementById('scoreboard-players');
-    if (!container) return;
+    if (!container) {
+return;
+}
     const players = Object.values(this.gameState.state.players || {})
       .filter(p => p.hasNickname)
       .map(p => ({
@@ -832,7 +885,7 @@ return;
         score: p.totalScore || p.score || 0,
         kills: p.zombiesKilled || p.kills || 0,
         deaths: p.deaths || 0,
-        level: p.level || 1,
+        level: p.level || 1
       }))
       .sort((a, b) => b.score - a.score);
 

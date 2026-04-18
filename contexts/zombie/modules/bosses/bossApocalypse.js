@@ -29,7 +29,9 @@ const APOCALYPSE_DAMAGE = 200;
  * @param {object} gameState
  */
 function _spawnMeteorShower(zombie, now, entityManager, gameState) {
-  if (zombie.lastMeteorShower && now - zombie.lastMeteorShower < METEOR_SHOWER_COOLDOWN) return;
+  if (zombie.lastMeteorShower && now - zombie.lastMeteorShower < METEOR_SHOWER_COOLDOWN) {
+return;
+}
   zombie.lastMeteorShower = now;
 
   for (let i = 0; i < METEOR_SHOWER_COUNT; i++) {
@@ -56,13 +58,19 @@ function _spawnMeteorShower(zombie, now, entityManager, gameState) {
  * @param {object} gameState
  */
 function _applyIcePrison(zombie, zombieId, now, healthPercent, io, entityManager, gameState) {
-  if (healthPercent > 0.75) return;
-  if (zombie.lastIcePrison && now - zombie.lastIcePrison < ICE_PRISON_COOLDOWN) return;
+  if (healthPercent > 0.75) {
+return;
+}
+  if (zombie.lastIcePrison && now - zombie.lastIcePrison < ICE_PRISON_COOLDOWN) {
+return;
+}
   zombie.lastIcePrison = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+continue;
+}
 
     player.frozen = true;
     player.frozenUntil = now + ICE_PRISON_DURATION;
@@ -82,15 +90,21 @@ function _applyIcePrison(zombie, zombieId, now, healthPercent, io, entityManager
  * @param {object|null} collisionManager
  */
 function _fireChainLightning(zombie, now, healthPercent, entityManager, gameState, collisionManager) {
-  if (healthPercent > 0.5) return;
-  if (zombie.lastChainLightning && now - zombie.lastChainLightning < CHAIN_LIGHTNING_COOLDOWN) return;
+  if (healthPercent > 0.5) {
+return;
+}
+  if (zombie.lastChainLightning && now - zombie.lastChainLightning < CHAIN_LIGHTNING_COOLDOWN) {
+return;
+}
   zombie.lastChainLightning = now;
 
   const firstTarget = collisionManager?.findClosestPlayer(zombie.x, zombie.y, CHAIN_LIGHTNING_RANGE, {
     ignoreSpawnProtection: true,
     ignoreInvisible: false
   });
-  if (!firstTarget) return;
+  if (!firstTarget) {
+return;
+}
 
   let currentTarget = firstTarget;
   let jumps = 0;
@@ -101,7 +115,9 @@ function _fireChainLightning(zombie, now, healthPercent, entityManager, gameStat
     createParticles(currentTarget.x, currentTarget.y, '#ffff00', 15, entityManager);
 
     const nextTarget = _findNearestUnhitPlayer(currentTarget, hitTargets, gameState);
-    if (!nextTarget) break;
+    if (!nextTarget) {
+break;
+}
 
     hitTargets.add(nextTarget);
     currentTarget = nextTarget;
@@ -122,7 +138,9 @@ function _findNearestUnhitPlayer(current, hitTargets, gameState) {
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || hitTargets.has(player)) continue;
+    if (!player.alive || hitTargets.has(player)) {
+continue;
+}
 
     const dist = distance(current.x, current.y, player.x, player.y);
     if (dist < CHAIN_LIGHTNING_JUMP_RADIUS && dist < minDist) {
@@ -144,18 +162,26 @@ function _findNearestUnhitPlayer(current, hitTargets, gameState) {
  * @param {object} gameState
  */
 function _triggerApocalypseUltimate(zombie, zombieId, now, healthPercent, io, entityManager, gameState) {
-  if (healthPercent > 0.25) return;
-  if (zombie.lastApocalypse && now - zombie.lastApocalypse < APOCALYPSE_COOLDOWN) return;
+  if (healthPercent > 0.25) {
+return;
+}
+  if (zombie.lastApocalypse && now - zombie.lastApocalypse < APOCALYPSE_COOLDOWN) {
+return;
+}
   zombie.lastApocalypse = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+continue;
+}
 
     if (distance(zombie.x, zombie.y, player.x, player.y) < APOCALYPSE_RADIUS) {
       applyDamage(player, APOCALYPSE_DAMAGE);
       createParticles(player.x, player.y, '#8b0000', 30, entityManager);
-      if (player.health <= 0) killPlayer(player);
+      if (player.health <= 0) {
+killPlayer(player);
+}
     }
   }
 
@@ -176,7 +202,9 @@ function _triggerApocalypseUltimate(zombie, zombieId, now, healthPercent, io, en
  * @param {object|null} collisionManager
  */
 function updateBossApocalypse(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager) {
-  if (zombie.type !== 'bossApocalypse') return;
+  if (zombie.type !== 'bossApocalypse') {
+return;
+}
 
   const healthPercent = zombie.health / zombie.maxHealth;
 

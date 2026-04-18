@@ -19,7 +19,9 @@ const { io } = require('socket.io-client');
 const _activeSockets = [];
 function _shutdown() {
   for (const s of _activeSockets) {
-    try { s.disconnect(); } catch (_) { /* ignore */ }
+    try {
+ s.disconnect();
+} catch (_) { /* ignore */ }
   }
   process.exit(0);
 }

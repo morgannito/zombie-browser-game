@@ -29,7 +29,9 @@ const BLIZZARD_DAMAGE_PER_SEC = 15;
  * @param {object} gameState
  */
 function _spawnIceSpikes(zombie, zombieId, now, io, entityManager, gameState) {
-  if (zombie.lastSpikes && now - zombie.lastSpikes < ICE_SPIKES_COOLDOWN) return;
+  if (zombie.lastSpikes && now - zombie.lastSpikes < ICE_SPIKES_COOLDOWN) {
+return;
+}
   zombie.lastSpikes = now;
 
   for (let i = 0; i < ICE_SPIKES_COUNT; i++) {
@@ -59,14 +61,22 @@ function _spawnIceSpikes(zombie, zombieId, now, io, entityManager, gameState) {
  * @param {object} gameState
  */
 function _summonIceClones(zombie, zombieId, now, healthPercent, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (healthPercent > 0.66) return;
-  if (zombie.lastIceClones && now - zombie.lastIceClones < ICE_CLONES_COOLDOWN) return;
+  if (healthPercent > 0.66) {
+return;
+}
+  if (zombie.lastIceClones && now - zombie.lastIceClones < ICE_CLONES_COOLDOWN) {
+return;
+}
   zombie.lastIceClones = now;
 
   for (let i = 0; i < ICE_CLONES_COUNT; i++) {
     let zombieCount = 0;
-    for (const _ in gameState.zombies) zombieCount++;
-    if (!perfIntegration.canSpawnZombie(zombieCount)) continue;
+    for (const _ in gameState.zombies) {
+zombieCount++;
+}
+    if (!perfIntegration.canSpawnZombie(zombieCount)) {
+continue;
+}
 
     const angle = (Math.PI * 2 * i) / ICE_CLONES_COUNT;
     zombieManager.spawnSpecificZombie(
@@ -89,13 +99,19 @@ function _summonIceClones(zombie, zombieId, now, healthPercent, io, zombieManage
  * @param {object} gameState
  */
 function _applyFreezeAura(zombie, now, healthPercent, entityManager, gameState) {
-  if (healthPercent > 0.33) return;
-  if (zombie.lastFreezeAura && now - zombie.lastFreezeAura < FREEZE_AURA_COOLDOWN) return;
+  if (healthPercent > 0.33) {
+return;
+}
+  if (zombie.lastFreezeAura && now - zombie.lastFreezeAura < FREEZE_AURA_COOLDOWN) {
+return;
+}
   zombie.lastFreezeAura = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (!player.alive || player.spawnProtection || player.invisible) {
+continue;
+}
 
     if (distance(zombie.x, zombie.y, player.x, player.y) < FREEZE_AURA_RADIUS) {
       player.slowedUntil = now + 2000;
@@ -115,8 +131,12 @@ function _applyFreezeAura(zombie, now, healthPercent, entityManager, gameState) 
  * @param {object} gameState
  */
 function _triggerBlizzard(zombie, zombieId, now, healthPercent, io, gameState) {
-  if (healthPercent > 0.33) return;
-  if (zombie.lastBlizzard && now - zombie.lastBlizzard < BLIZZARD_COOLDOWN) return;
+  if (healthPercent > 0.33) {
+return;
+}
+  if (zombie.lastBlizzard && now - zombie.lastBlizzard < BLIZZARD_COOLDOWN) {
+return;
+}
   zombie.lastBlizzard = now;
   zombie.blizzardActive = true;
   zombie.blizzardEnd = now + BLIZZARD_DURATION;
@@ -132,24 +152,32 @@ function _triggerBlizzard(zombie, zombieId, now, healthPercent, io, gameState) {
  * @param {object} gameState
  */
 function _applyBlizzardTick(zombie, now, entityManager, gameState) {
-  if (!zombie.blizzardActive) return;
+  if (!zombie.blizzardActive) {
+return;
+}
 
   if (now >= zombie.blizzardEnd) {
     zombie.blizzardActive = false;
     return;
   }
 
-  if (zombie.lastBlizzardTick && now - zombie.lastBlizzardTick < BLIZZARD_TICK_INTERVAL) return;
+  if (zombie.lastBlizzardTick && now - zombie.lastBlizzardTick < BLIZZARD_TICK_INTERVAL) {
+return;
+}
   zombie.lastBlizzardTick = now;
 
   const tickDamage = BLIZZARD_DAMAGE_PER_SEC / 2;
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+continue;
+}
 
     applyDamage(player, tickDamage);
     createParticles(player.x, player.y, '#aaddff', 3, entityManager);
-    if (player.health <= 0) killPlayer(player);
+    if (player.health <= 0) {
+killPlayer(player);
+}
   }
 }
 
@@ -165,7 +193,9 @@ function _applyBlizzardTick(zombie, now, entityManager, gameState) {
  * @param {object} gameState
  */
 function updateBossCryos(zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossCryos') return;
+  if (zombie.type !== 'bossCryos') {
+return;
+}
 
   const healthPercent = zombie.health / zombie.maxHealth;
 

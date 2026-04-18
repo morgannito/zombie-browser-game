@@ -14,29 +14,41 @@
 
   // ── Ring buffer ──────────────────────────────────────────────────────────
   function readRing() {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (_) { return []; }
+    try {
+ return JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+} catch (_) {
+ return [];
+}
   }
 
   function writeRing(ring) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(ring)); } catch (_) {}
+    try {
+ localStorage.setItem(LS_KEY, JSON.stringify(ring));
+} catch (_) { /* ignore errors */ }
   }
 
   function pushError(entry) {
     const ring = readRing();
     ring.push(entry);
-    if (ring.length > RING_SIZE) ring.splice(0, ring.length - RING_SIZE);
+    if (ring.length > RING_SIZE) {
+ring.splice(0, ring.length - RING_SIZE);
+}
     writeRing(ring);
   }
 
   function clearErrors() {
-    try { localStorage.removeItem(LS_KEY); } catch (_) {}
+    try {
+ localStorage.removeItem(LS_KEY);
+} catch (_) { /* ignore errors */ }
   }
 
   // ── Toast rate-limited ───────────────────────────────────────────────────
   let _lastToast = 0;
   function showToast() {
     const now = Date.now();
-    if (now - _lastToast < TOAST_COOLDOWN_MS) return;
+    if (now - _lastToast < TOAST_COOLDOWN_MS) {
+return;
+}
     _lastToast = now;
 
     if (window.toastManager) {
@@ -54,7 +66,9 @@
     document.body.appendChild(el);
     setTimeout(function () {
       el.style.opacity = '0';
-      setTimeout(function () { el.parentNode && el.parentNode.removeChild(el); }, 500);
+      setTimeout(function () {
+ el.parentNode && el.parentNode.removeChild(el);
+}, 500);
     }, 4000);
   }
 
@@ -67,7 +81,7 @@
       } else if (typeof window._gameLoop === 'function') {
         requestAnimationFrame(window._gameLoop);
       }
-    } catch (_) {}
+    } catch (_) { /* ignore errors */ }
   }
 
   // ── Capture erreurs ───────────────────────────────────────────────────────

@@ -13,10 +13,16 @@ function makeSocket() {
   return {
     id: 'sock-anticheat',
     emitted,
-    on(ev, h) { handlers[ev] = h; },
-    emit(ev, d) { emitted.push({ event: ev, data: d }); },
+    on(ev, h) {
+ handlers[ev] = h;
+},
+    emit(ev, d) {
+ emitted.push({ event: ev, data: d });
+},
     disconnect: jest.fn(),
-    trigger(ev, payload) { handlers[ev](payload); }
+    trigger(ev, payload) {
+ handlers[ev](payload);
+}
   };
 }
 
@@ -56,7 +62,9 @@ describe('Anti-cheat flag tests (ENABLE_ANTICHEAT=true)', () => {
 
     jest.mock('../../../game/validationFunctions', () => ({
       validateMovementData: d => {
-        if (!d || typeof d.x !== 'number' || typeof d.y !== 'number') return null;
+        if (!d || typeof d.x !== 'number' || typeof d.y !== 'number') {
+return null;
+}
         return { x: d.x, y: d.y, angle: d.angle || 0 };
       }
     }));

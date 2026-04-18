@@ -4,11 +4,6 @@ const { SpatialGrid } = require('../contexts/zombie/SpatialGrid');
 const SIZES = [100, 500, 1000];
 const QUERIES = 1000;
 
-/**
- * Build a SpatialGrid populated with n random entities.
- * @param {number} n
- * @returns {SpatialGrid}
- */
 function buildGrid(n) {
   const grid = new SpatialGrid();
   for (let i = 0; i < n; i++) {
@@ -17,11 +12,6 @@ function buildGrid(n) {
   return grid;
 }
 
-/**
- * Measure nearby() query rate over QUERIES iterations.
- * @param {SpatialGrid} grid
- * @returns {number} ops per second
- */
 function measureOps(grid) {
   const t0 = process.hrtime.bigint();
   for (let i = 0; i < QUERIES; i++) {
@@ -31,12 +21,16 @@ function measureOps(grid) {
   return Math.round(QUERIES / (ms / 1000));
 }
 
-console.log('spatial-grid-bench — nearby() query rate');
-console.log('zombies | ops/sec');
-console.log('--------|--------');
+const results = { bench: 'spatial-grid', metric: 'nearby()', unit: 'ops/sec', sizes: [] };
 
 for (const n of SIZES) {
   const grid = buildGrid(n);
   const ops = measureOps(grid);
-  console.log(`${String(n).padStart(7)} | ${ops.toLocaleString()}`);
+  results.sizes.push({ n, ops });
 }
+
+if (require.main === module) {
+  console.log(JSON.stringify(results, null, 2));
+}
+
+module.exports = results;

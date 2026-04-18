@@ -17,8 +17,9 @@ A clear description of what went wrong.
 **Actual behavior**
 
 **Environment**
-- Node.js version:
-- Browser (if client bug):
+- Browser + version:
+- OS:
+- Game version / commit:
 - `PERFORMANCE_MODE`:
 
 **Logs / screenshots**

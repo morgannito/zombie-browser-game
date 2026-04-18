@@ -32,9 +32,13 @@ class OptimizedSoundEffects {
    * @param {number} [distance=0] - Distance from listener (0 = max volume)
    */
   playShoot(weaponType = 'pistol', distance = 0) {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     const attenuation = this.calculateDistanceAttenuation(distance);
-    if (attenuation < 0.05) return;
+    if (attenuation < 0.05) {
+return;
+}
 
     switch (weaponType) {
       case 'pistol':   this._playPistolShot(attenuation); break;
@@ -123,7 +127,9 @@ class OptimizedSoundEffects {
    * @param {boolean} [isCritical=false]
    */
   playHit(isCritical = false) {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     this.core.playTone({
       type: 'hit',
       frequency: isCritical ? 600 : 400,
@@ -136,7 +142,9 @@ class OptimizedSoundEffects {
 
   /** Play a zombie death sound with slight random pitch variation. */
   playZombieDeath() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     const pitch = 0.95 + Math.random() * 0.1;
     this.core.playTone({
       type: 'zombieDeath', frequency: 300 * pitch, frequencyEnd: 50 * pitch,
@@ -147,7 +155,9 @@ class OptimizedSoundEffects {
 
   /** Play an explosion noise burst. */
   playExplosion() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     this.core.playNoise({
       type: 'explosion', duration: 0.5, volume: 0.5,
       filterFreqStart: 1000, filterFreqEnd: 50, useReverb: true
@@ -158,7 +168,9 @@ class OptimizedSoundEffects {
    * Play player damage sound.
    */
   playPlayerDamage() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     this.core.playTone({
       type: 'playerDamage', frequency: 200, frequencyEnd: 100,
       duration: 0.2, volume: 0.35, waveType: 'sawtooth'
@@ -171,7 +183,9 @@ class OptimizedSoundEffects {
    * @param {'gold'|'health'|'weapon'|'ammo'|'powerup'} [type='gold']
    */
   playCollect(type = 'gold') {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
 
     const presets = {
       gold:   { frequency: 800,  frequencyEnd: 1200, duration: 0.10, volume: 0.25, waveType: 'sine' },
@@ -187,7 +201,9 @@ class OptimizedSoundEffects {
 
   /** Play a heal chime. */
   playHeal() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     this.core.playTone({
       type: 'collect', frequency: 600, frequencyEnd: 900,
       duration: 0.3, volume: 0.2, waveType: 'sine'
@@ -198,7 +214,9 @@ class OptimizedSoundEffects {
    * Play level-up fanfare: rising arpeggio followed by accent chord.
    */
   playLevelUp() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     const schedule = window.setManagedTimeout || setTimeout;
 
     const arpeggio = [523.25, 659.25, 783.99, 1046.5];
@@ -220,7 +238,9 @@ class OptimizedSoundEffects {
    * Play triple bass drone for boss spawn.
    */
   playBossSpawn() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     for (let i = 0; i < 3; i++) {
       this.core.playTone({
         type: 'bossSpawn', frequency: 80 - i * 10, frequencyEnd: 60 - i * 10,
@@ -233,7 +253,9 @@ class OptimizedSoundEffects {
    * @param {'click'|'hover'|'reward'} [type='click']
    */
   playUISound(type = 'click') {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
 
     const presets = {
       click:  { frequency: 800, duration: 0.05, volume: 0.18, waveType: 'sine' },
@@ -249,7 +271,9 @@ class OptimizedSoundEffects {
    * @param {'pistol'|string} [weaponType='pistol']
    */
   playReload(weaponType = 'pistol') {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     const schedule = window.setManagedTimeout || setTimeout;
 
     this.core.playTone({ type: 'ui', frequency: 2500, duration: 0.015, volume: 0.15, waveType: 'square', filterFreq: 2000, filterType: 'highpass' });
@@ -267,7 +291,9 @@ class OptimizedSoundEffects {
 
   /** Play dry-fire click (empty magazine). */
   playDryFire() {
-    if (!this.core) return;
+    if (!this.core) {
+return;
+}
     this.core.playTone({ type: 'ui', frequency: 1500, duration: 0.02, volume: 0.12, waveType: 'square' });
   }
 
@@ -278,14 +304,20 @@ class OptimizedSoundEffects {
    * Connects through masterGain so global volume applies.
    */
   startWind() {
-    if (!this.core?.audioContext || this._windNodes) return;
+    if (!this.core?.audioContext || this._windNodes) {
+return;
+}
     const ctx = this.core.audioContext;
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') {
+ctx.resume();
+}
 
     const sr = ctx.sampleRate;
     const buf = ctx.createBuffer(1, sr * 4, sr);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < data.length; i++) {
+data[i] = Math.random() * 2 - 1;
+}
 
     const src = ctx.createBufferSource();
     src.buffer = buf;
@@ -314,9 +346,15 @@ class OptimizedSoundEffects {
 
   /** Stop and disconnect wind nodes. */
   stopWind() {
-    if (!this._windNodes) return;
-    try { this._windNodes.src.stop(); } catch { /* ignore */ }
-    try { this._windNodes.gain.disconnect(); } catch { /* ignore */ }
+    if (!this._windNodes) {
+return;
+}
+    try {
+ this._windNodes.src.stop();
+} catch { /* ignore */ }
+    try {
+ this._windNodes.gain.disconnect();
+} catch { /* ignore */ }
     this._windNodes = null;
   }
 
@@ -324,7 +362,9 @@ class OptimizedSoundEffects {
    * Schedule recurring distant zombie groans (random 5–15 s interval).
    */
   startZombieGroans() {
-    if (!this.core?.audioContext || this._groanTimer !== undefined) return;
+    if (!this.core?.audioContext || this._groanTimer !== undefined) {
+return;
+}
     const scheduleNext = () => {
       const delay = 5000 + Math.random() * 10000;
       this._groanTimer = (window.setManagedTimeout || setTimeout)(() => {
@@ -349,9 +389,13 @@ class OptimizedSoundEffects {
    * @private
    */
   _playDistantGroan() {
-    if (!this.core?.audioContext) return;
+    if (!this.core?.audioContext) {
+return;
+}
     const ctx = this.core.audioContext;
-    if (ctx.state === 'suspended') return;
+    if (ctx.state === 'suspended') {
+return;
+}
 
     const pitchFactor = 0.85 + Math.random() * 0.3;
     const duration = 0.6 + Math.random() * 0.4;
@@ -385,8 +429,12 @@ class OptimizedSoundEffects {
 
     // Disconnect after playback to prevent node leak
     osc.onended = () => {
-      try { panner.disconnect(); } catch { /* ignore */ }
-      try { gainNode.disconnect(); } catch { /* ignore */ }
+      try {
+ panner.disconnect();
+} catch { /* ignore */ }
+      try {
+ gainNode.disconnect();
+} catch { /* ignore */ }
     };
   }
 
@@ -394,7 +442,9 @@ class OptimizedSoundEffects {
    * Start looping heartbeat thumps (use when player HP < 30).
    */
   startHeartbeat() {
-    if (!this.core?.audioContext || this._heartbeatInterval) return;
+    if (!this.core?.audioContext || this._heartbeatInterval) {
+return;
+}
     this._heartbeatInterval = setInterval(() => this._playHeartThump(), 480);
   }
 
@@ -412,9 +462,13 @@ class OptimizedSoundEffects {
    * @private
    */
   _playHeartThump() {
-    if (!this.core?.audioContext) return;
+    if (!this.core?.audioContext) {
+return;
+}
     const ctx = this.core.audioContext;
-    if (ctx.state === 'suspended') return;
+    if (ctx.state === 'suspended') {
+return;
+}
 
     [0, 0.12].forEach((offset, i) => {
       const t = ctx.currentTime + offset;
@@ -433,7 +487,11 @@ class OptimizedSoundEffects {
       osc.start(t);
       osc.stop(t + 0.2);
 
-      osc.onended = () => { try { gain.disconnect(); } catch { /* ignore */ } };
+      osc.onended = () => {
+ try {
+ gain.disconnect();
+} catch { /* ignore */ }
+};
     });
   }
 
@@ -442,9 +500,13 @@ class OptimizedSoundEffects {
    * Node disconnected via onended.
    */
   playWaveRumble() {
-    if (!this.core?.audioContext) return;
+    if (!this.core?.audioContext) {
+return;
+}
     const ctx = this.core.audioContext;
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') {
+ctx.resume();
+}
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -462,7 +524,11 @@ class OptimizedSoundEffects {
     osc.start(now);
     osc.stop(now + 0.65);
 
-    osc.onended = () => { try { gain.disconnect(); } catch { /* ignore */ } };
+    osc.onended = () => {
+ try {
+ gain.disconnect();
+} catch { /* ignore */ }
+};
   }
 
   // ── Utilities ──────────────────────────────────────────────────────────────
@@ -474,7 +540,9 @@ class OptimizedSoundEffects {
    * @returns {number} 0–1
    */
   calculateDistanceAttenuation(distance, maxDistance = 1000) {
-    if (distance >= maxDistance) return 0;
+    if (distance >= maxDistance) {
+return 0;
+}
     return Math.max(0, 1 - distance / maxDistance);
   }
 

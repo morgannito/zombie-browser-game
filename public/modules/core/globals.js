@@ -29,16 +29,20 @@
     'comboSystem',
     'leaderboardSystem',
     'sessionManager',
-    'socket',
+    'socket'
   ];
 
   for (const key of GLOBALS) {
     if (!(key in window.ZBG)) {
       Object.defineProperty(window.ZBG, key, {
-        get() { return window[key]; },
-        set(v) { window[key] = v; },
+        get() {
+ return window[key];
+},
+        set(v) {
+ window[key] = v;
+},
         enumerable: true,
-        configurable: true,
+        configurable: true
       });
     }
   }

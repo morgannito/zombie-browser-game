@@ -228,7 +228,9 @@ count++;
     let max = 0;
     for (let i = 0; i < this.frameTimes.length; i++) {
       sum += this.frameTimes[i];
-      if (this.frameTimes[i] > max) max = this.frameTimes[i];
+      if (this.frameTimes[i] > max) {
+max = this.frameTimes[i];
+}
     }
     this.metrics.performance.avgFrameTime = sum / this.frameTimes.length;
     this.metrics.performance.maxFrameTime = max;

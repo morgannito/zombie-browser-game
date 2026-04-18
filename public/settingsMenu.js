@@ -140,9 +140,15 @@ class SettingsMenu {
     const closeBtn       = document.getElementById('settings-close-btn');
     const overlay        = document.querySelector('.settings-overlay');
 
-    if (settingsBtn) settingsBtn.addEventListener('click', () => this.open());
-    if (closeBtn)    closeBtn.addEventListener('click',   () => this.close());
-    if (overlay)     overlay.addEventListener('click',    () => this.close());
+    if (settingsBtn) {
+settingsBtn.addEventListener('click', () => this.open());
+}
+    if (closeBtn)    {
+closeBtn.addEventListener('click',   () => this.close());
+}
+    if (overlay)     {
+overlay.addEventListener('click',    () => this.close());
+}
 
     this._onKeydown = (e) => {
       if (e.key === 'Escape' && settingsMenu && settingsMenu.style.display === 'block') {
@@ -178,8 +184,12 @@ class SettingsMenu {
   _bindFooterButtons() {
     const applyBtn = document.getElementById('settings-apply-btn');
     const resetBtn = document.getElementById('settings-reset-btn');
-    if (applyBtn) applyBtn.addEventListener('click', () => this.apply());
-    if (resetBtn) resetBtn.addEventListener('click', () => this.reset());
+    if (applyBtn) {
+applyBtn.addEventListener('click', () => this.apply());
+}
+    if (resetBtn) {
+resetBtn.addEventListener('click', () => this.reset());
+}
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -187,7 +197,9 @@ class SettingsMenu {
   /** Make the settings gear button visible. */
   showSettingsButton() {
     const btn = document.getElementById('settings-btn');
-    if (btn) btn.style.display = 'flex';
+    if (btn) {
+btn.style.display = 'flex';
+}
   }
 
   /** Open the settings menu, restoring the last active tab. */
@@ -203,7 +215,9 @@ class SettingsMenu {
   /** Close the settings menu. */
   close() {
     const menu = document.getElementById('settings-menu');
-    if (menu) menu.style.display = 'none';
+    if (menu) {
+menu.style.display = 'none';
+}
   }
 
   /**
@@ -231,7 +245,9 @@ class SettingsMenu {
     this.applySettings();
     this.updateUI();
 
-    if (typeof TutorialOverlay !== 'undefined') TutorialOverlay.reset();
+    if (typeof TutorialOverlay !== 'undefined') {
+TutorialOverlay.reset();
+}
 
     if (typeof ToastManager !== 'undefined') {
       const msg = (typeof I18n !== 'undefined' ? I18n.t('settings.reset') : 'Paramètres réinitialisés');
@@ -261,12 +277,18 @@ class SettingsMenu {
    */
   updateSlider(slider) {
     const display = slider.parentElement.querySelector('.slider-value');
-    if (display) display.textContent = `${slider.value}%`;
+    if (display) {
+display.textContent = `${slider.value}%`;
+}
 
     const val = parseInt(slider.value);
-    if      (slider.id === 'volume-master') this.currentSettings.audio.master = val;
-    else if (slider.id === 'volume-music')  this.currentSettings.audio.music  = val;
-    else if (slider.id === 'volume-sfx')    this.currentSettings.audio.sfx    = val;
+    if      (slider.id === 'volume-master') {
+this.currentSettings.audio.master = val;
+} else if (slider.id === 'volume-music')  {
+this.currentSettings.audio.music  = val;
+} else if (slider.id === 'volume-sfx')    {
+this.currentSettings.audio.sfx    = val;
+}
   }
 
   /**
@@ -290,7 +312,9 @@ class SettingsMenu {
       this.applyTheme(select.value);
       const otherId = select.id === 'ui-theme' ? 'ui-theme-interface' : 'ui-theme';
       const other = document.getElementById(otherId);
-      if (other) other.value = select.value;
+      if (other) {
+other.value = select.value;
+}
     }
   }
 
@@ -323,7 +347,9 @@ class SettingsMenu {
       return true;
     case 'custom-cursor-toggle':
       g.customCursor = toggle.checked;
-      if (window.CursorManager) window.CursorManager.setEnabled(toggle.checked);
+      if (window.CursorManager) {
+window.CursorManager.setEnabled(toggle.checked);
+}
       return true;
     case 'magnet-pickup-toggle':
       g.magnetPickup = toggle.checked;
@@ -342,7 +368,9 @@ class SettingsMenu {
    * @returns {boolean} true if the toggle was handled
    */
   _updateControlsToggle(toggle) {
-    if (toggle.id !== 'azerty-toggle') return false;
+    if (toggle.id !== 'azerty-toggle') {
+return false;
+}
     (this.currentSettings.controls ??= {}).azerty = toggle.checked;
     return true;
   }
@@ -422,7 +450,9 @@ class SettingsMenu {
   applyGraphicsSettings() {
     const g = this.currentSettings.graphics;
 
-    if (!window.gameSettings) window.gameSettings = {};
+    if (!window.gameSettings) {
+window.gameSettings = {};
+}
 
     window.gameSettings.graphicsQuality    = g.quality;
     window.gameSettings.particlesEnabled   = g.particles;
@@ -434,11 +464,15 @@ class SettingsMenu {
 
     const customCursor = g.customCursor ?? true;
     window.gameSettings.customCursor = customCursor;
-    if (window.CursorManager) window.CursorManager.setEnabled(customCursor);
+    if (window.CursorManager) {
+window.CursorManager.setEnabled(customCursor);
+}
 
     const weatherEffects = g.weatherEffects ?? false;
     window.gameSettings.weatherEffects = weatherEffects;
-    if (window.weatherRenderer) window.weatherRenderer.setEnabled(weatherEffects);
+    if (window.weatherRenderer) {
+window.weatherRenderer.setEnabled(weatherEffects);
+}
   }
 
   /**
@@ -451,7 +485,9 @@ class SettingsMenu {
     window.gameSettings.showZombieOutlines = a.showZombieOutlines ?? false;
 
     const statsEl = document.getElementById('stats');
-    if (statsEl) statsEl.classList.toggle('hud-large-text', a.largeHudText ?? false);
+    if (statsEl) {
+statsEl.classList.toggle('hud-large-text', a.largeHudText ?? false);
+}
   }
 
   /**
@@ -475,14 +511,20 @@ class SettingsMenu {
    */
   _applyControlsSettings() {
     const azerty = this.currentSettings.controls?.azerty ?? false;
-    if (window.gameSettings) window.gameSettings.azerty = azerty;
-    if (window.settingsManager) window.settingsManager.set('controls.azerty', azerty);
+    if (window.gameSettings) {
+window.gameSettings.azerty = azerty;
+}
+    if (window.settingsManager) {
+window.settingsManager.set('controls.azerty', azerty);
+}
   }
 
   /** @private Propagate magnetPickup setting to SettingsManager. */
   _applyMagnetPickupSetting() {
     const magnetPickup = this.currentSettings.graphics?.magnetPickup ?? true;
-    if (window.settingsManager) window.settingsManager.set('magnetPickup', magnetPickup);
+    if (window.settingsManager) {
+window.settingsManager.set('magnetPickup', magnetPickup);
+}
   }
 
   // ── UI sync ──────────────────────────────────────────────────────────────
@@ -507,7 +549,9 @@ class SettingsMenu {
       ['volume-sfx',    this.currentSettings.audio.sfx]
     ].forEach(([id, val]) => {
       const el = document.getElementById(id);
-      if (el) { el.value = val; this.updateSlider(el); }
+      if (el) {
+ el.value = val; this.updateSlider(el);
+}
     });
   }
 
@@ -524,11 +568,15 @@ class SettingsMenu {
     ];
     pairs.forEach(([id, val]) => {
       const el = document.getElementById(id);
-      if (el) el.checked = val;
+      if (el) {
+el.checked = val;
+}
     });
 
     const qualityEl = document.getElementById('graphics-quality');
-    if (qualityEl) qualityEl.value = g.quality;
+    if (qualityEl) {
+qualityEl.value = g.quality;
+}
   }
 
   /** @private Sync both theme selects to persisted theme. */
@@ -536,7 +584,9 @@ class SettingsMenu {
     const theme = localStorage.getItem(this.THEME_KEY) || 'dark';
     ['ui-theme', 'ui-theme-interface'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = theme;
+      if (el) {
+el.value = theme;
+}
     });
   }
 
@@ -550,14 +600,18 @@ class SettingsMenu {
       ['zombie-outlines-toggle',     a.showZombieOutlines ?? false]
     ].forEach(([id, val]) => {
       const el = document.getElementById(id);
-      if (el) el.checked = val;
+      if (el) {
+el.checked = val;
+}
     });
   }
 
   /** @private Sync controls-section toggles. */
   _syncControlsToggles() {
     const el = document.getElementById('azerty-toggle');
-    if (el) el.checked = this.currentSettings.controls?.azerty ?? false;
+    if (el) {
+el.checked = this.currentSettings.controls?.azerty ?? false;
+}
   }
 
   // ── Theme ────────────────────────────────────────────────────────────────
@@ -581,7 +635,9 @@ class SettingsMenu {
   /** @private Bind skin-colour palette buttons and restore saved selection. */
   _initSkinPalette() {
     const palette = document.getElementById('skin-color-palette');
-    if (!palette) return;
+    if (!palette) {
+return;
+}
 
     const saved = localStorage.getItem('pref_skin') || 'cyan';
 
@@ -593,7 +649,9 @@ class SettingsMenu {
         btn.classList.add('active');
         safeLocalStorageSet('pref_skin', btn.dataset.color);
         const er = window.gameEngine?.renderer?.entityRenderer;
-        if (er) er._playerBodyCache.clear();
+        if (er) {
+er._playerBodyCache.clear();
+}
       });
     });
   }

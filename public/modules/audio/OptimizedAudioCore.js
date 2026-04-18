@@ -194,7 +194,9 @@ class OptimizedAudioCore {
    * @private
    */
   _handleVisibility() {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+return;
+}
     if (document.hidden) {
       this.audioContext.suspend().catch(() => {});
     } else if (this.audioContext.state === 'suspended') {
@@ -209,12 +211,16 @@ class OptimizedAudioCore {
    */
   _getNoiseBuffer(duration) {
     const key = Math.round(duration * 10);
-    if (this.noiseBufferCache.has(key)) return this.noiseBufferCache.get(key);
+    if (this.noiseBufferCache.has(key)) {
+return this.noiseBufferCache.get(key);
+}
 
     const bufferSize = Math.min(this.audioContext.sampleRate * duration, 48000);
     const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < bufferSize; i++) {
+data[i] = Math.random() * 2 - 1;
+}
 
     this.noiseBufferCache.set(key, buffer);
     return buffer;
@@ -227,7 +233,9 @@ class OptimizedAudioCore {
    * A single reverbSendGain is reused across all sounds to avoid per-sound node leaks.
    */
   createSharedReverb() {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+return;
+}
 
     const ctx = this.audioContext;
     const sampleRate = ctx.sampleRate;
@@ -298,7 +306,9 @@ class OptimizedAudioCore {
    * @param {GainNode} node
    */
   releaseGainNode(node) {
-    if (!node) return;
+    if (!node) {
+return;
+}
     node._inUse = false;
     node.gain.value = 0;
     this.freeGains.add(node);
@@ -323,9 +333,13 @@ class OptimizedAudioCore {
    * @param {BiquadFilterNode} node
    */
   releaseFilterNode(node) {
-    if (!node) return;
+    if (!node) {
+return;
+}
     node._inUse = false;
-    try { node.disconnect(); } catch { /* already disconnected */ }
+    try {
+ node.disconnect();
+} catch { /* already disconnected */ }
   }
 
   // ── Throttle / resource checks ─────────────────────────────────────────────
@@ -340,7 +354,9 @@ class OptimizedAudioCore {
     const now = performance.now();
     const last = this.lastPlayTime.get(soundType) || 0;
     const limit = this.throttleConfig[soundType] ?? this.throttleConfig.default;
-    if (now - last < limit) return true;
+    if (now - last < limit) {
+return true;
+}
     this.lastPlayTime.set(soundType, now);
     return false;
   }
@@ -369,9 +385,13 @@ class OptimizedAudioCore {
   _cullLowPrioritySounds(newPriority) {
     const candidates = [];
     for (const [id, sound] of this.activeSounds) {
-      if (sound.priority < newPriority) candidates.push({ id, ...sound });
+      if (sound.priority < newPriority) {
+candidates.push({ id, ...sound });
+}
     }
-    if (!candidates.length) return false;
+    if (!candidates.length) {
+return false;
+}
 
     candidates.sort((a, b) =>
       a.priority !== b.priority ? a.priority - b.priority : a.startTime - b.startTime
@@ -416,10 +436,16 @@ class OptimizedAudioCore {
    */
   unregisterSound(id) {
     const sound = this.activeSounds.get(id);
-    if (!sound) return;
+    if (!sound) {
+return;
+}
 
-    if (sound.nodes?.gain) this.releaseGainNode(sound.nodes.gain);
-    if (sound.nodes?.filter) this.releaseFilterNode(sound.nodes.filter);
+    if (sound.nodes?.gain) {
+this.releaseGainNode(sound.nodes.gain);
+}
+    if (sound.nodes?.filter) {
+this.releaseFilterNode(sound.nodes.filter);
+}
 
     const typeCount = this.soundsPerType.get(sound.type) || 1;
     this.soundsPerType.set(sound.type, Math.max(0, typeCount - 1));
@@ -432,10 +458,14 @@ class OptimizedAudioCore {
    */
   stopSound(id) {
     const sound = this.activeSounds.get(id);
-    if (!sound) return;
+    if (!sound) {
+return;
+}
 
     if (sound.nodes?.oscillator) {
-      try { sound.nodes.oscillator.stop(); } catch { /* already stopped */ }
+      try {
+ sound.nodes.oscillator.stop();
+} catch { /* already stopped */ }
     }
     this.unregisterSound(id);
   }
@@ -472,7 +502,9 @@ class OptimizedAudioCore {
    * @returns {number|null} Sound ID, or null if throttled/blocked
    */
   playTone(options) {
-    if (!this.enabled || !this.audioContext) return null;
+    if (!this.enabled || !this.audioContext) {
+return null;
+}
 
     const {
       type = 'shoot', frequency = 440, duration = 0.1, volume = 0.3,
@@ -480,10 +512,16 @@ class OptimizedAudioCore {
       filterType = 'lowpass', useReverb = false, reverbAmount = 0.15
     } = options;
 
-    if (this.shouldThrottle(type)) return null;
+    if (this.shouldThrottle(type)) {
+return null;
+}
     const priority = this.priorityConfig[type] || 5;
-    if (!this.canPlaySound(type, priority)) return null;
-    if (this.audioContext.state === 'suspended') this.audioContext.resume();
+    if (!this.canPlaySound(type, priority)) {
+return null;
+}
+    if (this.audioContext.state === 'suspended') {
+this.audioContext.resume();
+}
 
     const { oscillator, gainNode, filterNode } =
       this._buildToneGraph(frequency, frequencyEnd, duration, volume, waveType, filterFreq, filterType);
@@ -546,17 +584,25 @@ class OptimizedAudioCore {
    * @returns {number|null} Sound ID, or null if throttled/blocked
    */
   playNoise(options) {
-    if (!this.enabled || !this.audioContext) return null;
+    if (!this.enabled || !this.audioContext) {
+return null;
+}
 
     const {
       type = 'explosion', duration = 0.5, volume = 0.4,
       filterFreqStart = 1000, filterFreqEnd = 50, useReverb = true
     } = options;
 
-    if (this.shouldThrottle(type)) return null;
+    if (this.shouldThrottle(type)) {
+return null;
+}
     const priority = this.priorityConfig[type] || 5;
-    if (!this.canPlaySound(type, priority)) return null;
-    if (this.audioContext.state === 'suspended') this.audioContext.resume();
+    if (!this.canPlaySound(type, priority)) {
+return null;
+}
+    if (this.audioContext.state === 'suspended') {
+this.audioContext.resume();
+}
 
     const ctx = this.audioContext;
     const now = ctx.currentTime;
@@ -594,7 +640,9 @@ class OptimizedAudioCore {
    * @private
    */
   _startCleanupInterval() {
-    if (this.cleanupInterval) return;
+    if (this.cleanupInterval) {
+return;
+}
     this.cleanupInterval = setInterval(() => this._cleanup(), this.config.cleanupIntervalMs);
   }
 
@@ -620,10 +668,14 @@ class OptimizedAudioCore {
    * @param {number} volume - 0–1
    */
   setMasterVolume(volume) {
-    if (!this.masterGain) return;
+    if (!this.masterGain) {
+return;
+}
     const v = Math.max(0, Math.min(1, volume));
     this._volumeBeforeMute = v;
-    if (!this._muted) this.masterGain.gain.value = v;
+    if (!this._muted) {
+this.masterGain.gain.value = v;
+}
     localStorage.setItem('audioMasterVolume', String(v));
   }
 
@@ -632,7 +684,9 @@ class OptimizedAudioCore {
    * @returns {boolean} New muted state
    */
   toggleMute() {
-    if (!this.masterGain) return this._muted;
+    if (!this.masterGain) {
+return this._muted;
+}
     this._muted = !this._muted;
     this.masterGain.gain.value = this._muted ? 0 : this._volumeBeforeMute;
     localStorage.setItem('audioMuted', String(this._muted));
@@ -640,7 +694,9 @@ class OptimizedAudioCore {
   }
 
   /** @returns {boolean} */
-  isMuted() { return this._muted; }
+  isMuted() {
+ return this._muted;
+}
 
   // ── Misc API ───────────────────────────────────────────────────────────────
 
@@ -650,12 +706,16 @@ class OptimizedAudioCore {
    */
   setEnabled(enabled) {
     this.enabled = enabled;
-    if (!enabled) this.stopAllSounds();
+    if (!enabled) {
+this.stopAllSounds();
+}
   }
 
   /** Stop every currently active sound immediately. */
   stopAllSounds() {
-    for (const id of this.activeSounds.keys()) this.stopSound(id);
+    for (const id of this.activeSounds.keys()) {
+this.stopSound(id);
+}
   }
 
   /**
@@ -675,9 +735,15 @@ class OptimizedAudioCore {
    * Full teardown: stop sounds, remove listeners, close AudioContext.
    */
   destroy() {
-    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
-    if (this._onVisibility) document.removeEventListener('visibilitychange', this._onVisibility);
-    if (this._onKeyMute) document.removeEventListener('keydown', this._onKeyMute);
+    if (this.cleanupInterval) {
+clearInterval(this.cleanupInterval);
+}
+    if (this._onVisibility) {
+document.removeEventListener('visibilitychange', this._onVisibility);
+}
+    if (this._onKeyMute) {
+document.removeEventListener('keydown', this._onKeyMute);
+}
 
     this.stopAllSounds();
     this.noiseBufferCache.clear();
@@ -698,7 +764,9 @@ OptimizedAudioCore.instance = null;
  * @returns {OptimizedAudioCore}
  */
 function getAudioCore() {
-  if (!OptimizedAudioCore.instance) new OptimizedAudioCore();
+  if (!OptimizedAudioCore.instance) {
+new OptimizedAudioCore();
+}
   return OptimizedAudioCore.instance;
 }
 

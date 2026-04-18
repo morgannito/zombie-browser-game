@@ -23,21 +23,31 @@ const CursorManager = (() => {
       document.body.classList.add('cursor-default');
       _cancelHide();
     }
-    try { localStorage.setItem(STORAGE_KEY, val ? '1' : '0'); } catch (_) {}
+    try {
+ localStorage.setItem(STORAGE_KEY, val ? '1' : '0');
+} catch (_) { /* ignore storage errors */ }
   }
 
   function _cancelHide() {
-    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    if (_hideTimer) {
+ clearTimeout(_hideTimer); _hideTimer = null;
+}
     const gc = document.getElementById('game-container');
-    if (gc) gc.classList.remove('cursor-hidden');
+    if (gc) {
+gc.classList.remove('cursor-hidden');
+}
   }
 
   function _scheduleHide() {
-    if (!_enabled || !_gameActive) return;
+    if (!_enabled || !_gameActive) {
+return;
+}
     _cancelHide();
     _hideTimer = setTimeout(() => {
       const gc = document.getElementById('game-container');
-      if (gc) gc.classList.add('cursor-hidden');
+      if (gc) {
+gc.classList.add('cursor-hidden');
+}
     }, HIDE_DELAY_MS);
   }
 
@@ -45,10 +55,14 @@ const CursorManager = (() => {
 
   function _initCanvasHide() {
     const canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+return;
+}
 
     canvas.addEventListener('mousemove', () => {
-      if (!_gameActive) return;
+      if (!_gameActive) {
+return;
+}
       _cancelHide();
       _scheduleHide();
     });
@@ -60,7 +74,9 @@ const CursorManager = (() => {
 
   function _hookSettings() {
     const toggle = document.getElementById('custom-cursor-toggle');
-    if (!toggle) return;
+    if (!toggle) {
+return;
+}
 
     toggle.checked = _enabled;
 
@@ -84,8 +100,10 @@ const CursorManager = (() => {
         }
       }
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw !== null) return raw === '1';
-    } catch (_) {}
+      if (raw !== null) {
+return raw === '1';
+}
+    } catch (_) { /* ignore storage errors */ }
     return true; // default: enabled
   }
 
@@ -97,8 +115,11 @@ const CursorManager = (() => {
    */
   function setGameActive(active) {
     _gameActive = active;
-    if (!active) _cancelHide();
-    else _scheduleHide();
+    if (!active) {
+_cancelHide();
+} else {
+_scheduleHide();
+}
   }
 
   /**

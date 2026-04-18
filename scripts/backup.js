@@ -53,7 +53,9 @@ console.log('');
  * @param {number} limit - Max backups to keep
  */
 function pruneOldBackups(dir, limit) {
-  if (!fs.existsSync(dir)) return;
+  if (!fs.existsSync(dir)) {
+return;
+}
 
   const files = fs
     .readdirSync(dir)

@@ -936,12 +936,15 @@ class PerformanceSettingsManager {
    * @param {number} now - Current timestamp ms
    */
   _tickAdaptiveQuality(now) {
-    if (!this.adaptiveQualityEnabled || this.currentFPS <= 0) return;
+    if (!this.adaptiveQualityEnabled || this.currentFPS <= 0) {
+return;
+}
 
     if (!this.adaptiveQualityActive) {
       if (this.currentFPS < 45) {
-        if (!this._lowFpsStart) this._lowFpsStart = now;
-        else if (now - this._lowFpsStart >= 3000) {
+        if (!this._lowFpsStart) {
+this._lowFpsStart = now;
+} else if (now - this._lowFpsStart >= 3000) {
           this._lowFpsStart = null;
           this._highFpsStart = null;
           this._applyAdaptiveQualityLow();
@@ -951,8 +954,9 @@ class PerformanceSettingsManager {
       }
     } else {
       if (this.currentFPS > 55) {
-        if (!this._highFpsStart) this._highFpsStart = now;
-        else if (now - this._highFpsStart >= 5000) {
+        if (!this._highFpsStart) {
+this._highFpsStart = now;
+} else if (now - this._highFpsStart >= 5000) {
           this._highFpsStart = null;
           this._lowFpsStart = null;
           this._applyAdaptiveQualityRestore();
@@ -1041,7 +1045,9 @@ class PerformanceSettingsManager {
     }
 
     this.saveSettings();
-    if (window.gameEngine) window.gameEngine.onPerformanceSettingsChanged(this.settings);
+    if (window.gameEngine) {
+window.gameEngine.onPerformanceSettingsChanged(this.settings);
+}
 
     if (window.toastManager) {
       window.toastManager.show({ message: '⚡ Qualité auto-réduite (FPS bas)', type: 'warning', duration: 4000 });
@@ -1064,7 +1070,9 @@ class PerformanceSettingsManager {
     }
 
     this.saveSettings();
-    if (window.gameEngine) window.gameEngine.onPerformanceSettingsChanged(this.settings);
+    if (window.gameEngine) {
+window.gameEngine.onPerformanceSettingsChanged(this.settings);
+}
 
     if (window.toastManager) {
       window.toastManager.show({ message: '✅ Qualité restaurée', type: 'success', duration: 3000 });

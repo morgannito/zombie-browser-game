@@ -62,7 +62,9 @@ const DEFAULTS = {
  * @returns {ZbgSettings} Settings at {@link SCHEMA_VERSION}
  */
 function migrate(stored) {
-  if (!stored) return structuredClone(DEFAULTS);
+  if (!stored) {
+return structuredClone(DEFAULTS);
+}
 
   const v = stored.version ?? 1;
 

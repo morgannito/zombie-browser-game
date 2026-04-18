@@ -63,8 +63,12 @@ return { connected: false, latency_ms: null, error: 'health-db-unavailable' };
  * @returns {'healthy'|'degraded'|'unhealthy'}
  */
 function deriveStatus(db) {
-  if (!db.connected) return 'unhealthy';
-  if (db.degraded || (typeof db.latency_ms === 'number' && db.latency_ms > 200)) return 'degraded';
+  if (!db.connected) {
+return 'unhealthy';
+}
+  if (db.degraded || (typeof db.latency_ms === 'number' && db.latency_ms > 200)) {
+return 'degraded';
+}
   return 'healthy';
 }
 
@@ -75,7 +79,9 @@ function deriveStatus(db) {
  */
 function buildTickSnapshot(gameLoopRef) {
   const raw = gameLoopRef ? gameLoopRef.getMetrics() : null;
-  if (!raw || raw.avgTickDuration === undefined) return null;
+  if (!raw || raw.avgTickDuration === undefined) {
+return null;
+}
   return {
     avgDurationMs: parseFloat(raw.avgTickDuration.toFixed(2)),
     maxDurationMs: parseFloat(raw.maxTickDuration.toFixed(2)),
@@ -90,7 +96,9 @@ function buildTickSnapshot(gameLoopRef) {
  */
 function buildErrorCounts(metricsCollector) {
   const ts = metricsCollector._errorTimestamps;
-  if (!ts) return { last5min: 0, total: 0 };
+  if (!ts) {
+return { last5min: 0, total: 0 };
+}
   return {
     last5min: ts.filter(t => t > Date.now() - 300000).length,
     total: ts.length

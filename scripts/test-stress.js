@@ -15,7 +15,9 @@ const DURATION = parseInt(process.argv[2] || '15', 10);
 let activeSocket = null;
 
 function shutdown() {
-  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  try {
+ activeSocket && activeSocket.disconnect();
+} catch (_) { /* ignore */ }
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
@@ -35,7 +37,13 @@ function login(username) {
       r => {
         let d = '';
         r.on('data', c => d += c);
-        r.on('end', () => { try { resolve(JSON.parse(d)); } catch (e) { reject(e); } });
+        r.on('end', () => {
+ try {
+ resolve(JSON.parse(d));
+} catch (e) {
+ reject(e);
+}
+});
       }
     );
     req.on('error', reject);
@@ -60,10 +68,14 @@ function trackPlayerState(socket, myId, stats) {
     const p = s.players?.[myId];
     if (p) {
       playerState = { x: p.x, y: p.y };
-      if (typeof p.health === 'number' && p.health < stats.healthMin) stats.healthMin = p.health;
+      if (typeof p.health === 'number' && p.health < stats.healthMin) {
+stats.healthMin = p.health;
+}
     }
     stats.zombiesEnd = Object.keys(s.zombies || {}).length;
-    if (stats.zombiesStart === 0) stats.zombiesStart = stats.zombiesEnd;
+    if (stats.zombiesStart === 0) {
+stats.zombiesStart = stats.zombiesEnd;
+}
   });
 
   socket.on('gameStateDelta', d => {
@@ -71,8 +83,12 @@ function trackPlayerState(socket, myId, stats) {
     stats.bytesIn += JSON.stringify(d).length;
     const p = d.updated?.players?.[myId];
     if (p) {
-      if (typeof p.x === 'number') playerState = { x: p.x, y: p.y };
-      if (typeof p.health === 'number' && p.health < stats.healthMin) stats.healthMin = p.health;
+      if (typeof p.x === 'number') {
+playerState = { x: p.x, y: p.y };
+}
+      if (typeof p.health === 'number' && p.health < stats.healthMin) {
+stats.healthMin = p.health;
+}
     }
   });
 
@@ -167,4 +183,6 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(e => {
+ console.error(e); process.exit(1);
+});

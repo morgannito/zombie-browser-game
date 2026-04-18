@@ -326,7 +326,9 @@ class LeaderboardSystem {
   // ===============================================
 
   createMiniLeaderboard() {
-    if (document.getElementById('mini-leaderboard')) return;
+    if (document.getElementById('mini-leaderboard')) {
+return;
+}
 
     const el = document.createElement('div');
     el.id = 'mini-leaderboard';
@@ -358,7 +360,9 @@ class LeaderboardSystem {
   async _fetchAndRenderMini() {
     try {
       const res = await fetch('/api/v1/leaderboard?limit=5', { credentials: 'include' });
-      if (!res.ok) return;
+      if (!res.ok) {
+return;
+}
       const data = await res.json();
       const entries = data.entries || data.global || data || [];
       this._renderMiniList(entries.slice(0, 5));
@@ -369,7 +373,9 @@ class LeaderboardSystem {
 
   _renderMiniList(entries) {
     const list = document.getElementById('mini-lb-list');
-    if (!list) return;
+    if (!list) {
+return;
+}
     const localName = document.getElementById('nickname-input')?.value?.trim() ||
       document.getElementById('player-name-display')?.textContent?.replace('🎮 ', '').trim() || '';
     list.replaceChildren(...entries.map((entry, i) => {
@@ -386,7 +392,9 @@ class LeaderboardSystem {
   }
 
   destroyMiniLeaderboard() {
-    if (this._miniInterval) clearInterval(this._miniInterval);
+    if (this._miniInterval) {
+clearInterval(this._miniInterval);
+}
     if (this._miniKeydown) {
       document.removeEventListener('keydown', this._miniKeydown);
       this._miniKeydown = null;

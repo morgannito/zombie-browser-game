@@ -22,19 +22,15 @@ class PrometheusFormatter {
 
   /** @private */
   _formatGameCounters(lines, metrics) {
-    this._counter(lines, 'zombie_total_kills',       'Total zombies killed',           metrics.zombies.killed);
+    this._counter(lines, 'zombie_players_total',     'Total number of players that connected', metrics.players.total);
     this._counter(lines, 'zombie_total_shots',       'Total shots fired',              metrics.game.total_shots);
     this._counter(lines, 'zombie_total_hits',        'Total shots that hit a zombie',  metrics.game.total_hits);
-    this._counter(lines, 'zombie_total_connections', 'Total player connections',       metrics.players.total);
-    this._counter(lines, 'zombie_players_total',     'Total number of players that connected', metrics.players.total);
     this._counter(lines, 'zombie_zombies_spawned',   'Total zombies spawned',          metrics.zombies.spawned);
     this._counter(lines, 'zombie_zombies_killed',    'Total zombies killed',           metrics.zombies.killed);
   }
 
   /** @private */
   _formatGauges(lines, metrics) {
-    this._gauge(lines, 'zombie_active_players',  'Currently connected players',       metrics.players.current);
-    this._gauge(lines, 'zombie_active_zombies',  'Active zombies on the map',         metrics.zombies.current);
     this._gauge(lines, 'zombie_active_bullets',  'Active bullets in flight',          metrics.bullets.current);
     this._gauge(lines, 'zombie_players_current', 'Current number of connected players', metrics.players.current);
     this._gauge(lines, 'zombie_players_peak',    'Peak number of concurrent players', metrics.players.peak);

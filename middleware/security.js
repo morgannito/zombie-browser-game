@@ -32,7 +32,9 @@ function generateNonce() {
  */
 function buildCspDirectives(isDev, nonce) {
   const scriptSrc = ["'self'"];
-  if (nonce) scriptSrc.push(`'nonce-${nonce}'`);
+  if (nonce) {
+scriptSrc.push(`'nonce-${nonce}'`);
+}
 
   const directives = {
     defaultSrc: ["'self'"],
@@ -133,7 +135,9 @@ function configureAuthLimiter() {
  */
 function extractBearerToken(authHeader) {
   const parts = (authHeader || '').split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') return null;
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+return null;
+}
   return parts[1];
 }
 

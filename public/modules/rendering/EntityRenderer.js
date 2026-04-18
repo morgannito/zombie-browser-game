@@ -125,7 +125,9 @@ class EntityRenderer {
    */
   _getPowerupSprite(type, color, size, symbol) {
     const key = `${type}|${color}`;
-    if (this._powerupSpriteCache.has(key)) return this._powerupSpriteCache.get(key);
+    if (this._powerupSpriteCache.has(key)) {
+return this._powerupSpriteCache.get(key);
+}
 
     const dim = (size + 2) * 2;
     let offscreen;
@@ -163,7 +165,9 @@ class EntityRenderer {
   _getPlayerBodySprite(isCurrentPlayer, skinColor) {
     const colorKey = isCurrentPlayer ? (skinColor || 'default') : 'other';
     const key = isCurrentPlayer ? `current|${colorKey}` : 'other';
-    if (this._playerBodyCache.has(key)) return this._playerBodyCache.get(key);
+    if (this._playerBodyCache.has(key)) {
+return this._playerBodyCache.get(key);
+}
 
     const dim = 64;
     const cx = dim / 2;
@@ -482,7 +486,9 @@ class EntityRenderer {
       }
       // Purge removed powerups
       for (const id of this._magnetPowerups.keys()) {
-        if (!powerups[id]) this._magnetPowerups.delete(id);
+        if (!powerups[id]) {
+this._magnetPowerups.delete(id);
+}
       }
     } else {
       this._magnetPowerups.clear();
@@ -582,7 +588,9 @@ class EntityRenderer {
         }
       }
       for (const id of this._magnetLoot.keys()) {
-        if (!loot[id]) this._magnetLoot.delete(id);
+        if (!loot[id]) {
+this._magnetLoot.delete(id);
+}
       }
     } else {
       this._magnetLoot.clear();
@@ -866,10 +874,14 @@ class EntityRenderer {
       for (let i = 0; i < colorBullets.length; i++) {
         const bullet = colorBullets[i];
         const hist = trailHistory.get(bullet._trailId);
-        if (!hist || hist.length < 2) continue;
+        if (!hist || hist.length < 2) {
+continue;
+}
         const tail = hist[0];
         const head = hist[hist.length - 1];
-        if (tail.x === head.x && tail.y === head.y) continue;
+        if (tail.x === head.x && tail.y === head.y) {
+continue;
+}
         const grad = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
         grad.addColorStop(0, 'rgba(0,0,0,0)');
         grad.addColorStop(1, color);
@@ -1649,7 +1661,7 @@ class EntityRenderer {
       ctx.restore();
     }
 
-    if (zombie.maxHealth && zombie.health != null) {
+    if (zombie.maxHealth && zombie.health !== null && zombie.health !== undefined) {
       const healthPercent = Math.max(0, Math.min(1, zombie.health / zombie.maxHealth));
       const barWidth = zombie.size * 1.6;
       const barY = zombie.y - zombie.size - 10;

@@ -24,12 +24,16 @@ const HURRICANE_VISUAL_COOLDOWN = 3000;
  * @param {object} gameState
  */
 function _applyTornadoPull(zombie, now, entityManager, gameState) {
-  if (zombie.lastTornado && now - zombie.lastTornado < TORNADO_COOLDOWN) return;
+  if (zombie.lastTornado && now - zombie.lastTornado < TORNADO_COOLDOWN) {
+return;
+}
   zombie.lastTornado = now;
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
-    if (!player.alive) continue;
+    if (!player.alive) {
+continue;
+}
 
     if (distance(zombie.x, zombie.y, player.x, player.y) < TORNADO_RADIUS) {
       const angle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
@@ -38,7 +42,9 @@ function _applyTornadoPull(zombie, now, entityManager, gameState) {
 
       applyDamage(player, TORNADO_DAMAGE);
       createParticles(player.x, player.y, '#00ced1', 8, entityManager);
-      if (player.health <= 0) killPlayer(player);
+      if (player.health <= 0) {
+killPlayer(player);
+}
     }
   }
 
@@ -54,8 +60,12 @@ function _applyTornadoPull(zombie, now, entityManager, gameState) {
  * @param {object} gameState
  */
 function _spawnLightningStrikes(zombie, now, healthPercent, entityManager, gameState) {
-  if (healthPercent > 0.66) return;
-  if (zombie.lastLightning && now - zombie.lastLightning < LIGHTNING_COOLDOWN) return;
+  if (healthPercent > 0.66) {
+return;
+}
+  if (zombie.lastLightning && now - zombie.lastLightning < LIGHTNING_COOLDOWN) {
+return;
+}
   zombie.lastLightning = now;
 
   for (let i = 0; i < LIGHTNING_COUNT; i++) {
@@ -80,14 +90,18 @@ function _spawnLightningStrikes(zombie, now, healthPercent, entityManager, gameS
  * @param {object} gameState
  */
 function _applyHurricaneSlow(zombie, now, healthPercent, entityManager, gameState) {
-  if (healthPercent > 0.33) return;
+  if (healthPercent > 0.33) {
+return;
+}
 
   if (!zombie.lastHurricane || now - zombie.lastHurricane >= HURRICANE_SLOW_COOLDOWN) {
     zombie.lastHurricane = now;
 
     for (const playerId in gameState.players) {
       const player = gameState.players[playerId];
-      if (!player.alive || player.spawnProtection || player.invisible) continue;
+      if (!player.alive || player.spawnProtection || player.invisible) {
+continue;
+}
 
       player.slowedUntil = now + 1500;
       player.slowAmount = 0.3;
@@ -111,7 +125,9 @@ function _applyHurricaneSlow(zombie, now, healthPercent, entityManager, gameStat
  * @param {object} gameState
  */
 function updateBossVortex(zombie, zombieId, now, io, entityManager, gameState) {
-  if (zombie.type !== 'bossVortex') return;
+  if (zombie.type !== 'bossVortex') {
+return;
+}
 
   const healthPercent = zombie.health / zombie.maxHealth;
 

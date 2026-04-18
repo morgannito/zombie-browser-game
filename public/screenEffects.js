@@ -40,7 +40,9 @@ class ScreenFlash {
    * @param {number} _intensity - Kept for API compat (ignored)
    */
   flashDamage(_intensity = 0.3) {
-    if (window.gameSettings?.reduceFlashEffects) return;
+    if (window.gameSettings?.reduceFlashEffects) {
+return;
+}
     const canvas = document.getElementById('gameCanvas');
     if (!canvas) {
       return;
@@ -68,7 +70,9 @@ class ScreenFlash {
       return;
     }
 
-    if (window.gameSettings?.reduceFlashEffects) intensity *= 0.2;
+    if (window.gameSettings?.reduceFlashEffects) {
+intensity *= 0.2;
+}
     intensity = Math.max(0, Math.min(1, intensity));
 
     this.overlay.style.background = `rgba(255, 255, 255, ${intensity})`;

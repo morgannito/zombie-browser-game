@@ -1,14 +1,9 @@
 'use strict';
 const NetworkManager = require('../lib/server/NetworkManager');
 
-const SIZES = [10, 50, 100]; // nb zombies in state
+const SIZES = [10, 50, 100];
 const ITERS = 1000;
 
-/**
- * Build a full game state with n random zombies.
- * @param {number} n
- * @returns {Object}
- */
 function makeState(n) {
   const zombies = {};
   for (let i = 0; i < n; i++) {
@@ -17,13 +12,6 @@ function makeState(n) {
   return { players: {}, zombies, bullets: {}, particles: {}, poisonTrails: {}, explosions: {}, powerups: {}, loot: {} };
 }
 
-/**
- * Measure calculateDelta throughput over ITERS iterations.
- * @param {NetworkManager} nm
- * @param {Object} current
- * @param {Object} previous
- * @returns {number} ops per second
- */
 function measureOps(nm, current, previous) {
   const t0 = process.hrtime.bigint();
   for (let i = 0; i < ITERS; i++) {
@@ -34,14 +22,17 @@ function measureOps(nm, current, previous) {
 }
 
 const nm = new NetworkManager({ on: () => {} }, {});
-
-console.log('delta-bench — calculateDelta cycle');
-console.log('zombies | ops/sec');
-console.log('--------|--------');
+const results = { bench: 'delta', metric: 'calculateDelta', unit: 'ops/sec', sizes: [] };
 
 for (const n of SIZES) {
   const current = makeState(n);
   const previous = makeState(n);
   const ops = measureOps(nm, current, previous);
-  console.log(`${String(n).padStart(7)} | ${ops.toLocaleString()}`);
+  results.sizes.push({ n, ops });
 }
+
+if (require.main === module) {
+  console.log(JSON.stringify(results, null, 2));
+}
+
+module.exports = results;

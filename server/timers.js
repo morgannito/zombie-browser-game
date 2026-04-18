@@ -101,14 +101,26 @@ function startGameLoop(perfIntegration, tickFn) {
 
   /** @type {object} ctx shared by scheduleNext and tick */
   const ctx = {
-    get running() { return running; },
-    get nextTickNs() { return nextTickNs; },
+    get running() {
+ return running;
+},
+    get nextTickNs() {
+ return nextTickNs;
+},
     tick,
     setHandles({ immediateHandle: ih, timeoutHandle: th }) {
-      if (ih !== null) immediateHandle = ih;
-      if (th !== null) timeoutHandle = th;
-      if (ih === null) immediateHandle = null;
-      if (th === null) timeoutHandle = null;
+      if (ih !== null) {
+immediateHandle = ih;
+}
+      if (th !== null) {
+timeoutHandle = th;
+}
+      if (ih === null) {
+immediateHandle = null;
+}
+      if (th === null) {
+timeoutHandle = null;
+}
     }
   };
 
@@ -158,7 +170,9 @@ function startGameLoop(perfIntegration, tickFn) {
     for (let i = 0; i < metrics.count; i++) {
       const v = metrics.durations[i];
       sum += v;
-      if (v > maxInWindow) maxInWindow = v;
+      if (v > maxInWindow) {
+maxInWindow = v;
+}
     }
     return {
       avgTickDuration: metrics.count > 0 ? sum / metrics.count : 0,

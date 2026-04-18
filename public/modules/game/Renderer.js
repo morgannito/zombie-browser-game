@@ -256,7 +256,9 @@ class Renderer {
       : gameState.state.bullets;
 
     // Track bullet removal → spawn ghost + impact spark
-    if (!this._prevBulletIds) this._prevBulletIds = new Map(); // id → {x, y, color, size}
+    if (!this._prevBulletIds) {
+this._prevBulletIds = new Map();
+} // id → {x, y, color, size}
     const prevBullets = this._prevBulletIds;
     for (const [id, snap] of prevBullets) {
       if (!bulletsToRender[id]) {
@@ -267,7 +269,9 @@ class Renderer {
     prevBullets.clear();
     for (const id in bulletsToRender) {
       const b = bulletsToRender[id];
-      if (b) prevBullets.set(id, { x: b.x, y: b.y, color: b.color || '#ffff00', size: b.size || 5 });
+      if (b) {
+prevBullets.set(id, { x: b.x, y: b.y, color: b.color || '#ffff00', size: b.size || 5 });
+}
     }
 
     this.entityRenderer.renderBullets(this.ctx, this.camera, bulletsToRender, gameState.config);
@@ -405,9 +409,15 @@ class Renderer {
    * @returns {{r,g,b,a}}
    */
   _getDayNightTarget(wave) {
-    if (wave >= 10) return { r: 80, g: 0, b: 0, a: 0.4 };
-    if (wave >= 7)  return { r: 10, g: 20, b: 60, a: 0.35 };
-    if (wave >= 4)  return { r: 255, g: 100, b: 0, a: 0.15 };
+    if (wave >= 10) {
+return { r: 80, g: 0, b: 0, a: 0.4 };
+}
+    if (wave >= 7)  {
+return { r: 10, g: 20, b: 60, a: 0.35 };
+}
+    if (wave >= 4)  {
+return { r: 255, g: 100, b: 0, a: 0.15 };
+}
     return { r: 0, g: 0, b: 0, a: 0 };
   }
 
@@ -428,7 +438,7 @@ class Renderer {
         r: this._dnCurrentColor.r + (this._dnTargetColor.r - this._dnCurrentColor.r) * t,
         g: this._dnCurrentColor.g + (this._dnTargetColor.g - this._dnCurrentColor.g) * t,
         b: this._dnCurrentColor.b + (this._dnTargetColor.b - this._dnCurrentColor.b) * t,
-        a: this._dnCurrentColor.a + (this._dnTargetColor.a - this._dnCurrentColor.a) * t,
+        a: this._dnCurrentColor.a + (this._dnTargetColor.a - this._dnCurrentColor.a) * t
       };
       this._dnTargetColor = target;
       this._dnTransitionStart = performance.now();
@@ -444,7 +454,9 @@ class Renderer {
     const b = Math.round(c.b + (tgt.b - c.b) * t);
     const a = c.a + (tgt.a - c.a) * t;
 
-    if (a <= 0) return;
+    if (a <= 0) {
+return;
+}
 
     const ctx = this.ctx;
     ctx.save();

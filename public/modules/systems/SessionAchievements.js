@@ -65,7 +65,9 @@ class SessionAchievements {
    * Call on game teardown to prevent stacking across sessions.
    */
   cleanup() {
-    if (!this._handlers) return;
+    if (!this._handlers) {
+return;
+}
     for (const [event, handler] of Object.entries(this._handlers)) {
       document.removeEventListener(event, handler);
     }

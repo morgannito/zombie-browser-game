@@ -23,13 +23,21 @@ class CounterCollector {
   }
 
   /** @param {number} [count=1] */
-  incrementKills(count = 1)       { this.kills       = Math.min(this.kills       + count, Number.MAX_SAFE_INTEGER); }
+  incrementKills(count = 1)       {
+ this.kills       = Math.min(this.kills       + count, Number.MAX_SAFE_INTEGER);
+}
   /** @param {number} [count=1] */
-  incrementShots(count = 1)       { this.shots       = Math.min(this.shots       + count, Number.MAX_SAFE_INTEGER); }
+  incrementShots(count = 1)       {
+ this.shots       = Math.min(this.shots       + count, Number.MAX_SAFE_INTEGER);
+}
   /** @param {number} [count=1] */
-  incrementHits(count = 1)        { this.hits        = Math.min(this.hits        + count, Number.MAX_SAFE_INTEGER); }
+  incrementHits(count = 1)        {
+ this.hits        = Math.min(this.hits        + count, Number.MAX_SAFE_INTEGER);
+}
   /** @param {number} [count=1] */
-  incrementConnections(count = 1) { this.connections = Math.min(this.connections + count, Number.MAX_SAFE_INTEGER); }
+  incrementConnections(count = 1) {
+ this.connections = Math.min(this.connections + count, Number.MAX_SAFE_INTEGER);
+}
 
   recordCheatAttempt(type) {
     const b = this.anticheat.cheat_attempts_total;

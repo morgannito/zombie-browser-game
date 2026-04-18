@@ -24,7 +24,7 @@ const ZOMBIE_HIT_RADIUS      = 28;  // px screen-space — hover detection slack
 // Weapon name → reticle style mapping (lowercase match)
 const WEAPON_RETICLE = {
   sniper: 'scope',
-  shotgun: 'cone',
+  shotgun: 'cone'
 };
 
 class CrosshairRenderer {
@@ -71,7 +71,9 @@ class CrosshairRenderer {
   /** Resolve active weapon reticle style: 'scope' | 'cone' | 'default' */
   _getReticleStyle() {
     const weapon = window.weaponWheel?.getCurrentWeapon?.();
-    if (!weapon) return 'default';
+    if (!weapon) {
+return 'default';
+}
     return WEAPON_RETICLE[(weapon.name || '').toLowerCase()] || 'default';
   }
 
@@ -146,7 +148,9 @@ class CrosshairRenderer {
    */
   render(ctx, mouseX, mouseY, zombies, cameraPos, pixelRatio) {
     // ── 3. Hide during pause / menu ──────────────────────────────────────────
-    if (window.pauseMenu?.isPaused) return;
+    if (window.pauseMenu?.isPaused) {
+return;
+}
 
     // Decay gap toward rest value
     this._gap += (CROSSHAIR_GAP_REST - this._gap) * CROSSHAIR_DECAY;

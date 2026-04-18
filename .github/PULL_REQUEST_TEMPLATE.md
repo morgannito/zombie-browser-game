@@ -12,6 +12,8 @@
 ## Checklist
 - [ ] `npm test` passes locally
 - [ ] `npm run lint` clean
+- [ ] JSDoc added/updated for public functions
+- [ ] Screenshot included (if UI change)
 - [ ] New/changed env vars added to `.env.example`
 - [ ] CHANGELOG.md updated (if user-facing change)
 

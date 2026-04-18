@@ -42,7 +42,7 @@ class AmbientAudioSystem {
       combat:   { url: null, volume: 0.25, loop: true },
       boss:     { url: null, volume: 0.30, loop: true },
       victory:  { url: null, volume: 0.25, loop: false },
-      defeat:   { url: null, volume: 0.20, loop: false },
+      defeat:   { url: null, volume: 0.20, loop: false }
     };
 
     /** @type {Object<string, {freq:number, filter:number, lfo:number}>} */
@@ -52,7 +52,7 @@ class AmbientAudioSystem {
       combat:   { freq: 60,  filter: 800,  lfo: 0.25 },
       boss:     { freq: 40,  filter: 1200, lfo: 0.40 },
       victory:  { freq: 80,  filter: 600,  lfo: 0.15 },
-      defeat:   { freq: 35,  filter: 200,  lfo: 0.05 },
+      defeat:   { freq: 35,  filter: 200,  lfo: 0.05 }
     };
 
     /** @type {Object<string, {volume:number, loop:boolean, fadeIn:number, fadeOut:number}>} */
@@ -61,7 +61,7 @@ class AmbientAudioSystem {
       rain:    { volume: 0.30, loop: true,  fadeIn: 3000, fadeOut: 3000 },
       crickets:{ volume: 0.15, loop: true,  fadeIn: 4000, fadeOut: 4000 },
       fire:    { volume: 0.25, loop: true,  fadeIn: 1000, fadeOut: 1000 },
-      thunder: { volume: 0.40, loop: false, fadeIn: 0,    fadeOut: 0    },
+      thunder: { volume: 0.40, loop: false, fadeIn: 0,    fadeOut: 0    }
     };
 
     /** @type {Object<string, {gainNode:GainNode, source:AudioBufferSourceNode, filter:BiquadFilterNode}>} */
@@ -75,7 +75,9 @@ class AmbientAudioSystem {
    * when available to avoid multiple AudioContext instances (resource leak).
    */
   init() {
-    if (this.audioContext) return;
+    if (this.audioContext) {
+return;
+}
     try {
       const core = window.getAudioCore?.();
       this.audioContext = core?.audioContext
@@ -93,7 +95,9 @@ class AmbientAudioSystem {
    * @private
    */
   _ensureContext() {
-    if (!this.audioContext) this.init();
+    if (!this.audioContext) {
+this.init();
+}
     if (this.audioContext?.state === 'suspended') {
       this.audioContext.resume().catch(() => {});
     }
@@ -110,7 +114,9 @@ class AmbientAudioSystem {
    */
   _startDrone(trackKey) {
     const ctx = this._ensureContext();
-    if (!ctx) return;
+    if (!ctx) {
+return;
+}
     this._stopDrone();
 
     const params = this._droneParams[trackKey] ?? this._droneParams.gameplay;
@@ -189,7 +195,9 @@ class AmbientAudioSystem {
    * @private
    */
   _stopDrone(fadeDuration = 1500) {
-    if (!this._droneRunning || !this.audioContext) return;
+    if (!this._droneRunning || !this.audioContext) {
+return;
+}
     const ctx = this.audioContext;
     const gain = this._droneGain;
 
@@ -200,14 +208,22 @@ class AmbientAudioSystem {
     }
 
     const stopAt = ctx.currentTime + fadeDuration / 1000 + 0.05;
-    try { this._droneOsc?.stop(stopAt); } catch (_) {}
-    try { this._droneOsc2?.stop(stopAt); } catch (_) {}
-    try { this._droneLFO?.stop(stopAt); } catch (_) {}
+    try {
+ this._droneOsc?.stop(stopAt);
+} catch (_) { /* audio node already stopped */ }
+    try {
+ this._droneOsc2?.stop(stopAt);
+} catch (_) { /* audio node already stopped */ }
+    try {
+ this._droneLFO?.stop(stopAt);
+} catch (_) { /* audio node already stopped */ }
 
     // Disconnect after fade to release nodes
     if (gain) {
       (window.setManagedTimeout || setTimeout)(() => {
-        try { gain.disconnect(); } catch (_) {}
+        try {
+ gain.disconnect();
+} catch (_) { /* audio node already stopped */ }
       }, fadeDuration + 100);
     }
 
@@ -226,14 +242,20 @@ class AmbientAudioSystem {
    * @private
    */
   _updateDroneIntensity(trackKey) {
-    if (!this._droneRunning || !this.audioContext) return;
+    if (!this._droneRunning || !this.audioContext) {
+return;
+}
     const params = this._droneParams[trackKey];
-    if (!params) return;
+    if (!params) {
+return;
+}
 
     const ctx = this.audioContext;
     const now = ctx.currentTime;
     const rampTo = (param, value) => {
-      if (!param) return;
+      if (!param) {
+return;
+}
       param.cancelScheduledValues(now);
       param.setValueAtTime(param.value, now);
       param.linearRampToValueAtTime(value, now + 1.5);
@@ -254,8 +276,12 @@ class AmbientAudioSystem {
    * @param {number} [fadeDuration=2000] - Milliseconds
    */
   playMusic(trackKey, fadeDuration = 2000) {
-    if (!this.enabled) return;
-    if (this.currentTrack === trackKey) return;
+    if (!this.enabled) {
+return;
+}
+    if (this.currentTrack === trackKey) {
+return;
+}
 
     const track = this.musicTracks[trackKey];
     if (!track) {
@@ -285,7 +311,9 @@ class AmbientAudioSystem {
    * @private
    */
   _rampDroneVolume(track, fadeDuration) {
-    if (!this._droneGain || !this.audioContext) return;
+    if (!this._droneGain || !this.audioContext) {
+return;
+}
     const targetVol = track.volume * this.musicVolume * this.volume;
     const now = this.audioContext.currentTime;
     this._droneGain.gain.cancelScheduledValues(now);
@@ -302,7 +330,9 @@ class AmbientAudioSystem {
    */
   _crossfadeAudioFile(trackKey, track, fadeDuration) {
     const ctx = this._ensureContext();
-    if (!ctx) return;
+    if (!ctx) {
+return;
+}
     this._stopDrone(fadeDuration);
     console.log(`[Music] Crossfade to file: ${track.url} (${fadeDuration}ms)`);
   }
@@ -312,7 +342,9 @@ class AmbientAudioSystem {
    * @param {number} [fadeDuration=2000]
    */
   stopMusic(fadeDuration = 2000) {
-    if (!this.currentTrack) return;
+    if (!this.currentTrack) {
+return;
+}
     this.currentTrack = null;
     this._stopDrone(fadeDuration);
   }
@@ -325,12 +357,18 @@ class AmbientAudioSystem {
    * @param {'wind'|'rain'|'crickets'|'fire'|'thunder'} soundKey
    */
   playAmbient(soundKey) {
-    if (!this.enabled || this._ambientNodes[soundKey]) return;
+    if (!this.enabled || this._ambientNodes[soundKey]) {
+return;
+}
     const config = this.ambientSounds[soundKey];
-    if (!config) return;
+    if (!config) {
+return;
+}
 
     const ctx = this._ensureContext();
-    if (!ctx) return;
+    if (!ctx) {
+return;
+}
 
     const { source, filter, gainNode } = this._buildAmbientGraph(ctx, soundKey, config);
     this._ambientNodes[soundKey] = { gainNode, source, filter };
@@ -348,7 +386,9 @@ class AmbientAudioSystem {
   _buildAmbientGraph(ctx, soundKey, config) {
     const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < data.length; i++) {
+data[i] = Math.random() * 2 - 1;
+}
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -396,7 +436,9 @@ class AmbientAudioSystem {
    */
   stopAmbient(soundKey) {
     const node = this._ambientNodes[soundKey];
-    if (!node || !this.audioContext) return;
+    if (!node || !this.audioContext) {
+return;
+}
 
     const config = this.ambientSounds[soundKey];
     const fadeOut = (config?.fadeOut ?? 1000) / 1000;
@@ -407,11 +449,15 @@ class AmbientAudioSystem {
     node.gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + fadeOut);
 
     const stopAt = ctx.currentTime + fadeOut + 0.05;
-    try { node.source.stop(stopAt); } catch (_) {}
+    try {
+ node.source.stop(stopAt);
+} catch (_) { /* audio node already stopped */ }
 
     // Disconnect after fade to release nodes
     (window.setManagedTimeout || setTimeout)(() => {
-      try { node.gainNode.disconnect(); } catch (_) {}
+      try {
+ node.gainNode.disconnect();
+} catch (_) { /* audio node already stopped */ }
     }, (fadeOut + 0.1) * 1000);
 
     delete this._ambientNodes[soundKey];
@@ -425,12 +471,16 @@ class AmbientAudioSystem {
    * @param {{ inCombat?: boolean, bossActive?: boolean, weather?: {type:string}, dayNight?: {timeOfDay:number} }} gameState
    */
   update(gameState) {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+return;
+}
 
     if (gameState.weather) {
       const isRainy = gameState.weather.type === 'rain' || gameState.weather.type === 'storm';
       isRainy ? this.playAmbient('rain') : this.stopAmbient('rain');
-      if (gameState.weather.type === 'storm' && Math.random() < 0.01) this.playAmbient('thunder');
+      if (gameState.weather.type === 'storm' && Math.random() < 0.01) {
+this.playAmbient('thunder');
+}
     }
 
     if (gameState.dayNight) {
@@ -460,7 +510,9 @@ class AmbientAudioSystem {
    */
   setMusicVolume(volume) {
     this.musicVolume = Math.max(0, Math.min(1, volume));
-    if (!this._droneGain || !this.audioContext || !this.currentTrack) return;
+    if (!this._droneGain || !this.audioContext || !this.currentTrack) {
+return;
+}
     const track = this.musicTracks[this.currentTrack];
     const targetVol = (track?.volume ?? 0.2) * this.musicVolume * this.volume;
     const now = this.audioContext.currentTime;
@@ -497,7 +549,9 @@ class AmbientAudioSystem {
    */
   setEnabled(enabled) {
     this.enabled = enabled;
-    if (!enabled) this.stopAllSounds();
+    if (!enabled) {
+this.stopAllSounds();
+}
   }
 
   /** Stop all ambient layers and music. */

@@ -144,8 +144,12 @@ return;
     try {
  localStorage.setItem(TutorialOverlay.STORAGE_KEY, '1');
 } catch { /* ignore */ }
-    if (this._onKey) document.removeEventListener('keydown', this._onKey);
-    if (this._onKill) document.removeEventListener('zbg:zombie:killed', this._onKill);
+    if (this._onKey) {
+document.removeEventListener('keydown', this._onKey);
+}
+    if (this._onKill) {
+document.removeEventListener('zbg:zombie:killed', this._onKill);
+}
     this.el.remove();
   }
 

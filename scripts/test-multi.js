@@ -16,7 +16,9 @@ const DURATION = parseInt(process.argv[3] || '15', 10);
 let allBots = [];
 function shutdown() {
   for (const b of allBots) {
-    try { b.socket.disconnect(); } catch (_) { /* ignore */ }
+    try {
+ b.socket.disconnect();
+} catch (_) { /* ignore */ }
   }
   process.exit(0);
 }

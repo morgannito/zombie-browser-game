@@ -19,7 +19,11 @@ class HelpMenu {
 
   /** @returns {string} persisted keyboard layout or 'qwerty' fallback. @private */
   _loadLayout() {
-    try { return localStorage.getItem('keyboardLayout') || 'qwerty'; } catch (_) { return 'qwerty'; }
+    try {
+ return localStorage.getItem('keyboardLayout') || 'qwerty';
+} catch (_) {
+ return 'qwerty';
+}
   }
 
   _keybinds() {
@@ -35,7 +39,7 @@ class HelpMenu {
       ['Mute audio',      'M'],
       ['Pause',           'Echap'],
       ['Debug FPS',       'F3'],
-      ['Aide',            'H  /  F1'],
+      ['Aide',            'H  /  F1']
     ];
   }
 
@@ -57,7 +61,7 @@ class HelpMenu {
       fontSize: '14px',
       minWidth: '360px',
       zIndex: '9999',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
     });
 
     // Header
@@ -76,7 +80,7 @@ class HelpMenu {
       padding: '4px 10px',
       borderRadius: '5px',
       cursor: 'pointer',
-      fontFamily: 'monospace',
+      fontFamily: 'monospace'
     });
     btn.addEventListener('click', () => this._toggleLayout());
     this._layoutBtn = btn;
@@ -135,7 +139,9 @@ class HelpMenu {
 
   _toggleLayout() {
     this._layout = this._layout === 'azerty' ? 'qwerty' : 'azerty';
-    try { localStorage.setItem('keyboardLayout', this._layout); } catch (_) { /* quota exceeded – ignore */ }
+    try {
+ localStorage.setItem('keyboardLayout', this._layout);
+} catch (_) { /* quota exceeded – ignore */ }
     this._renderRows();
   }
 
@@ -155,9 +161,13 @@ class HelpMenu {
 
   _registerKeys() {
     this._keyHandler = (e) => {
-      if (e.repeat) return;
+      if (e.repeat) {
+return;
+}
       const ae = document.activeElement;
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+return;
+}
       if (e.key === 'h' || e.key === 'H' || e.key === 'F1') {
         e.preventDefault();
         this.toggle();

@@ -247,7 +247,9 @@ class NetworkManager {
   _handleReconnected(path) {
     // Prevent double-execution when both 'reconnect' and 'connect' fire.
     this._reconnectHandled = true;
-    setTimeout(() => { this._reconnectHandled = false; }, 500);
+    setTimeout(() => {
+ this._reconnectHandled = false;
+}, 500);
 
     this.justReconnected = true;
     this._resetReconnectBackoff();
@@ -947,7 +949,9 @@ class NetworkManager {
     // Track last delta payload size for debug overlay
     try {
       this.lastDeltaSize = JSON.stringify(delta).length;
-    } catch (_) { this.lastDeltaSize = 0; }
+    } catch (_) {
+ this.lastDeltaSize = 0;
+}
     const context = this._prepareDeltaContext(delta);
     this._processDeltaEntities(delta, context);
     this._handlePostDeltaEvents(delta, context);
@@ -1113,7 +1117,9 @@ class NetworkManager {
 
       // Refresh shop if open, then flash bought item
       if (this._deps.gameUI && this._deps.gameUI.shopOpen) {
-        if (data.itemId) this._deps.gameUI._lastBoughtItem = data.itemId;
+        if (data.itemId) {
+this._deps.gameUI._lastBoughtItem = data.itemId;
+}
         this._deps.gameUI.populateShop();
       }
     } else {

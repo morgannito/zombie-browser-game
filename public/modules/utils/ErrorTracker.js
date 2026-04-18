@@ -20,10 +20,10 @@
   // Silence verbose console output in production (non-localhost).
   const _isLocalhost = /^(localhost|127\.|::1)/.test(location.hostname);
   if (!_isLocalhost) {
-    /* eslint-disable no-console */
+
     console.log = function () {};
     console.debug = function () {};
-    /* eslint-enable no-console */
+
   }
 
   let sentInWindow = 0;
@@ -162,9 +162,13 @@
   // knows something went wrong without the game freezing.
   let _toastShownRecently = false;
   function showErrorToast() {
-    if (_toastShownRecently) { return; }
+    if (_toastShownRecently) {
+ return;
+}
     _toastShownRecently = true;
-    setTimeout(function () { _toastShownRecently = false; }, 10000);
+    setTimeout(function () {
+ _toastShownRecently = false;
+}, 10000);
 
     if (window.toastManager) {
       window.toastManager.show({ message: 'Une erreur est survenue, le jeu continue', type: 'warning', duration: 4000 });
@@ -182,7 +186,9 @@
     document.body.appendChild(el);
     setTimeout(function () {
       el.style.opacity = '0';
-      setTimeout(function () { el.parentNode && el.parentNode.removeChild(el); }, 500);
+      setTimeout(function () {
+ el.parentNode && el.parentNode.removeChild(el);
+}, 500);
     }, 4000);
   }
 

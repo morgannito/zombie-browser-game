@@ -58,7 +58,9 @@ return;
     btnShow.addEventListener('click', function () {
       const eb = window.ErrorBoundary;
       const ring = eb ? eb.readRing() : [];
-      if (!ring.length) { alert('No errors logged.'); return; }
+      if (!ring.length) {
+ alert('No errors logged.'); return;
+}
       console.group('%c[ErrorBoundary] Error log (' + ring.length + ' entries)', 'color:red;font-weight:bold');
       ring.forEach(function (e, i) {
         console.log(i, new Date(e.ts).toISOString(), e.kind, e.message, e.stack || '');
@@ -71,7 +73,9 @@ return;
     btnClear.textContent = 'Clear errors';
     btnClear.style.cssText = 'font:11px monospace;padding:2px 6px;cursor:pointer;background:#111;color:#f80;border:1px solid #f80;border-radius:3px';
     btnClear.addEventListener('click', function () {
-      if (window.ErrorBoundary) { window.ErrorBoundary.clearErrors(); }
+      if (window.ErrorBoundary) {
+ window.ErrorBoundary.clearErrors();
+}
       alert('Error log cleared.');
     });
 
