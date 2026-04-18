@@ -793,6 +793,43 @@ body {
   transform: scale(0.98);
 }
 
+.game-over-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: re-fadeIn 0.8s ease-out 3s both;
+}
+
+.game-over-actions #respawn-btn {
+  margin-top: 0;
+  animation: none;
+  flex: 1 1 auto;
+}
+
+#game-over #menu-btn {
+  background: transparent;
+  color: #555;
+  border: 1px solid #444;
+  padding: 14px 28px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 0 0 auto;
+  width: auto;
+}
+
+#game-over #menu-btn:hover {
+  color: #888;
+  border-color: #666;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* ============================================
    WAVE ANNOUNCEMENT
    ============================================ */
@@ -1597,6 +1634,75 @@ body {
 }
 
 /* ============================================
+   WEAPON STATS PREVIEW PANEL
+   ============================================ */
+#weapon-stats-preview {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  width: 220px;
+  background: rgba(10, 10, 25, 0.97);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  z-index: 2000;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  display: none;
+}
+#weapon-stats-preview.visible {
+  display: block;
+}
+.wsp-title {
+  color: #fff;
+  font-size: var(--font-xl);
+  font-weight: bold;
+  margin-bottom: 12px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  padding-bottom: 8px;
+}
+.wsp-stat {
+  margin-bottom: 10px;
+}
+.wsp-stat-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-sm);
+  color: #aaa;
+  margin-bottom: 4px;
+}
+.wsp-stat-label span:last-child {
+  color: #fff;
+  font-weight: bold;
+}
+.wsp-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.wsp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+.wsp-bar-damage  { background: linear-gradient(90deg, #ff4444, #ff8800); }
+.wsp-bar-rate    { background: linear-gradient(90deg, #4488ff, #00ccff); }
+.wsp-bar-range   { background: linear-gradient(90deg, #44ff88, #00ffcc); }
+.wsp-special {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  font-size: var(--font-sm);
+  color: #ffcc44;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ============================================
    LEVEL UP SCREEN
    ============================================ */
 #level-up-screen {
@@ -2218,12 +2324,12 @@ body {
    ============================================ */
 #toast-container {
   position: fixed;
-  top: calc(20px + var(--safe-area-top));
-  right: calc(20px + var(--safe-area-right));
+  bottom: calc(20px + var(--safe-area-bottom, 0px));
+  right: calc(20px + var(--safe-area-right, 0px));
   z-index: var(--z-notification);
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 4px;
   pointer-events: none;
   max-width: 350px;
 }
@@ -2237,7 +2343,7 @@ body {
   pointer-events: auto;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  animation: slideInRight 0.3s ease-out;
+  animation: slideInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   display: flex;
   align-items: center;
   gap: var(--space-md);
@@ -2245,7 +2351,24 @@ body {
 }
 
 .toast.removing {
-  animation: slideOutRight 0.3s ease-in;
+  animation: slideOutRight 0.2s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 var(--space-sm);
+  flex-shrink: 0;
+  transition: color 0.15s;
+  pointer-events: auto;
+}
+
+.toast-close:hover {
+  color: rgba(255,255,255,0.8);
 }
 
 .toast-icon {
@@ -2272,19 +2395,29 @@ body {
 
 /* Toast types */
 .toast.success {
-  border-left-color: var(--color-primary);
+  border-left-color: #22c55e;
+  background: rgba(20, 40, 25, 0.95);
 }
 
 .toast.info {
-  border-left-color: var(--color-secondary);
+  border-left-color: #6b7280;
+  background: rgba(20, 20, 30, 0.95);
 }
 
 .toast.warning {
-  border-left-color: var(--color-accent-orange);
+  border-left-color: #f97316;
+  background: rgba(35, 25, 15, 0.95);
 }
 
 .toast.error {
-  border-left-color: var(--color-danger);
+  border-left-color: #ef4444;
+  background: rgba(40, 15, 15, 0.95);
+}
+
+.toast.achievement {
+  border-left-color: #f59e0b;
+  background: rgba(40, 30, 10, 0.95);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
 }
 
 @keyframes slideInRight {
@@ -2304,7 +2437,7 @@ body {
     opacity: 1;
   }
   to {
-    transform: translateX(400px);
+    transform: translateX(110%);
     opacity: 0;
   }
 }
@@ -2889,16 +3022,17 @@ body {
 
 .settings-tab {
   flex: 1;
-  padding: var(--space-md) var(--space-lg);
+  padding: 8px 6px;
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
   color: #999;
-  font-size: var(--font-md);
+  font-size: 0.78rem;
   font-weight: bold;
   cursor: pointer;
   transition: all var(--transition-base);
   position: relative;
+  white-space: nowrap;
 }
 
 .settings-tab:hover {
@@ -2907,10 +3041,10 @@ body {
 }
 
 .settings-tab.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom-color: var(--color-primary);
-  color: #fff;
-  box-shadow: inset 0 -3px 0 var(--color-primary);
+  background: rgba(255, 215, 0, 0.07);
+  border-bottom-color: #ffd700;
+  color: #ffd700;
+  box-shadow: inset 0 -3px 0 #ffd700;
 }
 
 /* Settings Content */
@@ -2932,6 +3066,14 @@ body {
 /* Settings Section */
 .settings-section {
   margin-bottom: var(--space-xl);
+}
+
+.settings-section-title {
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+  margin-bottom: var(--space-md);
 }
 
 /* Setting Item */
@@ -3434,6 +3576,76 @@ body {
 .pause-btn-quit:hover {
   background: rgba(255, 0, 0, 0.4);
   border-color: #ff4444;
+}
+
+/* Quit Confirm Modal */
+#quit-confirm-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.quit-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.quit-confirm-box {
+  position: relative;
+  background: linear-gradient(135deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.98));
+  border: 2px solid var(--color-danger, #e74c3c);
+  border-radius: var(--radius-xl, 12px);
+  box-shadow: 0 0 40px rgba(231, 76, 60, 0.5);
+  padding: 2rem 2.5rem;
+  text-align: center;
+  min-width: 280px;
+  animation: slideDown 0.2s ease-out;
+}
+
+.quit-confirm-box h2 {
+  color: #fff;
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+}
+
+.quit-confirm-box p {
+  color: #aaa;
+  margin: 0 0 1.5rem;
+}
+
+.quit-confirm-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.quit-btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.quit-btn:hover { opacity: 0.85; }
+
+.quit-btn-yes {
+  background: rgba(231, 76, 60, 0.3);
+  border-color: var(--color-danger, #e74c3c);
+  color: #fff;
+}
+
+.quit-btn-no {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: var(--color-accent, #ffd700);
+  color: #ffd700;
 }
 
 /* Mobile Pause Menu */
@@ -4212,7 +4424,7 @@ body {
   color: #f5f5f5;
   font-family: inherit;
   box-shadow: 0 0 24px rgba(204, 51, 51, 0.35);
-  pointer-events: none;
+  pointer-events: auto;
 }
 .reconnect-message {
   font-size: 1rem;
@@ -4222,6 +4434,10 @@ body {
 .reconnect-detail {
   font-size: 0.85rem;
   color: #bbb;
+}
+.reconnect-attempt {
+  font-size: 0.8rem;
+  color: #999;
 }
 .reconnect-spinner {
   width: 28px;
@@ -4233,6 +4449,30 @@ body {
 }
 @keyframes reconnect-spin {
   to { transform: rotate(360deg); }
+}
+.reconnect-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+.reconnect-btn {
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.reconnect-btn:hover { opacity: 0.85; }
+.reconnect-btn--retry {
+  background: #cc3333;
+  color: #fff;
+}
+.reconnect-btn--quit {
+  background: rgba(255,255,255,0.1);
+  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 /* ============================================
@@ -4508,4 +4748,11 @@ body.cursor-default [role="button"],
 body.cursor-default select,
 body.cursor-default label.toggle-switch {
   cursor: pointer !important;
+}
+
+/* ============================================
+   ACCESSIBILITY: Large HUD Text
+   ============================================ */
+#stats.hud-large-text {
+  font-size: 1.5em;
 }

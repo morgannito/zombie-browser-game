@@ -326,6 +326,7 @@ class ScreenEffects {
    * Flash de dégâts (rouge)
    */
   damageFlash() {
+    if (window.gameSettings?.reduceFlashEffects) return;
     this.flash('rgba(255, 0, 0, 0.8)', 300);
   }
 

@@ -84,6 +84,11 @@ class EntityRenderer {
     // Frustum culling stats (reset each frame via resetCullingStats)
     this._culledEntities = 0;
     this._renderedEntities = 0;
+
+    // Magnet pickup: interpolated visual positions per item id
+    // Maps: id -> { x, y }
+    this._magnetPowerups = new Map();
+    this._magnetLoot = new Map();
   }
 
   /**
@@ -395,12 +400,39 @@ class EntityRenderer {
     );
   }
 
-  renderPowerups(ctx, camera, powerups, powerupTypes, config, now) {
+  renderPowerups(ctx, camera, powerups, powerupTypes, config, now, playerPos, magnetEnabled) {
     if (!powerups) {
       return;
     }
 
     now = now || Date.now();
+
+    // Magnet: purge stale ids, lerp active ones toward player
+    const MAGNET_RADIUS = 80;
+    const MAGNET_LERP = 0.15;
+    if (magnetEnabled && playerPos) {
+      for (const id in powerups) {
+        const p = powerups[id];
+        const dx = p.x - playerPos.x;
+        const dy = p.y - playerPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAGNET_RADIUS) {
+          const prev = this._magnetPowerups.get(id) ?? { x: p.x, y: p.y };
+          this._magnetPowerups.set(id, {
+            x: prev.x + (playerPos.x - prev.x) * MAGNET_LERP,
+            y: prev.y + (playerPos.y - prev.y) * MAGNET_LERP
+          });
+        } else {
+          this._magnetPowerups.delete(id);
+        }
+      }
+      // Purge removed powerups
+      for (const id of this._magnetPowerups.keys()) {
+        if (!powerups[id]) this._magnetPowerups.delete(id);
+      }
+    } else {
+      this._magnetPowerups.clear();
+    }
 
     // Hoisted: constant per-frame value and symbol table
     const pulse = Math.sin(now / 200) * 3 + config.POWERUP_SIZE;
@@ -421,9 +453,12 @@ class EntityRenderer {
 
     for (const powerupId in powerups) {
       const powerup = powerups[powerupId];
+      const magPos = this._magnetPowerups.get(powerupId);
+      const drawX = magPos ? magPos.x : powerup.x;
+      const drawY = magPos ? magPos.y : powerup.y;
 
       // Cull before reading powerup.type or powerupTypes lookup
-      if (!camera.isInViewport(powerup.x, powerup.y, cullRadius)) {
+      if (!camera.isInViewport(drawX, drawY, cullRadius)) {
         this._culledEntities++;
         continue;
       }
@@ -441,7 +476,7 @@ class EntityRenderer {
       ctx.strokeStyle = type.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(powerup.x, powerup.y, pulse + 5 + glowAlpha * 4, 0, Math.PI * 2);
+      ctx.arc(drawX, drawY, pulse + 5 + glowAlpha * 4, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.lineWidth = 2;
@@ -452,16 +487,42 @@ class EntityRenderer {
       const nomDim = (config.POWERUP_SIZE + 2) * 2;
       const scale = (pulse * 2) / nomDim;
       const drawDim = nomDim * scale;
-      ctx.drawImage(baseSprite, powerup.x - drawDim / 2, powerup.y - drawDim / 2, drawDim, drawDim);
+      ctx.drawImage(baseSprite, drawX - drawDim / 2, drawY - drawDim / 2, drawDim, drawDim);
     }
   }
 
-  renderLoot(ctx, camera, loot, config, now) {
+  renderLoot(ctx, camera, loot, config, now, playerPos, magnetEnabled) {
     if (!loot) {
       return;
     }
 
     now = now || Date.now();
+
+    // Magnet: lerp loot toward player when within range
+    const MAGNET_RADIUS = 80;
+    const MAGNET_LERP = 0.15;
+    if (magnetEnabled && playerPos) {
+      for (const id in loot) {
+        const item = loot[id];
+        const dx = item.x - playerPos.x;
+        const dy = item.y - playerPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAGNET_RADIUS) {
+          const prev = this._magnetLoot.get(id) ?? { x: item.x, y: item.y };
+          this._magnetLoot.set(id, {
+            x: prev.x + (playerPos.x - prev.x) * MAGNET_LERP,
+            y: prev.y + (playerPos.y - prev.y) * MAGNET_LERP
+          });
+        } else {
+          this._magnetLoot.delete(id);
+        }
+      }
+      for (const id of this._magnetLoot.keys()) {
+        if (!loot[id]) this._magnetLoot.delete(id);
+      }
+    } else {
+      this._magnetLoot.clear();
+    }
 
     // Hoisted: rotation and pulse are constant for all loot items in this frame
     const LOOT_PULSE_PERIOD = 2000; // ms for one full pulse cycle
@@ -478,9 +539,12 @@ class EntityRenderer {
 
     for (const lootId in loot) {
       const item = loot[lootId];
+      const magPos = this._magnetLoot.get(lootId);
+      const drawX = magPos ? magPos.x : item.x;
+      const drawY = magPos ? magPos.y : item.y;
 
       // Cull before ctx.save / translate / rotate
-      if (!camera.isInViewport(item.x, item.y, 30)) {
+      if (!camera.isInViewport(drawX, drawY, 30)) {
         this._culledEntities++;
         continue;
       }
@@ -488,7 +552,7 @@ class EntityRenderer {
 
       ctx.save();
       ctx.globalAlpha = pulseAlpha * 0.35; // soft halo at 35% opacity
-      ctx.translate(item.x, item.y);
+      ctx.translate(drawX, drawY);
       ctx.rotate(rotation);
 
       // Glow halo
@@ -1474,6 +1538,16 @@ continue;
     for (let i = 0; i < visibleZombies.length; i++) {
       const zombie = visibleZombies[i];
       this.drawZombieSprite(ctx, zombie, timestamp, now);
+
+      if (window.gameSettings?.showZombieOutlines) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = zombie.isBoss ? 4 : 2;
+        ctx.beginPath();
+        ctx.arc(zombie.x, zombie.y, zombie.size * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       if (zombie.maxHealth && zombie.health != null) {
         const healthPercent = Math.max(0, Math.min(1, zombie.health / zombie.maxHealth));

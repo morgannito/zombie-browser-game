@@ -192,6 +192,10 @@
                         <span class="stat-label">Zombies tués</span>
                         <span class="stat-value" id="final-kills">0</span>
                     </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Temps survécu</span>
+                        <span class="stat-value" id="final-time">00:00</span>
+                    </div>
                     <div class="stat-row" id="killed-by-row" style="display:none;">
                         <span class="stat-label">Tué par</span>
                         <span class="stat-value stat-value--killer" id="final-killed-by"></span>
@@ -208,7 +212,10 @@
                     </div>
                     <div class="pb-banner" id="pb-banner" style="display:none;">🏆 NOUVEAU RECORD</div>
                 </div>
-                <button id="respawn-btn" aria-label="Respawn et continuer la partie" disabled>CONTINUER ? <span id="respawn-countdown" class="respawn-countdown">3</span></button>
+                <div class="game-over-actions">
+                    <button id="respawn-btn" aria-label="Respawn et continuer la partie" disabled>CONTINUER ? <span id="respawn-countdown" class="respawn-countdown">3</span></button>
+                    <button id="menu-btn" aria-label="Retour au menu principal" onclick="location.reload()">MENU</button>
+                </div>
             </div>
         </div>
 
@@ -230,6 +237,23 @@
                     <div id="temporary-items"></div>
                 </div>
             </div>
+        </div>
+
+        <div id="weapon-stats-preview" aria-hidden="true">
+            <div class="wsp-title" id="wsp-name">Arme</div>
+            <div class="wsp-stat">
+                <div class="wsp-stat-label"><span>Dégâts</span><span id="wsp-damage-val">—</span></div>
+                <div class="wsp-bar-bg"><div class="wsp-bar-fill wsp-bar-damage" id="wsp-damage-bar" style="width:0%"></div></div>
+            </div>
+            <div class="wsp-stat">
+                <div class="wsp-stat-label"><span>Cadence</span><span id="wsp-rate-val">—</span></div>
+                <div class="wsp-bar-bg"><div class="wsp-bar-fill wsp-bar-rate" id="wsp-rate-bar" style="width:0%"></div></div>
+            </div>
+            <div class="wsp-stat">
+                <div class="wsp-stat-label"><span>Portée</span><span id="wsp-range-val">—</span></div>
+                <div class="wsp-bar-bg"><div class="wsp-bar-fill wsp-bar-range" id="wsp-range-bar" style="width:0%"></div></div>
+            </div>
+            <div class="wsp-special" id="wsp-special"></div>
         </div>
 
         <div id="level-up-screen" style="display: none;">
@@ -333,6 +357,8 @@
                     <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
                     <button class="settings-tab" data-tab="graphics">🎨 Graphismes</button>
                     <button class="settings-tab" data-tab="controls">🎮 Contrôles</button>
+                    <button class="settings-tab" data-tab="interface">🖥️ Interface</button>
+                    <button class="settings-tab" data-tab="advanced">⚙️ Avancé</button>
                 </div>
 
                 <div class="settings-content">
@@ -367,14 +393,6 @@
                     <div class="settings-tab-content" id="settings-graphics">
                         <div class="settings-section">
                             <div class="setting-item">
-                                <label for="ui-theme">Thème UI</label>
-                                <select id="ui-theme" class="settings-select">
-                                    <option value="dark">Sombre (défaut)</option>
-                                    <option value="neon">Neon (cyan/magenta)</option>
-                                    <option value="retro">Rétro (CRT vert)</option>
-                                </select>
-                            </div>
-                            <div class="setting-item">
                                 <label for="graphics-quality">Qualité Graphique</label>
                                 <select id="graphics-quality" class="settings-select">
                                     <option value="low">Basse</option>
@@ -408,6 +426,13 @@
                                 <label for="custom-cursor-toggle">Curseur Personnalisé</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="custom-cursor-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="magnet-pickup-toggle">Aimant auto (powerups/gold)</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="magnet-pickup-toggle" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -465,6 +490,99 @@
                                 </label>
                             </div>
                             <p style="font-size:0.8em;opacity:0.7;margin-top:4px;">WASD et ZQSD fonctionnent tous les deux par défaut.</p>
+                        </div>
+                    </div>
+                    <!-- Interface Tab -->
+                    <div class="settings-tab-content" id="settings-interface">
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <label for="ui-theme">Thème UI</label>
+                                <select id="ui-theme-interface" class="settings-select">
+                                    <option value="dark">Sombre (défaut)</option>
+                                    <option value="neon">Neon (cyan/magenta)</option>
+                                    <option value="retro">Rétro (CRT vert)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="show-fps-toggle">Afficher FPS</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-fps-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="show-minimap-toggle">Minimap</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-minimap-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="show-damage-numbers-toggle">Chiffres de dégâts</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-damage-numbers-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Tab -->
+                    <div class="settings-tab-content" id="settings-advanced">
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <label for="custom-cursor-toggle-adv">Curseur Personnalisé</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="custom-cursor-toggle-adv" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="blood-toggle-adv">Effets de Sang</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="blood-toggle-adv" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="screen-shake-toggle-adv">Screen Shake</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="screen-shake-toggle-adv" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <p style="font-size:0.8em;opacity:0.6;margin-top:12px;">Ces options peuvent affecter les performances sur les appareils moins puissants.</p>
+                        </div>
+                        <div class="settings-section">
+                            <h3 class="settings-section-title">♿ Accessibilité</h3>
+                            <div class="setting-item">
+                                <label for="reduce-screen-shake-toggle">Réduire les tremblements d'écran</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="reduce-screen-shake-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="reduce-flash-toggle">Réduire les effets de flash</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="reduce-flash-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="large-hud-toggle">Texte HUD agrandi (+50%)</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="large-hud-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="zombie-outlines-toggle">Contours des zombies</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="zombie-outlines-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -538,6 +656,19 @@
             </div>
         </div>
 
+        <!-- Quit Confirm Modal -->
+        <div id="quit-confirm-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="quit-confirm-title">
+            <div class="quit-confirm-overlay"></div>
+            <div class="quit-confirm-box">
+                <h2 id="quit-confirm-title">Quitter la partie ?</h2>
+                <p>Votre progression sera perdue.</p>
+                <div class="quit-confirm-buttons">
+                    <button id="quit-confirm-yes" class="quit-btn quit-btn-yes">Oui, quitter</button>
+                    <button id="quit-confirm-no" class="quit-btn quit-btn-no">Annuler</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Weapon Wheel -->
         <div id="weapon-wheel" style="display: none;">
             <div class="weapon-wheel-overlay"></div>
@@ -606,6 +737,7 @@
     <script src="modules/i18n/i18n.js"></script>
     <script>I18n.init('fr');</script>
     <script src="modules/utils/ErrorTracker.js"></script>
+    <script src="modules/utils/ErrorBoundary.js"></script>
     <script src="perfPatches.js"></script>
     <script src="EventListenerManager.js"></script>
     <script src="TimerManager.js"></script>
@@ -621,6 +753,7 @@
     <script src="screenEffects.js"></script>
     <script src="modules/audio/OptimizedAudioCore.js"></script>
     <script src="modules/audio/OptimizedSoundEffects.js"></script>
+    <script src="weaponStatsData.js"></script>
     <script src="weaponAudioSystem.js"></script>
     <script src="audioSystem.js"></script>
     <script src="skinSystem.js"></script>
@@ -647,6 +780,7 @@
     <script src="addictionIntegration.js"></script>
     <script src="auth.js"></script>
     <script src="modules/core/Constants.js"></script>
+    <script src="modules/core/globals.js"></script>
     <script src="modules/core/SessionManager.js"></script>
     <script src="modules/state/GameStateManager.js"></script>
     <script src="modules/input/InputManager.js"></script>

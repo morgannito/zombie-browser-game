@@ -56,6 +56,9 @@ class AudioManager {
       case 'click':
         this.playClick(now);
         break;
+      case 'death':
+        this.playDeath(now);
+        break;
       default:
         break;
     }
@@ -158,6 +161,29 @@ class AudioManager {
 };
     osc.start(startTime);
     osc.stop(startTime + 0.05);
+  }
+
+  playDeath(startTime) {
+    // Dramatic sine decay: low rumble + descending tone
+    const notes = [
+      { freq: 220, t: 0, dur: 1.2 },
+      { freq: 180, t: 0.3, dur: 1.0 },
+      { freq: 130, t: 0.7, dur: 1.5 }
+    ];
+    notes.forEach(({ freq, t, dur }) => {
+      const osc = this.audioContext.createOscillator();
+      const gain = this.audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(this.audioContext.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime + t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, startTime + t + dur);
+      gain.gain.setValueAtTime(0.15, startTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + t + dur);
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+      osc.start(startTime + t);
+      osc.stop(startTime + t + dur);
+    });
   }
 
   toggle() {

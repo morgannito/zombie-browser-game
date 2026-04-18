@@ -180,20 +180,27 @@ class Renderer {
     this.backgroundRenderer.renderDynamicProps(this.ctx, this.camera, gameState.state.dynamicProps);
     this.backgroundRenderer.renderWalls(this.ctx, this.camera, gameState.state.walls);
     this.backgroundRenderer.renderDoors(this.ctx, this.camera, gameState.state.doors);
+    const magnetEnabled = window.settingsManager ? window.settingsManager.get('magnetPickup') !== false : true;
+    const localPlayer = gameState.state.players[playerId];
+    const magnetPlayerPos = (magnetEnabled && localPlayer) ? { x: localPlayer.x, y: localPlayer.y } : null;
     this.entityRenderer.renderPowerups(
       this.ctx,
       this.camera,
       gameState.state.powerups,
       gameState.powerupTypes,
       gameState.config,
-      dateNow
+      dateNow,
+      magnetPlayerPos,
+      magnetEnabled
     );
     this.entityRenderer.renderLoot(
       this.ctx,
       this.camera,
       gameState.state.loot,
       gameState.config,
-      dateNow
+      dateNow,
+      magnetPlayerPos,
+      magnetEnabled
     );
     this.entityRenderer.renderDestructibleObstacles(
       this.ctx,

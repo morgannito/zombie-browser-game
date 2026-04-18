@@ -12,6 +12,7 @@ class UIManager {
     this.shopOpen = false;
     this.gameStartedDispatched = false;
     this.gameOverDispatched = false;
+    this._gameStartTime = null;
 
     // Store handler references for cleanup
     this.handlers = {
@@ -27,6 +28,18 @@ class UIManager {
             e.preventDefault();
             btn.click();
           }
+        }
+        // Escape on game-over = return to menu (no confirm needed)
+        if (e.key === 'Escape' && this.els.gameOver?.style.display === 'block') {
+          this._returnToMenu();
+        }
+      },
+      beforeunload: e => {
+        const gameActive = document.body.classList.contains('game-active');
+        if (gameActive) {
+          e.preventDefault();
+          // returnValue required for legacy browsers
+          e.returnValue = '';
         }
       }
     };
@@ -74,6 +87,9 @@ class UIManager {
     // Esc key closes shop (keyboard accessibility)
     document.addEventListener('keydown', this.handlers.keydown);
 
+    // Warn browser before unload when player is alive
+    window.addEventListener('beforeunload', this.handlers.beforeunload);
+
     // Guard: prevent duplicate emissions before server acknowledges the first
     this._buyPending = false;
     this._lastBoughtItem = null;
@@ -117,6 +133,20 @@ class UIManager {
       this.shopCloseBtn.removeEventListener('click', this.handlers.shopClose);
     }
     document.removeEventListener('keydown', this.handlers.keydown);
+    window.removeEventListener('beforeunload', this.handlers.beforeunload);
+  }
+
+  _returnToMenu() {
+    if (this.els.gameOver) {
+      this.els.gameOver.style.display = 'none';
+    }
+    const nicknameScreen = document.getElementById('nickname-screen');
+    if (nicknameScreen) {
+      nicknameScreen.style.display = 'flex';
+    }
+    if (window.showSkinsButton) {
+      window.showSkinsButton();
+    }
   }
 
   update() {
@@ -134,6 +164,7 @@ class UIManager {
       document.dispatchEvent(new CustomEvent('game_started', { detail: startStats }));
       this.gameStartedDispatched = true;
       this.gameOverDispatched = false;
+      this._gameStartTime = Date.now();
     }
 
     // --- READ phase (avoid interleaved read/write reflow) ---
@@ -208,6 +239,10 @@ class UIManager {
       // Respawn button starts disabled (HTML attribute) to prevent accidental
       // clicks during the death animation. Re-enable after a short delay so
       // the player sees the recap before acting.
+      if (wasHidden && window.audioManager) {
+        window.audioManager.play('death');
+      }
+
       if (wasHidden) {
         const respawnBtn = document.getElementById('respawn-btn');
         const cdSpan = document.getElementById('respawn-countdown');
@@ -234,6 +269,13 @@ class UIManager {
       els.finalGold.textContent = (player.gold || 0).toLocaleString();
       if (els.finalKills) {
         els.finalKills.textContent = (player.zombiesKilled || player.kills || 0).toLocaleString();
+      }
+      const timeEl = document.getElementById('final-time');
+      if (timeEl && this._gameStartTime) {
+        const secs = Math.floor((Date.now() - this._gameStartTime) / 1000);
+        const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+        const ss = String(secs % 60).padStart(2, '0');
+        timeEl.textContent = `${mm}:${ss}`;
       }
 
       // Comparaison avec personal best (avant l'enregistrement du nouveau score)
@@ -515,6 +557,7 @@ return;
   hideShop() {
     this.shopOpen = false;
     document.getElementById('shop').style.display = 'none';
+    this._hideWeaponPreview();
 
     // Désactiver l'invincibilité quand le shop se ferme
     if (window.networkManager) {
@@ -651,6 +694,12 @@ return;
 
       temporaryContainer.appendChild(itemDiv);
 
+      // Weapon stats preview on hover
+      if (window.WEAPON_STATS && window.WEAPON_STATS[key]) {
+        itemDiv.addEventListener('mouseenter', () => this._showWeaponPreview(key));
+        itemDiv.addEventListener('mouseleave', () => this._hideWeaponPreview());
+      }
+
       // Add event listener to the button
       const btn = itemDiv.querySelector('.shop-buy-btn');
       btn.addEventListener('click', e => {
@@ -692,6 +741,40 @@ return;
       }
       this._lastBoughtItem = null;
     }
+  }
+
+  _showWeaponPreview(weaponKey) {
+    const stats = window.WEAPON_STATS && window.WEAPON_STATS[weaponKey];
+    const maxes = window.WEAPON_STATS_MAX;
+    const panel = document.getElementById('weapon-stats-preview');
+    if (!stats || !panel) return;
+
+    document.getElementById('wsp-name').textContent = stats.name;
+
+    const dmgPct = Math.round((stats.damage / maxes.damage) * 100);
+    document.getElementById('wsp-damage-val').textContent = stats.damage;
+    document.getElementById('wsp-damage-bar').style.width = dmgPct + '%';
+
+    // fireRate: lower = faster → invert for "cadence" bar
+    const ratePct = Math.round((1 - stats.fireRate / maxes.fireRate) * 100);
+    const rateLabel = stats.fireRate <= 150 ? 'Très rapide' : stats.fireRate <= 400 ? 'Rapide' : stats.fireRate <= 900 ? 'Moyen' : 'Lent';
+    document.getElementById('wsp-rate-val').textContent = rateLabel;
+    document.getElementById('wsp-rate-bar').style.width = Math.max(ratePct, 5) + '%';
+
+    const rangePct = Math.round((stats.bulletSpeed / maxes.bulletSpeed) * 100);
+    document.getElementById('wsp-range-val').textContent = stats.bulletSpeed === 0 ? 'Arc' : stats.bulletSpeed >= 20 ? 'Longue' : stats.bulletSpeed >= 13 ? 'Moyenne' : 'Courte';
+    document.getElementById('wsp-range-bar').style.width = Math.max(rangePct, 5) + '%';
+
+    const specialEl = document.getElementById('wsp-special');
+    specialEl.textContent = stats.special || '';
+    specialEl.style.display = stats.special ? 'block' : 'none';
+
+    panel.classList.add('visible');
+  }
+
+  _hideWeaponPreview() {
+    const panel = document.getElementById('weapon-stats-preview');
+    if (panel) panel.classList.remove('visible');
   }
 
   toggleStatsPanel() {

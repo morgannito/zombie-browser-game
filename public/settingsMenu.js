@@ -21,6 +21,12 @@ class SettingsMenu {
       },
       controls: {
         azerty: false
+      },
+      accessibility: {
+        reduceScreenShake: false,
+        reduceFlashEffects: false,
+        largeHudText: false,
+        showZombieOutlines: false
       }
     };
 
@@ -121,6 +127,8 @@ class SettingsMenu {
     const settingsMenu = document.getElementById('settings-menu');
     if (settingsMenu) {
       settingsMenu.style.display = 'block';
+      const lastTab = localStorage.getItem('settings-last-tab') || 'audio';
+      this.switchTab(lastTab);
     }
   }
 
@@ -151,6 +159,9 @@ class SettingsMenu {
         content.classList.remove('active');
       }
     });
+
+    // Persist last opened tab
+    localStorage.setItem('settings-last-tab', tabName);
   }
 
   updateSlider(slider) {
@@ -183,6 +194,21 @@ class SettingsMenu {
     } else if (toggle.id === 'azerty-toggle') {
       if (!this.currentSettings.controls) this.currentSettings.controls = {};
       this.currentSettings.controls.azerty = toggle.checked;
+    } else if (toggle.id === 'reduce-screen-shake-toggle') {
+      if (!this.currentSettings.accessibility) this.currentSettings.accessibility = {};
+      this.currentSettings.accessibility.reduceScreenShake = toggle.checked;
+    } else if (toggle.id === 'reduce-flash-toggle') {
+      if (!this.currentSettings.accessibility) this.currentSettings.accessibility = {};
+      this.currentSettings.accessibility.reduceFlashEffects = toggle.checked;
+    } else if (toggle.id === 'large-hud-toggle') {
+      if (!this.currentSettings.accessibility) this.currentSettings.accessibility = {};
+      this.currentSettings.accessibility.largeHudText = toggle.checked;
+    } else if (toggle.id === 'zombie-outlines-toggle') {
+      if (!this.currentSettings.accessibility) this.currentSettings.accessibility = {};
+      this.currentSettings.accessibility.showZombieOutlines = toggle.checked;
+    } else if (toggle.id === 'magnet-pickup-toggle') {
+      if (!this.currentSettings.graphics) this.currentSettings.graphics = {};
+      this.currentSettings.graphics.magnetPickup = toggle.checked;
     }
   }
 
@@ -190,8 +216,11 @@ class SettingsMenu {
     // Update settings object
     if (select.id === 'graphics-quality') {
       this.currentSettings.graphics.quality = select.value;
-    } else if (select.id === 'ui-theme') {
+    } else if (select.id === 'ui-theme' || select.id === 'ui-theme-interface') {
       this.applyTheme(select.value);
+      // Sync both selects
+      const other = document.getElementById(select.id === 'ui-theme' ? 'ui-theme-interface' : 'ui-theme');
+      if (other) other.value = select.value;
     }
   }
 
@@ -266,11 +295,12 @@ class SettingsMenu {
       qualitySelect.value = this.currentSettings.graphics.quality;
     }
 
-    // Update theme select
+    // Update theme selects
+    const currentTheme = localStorage.getItem(this.THEME_KEY) || 'dark';
     const themeSelect = document.getElementById('ui-theme');
-    if (themeSelect) {
-      themeSelect.value = localStorage.getItem(this.THEME_KEY) || 'dark';
-    }
+    if (themeSelect) themeSelect.value = currentTheme;
+    const themeSelectIface = document.getElementById('ui-theme-interface');
+    if (themeSelectIface) themeSelectIface.value = currentTheme;
 
     // Update custom cursor toggle
     const customCursorToggle = document.getElementById('custom-cursor-toggle');
@@ -278,11 +308,28 @@ class SettingsMenu {
       customCursorToggle.checked = this.currentSettings.graphics.customCursor ?? true;
     }
 
+    // Update magnet pickup toggle
+    const magnetToggle = document.getElementById('magnet-pickup-toggle');
+    if (magnetToggle) {
+      magnetToggle.checked = this.currentSettings.graphics.magnetPickup ?? true;
+    }
+
     // Update AZERTY toggle
     const azertyToggle = document.getElementById('azerty-toggle');
     if (azertyToggle) {
       azertyToggle.checked = this.currentSettings.controls?.azerty ?? false;
     }
+
+    // Update accessibility toggles
+    const a11y = this.currentSettings.accessibility || {};
+    const reduceShakeToggle = document.getElementById('reduce-screen-shake-toggle');
+    if (reduceShakeToggle) reduceShakeToggle.checked = a11y.reduceScreenShake ?? false;
+    const reduceFlashToggle = document.getElementById('reduce-flash-toggle');
+    if (reduceFlashToggle) reduceFlashToggle.checked = a11y.reduceFlashEffects ?? false;
+    const largeHudToggle = document.getElementById('large-hud-toggle');
+    if (largeHudToggle) largeHudToggle.checked = a11y.largeHudText ?? false;
+    const zombieOutlinesToggle = document.getElementById('zombie-outlines-toggle');
+    if (zombieOutlinesToggle) zombieOutlinesToggle.checked = a11y.showZombieOutlines ?? false;
   }
 
   applySettings() {
@@ -297,6 +344,10 @@ class SettingsMenu {
     if (window.gameSettings) window.gameSettings.azerty = azerty;
     // Propagate to SettingsManager if present
     if (window.settingsManager) window.settingsManager.set('controls.azerty', azerty);
+
+    // Propagate magnet pickup setting
+    const magnetPickup = this.currentSettings.graphics?.magnetPickup ?? true;
+    if (window.settingsManager) window.settingsManager.set('magnetPickup', magnetPickup);
 
     // Update UI to reflect settings
     this.updateUI();
@@ -328,6 +379,22 @@ class SettingsMenu {
     window.gameSettings.particlesEnabled = particles;
     window.gameSettings.screenShakeEnabled = screenShake;
     window.gameSettings.bloodEnabled = blood;
+
+    // Accessibility settings
+    const a11y = this.currentSettings.accessibility || {};
+    window.gameSettings.reduceScreenShake = a11y.reduceScreenShake ?? false;
+    window.gameSettings.reduceFlashEffects = a11y.reduceFlashEffects ?? false;
+    window.gameSettings.showZombieOutlines = a11y.showZombieOutlines ?? false;
+
+    // Large HUD text: toggle CSS class on #stats
+    const statsEl = document.getElementById('stats');
+    if (statsEl) {
+      if (a11y.largeHudText) {
+        statsEl.classList.add('hud-large-text');
+      } else {
+        statsEl.classList.remove('hud-large-text');
+      }
+    }
 
     const customCursor = this.currentSettings.graphics.customCursor ?? true;
     window.gameSettings.customCursor = customCursor;

@@ -12,7 +12,8 @@ const DEFAULTS = {
   version: SCHEMA_VERSION,
   audio: { masterVolume: 0.8, musicVolume: 0.5 },
   keybindings: { up: 'w', down: 's', left: 'a', right: 'd', reload: 'r' },
-  theme: 'dark'
+  theme: 'dark',
+  magnetPickup: true
 };
 
 function migrate(stored) {

@@ -146,20 +146,37 @@ class PauseMenu {
   }
 
   quit() {
-    // Confirm quit action
-    const confirmed = confirm(typeof I18n !== 'undefined' ? I18n.t('quit.confirm') : 'Êtes-vous sûr de vouloir quitter ? Votre progression sera perdue.');
+    const modal = document.getElementById('quit-confirm-modal');
+    if (!modal) {
+      // Fallback if modal not in DOM
+      this._doQuit();
+      return;
+    }
 
-    if (confirmed) {
-      this.isPaused = false;
-      this.hide();
+    modal.style.display = 'flex';
 
-      // Trigger game over or return to menu
-      if (window.gameEngine) {
-        window.gameEngine.gameOver();
-      } else {
-        // Fallback: reload page to restart
-        window.location.reload();
-      }
+    const onYes = () => { cleanup(); this._doQuit(); };
+    const onNo = () => { cleanup(); modal.style.display = 'none'; };
+    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); onNo(); } };
+
+    const cleanup = () => {
+      document.getElementById('quit-confirm-yes')?.removeEventListener('click', onYes);
+      document.getElementById('quit-confirm-no')?.removeEventListener('click', onNo);
+      document.removeEventListener('keydown', onKey, true);
+    };
+
+    document.getElementById('quit-confirm-yes')?.addEventListener('click', onYes);
+    document.getElementById('quit-confirm-no')?.addEventListener('click', onNo);
+    document.addEventListener('keydown', onKey, true);
+  }
+
+  _doQuit() {
+    this.isPaused = false;
+    this.hide();
+    if (window.gameEngine) {
+      window.gameEngine.gameOver();
+    } else {
+      window.location.reload();
     }
   }
 

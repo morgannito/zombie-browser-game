@@ -112,32 +112,112 @@ class NetworkManager {
 
   /** Display the reconnection banner (idempotent). Built with DOM APIs only. */
   _showReconnectOverlay(attempt, seconds) {
+    const MAX_ATTEMPTS = 10;
     let el = document.getElementById('reconnect-overlay');
     if (!el) {
       el = document.createElement('div');
       el.id = 'reconnect-overlay';
       el.className = 'reconnect-overlay';
+
       const spinner = document.createElement('div');
       spinner.className = 'reconnect-spinner';
+
       const msg = document.createElement('div');
       msg.className = 'reconnect-message';
-      msg.textContent = 'Connexion perdue. Reconnexion…';
+      msg.textContent = 'Connexion perdue.';
+
       const detail = document.createElement('div');
       detail.className = 'reconnect-detail';
       detail.id = 'reconnect-detail';
+
+      const attemptEl = document.createElement('div');
+      attemptEl.className = 'reconnect-attempt';
+      attemptEl.id = 'reconnect-attempt';
+
+      const actions = document.createElement('div');
+      actions.className = 'reconnect-actions';
+
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'reconnect-btn reconnect-btn--retry';
+      retryBtn.textContent = 'Retry now';
+      retryBtn.addEventListener('click', () => {
+        this._clearCountdownTimer();
+        if (this._reconnectTimer) {
+          clearTimeout(this._reconnectTimer);
+          this._reconnectTimer = null;
+        }
+        if (!this.socket.connected) {
+          this.socket.connect();
+        }
+      });
+
+      const quitBtn = document.createElement('button');
+      quitBtn.className = 'reconnect-btn reconnect-btn--quit';
+      quitBtn.textContent = 'Quit to menu';
+      quitBtn.addEventListener('click', () => {
+        this._clearCountdownTimer();
+        this._hideReconnectOverlay();
+        this._reconnectAttempts = Infinity;
+        if (this._reconnectTimer) {
+          clearTimeout(this._reconnectTimer);
+          this._reconnectTimer = null;
+        }
+        this.socket.io.opts.reconnection = false;
+        document.dispatchEvent(new CustomEvent('reconnect_abandoned'));
+      });
+
+      actions.appendChild(retryBtn);
+      actions.appendChild(quitBtn);
+
       el.appendChild(spinner);
       el.appendChild(msg);
       el.appendChild(detail);
+      el.appendChild(attemptEl);
+      el.appendChild(actions);
       document.body.appendChild(el);
     }
+
     const detail = document.getElementById('reconnect-detail');
-    if (detail) {
-      detail.textContent = `Tentative ${attempt} — retry dans ${seconds}s`;
+    const attemptEl = document.getElementById('reconnect-attempt');
+    if (attemptEl) {
+      attemptEl.textContent = `Attempt ${attempt}/${MAX_ATTEMPTS}`;
     }
+
+    this._clearCountdownTimer();
+    this._startCountdown(detail, seconds);
     el.style.display = 'flex';
   }
 
+  /** Start a live countdown in the detail element. @private */
+  _startCountdown(detailEl, seconds) {
+    let remaining = seconds;
+    const update = () => {
+      if (detailEl) {
+        detailEl.textContent = `Reconnecting in ${remaining}s…`;
+      }
+    };
+    update();
+    if (remaining > 0) {
+      this._countdownTimer = setInterval(() => {
+        remaining--;
+        update();
+        if (remaining <= 0) {
+          this._clearCountdownTimer();
+        }
+      }, 1000);
+    }
+  }
+
+  /** Clear the countdown interval. @private */
+  _clearCountdownTimer() {
+    if (this._countdownTimer) {
+      clearInterval(this._countdownTimer);
+      this._countdownTimer = null;
+    }
+  }
+
   _hideReconnectOverlay() {
+    this._clearCountdownTimer();
     const el = document.getElementById('reconnect-overlay');
     if (el) {
       el.style.display = 'none';

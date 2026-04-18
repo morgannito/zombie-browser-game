@@ -42,8 +42,13 @@ class ToastManager {
     msgEl.className = 'toast-message';
     msgEl.textContent = message;
     content.appendChild(msgEl);
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.setAttribute('aria-label', 'Fermer');
     toast.appendChild(iconEl);
     toast.appendChild(content);
+    toast.appendChild(closeBtn);
     return toast;
   }
 
@@ -70,9 +75,22 @@ return;
     this.container.appendChild(fragment);
     for (const { toast, duration } of toInsert) {
       this.toasts.push(toast);
+      toast.querySelector('.toast-close').addEventListener('click', () => this.remove(toast));
       if (duration > 0) {
-setTimeout(() => this.remove(toast), duration);
-}
+        let remaining = duration;
+        let startTime;
+        let timerId;
+        const start = () => {
+          startTime = Date.now();
+          timerId = setTimeout(() => this.remove(toast), remaining);
+        };
+        toast.addEventListener('mouseenter', () => {
+          clearTimeout(timerId);
+          remaining -= Date.now() - startTime;
+        });
+        toast.addEventListener('mouseleave', start);
+        start();
+      }
     }
   }
 
@@ -91,7 +109,8 @@ setTimeout(() => this.remove(toast), duration);
       success: '✅',
       info: 'ℹ️',
       warning: '⚠️',
-      error: '❌'
+      error: '❌',
+      achievement: '🏆'
     };
     return icons[type] || icons.info;
   }
