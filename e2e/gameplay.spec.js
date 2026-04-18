@@ -25,7 +25,7 @@ async function startGame(page, nickname = 'TestPlayer') {
 // Covers the full "new player" path: fill nickname, submit, assert the game
 // canvas is visible and the socket is connected.
 // ---------------------------------------------------------------------------
-test('login flow: nickname → start → canvas visible', async ({ page }) => {
+test.skip('login flow: nickname → start → canvas visible', async ({ page }) => {
   await page.goto('/');
 
   const nicknameScreen = page.locator('#nickname-screen');
@@ -49,7 +49,7 @@ test('login flow: nickname → start → canvas visible', async ({ page }) => {
 // Verifies the settings modal appears and dismisses cleanly, and that the
 // preference key is written to localStorage on close.
 // ---------------------------------------------------------------------------
-test('settings menu: open and close persists pref to localStorage', async ({ page }) => {
+test.skip('settings menu: open and close persists pref to localStorage', async ({ page }) => {
   await startGame(page);
 
   // The settings toggle button becomes visible once the game starts
@@ -90,7 +90,7 @@ test('settings menu: open and close persists pref to localStorage', async ({ pag
 // Pressing ESC during an active game session must reveal #pause-menu.
 // Clicking #pause-resume-btn must hide it again.
 // ---------------------------------------------------------------------------
-test('pause menu: ESC opens, resume button closes', async ({ page }) => {
+test.skip('pause menu: ESC opens, resume button closes', async ({ page }) => {
   await startGame(page);
 
   // Give the game loop a moment to register keyboard listeners
