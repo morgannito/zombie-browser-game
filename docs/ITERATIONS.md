@@ -43,6 +43,18 @@ Résumé des 11 itérations de refactoring autonome (agents 1-100).
 - **Iter 11** : bilan — 2146 tests (2122 pass, 1 fail, 23 skip), 1 ESLint warning résiduel (no-unused-vars middleware.js).
 - **Iter 12** : bilan — 2159 tests (2135 pass, 1 fail, 23 skip, +13 vs iter 11), ESLint 0 erreur bloquante (warnings stylistic deprecated rules only). Dernier commit : `a4e292a` (iter 9 polish).
 - **Iter 13** : bilan — 2169 tests (2145 pass, 1 fail, 23 skip, +10 vs iter 12), ESLint 0 erreur bloquante. 14 docs MD. Dernier commit : `a4e292a`.
+- **Iter 14-16** : perf client (sprite cache, rendering), docs déploiement, traceId logging, JSDoc complet. (`a5dcb61`)
+- **Iter 17-18** : constantes zombies centralisées, input passive listeners, docs README. (`d32fb53`)
+- **Iter 19** : 3 vulns sécurité corrigées, refactor async Promise.all, CHANGELOG, cleanup unused. (`87178b7`)
+- **Iter 20-21** : split NetworkManager, fix memory leaks canvas/listeners, tsconfig strict. (`8d03010`)
+- **Iter 22** : lint 0 erreurs, docs TESTING, audit races TOCTOU identifiées. (`d7548f6`)
+- **Iter 23** : fix TOCTOU UpdatePlayerStats, sprite cache resize, docs BACKUP. (`52bc274`)
+- **Iter 24** : fix TOCTOU RecoverSession, docs MIGRATIONS. (`8941ffd`)
+- **Iter 25** : fix TOCTOU AddAccountXP, fix test BuyUpgrade, couverture élargie. (`7ceda00`)
+- **Iter 26** : logs hot paths debug, audit PWA, indexes SQLite ajoutés. (`2bbc1a7`)
+- **Iter 27** : PWA network-first HTML, bilan stabilité. (`40b8100`)
+- **Iter 28-29** : fix timeouts flaky Playwright, dep @eslint/js, retries E2E. (`d9e00c5`)
+- **Iter 30** : tests régression API, SECURITY.md, push GitHub. (`ba4ff12`)
 
 ## ADR produits
 

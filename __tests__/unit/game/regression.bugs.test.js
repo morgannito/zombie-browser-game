@@ -18,7 +18,6 @@ describe('regression — deadZombies TTL eviction', () => {
   // We test the internal eviction logic via saveDeadZombie side-effects.
   // The function is not exported, so we exercise it through gameState inspection.
 
-  // eslint-disable-next-line no-unused-vars
   function makeZombie(overrides = {}) {
     return {
       x: 0,
@@ -39,9 +38,10 @@ describe('regression — deadZombies TTL eviction', () => {
     // Arrange — inject a stale entry manually (deathTime = 31 s ago)
     const THIRTY_ONE_SECONDS = 31 * 1000;
     const now = Date.now();
+    const staleZombie = makeZombie({ id: 'stale_id' });
     const gameState = {
       deadZombies: {
-        stale_id: { deathTime: now - THIRTY_ONE_SECONDS }
+        stale_id: { ...staleZombie, deathTime: now - THIRTY_ONE_SECONDS }
       }
     };
 
