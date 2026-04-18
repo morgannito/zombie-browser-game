@@ -1,4 +1,5 @@
-# Stage 1: builder — installe toutes les dépendances (dev incluses)
+# Stage 1: builder — installe uniquement les deps prod (devDeps comme canvas
+# ont des natives cairo/pango non requises runtime).
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache python3 make g++
@@ -7,20 +8,17 @@ WORKDIR /app
 
 COPY package*.json ./
 # HUSKY=0 évite l'échec du hook prepare (devDep)
-RUN HUSKY=0 npm ci --production=false
+RUN HUSKY=0 npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
 
-# Stage 2: runtime — image finale allégée, deps prod uniquement
+# Stage 2: runtime — image finale allégée
 FROM node:20-alpine AS runtime
 
 RUN apk add --no-cache curl
 
 WORKDIR /app
 
-# Copie node_modules depuis le builder puis prune les devDeps
-# Evite un double téléchargement NPM et exploite le cache du builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
-RUN npm prune --production && npm rebuild better-sqlite3
 
 # Copier les artefacts applicatifs
 COPY server.js ./
