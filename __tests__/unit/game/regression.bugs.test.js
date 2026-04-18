@@ -206,15 +206,16 @@ describe('regression — NetworkManager cleanupPlayer removes both queues', () =
   const NetworkManager = require('../../../lib/server/NetworkManager');
 
   test('test_cleanupPlayer_removesEventBatchQueue', () => {
-    // Arrange
+    // Arrange — after refactor, EventBatchQueue is a private collaborator
     const nm = new NetworkManager(null);
-    nm.eventBatchQueue['p1'] = { events: [], timer: null };
+    // Seed the internal queue directly (white-box, acceptable for regression test)
+    nm._eventBatchQueue._queue['p1'] = { events: [] };
 
     // Act
     nm.cleanupPlayer('p1');
 
     // Assert
-    expect(nm.eventBatchQueue['p1']).toBeUndefined();
+    expect(nm._eventBatchQueue._queue['p1']).toBeUndefined();
   });
 
   test('test_cleanupPlayer_removesPlayerLatency', () => {
