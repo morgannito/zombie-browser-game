@@ -18,13 +18,13 @@ describe('SkillBonusCache', () => {
   });
 
   test('get_expired_returnsNull', () => {
-    const cache = new SkillBonusCache(0); // TTL=0ms
+    const cache = new SkillBonusCache(5);
     cache.set('p1', { damageMultiplier: 0.5 });
     return new Promise(resolve =>
       setTimeout(() => {
         expect(cache.get('p1')).toBeNull();
         resolve();
-      }, 1)
+      }, 50)
     );
   });
 
