@@ -23,78 +23,95 @@ Nagle désactivé sur chaque socket TCP (`socket.setNoDelay(true)` dans `bootstr
 
 ## Événements Client → Serveur
 
-### `playerMove`
+| Event | Payload | Notes |
+|---|---|---|
+| `playerMove` | `{ x, y, angle, seq? }` | ≤ 30 Hz ; max 512 B |
+| `playerMoveBatch` | `[{ dx, dy, angle, seq }, ...]` | Max 8 items ; legacy ; réponse `moveAck` |
+| `shoot` | `{ angle, x?, y?, weaponId? }` | `x/y` origine optionnel (sanity cap 300px) ; max 512 B |
+| `setNickname` | `{ nickname }` | Sanitisé : 2–15 chars alphanum |
+| `selectUpgrade` | `{ upgradeId }` | Validé contre `pendingUpgradeChoices` (anti-cheat) |
+| `buyItem` | `{ itemId, category }` | `category` : `"permanent"` ou `"temporary"` |
+| `shopOpened` | — | Passe le joueur en invisible (max 60 s) |
+| `shopClosed` | — | Retire l'invisibilité |
+| `respawn` | — | Réinitialise le run, préserve la progression |
+| `endSpawnProtection` | — | Termine la fenêtre d'invulnérabilité post-spawn |
+| `app:ping` | `(timestamp, reportedLatency?, ack)` | Ack → `serverTime` ; `reportedLatency` stocké pour lag comp |
+| `requestFullState` | — | Force un keyframe complet (reconnexion) |
+| `adminCommand` | `{ command, args? }` | Production : désactivé sauf `ADMIN_DEBUG=true` |
+| `request_leaderboard` | — | Leaderboard public |
+| `submit_score` | `{ score, wave }` | Leaderboard public |
+
+### Détails payload `playerMove`
 ```json
 { "x": 512, "y": 300, "angle": 1.57, "seq": 42 }
 ```
-Émis ≤ 30 Hz. Condition : `|Δpos| > 2px` OU `|Δangle| > 0.05 rad`.
 
-### `playerMoveBatch` (legacy)
+### Détails payload `playerMoveBatch`
 ```json
 [
   { "dx": 5, "dy": -2, "angle": 1.57, "seq": 43 },
   { "dx": 3, "dy": -1, "angle": 1.60, "seq": 44 }
 ]
 ```
-Max 8 entrées. Le serveur reconstruit `x/y` à partir de la position connue + `dx/dy`.
+Le serveur reconstruit `x/y` à partir de la position connue + `dx/dy`. Réponse : `moveAck`.
 
-### `shoot`
+### Détails payload `shoot`
 ```json
-{ "angle": 0.78, "weaponId": "shotgun" }
+{ "angle": 0.78, "x": 514, "y": 302 }
 ```
-
-### `setNickname`
-```json
-{ "nickname": "Alice" }
-```
-
-### `selectUpgrade`
-```json
-{ "upgradeId": "speed_boost" }
-```
-
-### `buyItem`
-```json
-{ "itemId": "health_pack", "cost": 50 }
-```
-
-### `shopOpened` / `shopClosed`
-Pas de payload.
-
-### `respawn`
-Pas de payload.
-
-### `endSpawnProtection`
-Pas de payload.
-
-### `app:ping`
-```json
-{ "clientTime": 1713456000000 }
-```
-Namespaced pour éviter la collision avec le heartbeat engine.io interne.
-
-### `requestFullState`
-Pas de payload. Force un keyframe complet depuis le serveur.
-
-### `adminCommand`
-```json
-{ "command": "spawnBoss", "args": {} }
-```
-Désactivé en production sauf `ADMIN_DEBUG=true`.
-
-### `request_leaderboard` / `submit_score`
-Leaderboard public. `submit_score` : `{ "score": 1500, "wave": 12 }`.
 
 ---
 
 ## Événements Serveur → Client
 
-### `init`
-Snapshot initial, émis une seule fois à la connexion (ou après `requestFullState`).
+| Event | Payload | Notes |
+|---|---|---|
+| `init` | Voir ci-dessous | Connexion initiale ou après `requestFullState` |
+| `gameState` | Voir ci-dessous | Full keyframe toutes les ~10 ticks |
+| `gameStateDelta` | Voir ci-dessous | Frames intermédiaires (diff) |
+| `batchedEvents` | `[{ event, data }, ...]` | Plusieurs events groupés |
+| `positionCorrection` | `{ x, y }` | Anti-cheat : téléporte le client |
+| `moveAck` | `{ seq, x, y }` | Après `playerMoveBatch` |
+| `stunned` | `{ duration }` | Durée restante en ms |
+| `nicknameRejected` | `{ reason }` | Pseudo invalide / doublon / rate-limit |
+| `playerNicknameSet` | `{ playerId, nickname }` | Broadcast `io.emit` à tous |
+| `upgradeSelected` | `{ success, upgradeId }` | Confirmation upgrade appliqué |
+| `shopUpdate` | `{ success, itemId?, category? }` ou `{ success, message }` | Résultat achat |
+| `levelUp` | `{ level, choices[] }` | Choix d'upgrade à présenter |
+| `comboUpdate` | `{ combo, multiplier }` | Mise à jour multiplicateur combo |
+| `comboReset` | — | Combo interrompu |
+| `accountXPGained` | `{ xp, totalXP, level }` | XP compte persistant |
+| `skillBonusesLoaded` | `{ bonuses }` | Bonus de compétences chargés à la connexion |
+| `achievementsUnlocked` | `[{ id, name, xpReward }]` | Succès débloqués |
+| `newWave` | `{ wave, zombieCount }` | Nouvelle vague |
+| `roomChanged` | `{ room }` | Changement de salle |
+| `runCompleted` | `{ stats }` | Run terminé |
+| `mutatorsUpdated` | `{ mutators, effects }` | Mutateurs actifs mis à jour |
+| `bossSpawned` | `{ bossType, health, maxHealth }` | Boss apparu |
+| `bossEnraged` | `{ bossType }` | Boss en rage |
+| `bossPhaseChange` | `{ phase }` | Changement de phase boss |
+| `bossClones` | `{ clones[] }` | Clones invoqués |
+| `bossLaser` | `{ origin, angle, duration }` | Attaque laser |
+| `bossMeteor` | `{ targets[] }` | Pluie de météores |
+| `bossFireMinions` | `{ count }` | Invocation de minions feu |
+| `bossIceSpikes` | `{ positions[] }` | Pics de glace |
+| `bossIceClones` | `{ clones[] }` | Clones de glace |
+| `bossBlizzard` | `{ duration }` | Blizzard actif |
+| `bossVoidMinions` | `{ count }` | Minions du vide |
+| `bossRealityWarp` | — | Distorsion de réalité |
+| `bossIcePrison` | `{ targetId }` | Prison de glace |
+| `bossApocalypse` | — | Phase apocalypse |
+| `sessionTimeout` | — | Session expirée |
+| `serverFull` | `{ message, currentPlayers }` | Serveur plein → disconnect immédiat |
+| `error` | `{ message, code }` | Erreur générique |
+| `adminResponse` | `{ result }` | Réponse commande admin |
+| `leaderboard_update` | `{ scores[] }` | Mise à jour leaderboard |
+
+### Détails payload `init`
 ```json
 {
   "playerId": "socketId",
-  "config": { "ROOM_WIDTH": 1600, "PLAYER_SPEED": 5, "..." },
+  "config": { "ROOM_WIDTH": 1600, "PLAYER_SPEED": 5 },
   "weapons": [...],
   "powerupTypes": [...],
   "zombieTypes": [...],
@@ -109,11 +126,10 @@ Snapshot initial, émis une seule fois à la connexion (ou après `requestFullSt
 }
 ```
 
-### `gameState` (full keyframe)
-Émis toutes les `FULL_STATE_INTERVAL` frames (≈ 10 ticks à 60 Hz).
+### Détails payload `gameState` (full keyframe)
 ```json
 {
-  "players": { "socketId": { "x": 512, "y": 300, "health": 100, "..." } },
+  "players": { "socketId": { "x": 512, "y": 300, "health": 100 } },
   "zombies": [...],
   "bullets": [...],
   "particles": [...],
@@ -130,8 +146,7 @@ Snapshot initial, émis une seule fois à la connexion (ou après `requestFullSt
 }
 ```
 
-### `gameStateDelta`
-Les 9 frames intermédiaires. Ne contient que les champs modifiés depuis le dernier état.
+### Détails payload `gameStateDelta`
 ```json
 {
   "players": { "socketId": { "x": 515, "y": 298 } },
@@ -141,72 +156,14 @@ Les 9 frames intermédiaires. Ne contient que les champs modifiés depuis le der
 }
 ```
 
-### `batchedEvents`
-Plusieurs événements serveur groupés en un seul message pour réduire les frames WS.
+### Détails payload `batchedEvents`
 ```json
 [
-  { "event": "levelUp", "data": { "level": 5, "choices": ["..."] } },
+  { "event": "levelUp", "data": { "level": 5, "choices": ["speed_boost", "armor"] } },
   { "event": "comboUpdate", "data": { "combo": 3, "multiplier": 1.5 } }
 ]
 ```
-Traité côté client par `NetworkManager` : dépaquetage et dispatch de chaque event individuellement.
-
-### `positionCorrection`
-```json
-{ "x": 510, "y": 295 }
-```
-Correction anti-cheat : le client téléporte sa position locale.
-
-### `moveAck`
-```json
-{ "seq": 42, "serverTime": 1713456000010 }
-```
-
-### `stunned`
-```json
-{ "duration": 1500 }
-```
-
-### `levelUp`
-```json
-{ "level": 5, "choices": ["speed_boost", "armor", "reload_speed"] }
-```
-
-### `shopUpdate`
-```json
-{ "items": [...], "gold": 150 }
-```
-
-### `newWave`
-```json
-{ "wave": 4, "zombieCount": 20 }
-```
-
-### `bossSpawned`
-```json
-{ "bossType": "infernal", "health": 5000, "maxHealth": 5000 }
-```
-
-### `accountXPGained`
-```json
-{ "xp": 250, "totalXP": 1200, "level": 7 }
-```
-
-### `achievementsUnlocked`
-```json
-[{ "id": "wave_10", "name": "Survivant", "xpReward": 100 }]
-```
-
-### `serverFull`
-```json
-{ "message": "Serveur complet. Réessayez plus tard.", "currentPlayers": 50 }
-```
-Suivi d'un `disconnect()` immédiat.
-
-### `error`
-```json
-{ "message": "Invalid action", "code": "INVALID_INPUT" }
-```
+Dépaquetage et dispatch côté client par `NetworkManager`.
 
 ---
 
@@ -215,10 +172,13 @@ Suivi d'un `disconnect()` immédiat.
 | Mécanisme | Valeur |
 |---|---|
 | Rate limit `playerMove` | 100 req/s (token bucket) |
-| Anti-cheat vitesse | `speedMultiplier > 5` → disconnect (`ENABLE_ANTICHEAT=true`) |
+| Anti-cheat vitesse | `speedMultiplier > 10` → disconnect (`ENABLE_ANTICHEAT=true`) |
 | Batch max | 8 entrées par `playerMoveBatch` |
 | Séquence | Drop des moves out-of-order (seq check) |
+| Payload max | 512 B pour `playerMove` et `shoot` |
 | JWT | Vérification à chaque connexion socket (`socketMiddleware`) |
+| Shop atomique | Déduction gold avec rollback si négatif (anti race-condition) |
+| Upgrade anti-cheat | `selectUpgrade` validé contre `player.pendingUpgradeChoices` |
 
 ---
 

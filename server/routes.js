@@ -75,7 +75,7 @@ function mountSystemRoutes(app, deps) {
  */
 function mountDocsRoutes(app) {
   const path = require('path');
-  app.get('/admin', (req, res) => {
+  app.get('/admin', requireMetricsToken, (req, res) => {
     res.sendFile(path.resolve(__dirname, '../public/admin.html'));
   });
   app.get('/docs', (req, res) => {

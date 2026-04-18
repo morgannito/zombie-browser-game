@@ -179,19 +179,17 @@ describe('BuyUpgradeUseCase', () => {
       ).rejects.toThrow('Upgrade damage already at max level');
     });
 
-    it('should throw when upgrade exceeds custom max level', async () => {
+    it('should throw when upgrade exceeds server-side max level (10)', async () => {
       const upgrades = new PermanentUpgrades({
         playerId: 'player-001',
-        speedLevel: 5
+        speedLevel: 10
       });
       mockUpgradesRepository.getOrCreate.mockResolvedValue(upgrades);
 
       await expect(
         useCase.execute({
           playerId: 'player-001',
-          upgradeName: 'speed',
-          cost: 200,
-          maxLevel: 5
+          upgradeName: 'speed'
         })
       ).rejects.toThrow('Upgrade speed already at max level');
     });

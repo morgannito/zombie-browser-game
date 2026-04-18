@@ -303,7 +303,7 @@ class GameEngine {
         window.inputManager.updateMouse(e.clientX, e.clientY);
       };
 
-      this.canvas.addEventListener('mousemove', this.handlers.mousemove);
+      this.canvas.addEventListener('mousemove', this.handlers.mousemove, { passive: true });
     }
   }
 
@@ -606,7 +606,7 @@ class GameEngine {
 
     // Remove mouse event listeners (if desktop)
     if (this.handlers.mousemove) {
-      this.canvas.removeEventListener('mousemove', this.handlers.mousemove);
+      this.canvas.removeEventListener('mousemove', this.handlers.mousemove, { passive: true });
     }
     if (this.handlers.click) {
       this.canvas.removeEventListener('click', this.handlers.click);

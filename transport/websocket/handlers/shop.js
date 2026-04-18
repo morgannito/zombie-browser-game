@@ -22,7 +22,7 @@ const { SHOP_ITEMS } = ConfigManager;
 function applyPermanentPurchase(socket, player, itemId) {
   const item = SHOP_ITEMS.permanent[itemId];
   if (!item) {
-    logger.error('Item validation failed', { itemId, category: 'permanent' });
+    logger.error('Item validation failed', { itemId, category: 'permanent', traceId: socket.traceId || null });
     return;
   }
 
@@ -64,7 +64,8 @@ function applyPermanentPurchase(socket, player, itemId) {
     category: 'permanent',
     itemId,
     newLevel: player.upgrades[itemId],
-    remainingGold: player.gold
+    remainingGold: player.gold,
+    traceId: socket.traceId || null
   });
   socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
     success: true,
@@ -82,7 +83,7 @@ function applyPermanentPurchase(socket, player, itemId) {
 function applyTemporaryPurchase(socket, player, itemId) {
   const item = SHOP_ITEMS.temporary[itemId];
   if (!item) {
-    logger.error('Temporary item validation failed', { itemId, category: 'temporary' });
+    logger.error('Temporary item validation failed', { itemId, category: 'temporary', traceId: socket.traceId || null });
     return;
   }
 
@@ -110,7 +111,8 @@ function applyTemporaryPurchase(socket, player, itemId) {
     socketId: socket.id,
     category: 'temporary',
     itemId,
-    remainingGold: player.gold
+    remainingGold: player.gold,
+    traceId: socket.traceId || null
   });
   socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
     success: true,
@@ -131,12 +133,13 @@ function registerBuyItemHandler(socket, gameState) {
       logger.debug('Shop purchase request', {
         socketId: socket.id,
         itemId: data?.itemId,
-        category: data?.category
+        category: data?.category,
+        traceId: socket.traceId || null
       });
 
       const validatedData = validateBuyItemData(data);
       if (!validatedData) {
-        logger.warn('Invalid buy item data received', { socketId: socket.id, data });
+        logger.warn('Invalid buy item data received', { socketId: socket.id, data, traceId: socket.traceId || null });
         socket.emit(SOCKET_EVENTS.SERVER.SHOP_UPDATE, {
           success: false,
           message: 'Item invalide'
@@ -145,7 +148,7 @@ function registerBuyItemHandler(socket, gameState) {
       }
 
       if (!checkRateLimit(socket.id, 'buyItem')) {
-        logger.warn('Shop purchase rate limited', { socketId: socket.id });
+        logger.warn('Shop purchase rate limited', { socketId: socket.id, traceId: socket.traceId || null });
         return;
       }
 
@@ -197,7 +200,7 @@ function registerShopHandlers(socket, gameState) {
       // ANTI-CHEAT: Cap invisibility at 60s max — prevents Infinity abuse
       const MAX_SHOP_INVISIBLE_MS = 60_000;
       player.invisibleEndTime = Date.now() + MAX_SHOP_INVISIBLE_MS;
-      logger.info('Player invisible - shop opened', { player: player.nickname || socket.id });
+      logger.info('Player invisible - shop opened', { player: player.nickname || socket.id, traceId: socket.traceId || null });
     })
   );
 
@@ -212,7 +215,7 @@ function registerShopHandlers(socket, gameState) {
       player.lastActivityTime = Date.now();
       player.invisible = false;
       player.invisibleEndTime = 0;
-      logger.info('Player visible - shop closed', { player: player.nickname || socket.id });
+      logger.info('Player visible - shop closed', { player: player.nickname || socket.id, traceId: socket.traceId || null });
     })
   );
 }

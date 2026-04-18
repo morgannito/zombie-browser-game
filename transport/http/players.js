@@ -100,22 +100,18 @@ function initPlayerRoutes(container, options = {}) {
         id: uuidSchema.required()
       }),
       body: Joi.object({
-        upgradeName: Joi.string().valid('maxHealth', 'damage', 'speed', 'fireRate').required(),
-        cost: Joi.number().integer().min(0).required(),
-        maxLevel: Joi.number().integer().min(1).max(100).default(10)
+        upgradeName: Joi.string().valid('maxHealth', 'damage', 'speed', 'fireRate').required()
       })
     }),
     requireSameUserInParam('id'),
     asyncHandler(async (req, res) => {
       const { id } = req.params;
-      const { upgradeName, cost, maxLevel } = req.body;
+      const { upgradeName } = req.body;
       const buyUpgrade = container.get('buyUpgradeUseCase');
 
       const upgrades = await buyUpgrade.execute({
         playerId: id,
-        upgradeName,
-        cost,
-        maxLevel
+        upgradeName
       });
 
       res.json(upgrades.toObject());

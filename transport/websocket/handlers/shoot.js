@@ -156,12 +156,12 @@ function registerShootHandler(socket, gameState, entityManager, _roomManager) {
       }
       // DoS guard: a shoot payload is never more than a few fields.
       if (!data || Buffer.byteLength(JSON.stringify(data), 'utf8') > 512) {
-        logger.warn('shoot: oversized payload rejected', { socketId: socket.id });
+        logger.warn('shoot: oversized payload rejected', { socketId: socket.id, traceId: socket.traceId || null });
         return;
       }
       const validatedData = validateShootData(data);
       if (!validatedData) {
-        logger.warn('Invalid shoot data received', { socketId: socket.id, data });
+        logger.warn('Invalid shoot data received', { socketId: socket.id, data, traceId: socket.traceId || null });
         return;
       }
 

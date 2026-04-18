@@ -5,6 +5,7 @@
 
 const { createParticles, createLoot } = require('../../../game/lootFunctions');
 const ConfigManager = require('../../../lib/server/ConfigManager');
+const { PARTICLES_DEFAULT_COUNT } = require('../constants');
 const { distance } = require('../../../game/utilityFunctions');
 // Direct imports — DeathProgressionHandler and WaveManager are both leaf
 // modules (only depend on ConfigManager), so no cycle is possible here.
@@ -110,7 +111,7 @@ function updatePoisonedZombies(gameState, now, entityManager, io = null, zombieM
  * BUG FIX: Handle boss kills to trigger new wave
  */
 function killPoisonedZombie(zombie, zombieId, gameState, entityManager, io, zombieManager) {
-  createParticles(zombie.x, zombie.y, zombie.color, 15, entityManager);
+  createParticles(zombie.x, zombie.y, zombie.color, PARTICLES_DEFAULT_COUNT, entityManager);
   createLoot(zombie.x, zombie.y, zombie.goldDrop, zombie.xpDrop, gameState);
   delete gameState.zombies[zombieId];
   gameState.collisionManager?.invalidatePathfindingCache(zombieId);
@@ -188,7 +189,7 @@ function spawnSplitterMinion(zombie, index, splitterType, gameState, entityManag
     isSplit: true
   };
 
-  createParticles(splitX, splitY, splitterType.splitColor, 15, entityManager);
+  createParticles(splitX, splitY, splitterType.splitColor, PARTICLES_DEFAULT_COUNT, entityManager);
 }
 
 /**

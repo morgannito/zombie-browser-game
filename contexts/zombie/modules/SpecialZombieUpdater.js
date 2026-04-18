@@ -7,6 +7,7 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
 const { clampToRoomBounds, moveZombieSafely } = require('./bosses/shared');
+const { MULTIPLIER_70_PCT, CLONE_DAMAGE_MULTIPLIER, PARTICLES_DEFAULT_COUNT } = require('../constants');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
@@ -60,8 +61,8 @@ function executeTeleport(zombie, closestPlayer, teleporterType, now, gameState, 
   const oldX = zombie.x;
   const oldY = zombie.y;
   if (moveZombieSafely(zombie, newX, newY, gameState)) {
-    createParticles(oldX, oldY, teleporterType.color, 15, entityManager);
-    createParticles(zombie.x, zombie.y, teleporterType.color, 15, entityManager);
+    createParticles(oldX, oldY, teleporterType.color, PARTICLES_DEFAULT_COUNT, entityManager);
+    createParticles(zombie.x, zombie.y, teleporterType.color, PARTICLES_DEFAULT_COUNT, entityManager);
   }
 }
 
@@ -234,7 +235,7 @@ function startDash(zombie, closestPlayer, now, berserkerType, entityManager) {
   zombie.isDashing = true;
   zombie.dashEndTime = now + berserkerType.dashDuration;
   zombie.dashAngle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
-  createParticles(zombie.x, zombie.y, '#ff4400', 15, entityManager);
+  createParticles(zombie.x, zombie.y, '#ff4400', PARTICLES_DEFAULT_COUNT, entityManager);
 }
 
 /**
@@ -295,13 +296,13 @@ function reviveNearbyZombies(zombie, necroType, gameState, entityManager) {
       health: corpse.maxHealth * necroType.reviveHealthPercent,
       maxHealth: corpse.maxHealth * necroType.reviveHealthPercent,
       speed: corpse.speed * 0.9,
-      damage: corpse.damage * 0.7,
-      goldDrop: Math.floor(corpse.goldDrop * 0.5),
-      xpDrop: Math.floor(corpse.xpDrop * 0.5)
+      damage: corpse.damage * MULTIPLIER_70_PCT,
+      goldDrop: Math.floor(corpse.goldDrop * CLONE_DAMAGE_MULTIPLIER),
+      xpDrop: Math.floor(corpse.xpDrop * CLONE_DAMAGE_MULTIPLIER)
     };
 
     delete gameState.deadZombies[corpseId];
-    createParticles(corpse.x, corpse.y, '#00ff00', 15, entityManager);
+    createParticles(corpse.x, corpse.y, '#00ff00', PARTICLES_DEFAULT_COUNT, entityManager);
     revivedCount++;
   }
 

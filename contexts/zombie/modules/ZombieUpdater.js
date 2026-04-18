@@ -15,6 +15,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
+const { DAMAGE_INTERVAL, ZOMBIE_MAX_SPEED, PARTICLES_DEFAULT_COUNT } = require('../constants');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
 // Direct import — DeathProgressionHandler is a leaf module (only depends on
@@ -575,9 +576,7 @@ function calculateEffectiveSpeed(zombie, _angle) {
   }
 
   // FIX: Cap maximum speed to prevent teleportation
-  // Max speed = 15 pixels per frame at 60fps (900 pixels/sec)
-  const MAX_SPEED = 15;
-  return Math.min(effectiveSpeed, MAX_SPEED);
+  return Math.min(effectiveSpeed, ZOMBIE_MAX_SPEED);
 }
 
 /**
@@ -637,7 +636,7 @@ function applyPlayerDamage(zombie, zombieId, player, gameState, now) {
     player.lastDamageTime = {};
   }
   const lastDamage = player.lastDamageTime[zombieId] || 0;
-  const DAMAGE_INTERVAL = 100;
+  // DAMAGE_INTERVAL imported from constants
 
   if (now - lastDamage >= DAMAGE_INTERVAL) {
     let damageDealt = zombie.damage * (DAMAGE_INTERVAL / 1000);

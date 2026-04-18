@@ -59,7 +59,7 @@ const AUTH_LIMITER_CONFIG = {
   message: { error: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.DISABLE_AUTH_RATE_LIMIT === '1'
+  skip: () => process.env.NODE_ENV !== 'production' && process.env.DISABLE_AUTH_RATE_LIMIT === '1'
 };
 
 // Internal monitoring token — required in production for /metrics and /health

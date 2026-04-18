@@ -464,7 +464,7 @@ return;
 
     canvas.addEventListener('touchstart', handleGestureTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleGestureTouchMove, { passive: false });
-    canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: false });
+    canvas.addEventListener('touchend', handleGestureTouchEnd, { passive: true });
 
     // Double-tap on auto-shoot for burst mode
     const autoShootBtn = this.elements.autoShootBtn || document.getElementById('auto-shoot-btn');

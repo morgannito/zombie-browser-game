@@ -8,6 +8,7 @@
 const { SOCKET_EVENTS } = require('../events');
 const { safeHandler } = require('../../../sockets/socketUtils');
 const { cleanupPlayerBullets } = require('../../../game/utilityFunctions');
+const logger = require('../../../infrastructure/logging/Logger');
 const {
   savePlayerProgressionSnapshot,
   resetPlayerRunState,
@@ -33,6 +34,7 @@ function registerRespawnHandler(socket, gameState, entityManager) {
       if (!player) {
         return;
       }
+      logger.info('Player respawn', { socketId: socket.id, traceId: socket.traceId || null });
       player.lastActivityTime = Date.now();
 
       const snapshot = savePlayerProgressionSnapshot(player);

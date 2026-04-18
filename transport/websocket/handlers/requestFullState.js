@@ -11,6 +11,7 @@
 
 const { SOCKET_EVENTS } = require('../events');
 const { safeHandler } = require('../../../sockets/socketUtils');
+const logger = require('../../../infrastructure/logging/Logger');
 
 /**
  * @param {import('socket.io').Socket} socket
@@ -24,6 +25,7 @@ function registerRequestFullStateHandler(socket, gameState, emitInitSnapshot) {
       if (!gameState.players[socket.id]) {
         return;
       }
+      logger.debug('requestFullState', { socketId: socket.id, traceId: socket.traceId || null });
       emitInitSnapshot(socket, gameState, true);
     })
   );

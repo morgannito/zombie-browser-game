@@ -110,19 +110,32 @@ Session recovery : 5min apres deconnexion. Rate limiting par event par socket.
 ```bash
 npm start              # Production (node server.js)
 npm run dev            # Dev avec nodemon (hot reload)
+npm run build          # Bundle client (scripts/build-bundle.js)
 
 npm test               # Tests Jest + coverage
+npm run test:watch     # Tests en mode watch
 npm run test:unit      # Tests unitaires uniquement
+npm run test:integration # Tests d'integration uniquement
+npm run test:e2e       # Smoke tests E2E Playwright (headless Chromium)
+npm run test:e2e:ui    # E2E en mode UI interactif
+
 npm run lint           # ESLint
 npm run lint:fix       # Auto-fix lint
-npm run format         # Prettier
+npm run format         # Prettier (ecriture)
+npm run format:check   # Prettier (verification)
+npm run fix            # lint:fix alias
+npm run typecheck      # Verification TypeScript (tsconfig.check.json)
+
 npm run db:migrate     # Executer migrations
 npm run db:rollback    # Rollback migration
 npm run db:status      # Statut des migrations
-npm run db:backup      # Backup horodate de la base (voir section Database operations)
-npm run deploy:server  # Serveur webhook CI/CD
+npm run db:backup      # Backup horodate de la base
 
-npm run test:e2e       # Smoke tests E2E Playwright (headless Chromium)
+npm run bench          # Load test (bench/loadtest.js)
+npm run bench:report   # Rapport metriques (bench/metrics-report.js)
+
+npm run health         # Verifier sante du serveur local
+npm run deploy:server  # Serveur webhook CI/CD
 ```
 
 ## Smoke tests E2E
@@ -231,11 +244,37 @@ Variables principales :
 | `LOG_LEVEL` | debug | error/warn/info/debug |
 | `PERFORMANCE_MODE` | balanced | high/balanced/low-memory/minimal |
 
-## Documentation complementaire
+## Docs
+
+Documentation racine :
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architecture detaillee, patterns, flux de donnees, principes SOLID
-- [README.GAMEPLAY.md](./README.GAMEPLAY.md) - Documentation gameplay complete (controles, zombies, armes, strategies)
+- [README.GAMEPLAY.md](./README.GAMEPLAY.md) - Gameplay complet (controles, zombies, armes, strategies)
 - [DOCKER.md](./DOCKER.md) - Guide Docker et deploiement
+
+`docs/` :
+
+| Fichier | Description |
+|---------|-------------|
+| [API.md](./docs/API.md) | Reference complete de l'API REST |
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Architecture applicative detaillee |
+| [BACKUP.md](./docs/BACKUP.md) | Procedures de backup et restauration |
+| [CONFIG.md](./docs/CONFIG.md) | Variables d'environnement et configuration |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Guide de deploiement (Docker, PM2, Fly.io, Railway, Render) |
+| [ITERATIONS.md](./docs/ITERATIONS.md) | Historique des iterations et evolutions |
+| [PERFORMANCE.md](./docs/PERFORMANCE.md) | Profiling CPU, heap snapshot, metriques |
+| [SCRIPTS.md](./docs/SCRIPTS.md) | Reference des scripts utilitaires |
+| [WEBSOCKET.md](./docs/WEBSOCKET.md) | Protocole WebSocket et events Socket.IO |
+
+`docs/adr/` — Architecture Decision Records :
+
+- [0001-context-dependencies.md](./docs/adr/0001-context-dependencies.md)
+- [0001-tcp-nodelay.md](./docs/adr/0001-tcp-nodelay.md)
+- [0002-anti-cheat-disabled.md](./docs/adr/0002-anti-cheat-disabled.md)
+- [0002-gitnexus-cycle-audit.md](./docs/adr/0002-gitnexus-cycle-audit.md)
+- [0003-msgpack-binary-parser.md](./docs/adr/0003-msgpack-binary-parser.md)
+- [0004-sqlite-wal-mode.md](./docs/adr/0004-sqlite-wal-mode.md)
+- [0005-no-aoi-filtering.md](./docs/adr/0005-no-aoi-filtering.md)
 
 ## Performance profiling
 

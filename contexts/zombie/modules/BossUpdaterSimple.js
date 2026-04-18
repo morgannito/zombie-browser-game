@@ -8,6 +8,14 @@ const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
 const { handlePlayerDeathProgression } = require('../../player/modules/DeathProgressionHandler');
 const { clampToRoomBounds, moveZombieSafely } = require('./bosses/shared');
+const {
+  AURA_EFFECT_INTERVAL,
+  MULTIPLIER_70_PCT,
+  CLONE_DAMAGE_MULTIPLIER,
+  CLONE_SPEED_MULTIPLIER,
+  BOSS_TELEPORT_DISTANCE_MIN,
+  PARTICLES_DEFAULT_COUNT,
+} = require('../constants');
 
 const { ZOMBIE_TYPES } = ConfigManager;
 
@@ -40,7 +48,7 @@ return;
  n++;
 }
       if (perfIntegration.canSpawnZombie(n) && zombieManager.spawnSingleZombie()) {
-        createParticles(zombie.x, zombie.y, bossType.color, 15, entityManager);
+        createParticles(zombie.x, zombie.y, bossType.color, PARTICLES_DEFAULT_COUNT, entityManager);
       }
     }
   }
@@ -95,7 +103,7 @@ return;
   if (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown) {
     _infectToxicPool(zombie, now, bossType, entityManager, gameState);
   }
-  if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
+  if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= AURA_EFFECT_INTERVAL) {
     _infectDeathAura(zombie, now, bossType, entityManager, gameState);
   }
 }
@@ -117,7 +125,7 @@ return;
 
   if (!zombie.isEnraged) {
     zombie.hasShield = true;
-    if (!zombie.lastShieldEffect || now - zombie.lastShieldEffect >= 1000) {
+    if (!zombie.lastShieldEffect || now - zombie.lastShieldEffect >= AURA_EFFECT_INTERVAL) {
       zombie.lastShieldEffect = now;
       createParticles(zombie.x, zombie.y, bossType.shieldColor, 8, entityManager);
     }
@@ -183,8 +191,8 @@ function _roiSpawnClones(zombie, zombieId, now, bossType, io, entityManager, gam
   zombie.lastClone = now;
   for (let i = 0; i < bossType.cloneCount; i++) {
     const angle = (Math.PI * 2 * i) / bossType.cloneCount;
-    const cloneSize = bossType.size * 0.7;
-    const pos = clampToRoomBounds({ size: cloneSize }, zombie.x + Math.cos(angle) * 150, zombie.y + Math.sin(angle) * 150);
+    const cloneSize = bossType.size * MULTIPLIER_70_PCT; // 70% of boss size
+    const pos = clampToRoomBounds({ size: cloneSize }, zombie.x + Math.cos(angle) * BOSS_TELEPORT_DISTANCE_MIN, zombie.y + Math.sin(angle) * BOSS_TELEPORT_DISTANCE_MIN);
     if (!canPlaceZombieAt({ size: cloneSize }, pos.x, pos.y, gameState)) {
 continue;
 }
@@ -192,7 +200,7 @@ continue;
     gameState.zombies[cloneId] = {
       id: cloneId, x: pos.x, y: pos.y, size: cloneSize, color: '#ff69b4',
       type: 'bossRoi', health: bossType.cloneHealth, maxHealth: bossType.cloneHealth,
-      speed: bossType.speed * 1.2, damage: bossType.damage * 0.5,
+      speed: bossType.speed * CLONE_SPEED_MULTIPLIER, damage: bossType.damage * CLONE_DAMAGE_MULTIPLIER,
       goldDrop: 100, xpDrop: 50, isBoss: false, isClone: true,
       phase: 1, createdAt: now, despawnTime: now + bossType.cloneDuration
     };
@@ -338,7 +346,7 @@ continue;
     if (angleDiff < bossType.laserWidth / 2 / dist && dist < bossType.laserRange) {
       player.lastKillerType = zombie.type;
       player.health -= bossType.laserDamage;
-      createParticles(player.x, player.y, '#ff0000', 15, entityManager);
+      createParticles(player.x, player.y, '#ff0000', PARTICLES_DEFAULT_COUNT, entityManager);
       if (player.health <= 0) {
 handlePlayerDeathProgression(player, playerId, gameState, now, true);
 }

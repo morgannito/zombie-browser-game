@@ -27,7 +27,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
     safeHandler('selectUpgrade', function (data) {
       const validatedData = validateUpgradeData(data);
       if (!validatedData) {
-        logger.warn('Invalid upgrade data received', { socketId: socket.id, data });
+        logger.warn('Invalid upgrade data received', { socketId: socket.id, data, traceId: socket.traceId || null });
         socket.emit(SOCKET_EVENTS.SERVER.ERROR, {
           message: 'Upgrade invalide',
           code: 'INVALID_UPGRADE'
@@ -48,7 +48,7 @@ function registerSelectUpgradeHandler(socket, gameState) {
 
       const upgrade = LEVEL_UP_UPGRADES[validatedData.upgradeId];
       if (!upgrade) {
-        logger.error('Upgrade validation failed', { upgradeId: validatedData.upgradeId });
+        logger.error('Upgrade validation failed', { upgradeId: validatedData.upgradeId, traceId: socket.traceId || null });
         return;
       }
 
@@ -59,7 +59,8 @@ function registerSelectUpgradeHandler(socket, gameState) {
         logger.warn('Anti-cheat: selectUpgrade not in pending choices', {
           player: player.nickname || socket.id,
           upgradeId: validatedData.upgradeId,
-          pending: batches
+          pending: batches,
+          traceId: socket.traceId || null
         });
         return;
       }

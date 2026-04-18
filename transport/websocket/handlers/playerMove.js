@@ -39,11 +39,10 @@ const ENABLE_ANTICHEAT = process.env.ENABLE_ANTICHEAT === 'true';
 /**
  * Returns false if the player is not eligible to move (alive, nickname, rate-limit).
  * @param {object} socket
- * @param {object} data
  * @param {object} player
  * @returns {boolean}
  */
-function _validateAndRateLimit(socket, data, player) {
+function _validateAndRateLimit(socket, player) {
   if (!player || !player.alive || !player.hasNickname) {
 return false;
 }
@@ -55,12 +54,11 @@ return false;
 
 /**
  * Clamps validated position to world bounds.
- * @param {object} player
  * @param {object} validatedData
  * @param {object} config
  * @returns {{ newX: number, newY: number }}
  */
-function _resolveMovementPosition(player, validatedData, config) {
+function _resolveMovementPosition(validatedData, config) {
   const wallThickness = config.WALL_THICKNESS || 40;
   const playerSize = config.PLAYER_SIZE || 20;
   const newX = Math.max(
@@ -154,7 +152,7 @@ return;
   if (!validatedData) {
 return;
 }
-  if (!_validateAndRateLimit(socket, data, player)) {
+  if (!_validateAndRateLimit(socket, player)) {
 return;
 }
 
@@ -168,7 +166,7 @@ return;
 }
 
   if (ENABLE_ANTICHEAT && player.speedMultiplier > SUSPICIOUS_SPEED_THRESHOLD) {
-    logger.warn('Anti-cheat: Suspicious speedMultiplier detected', { player: player.nickname || socket.id, speedMultiplier: player.speedMultiplier });
+    logger.warn('Anti-cheat: Suspicious speedMultiplier detected', { player: player.nickname || socket.id, speedMultiplier: player.speedMultiplier, traceId: socket.traceId || null });
     _mc.recordCheatAttempt('speed_multiplier');
     if (_mc.recordViolation(socket.id)) {
       _mc.metrics.anticheat.player_disconnects_total++;
@@ -186,7 +184,7 @@ player.moveBudget = MAX_BUDGET;
   const boostMultiplier = (player.speedBoost && now < player.speedBoost) ? 2 : 1;
   player.moveBudget = Math.min(MAX_BUDGET, player.moveBudget + timeDelta * PIXELS_PER_MS * Math.min(speedMultiplier * boostMultiplier, MAX_ACCRUAL_MULTIPLIER) * ACCRUAL_FACTOR);
 
-  const { newX, newY } = _resolveMovementPosition(player, validatedData, CONFIG);
+  const { newX, newY } = _resolveMovementPosition(validatedData, CONFIG);
 
   if (ENABLE_ANTICHEAT) {
     const dx = newX - player.x;
@@ -195,7 +193,7 @@ player.moveBudget = MAX_BUDGET;
     const budgetPlusAllowance = player.moveBudget + MIN_ALLOWANCE;
     if (distanceSq > budgetPlusAllowance * budgetPlusAllowance) {
       const distance = Math.sqrt(distanceSq);
-      logger.warn('Anti-cheat: Movement rejected - exceeded budget', { player: player.nickname || socket.id, distance: Math.round(distance), budget: Math.round(player.moveBudget) });
+      logger.warn('Anti-cheat: Movement rejected - exceeded budget', { player: player.nickname || socket.id, distance: Math.round(distance), budget: Math.round(player.moveBudget), traceId: socket.traceId || null });
       _mc.recordCheatAttempt('movement_budget');
       _mc.recordMovementCorrection();
       if (_mc.recordViolation(socket.id)) {
@@ -227,7 +225,7 @@ return;
 }
       // DoS guard: reject oversized payloads before any further processing.
       if (Buffer.byteLength(JSON.stringify(data), 'utf8') > 512) {
-        logger.warn('playerMove: oversized payload rejected', { socketId: socket.id });
+        logger.warn('playerMove: oversized payload rejected', { socketId: socket.id, traceId: socket.traceId || null });
         return;
       }
       _processSingleMove(socket, gameState, roomManager, data);
@@ -242,7 +240,7 @@ return;
 return;
 }
       if (!Array.isArray(batch) || batch.length === 0 || batch.length > 8) {
-        logger.warn('Invalid playerMoveBatch payload', { socketId: socket.id, len: batch?.length });
+        logger.warn('Invalid playerMoveBatch payload', { socketId: socket.id, len: batch?.length, traceId: socket.traceId || null });
         return;
       }
       for (const move of batch) {

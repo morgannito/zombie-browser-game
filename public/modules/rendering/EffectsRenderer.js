@@ -6,6 +6,9 @@
  * @version 1.0.0
  */
 
+// Hoisted constant — avoids new Set() allocation every frame in renderDynamicPropParticles
+const _FIRE_COLORS = new Set(['#ff6600', '#ffaa00', '#ffff00']);
+
 class EffectsRenderer {
   // ── Particle Pool ────────────────────────────────────────────────────────
   static POOL_SIZE = 500;
@@ -192,7 +195,7 @@ break;
       return;
     }
 
-    const FIRE_COLORS = new Set(['#ff6600', '#ffaa00', '#ffff00']);
+    const FIRE_COLORS = _FIRE_COLORS;
 
     // Batch by color+alpha key; fire particles need a glow pass so keep separate
     const normalBuckets = this._dynPropBuckets;
@@ -472,7 +475,7 @@ continue;
     }
   }
 
-  renderEnvironmentalParticles(ctx, camera, envParticles) {
+  renderEnvironmentalParticles(ctx, _camera, envParticles) {
     if (!envParticles || !envParticles.particles) {
       return;
     }
@@ -603,7 +606,7 @@ continue;
     ctx.restore();
   }
 
-  renderWeather(ctx, camera, weather) {
+  renderWeather(ctx, _camera, weather) {
     if (!weather || weather.intensity === 0) {
       return;
     }

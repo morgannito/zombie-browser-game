@@ -23,9 +23,10 @@ function registerSpawnProtectionHandlers(socket, gameState) {
         return;
       }
 
+      logger.debug('endSpawnProtection', { socketId: socket.id, traceId: socket.traceId || null });
       player.lastActivityTime = Date.now();
       player.spawnProtection = false;
-      logger.info('Spawn protection ended', { player: player.nickname || socket.id });
+      logger.info('Spawn protection ended', { player: player.nickname || socket.id, traceId: socket.traceId || null });
     })
   );
 }

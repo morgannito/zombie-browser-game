@@ -6,6 +6,16 @@
  * @version 1.0.0
  */
 
+const MAGNET_RADIUS_SQ = 80 * 80; // 6400 — avoids Math.sqrt in magnet loops
+
+const SKIN_COLORS = {
+  cyan:   { primary: '#0088ff', secondary: '#0066cc' },
+  red:    { primary: '#cc1111', secondary: '#991111' },
+  green:  { primary: '#009933', secondary: '#007722' },
+  purple: { primary: '#7722cc', secondary: '#551199' },
+  gold:   { primary: '#cc9900', secondary: '#aa7700' }
+};
+
 const DANGER_AURA_COLORS = {
   explosive: '#ff6a00',
   shooter: '#ffcc00',
@@ -466,15 +476,13 @@ return this._playerBodyCache.get(key);
     now = now || Date.now();
 
     // Magnet: purge stale ids, lerp active ones toward player
-    const MAGNET_RADIUS = 80;
     const MAGNET_LERP = 0.15;
     if (magnetEnabled && playerPos) {
       for (const id in powerups) {
         const p = powerups[id];
         const dx = p.x - playerPos.x;
         const dy = p.y - playerPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < MAGNET_RADIUS) {
+        if (dx * dx + dy * dy < MAGNET_RADIUS_SQ) {
           const prev = this._magnetPowerups.get(id) ?? { x: p.x, y: p.y };
           this._magnetPowerups.set(id, {
             x: prev.x + (playerPos.x - prev.x) * MAGNET_LERP,
@@ -569,15 +577,13 @@ this._magnetPowerups.delete(id);
     now = now || Date.now();
 
     // Magnet: lerp loot toward player when within range
-    const MAGNET_RADIUS = 80;
     const MAGNET_LERP = 0.15;
     if (magnetEnabled && playerPos) {
       for (const id in loot) {
         const item = loot[id];
         const dx = item.x - playerPos.x;
         const dy = item.y - playerPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < MAGNET_RADIUS) {
+        if (dx * dx + dy * dy < MAGNET_RADIUS_SQ) {
           const prev = this._magnetLoot.get(id) ?? { x: item.x, y: item.y };
           this._magnetLoot.set(id, {
             x: prev.x + (playerPos.x - prev.x) * MAGNET_LERP,
@@ -1158,7 +1164,7 @@ continue;
     } else if (zombie.type === 'bossCharnier') {
       this._renderBossCharnierDetails(ctx, zombie, scale, headRadius, now);
     } else if (zombie.type === 'bossInfect') {
-      this._renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius, now);
+      this._renderBossInfectDetails(ctx, baseSize, scale, headRadius, now);
     } else if (zombie.type === 'bossColosse') {
       this._renderBossColosseDetails(
         ctx,
@@ -1374,7 +1380,7 @@ continue;
     ctx.restore();
   }
 
-  _renderBossInfectDetails(ctx, zombie, baseSize, scale, headRadius, now) {
+  _renderBossInfectDetails(ctx, baseSize, scale, headRadius, now) {
     ctx.save();
 
     const pulseAmount = Math.sin(now / 250) * 0.2;
@@ -2382,20 +2388,13 @@ continue;
    * @param {number} timestamp
    */
   drawPlayerSprite(ctx, player, isCurrentPlayer, timestamp) {
-    const velocity = Math.sqrt((player.vx || 0) ** 2 + (player.vy || 0) ** 2);
-    const isMoving = velocity > 0.5;
+    const vx = player.vx || 0, vy = player.vy || 0;
+    const isMoving = vx * vx + vy * vy > 0.25; // 0.5² — skip Math.sqrt
     const idleBob = isMoving ? 0 : Math.sin(timestamp / 600) * 1.5;
     const walkCycle = isMoving ? Math.sin(timestamp / 150) * 0.3 : Math.sin(timestamp / 700) * 0.07;
 
-    const SKIN_COLORS_DYN = {
-      cyan: { primary: '#0088ff', secondary: '#0066cc' },
-      red: { primary: '#cc1111', secondary: '#991111' },
-      green: { primary: '#009933', secondary: '#007722' },
-      purple: { primary: '#7722cc', secondary: '#551199' },
-      gold: { primary: '#cc9900', secondary: '#aa7700' }
-    };
     const activeSkin = isCurrentPlayer ? localStorage.getItem('pref_skin') || 'cyan' : null;
-    const sc2 = isCurrentPlayer ? (SKIN_COLORS_DYN[activeSkin] || SKIN_COLORS_DYN.cyan) : null;
+    const sc2 = isCurrentPlayer ? (SKIN_COLORS[activeSkin] || SKIN_COLORS.cyan) : null;
     const secondaryColor = isCurrentPlayer ? sc2.secondary : '#cc6600';
     const primaryColor = isCurrentPlayer ? sc2.primary : '#ff8800';
 
