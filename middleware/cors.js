@@ -45,7 +45,7 @@ function corsMiddleware(req, res, next) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   }
   if (req.method === 'OPTIONS') {
-    // Reject preflight for non-whitelisted origins — do not echo back CORS headers
+    // Reject preflight for non-whitelisted origins; no-origin requests pass through (server-to-server/health checks)
     if (origin && !ALLOWED_ORIGINS.includes(origin)) {
       return res.sendStatus(403);
     }
