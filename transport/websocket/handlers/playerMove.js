@@ -132,6 +132,7 @@ function _applyMovementToPlayer(player, newX, newY, roomManager) {
  * @param {object} data - Raw move data
  */
 function _processSingleMove(socket, gameState, roomManager, data) {
+  /** @type {import('../../../types/jsdoc-types').PlayerState|undefined} */
   const player = gameState.players[socket.id];
 
   // Sequence check — drop out-of-order / replayed batch items.

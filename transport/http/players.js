@@ -41,6 +41,9 @@ function initPlayerRoutes(container, options = {}) {
 
       const stats = await playerRepo.getStats(id); // Will throw NotFoundError if player doesn't exist
       const player = await playerRepo.findById(id);
+      if (!player) {
+        return res.status(404).json({ error: 'NOT_FOUND', message: 'Player not found' });
+      }
 
       res.json({ player: player.toObject(), stats });
     })

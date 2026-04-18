@@ -49,12 +49,13 @@ class LeaderboardSystem {
     this.socket = socket;
 
     // Écouter les mises à jour du leaderboard depuis le serveur
-    socket.on('leaderboard_update', (data) => {
+    const SE = (typeof SOCKET_EVENTS !== 'undefined') ? SOCKET_EVENTS : window.SOCKET_EVENTS;
+    socket.on(SE.SERVER.LEADERBOARD_UPDATE, (data) => {
       this.updateLeaderboard(data);
     });
 
     // Demander le leaderboard au serveur
-    socket.emit('request_leaderboard');
+    socket.emit(SE.CLIENT.REQUEST_LEADERBOARD);
   }
 
   // Calculer le score d'une run
@@ -92,7 +93,8 @@ class LeaderboardSystem {
 
     // Envoyer au serveur
     if (this.socket) {
-      this.socket.emit('submit_score', entry);
+      const SE = (typeof SOCKET_EVENTS !== 'undefined') ? SOCKET_EVENTS : window.SOCKET_EVENTS;
+      this.socket.emit(SE.CLIENT.SUBMIT_SCORE, entry);
     }
 
     // Sauvegarder localement aussi

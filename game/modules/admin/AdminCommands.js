@@ -9,6 +9,7 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { ZOMBIE_TYPES } = ConfigManager;
 const perfIntegration = require('../../../lib/server/PerformanceIntegration');
+const { SOCKET_EVENTS } = require('../../../transport/websocket/events');
 
 /** Maximum zombies that can be spawned in a single /spawn call. */
 const MAX_SPAWN_COUNT = 50;
@@ -38,7 +39,7 @@ class AdminCommands {
    * @param {import('socket.io').Socket} socket
    */
   registerCommands(socket) {
-    socket.on('adminCommand', data => {
+    socket.on(SOCKET_EVENTS.CLIENT.ADMIN_COMMAND, data => {
       this.handleCommand(socket, data);
     });
   }
@@ -59,7 +60,7 @@ class AdminCommands {
     const args = Array.isArray(data.args) ? data.args : [];
 
     if (!this.isAdmin(socket.userId)) {
-      socket.emit('adminResponse', { success: false, message: 'Not authorized' });
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: false, message: 'Not authorized' });
       return;
     }
 
@@ -89,7 +90,7 @@ class AdminCommands {
         this.handleStats(socket);
         break;
       default:
-        socket.emit('adminResponse', {
+        socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
           success: false,
           message: `Unknown command: ${command}`
         });
@@ -107,7 +108,7 @@ class AdminCommands {
     const count = Math.max(1, parseInt(args[1]) || 1);
 
     if (!ZOMBIE_TYPES[type]) {
-      socket.emit('adminResponse', {
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
         success: false,
         message: `Invalid zombie type: ${type}. Use /list to see all types.`
       });
@@ -150,7 +151,7 @@ class AdminCommands {
       spawned++;
     }
 
-    socket.emit('adminResponse', {
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
       success: true,
       message: `Spawned ${spawned}x ${type}`
     });
@@ -167,7 +168,7 @@ class AdminCommands {
     const wave = parseInt(waveStr);
 
     if (isNaN(wave) || wave < 1 || wave > 250) {
-      socket.emit('adminResponse', {
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
         success: false,
         message: 'Wave must be between 1-250'
       });
@@ -214,7 +215,7 @@ class AdminCommands {
     ];
 
     if (!validBosses.includes(bossType)) {
-      socket.emit('adminResponse', {
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
         success: false,
         message: `Invalid boss type. Valid: ${validBosses.join(', ')}`
       });
@@ -223,7 +224,7 @@ class AdminCommands {
 
     const type = ZOMBIE_TYPES[bossType];
     if (!type) {
-      socket.emit('adminResponse', { success: false, message: `Boss type '${bossType}' not found in ZOMBIE_TYPES` });
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: false, message: `Boss type '${bossType}' not found in ZOMBIE_TYPES` });
       return;
     }
 
@@ -284,7 +285,7 @@ class AdminCommands {
       message += `\nNormal (${normals.length}): ${normals.join(', ')}`;
     }
 
-    socket.emit('adminResponse', {
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
       success: true,
       message: message
     });
@@ -298,7 +299,7 @@ class AdminCommands {
     const count = Object.keys(this.gameState.zombies).length;
     this.gameState.zombies = {};
 
-    socket.emit('adminResponse', {
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
       success: true,
       message: `Cleared ${count} zombies`
     });
@@ -312,7 +313,7 @@ class AdminCommands {
     const zombieCount = Object.keys(this.gameState.zombies).length;
     const playerCount = Object.keys(this.gameState.players).length;
 
-    socket.emit('adminResponse', {
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{
       success: true,
       message: `Zombies: ${zombieCount}, Players: ${playerCount}, Wave: ${this.gameState.wave}`
     });
@@ -328,12 +329,12 @@ class AdminCommands {
     const x = parseFloat(args[0]);
     const y = parseFloat(args[1]);
     if (isNaN(x) || isNaN(y)) {
-      socket.emit('adminResponse', { success: false, message: 'Usage: /teleport <x> <y>' });
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: false, message: 'Usage: /teleport <x> <y>' });
       return;
     }
     const player = this.gameState.players[socket.userId] || this.gameState.players[socket.id];
     if (!player) {
-      socket.emit('adminResponse', { success: false, message: 'Player not found' });
+      socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: false, message: 'Player not found' });
       return;
     }
     const cfg = this.gameState.config;
@@ -342,7 +343,7 @@ class AdminCommands {
     const maxY = cfg.ROOM_HEIGHT != null ? cfg.ROOM_HEIGHT : y;
     player.x = Math.max(0, Math.min(x, maxX));
     player.y = Math.max(0, Math.min(y, maxY));
-    socket.emit('adminResponse', { success: true, message: `Teleported to (${player.x}, ${player.y})` });
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: true, message: `Teleported to (${player.x}, ${player.y})` });
   }
 
   /**
@@ -361,7 +362,7 @@ class AdminCommands {
       `[Perf] Broadcast: ${perfCfg.current.broadcastRate}Hz | Pathfind every: ${perfCfg.current.zombiePathfindingRate} ticks`,
       `[Mem] Heap: ${toMB(mem.heapUsed)}/${toMB(mem.heapTotal)} MB | RSS: ${toMB(mem.rss)} MB | Ext: ${toMB(mem.external)} MB`
     ].join('\n');
-    socket.emit('adminResponse', { success: true, message });
+    socket.emit(SOCKET_EVENTS.SERVER.ADMIN_RESPONSE,{ success: true, message });
   }
 
   /**

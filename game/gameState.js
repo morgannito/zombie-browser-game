@@ -46,6 +46,7 @@ const logger = require('../infrastructure/logging/Logger');
  *   const zombieId = gameState.getNextId('nextZombieId');
  */
 function initializeGameState() {
+  /** @type {import('../types/jsdoc-types').GameState} */
   const state = {
     players: {},
     zombies: {},

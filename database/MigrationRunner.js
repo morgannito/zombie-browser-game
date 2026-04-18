@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const logger = require('../infrastructure/logging/Logger');
 
 class MigrationRunner {
   constructor(db, migrationsDir) {
@@ -28,9 +29,8 @@ class MigrationRunner {
 
   _getAppliedMigrations() {
     return this.db
-      .prepare('SELECT name FROM _migrations ORDER BY id')
-      .all()
-      .map(r => r.name);
+      .prepare('SELECT name, checksum FROM _migrations ORDER BY id')
+      .all();
   }
 
   _getMigrationFiles() {
@@ -52,12 +52,18 @@ class MigrationRunner {
    * @returns {{ applied: string[], skipped: string[] }}
    */
   up() {
-    const applied = this._getAppliedMigrations();
+    const appliedRows = this._getAppliedMigrations();
+    const appliedMap = new Map(appliedRows.map(r => [r.name, r.checksum]));
     const files = this._getMigrationFiles();
     const result = { applied: [], skipped: [] };
 
     for (const file of files) {
-      if (applied.includes(file)) {
+      if (appliedMap.has(file)) {
+        const filePath = path.join(this.migrationsDir, file);
+        const currentChecksum = this._checksum(fs.readFileSync(filePath, 'utf8'));
+        if (currentChecksum !== appliedMap.get(file)) {
+          throw new Error(`Checksum mismatch for already-applied migration ${file} — file was modified after application`);
+        }
         result.skipped.push(file);
         continue;
       }
@@ -80,7 +86,7 @@ class MigrationRunner {
         });
         apply();
         result.applied.push(file);
-        console.log(`[Migration] Applied: ${file}`);
+        logger.info(`[Migration] Applied: ${file}`);
       } catch (err) {
         throw new Error(`Migration ${file} failed: ${err.message}`);
       }
@@ -95,7 +101,7 @@ class MigrationRunner {
    * @returns {{ rolledBack: string[] }}
    */
   down(count = 1) {
-    const applied = this._getAppliedMigrations().reverse();
+    const applied = this._getAppliedMigrations().map(r => r.name).reverse();
     const result = { rolledBack: [] };
 
     for (let i = 0; i < Math.min(count, applied.length); i++) {
@@ -104,8 +110,7 @@ class MigrationRunner {
       const downPath = path.join(this.migrationsDir, downFile);
 
       if (!fs.existsSync(downPath)) {
-        console.warn(`[Migration] No rollback file for ${name} (expected ${downFile})`);
-        continue;
+        throw new Error(`No rollback file for ${name} (expected ${downFile}) — rollback aborted`);
       }
 
       const sql = fs.readFileSync(downPath, 'utf8');
@@ -117,7 +122,7 @@ class MigrationRunner {
         });
         rollback();
         result.rolledBack.push(name);
-        console.log(`[Migration] Rolled back: ${name}`);
+        logger.info(`[Migration] Rolled back: ${name}`);
       } catch (err) {
         throw new Error(`Rollback ${name} failed: ${err.message}`);
       }
@@ -131,16 +136,16 @@ class MigrationRunner {
    * @returns {{ applied: number, pending: number, total: number, migrations: Array }}
    */
   status() {
-    const applied = this._getAppliedMigrations();
+    const appliedNames = this._getAppliedMigrations().map(r => r.name);
     const files = this._getMigrationFiles();
 
     return {
-      applied: applied.length,
-      pending: files.filter(f => !applied.includes(f)).length,
+      applied: appliedNames.length,
+      pending: files.filter(f => !appliedNames.includes(f)).length,
       total: files.length,
       migrations: files.map(f => ({
         name: f,
-        status: applied.includes(f) ? 'applied' : 'pending',
+        status: appliedNames.includes(f) ? 'applied' : 'pending',
         hasRollback: fs.existsSync(path.join(this.migrationsDir, f.replace('.sql', '.down.sql')))
       }))
     };

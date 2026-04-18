@@ -6,6 +6,7 @@
  */
 
 const { getMutatorEffect } = require('./utils');
+const logger = require('../../infrastructure/logging/Logger');
 
 class ZombieFactory {
   constructor(gameState, config, zombieTypes, checkWallCollision, spawnManager) {
@@ -29,7 +30,7 @@ class ZombieFactory {
     const type = this.zombieTypes[typeKey];
 
     if (!type) {
-      console.warn('[ZOMBIE FACTORY] Type invalide:', typeKey, 'wave:', this.gameState.wave);
+      logger.warn('[ZOMBIE FACTORY] Type invalide:', typeKey, 'wave:', this.gameState.wave);
       return false;
     }
 
@@ -68,7 +69,7 @@ break;
 
     if (attempts >= maxAttempts) {
       if (this.checkWallCollision(x, y, zombieSize)) {
-        console.warn('[ZOMBIE FACTORY] Failed to find valid spawn position after', maxAttempts, 'attempts (wave', this.gameState.wave, ', type:', typeKey, ')');
+        logger.warn('[ZOMBIE FACTORY] Failed to find valid spawn position after', maxAttempts, 'attempts (wave', this.gameState.wave, ', type:', typeKey, ')');
         return false;
       }
     }
@@ -91,6 +92,7 @@ break;
     const zombieGold = Math.floor(type.gold * waveMultiplier * (isElite ? 3.0 : 1.0));
     const zombieXP = Math.floor(type.xp * waveMultiplier * eliteMultiplier);
 
+    /** @type {import('../../types/jsdoc-types').Zombie} */
     this.gameState.zombies[zombieId] = {
       id: zombieId,
       type: typeKey,
@@ -132,7 +134,7 @@ break;
   spawnSpecificZombie(typeKey, x, y) {
     const type = this.zombieTypes[typeKey];
     if (!type) {
-      console.warn('[ZOMBIE FACTORY] Type invalide:', typeKey);
+      logger.warn('[ZOMBIE FACTORY] Type invalide:', typeKey);
       return false;
     }
 

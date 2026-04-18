@@ -24,7 +24,7 @@ function clamp(value, min, max) {
  * @param {string} socketId - Socket.IO socket ID (used as playerId)
  * @param {string|null} [sessionId] - Session UUID for reconnect recovery
  * @param {string|null} [accountId] - Persistent account UUID (nullable for guests)
- * @returns {Object} Fresh player state
+ * @returns {import('../../types/jsdoc-types').PlayerState} Fresh player state
  */
 function createPlayerState(config, socketId, sessionId = null, accountId = null) {
   const wallThickness = config.WALL_THICKNESS || 40;

@@ -89,6 +89,7 @@ function spawnPowerup(gameState, roomManager, perfIntegration, metricsCollector)
   }
 
   const powerupId = gameState.nextPowerupId++;
+  /** @type {import('../types/jsdoc-types').Powerup} */
   gameState.powerups[powerupId] = {
     id: powerupId,
     type: type,

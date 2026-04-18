@@ -1,0 +1,6 @@
+{
+  "tickAvgMs": 5,
+  "tickMaxMs": 20,
+  "heapMB": 100,
+  "bytesPerSecMB": 10
+}

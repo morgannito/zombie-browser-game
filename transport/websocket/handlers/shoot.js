@@ -164,6 +164,7 @@ function registerShootHandler(socket, gameState, entityManager, _roomManager) {
         return;
       }
 
+      /** @type {import('../../../types/jsdoc-types').PlayerState|undefined} */
       const player = gameState.players[socket.id];
       if (!player || !player.alive || !player.hasNickname) {
         return;

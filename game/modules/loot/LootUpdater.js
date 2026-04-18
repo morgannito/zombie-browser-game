@@ -51,6 +51,7 @@ function applyMagnetAttract(loot, gameState) {
   const baseRadius = CONFIG.PLAYER_SIZE + CONFIG.LOOT_SIZE;
 
   for (const playerId in gameState.players) {
+    /** @type {import('../../../types/jsdoc-types').PlayerState} */
     const player = gameState.players[playerId];
     if (!player.alive || !player.hasNickname || !player.goldMagnetRadius) {
 continue;
