@@ -60,7 +60,7 @@ class CollisionManager {
     if (zombies) {
       for (const id in zombies) {
         const z = zombies[id];
-        if (z && z.size > max) max = z.size;
+        if (z && z.size > max) { max = z.size; }
       }
     }
     this._maxZombieSizeCache = max > 0 ? max : 40;
