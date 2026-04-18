@@ -37,12 +37,25 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Network-first avec fallback cache (pour / et index.html)
+async function networkFirstWithCacheFallback(request) {
+  try {
+    const response = await fetch(request);
+    const cache = await caches.open(STATIC_CACHE);
+    cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    return cached || caches.match('/offline.html');
+  }
+}
+
 // Cache-first pour assets statiques
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) {
-return cached;
-}
+    return cached;
+  }
   try {
     const response = await fetch(request);
     const cache = await caches.open(STATIC_CACHE);
@@ -71,6 +84,8 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket')) {
     event.respondWith(networkFirst(request));
+  } else if (url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(networkFirstWithCacheFallback(request));
   } else {
     event.respondWith(cacheFirst(request));
   }
