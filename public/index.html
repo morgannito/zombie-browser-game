@@ -753,13 +753,11 @@
          msgpack-parser.js"> right after <head> so window.msgpackParser is set
          before any subsequent inline script runs. Nothing to do here. -->
 
-    <!-- ============================================================
-         Scripts loaded individually over HTTP/2 multiplexing.
-         Cache-bust `?v=<hash>` injected per-file by scripts/cache-bust.py
-         on every deploy, guaranteeing no stale code survives a push.
-         Bundled mode was removed 2026-04-17 after a stale app.bundle.js
-         silently shipped an obsolete auth route for weeks.
-         ============================================================ -->
+    <!-- APP_SCRIPTS_START: replaced in prod by server/middleware.js (mountAppScripts).
+         Prod (NODE_ENV=production): single <script src="app.bundle.js">.
+         Dev: individual script tags below.
+         Build bundle: node scripts/build-bundle.js
+    -->
     <script src="modules/i18n/i18n.js"></script>
     <script>I18n.init('fr');</script>
     <script src="modules/utils/ErrorTracker.js"></script>
@@ -820,7 +818,7 @@
     <script src="modules/systems/ComboSystem.js"></script>
     <script src="modules/systems/ToastManager.js"></script>
     <script src="modules/systems/ScreenshotManager.js"></script>
-    <script src="modules/systems/SessionAchievements.js"></script>
+    <script src="modules/systems/SessionAchievements.js" defer>
     <script src="modules/systems/LeaderboardSystem.js"></script>
     <script src="modules/network/NetworkManager.js"></script>
     <script src="modules/systems/AccountProgressionManager.js"></script>
@@ -855,6 +853,7 @@
     <script src="game.js"></script>
     <script src="gamePatch.js"></script>
     <script src="emoteWheel.js"></script>
+    <!-- APP_SCRIPTS_END -->
 
     <!-- Portrait-hint body class: toggled on game start/over/death -->
     <script>

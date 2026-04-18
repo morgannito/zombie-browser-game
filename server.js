@@ -120,6 +120,18 @@ const { startServer } = createBootstrap({
   heartbeatCheckInterval: HEARTBEAT_CHECK_INTERVAL
 });
 
+// ============================================
+// GRACEFUL SHUTDOWN
+// ============================================
+// Install BEFORE startServer() so signals received during boot are handled.
+const { createCleanup } = require('./server/cleanup');
+createCleanup({
+  io, server, dbManager, perfIntegration, memoryMonitor, stopSessionCleanupInterval,
+  // Lexical capture: cleanup needs the latest values of the runtime state mutated
+  // by the bootstrap orchestrator's resolution (timers, gameState, ...).
+  getState: () => ({ gameState, stopGameLoop, heartbeatTimer, powerupSpawnerTimer })
+}).install();
+
 startServer()
   .then(state => {
     gameState = state.gameState;
@@ -134,17 +146,6 @@ startServer()
     });
     process.exit(1);
   });
-
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
-const { createCleanup } = require('./server/cleanup');
-createCleanup({
-  io, server, dbManager, perfIntegration, memoryMonitor, stopSessionCleanupInterval,
-  // Lexical capture: cleanup needs the latest values of the runtime state mutated
-  // by the bootstrap orchestrator's resolution (timers, gameState, ...).
-  getState: () => ({ gameState, stopGameLoop, heartbeatTimer, powerupSpawnerTimer })
-}).install();
 
 // Export for testing
 module.exports = { app, server, io };

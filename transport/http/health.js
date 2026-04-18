@@ -136,6 +136,7 @@ function buildPayload(dbManager, metricsCollector, gameLoopRef) {
  * @returns {express.Router}
  */
 function initHealthRoute(dbManager, metricsCollector, gameLoopRef) {
+  // Liveness: le process est vivant (pas de dépendances externes)
   router.get('/', (_req, res) => {
     const now = Date.now();
     if (_cache && now - _cacheAt < CACHE_TTL_MS) {
@@ -146,6 +147,29 @@ function initHealthRoute(dbManager, metricsCollector, gameLoopRef) {
     _cacheAt = now;
     const code = _cache.status === 'healthy' ? 200 : 503;
     res.status(code).json(_cache);
+  });
+
+  // Readiness: le service est prêt à recevoir du trafic (DB + tick + mémoire)
+  router.get('/ready', (_req, res) => {
+    const db = measureDbLatency(dbManager);
+    const mem = process.memoryUsage();
+    const tick = gameLoopRef ? gameLoopRef.getMetrics() : null;
+
+    const checks = {
+      db: db.connected && (typeof db.latency_ms !== 'number' || db.latency_ms <= 100),
+      memory: mem.heapUsed < 500 * 1024 * 1024,
+      tick: !tick || (tick.maxTickDuration === undefined || tick.maxTickDuration <= 50)
+    };
+
+    const ready = Object.values(checks).every(Boolean);
+    res.status(ready ? 200 : 503).json({
+      ready,
+      checks: {
+        db: { ok: checks.db, latency_ms: db.latency_ms },
+        memory: { ok: checks.memory, heapUsedMB: parseFloat((mem.heapUsed / 1024 / 1024).toFixed(2)) },
+        tick: { ok: checks.tick, maxDurationMs: tick ? parseFloat((tick.maxTickDuration || 0).toFixed(2)) : null }
+      }
+    });
   });
 
   return router;

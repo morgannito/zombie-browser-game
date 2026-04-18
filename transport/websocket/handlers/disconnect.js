@@ -63,7 +63,7 @@ function registerDisconnectHandler(
       // 'Username already taken' in prod logs.
       if (sessionId && player) {
         // Only save state if player has actually started playing (has nickname)
-        if (player.hasNickname && player.alive) {
+        if (player.hasNickname) {
           const playerStateCopy = createRecoverablePlayerState(player);
 
           disconnectedPlayers.set(sessionId, {

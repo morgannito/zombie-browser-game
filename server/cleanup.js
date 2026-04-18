@@ -47,8 +47,8 @@ function stopPerfIntegration(perfIntegration) {
 
 function stopHazards(gameState) {
   if (!gameState || !gameState.hazardManager) {
-return;
-}
+    return;
+  }
   try {
     gameState.hazardManager.clearAll();
     logger.info('✅ HazardManager cleaned up');

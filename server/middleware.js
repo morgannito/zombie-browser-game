@@ -17,38 +17,65 @@ const {
   configureHelmet,
   configureApiLimiter,
   configureBodyParser,
-  additionalSecurityHeaders
+  additionalSecurityHeaders,
+  generateNonce
 } = require('../middleware/security');
 
 /**
- * When ENABLE_MSGPACK=true, serve index.html with an injected
- * <meta name="msgpack" content="1"> so the client loader knows to
- * activate the binary parser before connecting to Socket.IO.
- * Must be registered BEFORE express.static to intercept GET /.
+ * Serve index.html for GET / and GET /index.html, injecting:
+ *   - a per-request CSP nonce into every inline <script> tag
+ *   - (when ENABLE_MSGPACK=true) the msgpack meta tag and parser script
+ *
+ * This route must be registered BEFORE express.static so it intercepts
+ * direct requests to the root before the static middleware short-circuits.
+ * The nonce is stored in res.locals.cspNonce by configureHelmet, which
+ * runs earlier in the chain.
  */
-function mountMsgpackMetaRoute(app) {
-  if (process.env.ENABLE_MSGPACK !== 'true') {
-    return;
-  }
+function mountIndexRoute(app) {
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  const msgpackEnabled = process.env.ENABLE_MSGPACK === 'true';
+
   app.get(['/', '/index.html'], function (req, res) {
     fs.readFile(indexPath, 'utf8', function (err, html) {
       if (err) {
         return res.status(500).send('Internal Server Error');
       }
-      // Inject BOTH the meta tag AND a blocking <script> reference to the
-      // parser. The meta tag is what GameEngine reads; the script tag ensures
-      // window.msgpackParser is set BEFORE any subsequent inline script runs
-      // (previously the dynamic injection raced the bundle loader and io()
-      // was called without the parser, while the server decoded every packet
-      // as msgpack → garbage → instant "transport close").
-      const patched = html.replace(
-        '<meta charset="UTF-8">',
-        '<meta charset="UTF-8">\n' +
-          '    <meta name="msgpack" content="1">\n' +
-          '    <script src="/lib/msgpack-parser.js"></script>\n' +
-          '    <script>window.__msgpackEnabled = true;</script>'
-      );
+
+      const nonce = res.locals.cspNonce || '';
+
+      // Inject nonce into every inline <script> block.
+      // Matches opening tags with no src attribute (inline scripts only).
+      let patched = html.replace(/<script(?![^>]*\bsrc\b)/g, `<script nonce="${nonce}"`);
+
+      // In production, replace the individual dev script tags with the bundle.
+      const isProd = process.env.NODE_ENV === 'production' && process.env.DEV_MODE !== 'true';
+      if (isProd) {
+        const START_MARKER = '<!-- APP_SCRIPTS_START:';
+        const END_MARKER = '<!-- APP_SCRIPTS_END -->';
+        const startIdx = patched.indexOf(START_MARKER);
+        const endIdx = patched.indexOf(END_MARKER);
+        if (startIdx !== -1 && endIdx !== -1) {
+          const commentEnd = patched.indexOf('-->', startIdx) + 3;
+          patched =
+            patched.slice(0, commentEnd) +
+            '\n    <script src="app.bundle.js"></script>\n    ' +
+            patched.slice(endIdx);
+        }
+      }
+
+      if (msgpackEnabled) {
+        // Inject meta tag + blocking parser script.
+        // The parser <script> carries a src so it is governed by script-src
+        // 'self', not the nonce — no nonce attribute needed here.
+        patched = patched.replace(
+          '<meta charset="UTF-8">',
+          '<meta charset="UTF-8">\n' +
+            '    <meta name="msgpack" content="1">\n' +
+            '    <script src="/lib/msgpack-parser.js"></script>\n' +
+            `    <script nonce="${nonce}">window.__msgpackEnabled = true;</script>`
+        );
+      }
+
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(patched);
     });
@@ -107,8 +134,8 @@ function configureMiddleware(app) {
   app.use(...configureBodyParser());
   app.use(additionalSecurityHeaders);
   app.use(addPreloadHints);
-  // Inject msgpack meta tag before static files intercept GET /.
-  mountMsgpackMetaRoute(app);
+  // Serve index.html with nonce-injected inline scripts (+ optional msgpack meta).
+  mountIndexRoute(app);
   mountStaticAssets(app);
 }
 

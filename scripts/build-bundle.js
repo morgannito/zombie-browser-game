@@ -79,7 +79,6 @@ const SCRIPTS = [
   'modules/environment/ParallaxBackground.js',
   'modules/environment/EnvironmentalParticles.js',
   'modules/audio/AmbientAudioSystem.js',
-  'modules/rendering/FrustumCuller.js',
   'modules/rendering/BackgroundRenderer.js',
   'modules/rendering/EntityRenderer.js',
   'modules/rendering/EffectsRenderer.js',

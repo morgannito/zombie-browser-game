@@ -1,10 +1,20 @@
 # Zombie Multiplayer Game
 
 [![CI](https://github.com/morgannito/zombie-browser-game/actions/workflows/ci.yml/badge.svg)](https://github.com/morgannito/zombie-browser-game/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression permanente.
+Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression permanente. Jusqu'a 20 joueurs simultanes, 60 FPS, vagues de zombies avec boss, systeme d'ameliorations et classement persistant.
 
 **Stack:** Node.js, Express, Socket.IO, SQLite, Canvas HTML5, Clean Architecture
+
+## Features
+
+- Multijoueur temps reel (Socket.IO, delta compression, session recovery 5min)
+- Gameplay rogue-like : vagues, boss, power-ups, 4 types d'armes
+- Progression permanente : XP, ameliorations, achievements, leaderboard JWT
+- Clean Architecture stricte : Domain / Application / Infrastructure
+- Observabilite : metriques Prometheus, overlay F3 (FPS/latence/entites), CPU profiling, heap snapshot
+- DevOps : Docker multi-stage, PM2, CI/CD GitHub Actions, Fly.io / Railway / Render
 
 ## Quick Start
 
@@ -198,27 +208,10 @@ CI/CD : GitHub Actions -> ghcr.io sur push main. Voir [DOCKER.md](./DOCKER.md).
 
 ### Cron (backup automatique)
 
-Scripts d'installation automatique (idempotents) :
-
 ```bash
-# Installer le cron toutes les 6h
-./scripts/install-cron.sh
-
-# Verifier
-crontab -l | grep zombie-backup
-
-# Desinstaller
-./scripts/uninstall-cron.sh
+./scripts/install-cron.sh    # Toutes les 6h (idempotent)
+./scripts/uninstall-cron.sh  # Desinstaller
 ```
-
-Ou manuellement avec `crontab -e` :
-
-```cron
-# Backup toutes les 6h
-0 */6 * * * /chemin/vers/zombie-browser-game/scripts/backup-db.sh >> /var/log/zombie-backup.log 2>&1 # zombie-backup
-```
-
----
 
 ## Configuration
 
@@ -293,6 +286,13 @@ Comportement côté serveur :
 - Il reçoit normalement les snapshots `gameState` et les deltas → peut visualiser la partie en temps réel.
 - Les events `playerMove`, `playerMoveBatch` et `shoot` sont silencieusement ignorés (`return early`).
 - Le flag `socket.spectator = true` est positionné à la connexion depuis `socket.handshake.auth.spectator`.
+
+## Contributing
+
+1. Fork + branche feature (`git checkout -b feat/my-feature`)
+2. Tests obligatoires : `npm test` doit passer
+3. Lint : `npm run lint:fix`
+4. PR via le template `.github/PULL_REQUEST_TEMPLATE.md`
 
 ## Licence
 

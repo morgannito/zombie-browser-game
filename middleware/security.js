@@ -11,21 +11,36 @@ const express = require('express');
 const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../config/constants');
 
 /**
+ * Generate a cryptographically random nonce for CSP script-src.
+ * @returns {string} Base64-encoded 16-byte nonce
+ */
+function generateNonce() {
+  return crypto.randomBytes(16).toString('base64');
+}
+
+/**
  * Build Content Security Policy directives.
- * scriptSrc deliberately omits 'unsafe-inline' — use nonces or hashes for
- * any inline scripts. styleSrc retains 'unsafe-inline' because the UI relies
- * on inline style="display:none" to hide modals at boot; removing it causes
- * all modals to be visible until JS runs.
+ * scriptSrc uses a per-request nonce — inline scripts in index.html must
+ * carry a matching nonce attribute. styleSrc retains 'unsafe-inline' because
+ * the UI relies on inline style="display:none" to hide modals at boot;
+ * removing it causes all modals to be visible until JS runs.
+ * connectSrc restricts ws: to dev only — prod only needs wss: (TLS).
+ * imgSrc restricts external images to data: URIs only in prod.
  * @param {boolean} isDev - True when not in production
+ * @param {string} [nonce] - Per-request nonce value (without 'nonce-' prefix)
  * @returns {Object} CSP directive map
  */
-function buildCspDirectives(isDev) {
+function buildCspDirectives(isDev, nonce) {
+  const scriptSrc = ["'self'"];
+  if (nonce) scriptSrc.push(`'nonce-${nonce}'`);
+
   const directives = {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
+    scriptSrc,
     styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", 'data:', 'https:'],
-    connectSrc: ["'self'", 'ws:', 'wss:'],
+    // In prod, no plain-text WebSocket (ws:) and no arbitrary external images.
+    imgSrc: isDev ? ["'self'", 'data:', 'https:'] : ["'self'", 'data:'],
+    connectSrc: isDev ? ["'self'", 'ws:', 'wss:'] : ["'self'", 'wss:'],
     fontSrc: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
@@ -37,19 +52,25 @@ function buildCspDirectives(isDev) {
 }
 
 /**
- * Configure Helmet security headers with strict CSP.
+ * Configure Helmet security headers with per-request CSP nonce.
+ * The nonce is stored in res.locals.cspNonce so the index route can inject
+ * it into inline <script nonce="..."> tags.
  * @returns {Function} Helmet middleware
  */
 function configureHelmet() {
   const isDev = process.env.NODE_ENV !== 'production';
-  const directives = buildCspDirectives(isDev);
-  return helmet({
-    contentSecurityPolicy: { directives },
-    // HSTS instructs browsers to use HTTPS for a year — disastrous on
-    // localhost because subsequent plain-HTTP loads get blocked or auto-
-    // upgraded. Only enable in production where we actually serve HTTPS.
-    strictTransportSecurity: isDev ? false : undefined
-  });
+  return (req, res, next) => {
+    const nonce = generateNonce();
+    res.locals.cspNonce = nonce;
+    const directives = buildCspDirectives(isDev, nonce);
+    helmet({
+      contentSecurityPolicy: { directives },
+      // HSTS instructs browsers to use HTTPS for a year — disastrous on
+      // localhost because subsequent plain-HTTP loads get blocked or auto-
+      // upgraded. Only enable in production where we actually serve HTTPS.
+      strictTransportSecurity: isDev ? false : undefined
+    })(req, res, next);
+  };
 }
 
 /**
@@ -165,6 +186,7 @@ module.exports = {
   requireMetricsToken,
   // exported for unit tests
   buildCspDirectives,
+  generateNonce,
   getRateLimitKey,
   extractBearerToken,
   timingSafeEqual
