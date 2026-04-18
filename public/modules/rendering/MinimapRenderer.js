@@ -235,6 +235,13 @@ class MinimapRenderer {
 
     minimapCtx.restore();
   }
+
+  destroy() {
+    if (this._zoomKeyHandler) {
+      window.removeEventListener('keydown', this._zoomKeyHandler);
+      this._zoomKeyHandler = null;
+    }
+  }
 }
 
 window.MinimapRenderer = MinimapRenderer;

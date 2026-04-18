@@ -1,5 +1,17 @@
 # Configuration Reference
 
+## Variables d'environnement (config/constants.js)
+
+| Variable | Défaut | Requis en prod | Description |
+|----------|--------|----------------|-------------|
+| `PORT` | `3000` | Non | Port d'écoute du serveur HTTP |
+| `ALLOWED_ORIGINS` | `http://localhost:3000,...` | Non | Origines CORS autorisées, séparées par virgule. Si vide en production → exit(1) |
+| `NODE_ENV` | — | Non | `production` active les contrôles stricts (ALLOWED_ORIGINS, METRICS_TOKEN). Désactive `DISABLE_AUTH_RATE_LIMIT` |
+| `METRICS_TOKEN` | `null` | **Oui** | Token Bearer pour protéger `/metrics` et `/health`. Absent en production → exit(1) |
+| `DISABLE_AUTH_RATE_LIMIT` | — | Non | Mettre `1` pour désactiver le rate-limit d'auth (CI/tests uniquement, ignoré si `NODE_ENV=production`) |
+
+---
+
 ## Loaders
 
 | Module | File | Méthode |

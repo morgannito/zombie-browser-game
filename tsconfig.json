@@ -6,8 +6,9 @@
     "checkJs": false,
     "noEmit": true,
     "moduleResolution": "node",
-    "typeRoots": ["./types"]
+    "typeRoots": ["./types"],
+    "skipLibCheck": true
   },
-  "include": ["**/*.ts", "types/**/*.d.ts"],
+  "include": ["**/*.ts", "types/**/*.d.ts", "public/**/*.js"],
   "exclude": ["node_modules"]
 }

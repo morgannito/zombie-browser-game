@@ -59,16 +59,18 @@ class GameEngine {
     window.addEventListener('orientationchange', this.handlers.resize);
 
     // Canvas context loss (GPU crash, tab suspend, driver reset)
-    this.canvas.addEventListener('contextlost', (e) => {
+    this.handlers.contextlost = (e) => {
       e.preventDefault();
       console.warn('[GameEngine] Canvas context lost — reloading page');
       window.location.reload();
-    });
-    this.canvas.addEventListener('contextrestored', () => {
+    };
+    this.handlers.contextrestored = () => {
       console.info('[GameEngine] Canvas context restored');
       this.ctx = this.canvas.getContext('2d', { willReadFrequently: false });
       this.ctx.imageSmoothingEnabled = false;
-    });
+    };
+    this.canvas.addEventListener('contextlost', this.handlers.contextlost);
+    this.canvas.addEventListener('contextrestored', this.handlers.contextrestored);
   }
 
   resizeCanvas() {
@@ -603,6 +605,14 @@ class GameEngine {
     window.removeEventListener('orientationchange', this.handlers.resize);
     window.removeEventListener('keydown', this.handlers.debugKeydown);
     window.removeEventListener('beforeunload', this.handlers.beforeunload);
+
+    // Remove canvas context handlers
+    if (this.handlers.contextlost) {
+      this.canvas.removeEventListener('contextlost', this.handlers.contextlost);
+    }
+    if (this.handlers.contextrestored) {
+      this.canvas.removeEventListener('contextrestored', this.handlers.contextrestored);
+    }
 
     // Remove mouse event listeners (if desktop)
     if (this.handlers.mousemove) {
