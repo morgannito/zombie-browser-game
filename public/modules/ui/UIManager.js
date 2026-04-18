@@ -149,43 +149,50 @@ class UIManager {
     }
   }
 
+  /**
+   * Main per-frame update. Called from the game loop.
+   * Delegates to sub-methods to keep each concern ≤25 lines.
+   */
   update() {
     const player = this.gameState.getPlayer();
-    if (!player) {
-      return;
-    }
+    if (!player) return;
 
-    if (player.alive && !this.gameStartedDispatched) {
-      const startStats = {
+    this._maybeDispatchGameStarted(player);
+    this._updateHUD(player);
+    this._updatePlayerCount();
+
+    if (!player.alive) {
+      this._handleGameOver(player);
+    } else {
+      this.deathRecorded = false;
+      this.gameOverDispatched = false;
+    }
+  }
+
+  /** Fires `game_started` once when the player becomes alive. @private */
+  _maybeDispatchGameStarted(player) {
+    if (!player.alive || this.gameStartedDispatched) return;
+    document.dispatchEvent(new CustomEvent('game_started', {
+      detail: {
         wave: this.gameState.state.wave || 1,
         level: player.level || 1,
         weapon: player.weapon || 'pistol'
-      };
-      document.dispatchEvent(new CustomEvent('game_started', { detail: startStats }));
-      this.gameStartedDispatched = true;
-      this.gameOverDispatched = false;
-      this._gameStartTime = Date.now();
-    }
+      }
+    }));
+    this.gameStartedDispatched = true;
+    this.gameOverDispatched = false;
+    this._gameStartTime = Date.now();
+  }
 
-    // --- READ phase (avoid interleaved read/write reflow) ---
+  /** Updates health, XP, score, wave and gold bars. @private */
+  _updateHUD(player) {
     const healthPercent = Math.max(0, (player.health / player.maxHealth) * 100);
     const healthRounded = Math.max(0, Math.round(player.health));
     const lowHealth = healthPercent < 30;
     const score = (player.totalScore || 0).toLocaleString();
     const wave = `${this.gameState.state.wave || 1}`;
     const gold = player.gold || 0;
-    let xpPercent, xpNeeded, xpFillVal, nearLevelup;
-    if (player.level && player.xp !== undefined) {
-      xpNeeded = this.getXPForLevel(player.level);
-      xpPercent = (player.xp / xpNeeded) * 100;
-      // BUGFIX: clamp the bar fill to 100% — a brief race between server XP
-      // grant and level-up processing can make xpPercent ≥ 100, stretching
-      // the fill div past its container.
-      xpFillVal = Math.min(100, xpPercent);
-      nearLevelup = xpPercent > 85;
-    }
 
-    // --- WRITE phase ---
     const { els, _last: last } = this;
     if (last.healthPercent !== healthPercent) {
       els.healthFill.style.width = healthPercent + '%';
@@ -193,105 +200,56 @@ class UIManager {
       this._updateHealthGhost(healthPercent);
       last.healthPercent = healthPercent;
     }
-    if (last.healthRounded !== healthRounded) {
-      els.healthText.textContent = healthRounded;
-      last.healthRounded = healthRounded;
-    }
-    if (last.lowHealth !== lowHealth) {
-      els.healthBar.classList.toggle('low-health', lowHealth);
-      last.lowHealth = lowHealth;
-    }
-    if (xpFillVal !== undefined) {
-      if (last.xpFillVal !== xpFillVal) {
-        els.xpFill.style.width = xpFillVal + '%';
-        last.xpFillVal = xpFillVal;
-      }
-      if (last.level !== player.level) {
-        els.levelText.textContent = player.level;
-        last.level = player.level;
-      }
-      const xpText = `${Math.floor(player.xp)}/${xpNeeded}`;
-      if (last.xpText !== xpText) {
-        els.xpText.textContent = xpText;
-        last.xpText = xpText;
-      }
-      if (last.nearLevelup !== nearLevelup) {
-        els.xpBar.classList.toggle('near-levelup', nearLevelup);
-        last.nearLevelup = nearLevelup;
-      }
-    }
+    if (last.healthRounded !== healthRounded) { els.healthText.textContent = healthRounded; last.healthRounded = healthRounded; }
+    if (last.lowHealth !== lowHealth) { els.healthBar.classList.toggle('low-health', lowHealth); last.lowHealth = lowHealth; }
+
+    this._updateXPBar(player);
+
     // Stats — server increments `totalScore` on kills (combo-multiplied).
-    if (last.score !== score) {
- els.scoreValue.textContent = score; last.score = score;
-}
-    if (last.wave !== wave) {
- els.waveValue.textContent = wave; last.wave = wave;
-}
-    if (last.gold !== gold) {
- els.goldValue.textContent = gold; last.gold = gold;
-}
+    if (last.score !== score) { els.scoreValue.textContent = score; last.score = score; }
+    if (last.wave !== wave) { els.waveValue.textContent = wave; last.wave = wave; }
+    if (last.gold !== gold) { els.goldValue.textContent = gold; last.gold = gold; }
+  }
 
-    // Game over
-    if (!player.alive) {
-      const wasHidden = els.gameOver.style.display !== 'block';
-      els.gameOver.style.display = 'block';
+  /** Updates XP bar fill, level label and near-levelup highlight. @private */
+  _updateXPBar(player) {
+    if (!player.level || player.xp === undefined) return;
+    const { els, _last: last } = this;
+    const xpNeeded = this.getXPForLevel(player.level);
+    const xpPercent = (player.xp / xpNeeded) * 100;
+    // BUGFIX: clamp to 100% — brief XP/level-up race can exceed 100, stretching the bar.
+    const xpFillVal = Math.min(100, xpPercent);
+    const nearLevelup = xpPercent > 85;
+    const xpText = `${Math.floor(player.xp)}/${xpNeeded}`;
 
-      // Respawn button starts disabled (HTML attribute) to prevent accidental
-      // clicks during the death animation. Re-enable after a short delay so
-      // the player sees the recap before acting.
-      if (wasHidden && window.audioManager) {
-        window.audioManager.play('death');
-      }
+    if (last.xpFillVal !== xpFillVal) { els.xpFill.style.width = xpFillVal + '%'; last.xpFillVal = xpFillVal; }
+    if (last.level !== player.level) { els.levelText.textContent = player.level; last.level = player.level; }
+    if (last.xpText !== xpText) { els.xpText.textContent = xpText; last.xpText = xpText; }
+    if (last.nearLevelup !== nearLevelup) { els.xpBar.classList.toggle('near-levelup', nearLevelup); last.nearLevelup = nearLevelup; }
+  }
 
-      if (wasHidden) {
-        const respawnBtn = document.getElementById('respawn-btn');
-        const cdSpan = document.getElementById('respawn-countdown');
-        if (respawnBtn && respawnBtn.disabled) {
-          let n = 3;
-          if (cdSpan) cdSpan.textContent = n;
-          const iv = setInterval(() => {
-            n--;
-            if (n > 0) {
-              if (cdSpan) cdSpan.textContent = n;
-            } else {
-              clearInterval(iv);
-              if (cdSpan) cdSpan.textContent = '';
-              respawnBtn.disabled = false;
-              respawnBtn.focus();
-            }
-          }, 500);
-        }
-      }
+  /** Renders game-over screen on first death frame. @private */
+  _handleGameOver(player) {
+    const { els } = this;
+    const wasHidden = els.gameOver.style.display !== 'block';
+    els.gameOver.style.display = 'block';
 
-      els.finalScore.textContent = (player.totalScore || 0).toLocaleString();
-      els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
-      els.finalLevel.textContent = player.level || 1;
-      els.finalGold.textContent = (player.gold || 0).toLocaleString();
-      if (els.finalKills) {
-        els.finalKills.textContent = (player.zombiesKilled || player.kills || 0).toLocaleString();
-      }
-      const timeEl = document.getElementById('final-time');
-      if (timeEl && this._gameStartTime) {
-        const secs = Math.floor((Date.now() - this._gameStartTime) / 1000);
-        const mm = String(Math.floor(secs / 60)).padStart(2, '0');
-        const ss = String(secs % 60).padStart(2, '0');
-        timeEl.textContent = `${mm}:${ss}`;
-      }
+    if (wasHidden) {
+      if (window.audioManager) window.audioManager.play('death');
+      this._startRespawnCountdown();
+      this._renderGameOverStats(player);
+      this._renderPersonalBestComparison(player);
+    }
 
-      // Comparaison avec personal best (avant l'enregistrement du nouveau score)
-      if (wasHidden) {
-        this._renderPersonalBestComparison(player);
-      }
+    if (!this.deathRecorded && window.leaderboardSystem) {
+      this.deathRecorded = true;
+      window.leaderboardSystem.addEntry(player);
+    }
 
-      // Sauvegarder dans le leaderboard (une seule fois)
-      if (!this.deathRecorded && window.leaderboardSystem) {
-        this.deathRecorded = true;
-        window.leaderboardSystem.addEntry(player);
-      }
-
-      if (!this.gameOverDispatched) {
-        const killedBy = player.lastKillerType || null;
-        const gameOverStats = {
+    if (!this.gameOverDispatched) {
+      const killedBy = player.lastKillerType || null;
+      document.dispatchEvent(new CustomEvent('game_over', {
+        detail: {
           score: player.totalScore || 0,
           wave: this.gameState.state.wave || 1,
           level: player.level || 1,
@@ -299,22 +257,57 @@ class UIManager {
           weapon: player.weapon || 'pistol',
           zombiesKilled: player.zombiesKilled || player.kills || 0,
           killedBy
-        };
-        document.dispatchEvent(new CustomEvent('game_over', { detail: gameOverStats }));
-        this.gameOverDispatched = true;
-        this.gameStartedDispatched = false;
-        this._updateDeathCause(killedBy);
-      }
-    } else {
-      // Réinitialiser le flag quand le joueur est vivant
-      this.deathRecorded = false;
-      this.gameOverDispatched = false;
+        }
+      }));
+      this.gameOverDispatched = true;
+      this.gameStartedDispatched = false;
+      this._updateDeathCause(killedBy);
     }
+  }
 
-    // Player count - only count players with nicknames (actually playing)
-    const activePlayers = Object.values(this.gameState.state.players).filter(
-      p => p.hasNickname
-    ).length;
+  /** Animates the respawn countdown (3-2-1) and re-enables button. @private */
+  _startRespawnCountdown() {
+    const respawnBtn = document.getElementById('respawn-btn');
+    const cdSpan = document.getElementById('respawn-countdown');
+    if (!respawnBtn || !respawnBtn.disabled) return;
+    let n = 3;
+    if (cdSpan) cdSpan.textContent = n;
+    const iv = setInterval(() => {
+      n--;
+      if (n > 0) {
+        if (cdSpan) cdSpan.textContent = n;
+      } else {
+        clearInterval(iv);
+        if (cdSpan) cdSpan.textContent = '';
+        respawnBtn.disabled = false;
+        respawnBtn.focus();
+      }
+    }, 500);
+  }
+
+  /** Fills the game-over score/wave/level/gold/kills/time fields. @private */
+  _renderGameOverStats(player) {
+    const { els } = this;
+    els.finalScore.textContent = (player.totalScore || 0).toLocaleString();
+    els.finalWave.textContent = `${this.gameState.state.wave || 1}`;
+    els.finalLevel.textContent = player.level || 1;
+    els.finalGold.textContent = (player.gold || 0).toLocaleString();
+    if (els.finalKills) {
+      els.finalKills.textContent = (player.zombiesKilled || player.kills || 0).toLocaleString();
+    }
+    const timeEl = document.getElementById('final-time');
+    if (timeEl && this._gameStartTime) {
+      const secs = Math.floor((Date.now() - this._gameStartTime) / 1000);
+      const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+      const ss = String(secs % 60).padStart(2, '0');
+      timeEl.textContent = `${mm}:${ss}`;
+    }
+  }
+
+  /** Updates live player and zombie counts in the HUD. @private */
+  _updatePlayerCount() {
+    const { els } = this;
+    const activePlayers = Object.values(this.gameState.state.players).filter(p => p.hasNickname).length;
     els.playersCount.textContent = activePlayers;
     els.zombiesCount.textContent = Object.keys(this.gameState.state.zombies).length;
   }
@@ -593,66 +586,7 @@ return;
 
     logger.debug('[Shop] Creating permanent upgrade buttons...');
     for (const key in this.gameState.shopItems.permanent) {
-      const item = this.gameState.shopItems.permanent[key];
-      const currentLevel = player.upgrades[key] || 0;
-      const cost = item.baseCost + currentLevel * item.costIncrease;
-      const isMaxed = currentLevel >= item.maxLevel;
-      const canAfford = player.gold >= cost;
-
-      const itemDiv = document.createElement('div');
-      itemDiv.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
-
-      const tooltipLines = [item.description];
-      if (item.effect) tooltipLines.push(item.effect);
-      tooltipLines.push(`Niveau: ${currentLevel}/${item.maxLevel}`);
-      if (!isMaxed) tooltipLines.push(`Prochain niveau: ${cost} 💰`);
-
-      itemDiv.innerHTML = `
-        <div class="shop-tooltip">${tooltipLines.join(' · ')}</div>
-        <div class="shop-item-info">
-          <div class="shop-item-name">${item.name}</div>
-          <div class="shop-item-desc">${item.description}</div>
-          <div class="shop-item-level">Niveau: ${currentLevel}/${item.maxLevel}</div>
-        </div>
-        <div class="shop-item-buy">
-          <div class="shop-item-price ${!isMaxed && !canAfford ? 'cant-afford' : ''}">${isMaxed ? 'MAX' : cost + ' 💰'}</div>
-          <button class="shop-buy-btn" data-item-id="${key}" data-category="permanent" ${isMaxed || !canAfford ? 'disabled' : ''}>
-            ${isMaxed ? 'MAX' : 'Acheter'}
-          </button>
-        </div>
-      `;
-
-      permanentContainer.appendChild(itemDiv);
-
-      // Add event listener to the button
-      const btn = itemDiv.querySelector('.shop-buy-btn');
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const itemId = btn.dataset.itemId;
-        const category = btn.dataset.category;
-
-        logger.debug('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
-
-        if (btn.disabled) {
-          logger.debug('[Shop] Button is disabled, ignoring click');
-          if (isMaxed) {
-            if (window.toastManager) {
-              window.toastManager.show({ message: '⚠️ Niveau maximum atteint', type: 'warning', duration: 2000 });
-            }
-          } else {
-            if (window.toastManager) {
-              window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
-            }
-          }
-          return;
-        }
-
-        window.buyItem(itemId, category);
-      });
-
-      logger.debug('[Shop] Created button for:', key, 'disabled:', isMaxed || !canAfford);
+      permanentContainer.appendChild(this._buildPermanentItem(key, this.gameState.shopItems.permanent[key], player));
     }
 
     // Populate temporary items
@@ -670,59 +604,7 @@ return;
 
     logger.debug('[Shop] Creating temporary item buttons...');
     for (const key in this.gameState.shopItems.temporary) {
-      const item = this.gameState.shopItems.temporary[key];
-      const canAfford = player.gold >= item.cost;
-
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'shop-item';
-
-      const tooltipTemp = item.effect ? `${item.description} · ${item.effect}` : item.description;
-
-      itemDiv.innerHTML = `
-        <div class="shop-tooltip">${tooltipTemp}</div>
-        <div class="shop-item-info">
-          <div class="shop-item-name">${item.name}</div>
-          <div class="shop-item-desc">${item.description}</div>
-        </div>
-        <div class="shop-item-buy">
-          <div class="shop-item-price ${!canAfford ? 'cant-afford' : ''}">${item.cost} 💰</div>
-          <button class="shop-buy-btn" data-item-id="${key}" data-category="temporary" ${!canAfford ? 'disabled' : ''}>
-            Acheter
-          </button>
-        </div>
-      `;
-
-      temporaryContainer.appendChild(itemDiv);
-
-      // Weapon stats preview on hover
-      if (window.WEAPON_STATS && window.WEAPON_STATS[key]) {
-        itemDiv.addEventListener('mouseenter', () => this._showWeaponPreview(key));
-        itemDiv.addEventListener('mouseleave', () => this._hideWeaponPreview());
-      }
-
-      // Add event listener to the button
-      const btn = itemDiv.querySelector('.shop-buy-btn');
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const itemId = btn.dataset.itemId;
-        const category = btn.dataset.category;
-
-        logger.debug('[Shop] Button clicked:', itemId, category, 'disabled:', btn.disabled);
-
-        if (btn.disabled) {
-          logger.debug('[Shop] Button is disabled, ignoring click');
-          if (window.toastManager) {
-            window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
-          }
-          return;
-        }
-
-        window.buyItem(itemId, category);
-      });
-
-      logger.debug('[Shop] Created button for:', key, 'disabled:', !canAfford);
+      temporaryContainer.appendChild(this._buildTemporaryItem(key, this.gameState.shopItems.temporary[key], player));
     }
 
     logger.debug('[Shop] Shop populated successfully');
@@ -775,6 +657,105 @@ return;
   _hideWeaponPreview() {
     const panel = document.getElementById('weapon-stats-preview');
     if (panel) panel.classList.remove('visible');
+  }
+
+  /**
+   * Builds a DOM element for a permanent upgrade shop item.
+   * @param {string} key - Item identifier.
+   * @param {object} item - Item config from shopItems.permanent.
+   * @param {object} player - Current player state.
+   * @returns {HTMLElement}
+   */
+  _buildPermanentItem(key, item, player) {
+    const currentLevel = player.upgrades[key] || 0;
+    const cost = item.baseCost + currentLevel * item.costIncrease;
+    const isMaxed = currentLevel >= item.maxLevel;
+    const canAfford = player.gold >= cost;
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
+
+    const tooltipLines = [item.description];
+    if (item.effect) tooltipLines.push(item.effect);
+    tooltipLines.push(`Niveau: ${currentLevel}/${item.maxLevel}`);
+    if (!isMaxed) tooltipLines.push(`Prochain niveau: ${cost} 💰`);
+
+    itemDiv.innerHTML = `
+      <div class="shop-tooltip">${tooltipLines.join(' · ')}</div>
+      <div class="shop-item-info">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.description}</div>
+        <div class="shop-item-level">Niveau: ${currentLevel}/${item.maxLevel}</div>
+      </div>
+      <div class="shop-item-buy">
+        <div class="shop-item-price ${!isMaxed && !canAfford ? 'cant-afford' : ''}">${isMaxed ? 'MAX' : cost + ' 💰'}</div>
+        <button class="shop-buy-btn" data-item-id="${key}" data-category="permanent" ${isMaxed || !canAfford ? 'disabled' : ''}>
+          ${isMaxed ? 'MAX' : 'Acheter'}
+        </button>
+      </div>
+    `;
+
+    const btn = itemDiv.querySelector('.shop-buy-btn');
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.disabled) {
+        const msg = isMaxed ? '⚠️ Niveau maximum atteint' : '⚠️ Or insuffisant';
+        if (window.toastManager) window.toastManager.show({ message: msg, type: 'warning', duration: 2000 });
+        return;
+      }
+      window.buyItem(btn.dataset.itemId, btn.dataset.category);
+    });
+
+    logger.debug('[Shop] Created button for:', key, 'disabled:', isMaxed || !canAfford);
+    return itemDiv;
+  }
+
+  /**
+   * Builds a DOM element for a temporary shop item.
+   * @param {string} key - Item identifier.
+   * @param {object} item - Item config from shopItems.temporary.
+   * @param {object} player - Current player state.
+   * @returns {HTMLElement}
+   */
+  _buildTemporaryItem(key, item, player) {
+    const canAfford = player.gold >= item.cost;
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'shop-item';
+    const tooltip = item.effect ? `${item.description} · ${item.effect}` : item.description;
+
+    itemDiv.innerHTML = `
+      <div class="shop-tooltip">${tooltip}</div>
+      <div class="shop-item-info">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.description}</div>
+      </div>
+      <div class="shop-item-buy">
+        <div class="shop-item-price ${!canAfford ? 'cant-afford' : ''}">${item.cost} 💰</div>
+        <button class="shop-buy-btn" data-item-id="${key}" data-category="temporary" ${!canAfford ? 'disabled' : ''}>
+          Acheter
+        </button>
+      </div>
+    `;
+
+    if (window.WEAPON_STATS && window.WEAPON_STATS[key]) {
+      itemDiv.addEventListener('mouseenter', () => this._showWeaponPreview(key));
+      itemDiv.addEventListener('mouseleave', () => this._hideWeaponPreview());
+    }
+
+    const btn = itemDiv.querySelector('.shop-buy-btn');
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.disabled) {
+        if (window.toastManager) window.toastManager.show({ message: '⚠️ Or insuffisant', type: 'warning', duration: 2000 });
+        return;
+      }
+      window.buyItem(btn.dataset.itemId, btn.dataset.category);
+    });
+
+    logger.debug('[Shop] Created button for:', key, 'disabled:', !canAfford);
+    return itemDiv;
   }
 
   toggleStatsPanel() {

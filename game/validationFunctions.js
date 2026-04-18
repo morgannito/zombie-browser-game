@@ -34,12 +34,22 @@ function isValidString(value, maxLength = 1000) {
 }
 
 /**
+ * Return true if value is a plain (non-array) object.
+ * Rejects arrays, which satisfy `typeof x === 'object'` but are not valid payloads.
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
  * Valide et sanitize un objet de données de mouvement
  * @param {*} data - Données du mouvement
  * @returns {Object|null} Données validées ou null si invalides
  */
 function validateMovementData(data) {
-  if (!data || typeof data !== 'object') {
+  if (!isPlainObject(data)) {
     return null;
   }
 
@@ -63,7 +73,7 @@ function validateMovementData(data) {
  * @returns {Object|null}
  */
 function validateShootData(data) {
-  if (!data || typeof data !== 'object') {
+  if (!isPlainObject(data)) {
     return null;
   }
 
@@ -87,7 +97,7 @@ function validateShootData(data) {
  * @returns {Object|null}
  */
 function validateUpgradeData(data) {
-  if (!data || typeof data !== 'object') {
+  if (!isPlainObject(data)) {
     return null;
   }
 
@@ -109,7 +119,7 @@ function validateUpgradeData(data) {
  * @returns {Object|null}
  */
 function validateBuyItemData(data) {
-  if (!data || typeof data !== 'object') {
+  if (!isPlainObject(data)) {
     return null;
   }
 
@@ -136,6 +146,7 @@ function validateBuyItemData(data) {
 module.exports = {
   isValidNumber,
   isValidString,
+  isPlainObject,
   validateMovementData,
   validateShootData,
   validateUpgradeData,

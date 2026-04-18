@@ -58,8 +58,9 @@ class EffectsRenderer {
     this._scorchedExplosionIds = new Set();
     this.SCORCH_LIFETIME_MS = 8000;
     this.SCORCH_MAX = 48;
-    // Reusable map for particle color batching (avoids new Map() each frame)
+    // Reusable maps for particle color batching (avoids new Map() each frame)
     this._particleByColor = new Map();
+    this._dynPropBuckets = new Map(); // reused in renderDynamicPropParticles
     // Path2D cache: trailId/poolId → { path, radius } — avoids re-creating per frame
     this._trailPaths = new Map();
     this._poolPaths = new Map();
@@ -194,7 +195,8 @@ break;
     const FIRE_COLORS = new Set(['#ff6600', '#ffaa00', '#ffff00']);
 
     // Batch by color+alpha key; fire particles need a glow pass so keep separate
-    const normalBuckets = new Map();
+    const normalBuckets = this._dynPropBuckets;
+    normalBuckets.clear();
     const glowParticles = [];
 
     for (const particle of particles) {

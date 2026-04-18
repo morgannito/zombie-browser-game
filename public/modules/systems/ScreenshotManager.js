@@ -77,7 +77,10 @@ class ScreenshotManager {
 
   _showToast(objectUrl, blob) {
     const container = document.getElementById('toast-container');
-    if (!container) return;
+    if (!container) { URL.revokeObjectURL(objectUrl); return; }
+
+    let revoked = false;
+    const revoke = () => { if (!revoked) { revoked = true; URL.revokeObjectURL(objectUrl); } };
 
     const toast = document.createElement('div');
     toast.className = 'toast success screenshot-toast';
@@ -112,19 +115,27 @@ class ScreenshotManager {
       await this._share(objectUrl, blob, shareBtn);
     });
 
+    // Close button — revokes URL immediately to prevent blob leak
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.setAttribute('aria-label', 'Fermer');
+    closeBtn.addEventListener('click', () => {
+      toast.classList.add('removing');
+      setTimeout(() => { toast.remove(); revoke(); }, 300);
+    });
+
     content.appendChild(title);
     content.appendChild(shareBtn);
     toast.appendChild(thumb);
     toast.appendChild(content);
+    toast.appendChild(closeBtn);
     container.appendChild(toast);
 
     // Auto-dismiss after 6 s
     setTimeout(() => {
       toast.classList.add('removing');
-      setTimeout(() => {
-        toast.remove();
-        URL.revokeObjectURL(objectUrl);
-      }, 300);
+      setTimeout(() => { toast.remove(); revoke(); }, 300);
     }, 6000);
   }
 

@@ -3,6 +3,13 @@
  * @description Builds initial player state for new socket connections.
  */
 
+/**
+ * Clamp a value between min and max (inclusive). Returns min when min > max.
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
 function clamp(value, min, max) {
   if (min > max) {
     return min;
@@ -10,6 +17,15 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+/**
+ * Build initial player state for a new socket connection.
+ * Skill bonuses are NOT applied here — callers must invoke applySkillBonuses separately.
+ * @param {Object} config - Server CONFIG object
+ * @param {string} socketId - Socket.IO socket ID (used as playerId)
+ * @param {string|null} [sessionId] - Session UUID for reconnect recovery
+ * @param {string|null} [accountId] - Persistent account UUID (nullable for guests)
+ * @returns {Object} Fresh player state
+ */
 function createPlayerState(config, socketId, sessionId = null, accountId = null) {
   const wallThickness = config.WALL_THICKNESS || 40;
   const playerSize = config.PLAYER_SIZE || 20;

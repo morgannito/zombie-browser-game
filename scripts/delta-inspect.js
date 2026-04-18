@@ -1,6 +1,17 @@
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
+
+/** @type {import('socket.io-client').Socket|null} */
+let activeSocket = null;
+function shutdown() {
+  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 function login(u) {
   return new Promise((res, rej) => {
@@ -23,6 +34,7 @@ rej(e);
 (async () => {
   const l = await login('ins' + Date.now().toString().slice(-6));
   const socket = io('http://127.0.0.1:3000', { auth: { token: l.token }, transports: ['websocket'], parser: msgpackParser });
+  activeSocket = socket;
   let count = 0;
   let hasX = 0, hasY = 0, zombieCount = 0;
   socket.on('gameStateDelta', d => {

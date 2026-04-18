@@ -33,6 +33,9 @@ function startSessionCleanupInterval(logger) {
   }
 }
 
+/**
+ * Stop the session cleanup interval (useful for graceful shutdown or tests).
+ */
 function stopSessionCleanupInterval() {
   if (sessionCleanupInterval) {
     clearInterval(sessionCleanupInterval);
@@ -48,6 +51,11 @@ function normalizeSessionId(sessionId) {
   return SESSION_ID_REGEX.test(trimmed) ? trimmed : null;
 }
 
+/**
+ * Strip sensitive fields from a single player object for broadcast.
+ * @param {Object} player - Raw player state
+ * @returns {Object} Player object without sessionId/socketId/accountId
+ */
 function sanitizePlayerState(player) {
   if (!player || typeof player !== 'object') {
     return player;
@@ -59,6 +67,11 @@ function sanitizePlayerState(player) {
   return sanitized;
 }
 
+/**
+ * Strip sensitive fields from all players in a map for broadcast.
+ * @param {Object} players - Map of playerId → player state
+ * @returns {Object} Sanitized players map
+ */
 function sanitizePlayersState(players) {
   const sanitized = {};
   for (const id in players) {
@@ -67,6 +80,12 @@ function sanitizePlayersState(players) {
   return sanitized;
 }
 
+/**
+ * Snapshot recoverable player state for disconnect storage.
+ * Captures all game-relevant fields; excludes ephemeral socket/session IDs.
+ * @param {Object} player - Full live player state
+ * @returns {Object} Serialisable snapshot for reconnect recovery
+ */
 function createRecoverablePlayerState(player) {
   return {
     id: player.id,
@@ -139,6 +158,10 @@ function restoreRecoverablePlayerState(savedState, socketId, sessionId, accountI
   };
 }
 
+/**
+ * Return the number of sessions currently awaiting recovery.
+ * @returns {number}
+ */
 function getDisconnectedSessionCount() {
   return disconnectedPlayers.size;
 }

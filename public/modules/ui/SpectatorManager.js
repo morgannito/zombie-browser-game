@@ -36,9 +36,14 @@ class SpectatorManager {
       'border:1px solid rgba(255,255,255,0.18)', 'border-radius:8px',
       'font-size:0.9rem', 'cursor:pointer', 'transition:background 0.2s'
     ].join(';');
-    watchBtn.addEventListener('mouseenter', () => { watchBtn.style.background = 'rgba(255,255,255,0.15)'; });
-    watchBtn.addEventListener('mouseleave', () => { watchBtn.style.background = 'rgba(255,255,255,0.08)'; });
-    watchBtn.addEventListener('click', () => this._enterSpectatorMode());
+    // Store handler refs so they can be cleaned up
+    this._watchBtnEnter = () => { watchBtn.style.background = 'rgba(255,255,255,0.15)'; };
+    this._watchBtnLeave = () => { watchBtn.style.background = 'rgba(255,255,255,0.08)'; };
+    this._watchBtnClick = () => this._enterSpectatorMode();
+    watchBtn.addEventListener('mouseenter', this._watchBtnEnter);
+    watchBtn.addEventListener('mouseleave', this._watchBtnLeave);
+    watchBtn.addEventListener('click', this._watchBtnClick);
+    this._watchBtn = watchBtn;
     btn.parentNode.insertBefore(watchBtn, btn.nextSibling);
   }
 
@@ -69,6 +74,21 @@ class SpectatorManager {
     if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
     if (this._banner) { this._banner.remove(); this._banner = null; }
     this._showWeaponHUD();
+  }
+
+  /**
+   * Full cleanup: removes injected button, banner and all listeners.
+   * Call when the game tears down to prevent leaks.
+   */
+  cleanup() {
+    this.exit();
+    if (this._watchBtn) {
+      this._watchBtn.removeEventListener('mouseenter', this._watchBtnEnter);
+      this._watchBtn.removeEventListener('mouseleave', this._watchBtnLeave);
+      this._watchBtn.removeEventListener('click', this._watchBtnClick);
+      this._watchBtn.remove();
+      this._watchBtn = null;
+    }
   }
 
   // ─── HUD management ───────────────────────────────────────────────────────

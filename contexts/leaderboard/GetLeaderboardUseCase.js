@@ -28,7 +28,7 @@ class GetLeaderboardUseCase {
         logger.debug('Leaderboard served from cache', { entries: entries.length });
       } else {
         entries = await this.leaderboardRepository.getTop(limit);
-        this.cache?.set(entries);
+        this.cache?.set(entries, limit);
         logger.debug('Global leaderboard retrieved', { entries: entries.length });
       }
     }

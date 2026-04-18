@@ -3,11 +3,22 @@
 // Usage: node scripts/test-client.js [scenario]
 //   scenarios: shoot | move | zombies | all (default: all)
 
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
 
 const BASE = 'http://127.0.0.1:3000';
+
+/** @type {import('socket.io-client').Socket|null} */
+let activeSocket = null;
+function shutdown() {
+  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 const scenario = process.argv[2] || 'all';
 
 function httpLogin(username, password) {
@@ -47,6 +58,7 @@ async function run() {
     transports: ['websocket'],
     parser: msgpackParser
   });
+  activeSocket = socket;
 
   const stats = {
     gameStateFull: 0,

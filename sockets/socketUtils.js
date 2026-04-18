@@ -51,6 +51,42 @@ function isPayloadTooLarge(data) {
 }
 
 /**
+ * Emit a server error event and disconnect the socket.
+ * @param {object} socket - Socket.IO socket instance
+ * @param {Error} error - The error to report
+ * @param {boolean} isDev - Whether to include error details
+ */
+function emitHandlerError(socket, error, isDev) {
+  socket.emit(SOCKET_EVENTS.SERVER.ERROR, {
+    message: 'Une erreur est survenue sur le serveur',
+    code: 'INTERNAL_ERROR',
+    ...(isDev && { details: error.message })
+  });
+  socket.disconnect(true);
+}
+
+/**
+ * Attach a rejection handler to a promise returned by a socket handler.
+ * @param {Promise} promise
+ * @param {string} handlerName
+ * @param {object} socket
+ * @param {*} firstArg
+ * @param {boolean} isDev
+ */
+function handleAsyncError(promise, handlerName, socket, firstArg, isDev) {
+  promise.catch(error => {
+    logger.error('Async socket handler error', {
+      handler: handlerName,
+      socketId: socket.id,
+      error: error.message,
+      ...(isDev ? { stack: error.stack } : {}),
+      argPreview: stringifyArgPreview(firstArg)
+    });
+    emitHandlerError(socket, error, isDev);
+  });
+}
+
+/**
  * Wrap a socket handler with error handling, async support, and payload size guard.
  * @param {string} handlerName - Name for logging
  * @param {Function} handler - Handler to wrap
@@ -58,39 +94,18 @@ function isPayloadTooLarge(data) {
  */
 function safeHandler(handlerName, handler) {
   return function (...args) {
-    // Payload size guard: drop oversized payloads before any business logic
     const data = args[0];
     if (isPayloadTooLarge(data)) {
-      logger.warn('Socket payload rejected: too large', {
-        handler: handlerName,
-        socketId: this.id
-      });
+      logger.warn('Socket payload rejected: too large', { handler: handlerName, socketId: this.id });
       return;
     }
 
     const isDev = process.env.NODE_ENV === 'development';
-
     try {
       const result = handler.apply(this, args);
-
       if (result instanceof Promise) {
-        result.catch(error => {
-          logger.error('Async socket handler error', {
-            handler: handlerName,
-            socketId: this.id,
-            error: error.message,
-            ...(isDev ? { stack: error.stack } : {}),
-            argPreview: stringifyArgPreview(args[0])
-          });
-          this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-            message: 'Une erreur est survenue sur le serveur',
-            code: 'INTERNAL_ERROR',
-            ...(isDev && { details: error.message })
-          });
-          this.disconnect(true);
-        });
+        handleAsyncError(result, handlerName, this, args[0], isDev);
       }
-
       return result;
     } catch (error) {
       logger.error('Socket handler error', {
@@ -100,15 +115,16 @@ function safeHandler(handlerName, handler) {
         ...(isDev ? { stack: error.stack } : {}),
         argPreview: args.length > 0 ? stringifyArgPreview(args[0]) : 'no args'
       });
-
-      this.emit(SOCKET_EVENTS.SERVER.ERROR, {
-        message: 'Une erreur est survenue sur le serveur',
-        code: 'INTERNAL_ERROR',
-        ...(isDev && { details: error.message })
-      });
-      this.disconnect(true);
+      emitHandlerError(this, error, isDev);
     }
   };
 }
 
-module.exports = { safeHandler, stringifyArgPreview, isPayloadTooLarge, MAX_SOCKET_PAYLOAD_BYTES };
+module.exports = {
+  safeHandler,
+  stringifyArgPreview,
+  isPayloadTooLarge,
+  emitHandlerError,
+  handleAsyncError,
+  MAX_SOCKET_PAYLOAD_BYTES
+};

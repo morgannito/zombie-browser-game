@@ -45,7 +45,10 @@ class InputManager {
     this.handlers = {
       keydown: e => this.handleKeyDown(e),
       keyup: e => this.handleKeyUp(e),
-      blur: () => this.handleBlur(),
+      // window blur: tab switch, OS-level focus loss
+      windowBlur: () => this.handleBlur(),
+      // document blur: focus moved to an iframe or embedded element
+      documentBlur: () => this.handleBlur(),
       visibilitychange: () => this.handleVisibilityChange()
     };
 
@@ -57,15 +60,18 @@ class InputManager {
     window.addEventListener('keydown', this.handlers.keydown, { capture: true });
     window.addEventListener('keyup', this.handlers.keyup, { capture: true });
 
-    // Handle window blur (release all keys to prevent stuck keys)
-    window.addEventListener('blur', this.handlers.blur);
+    // Handle window AND document blur to prevent sticky keys on any focus loss.
+    // window blur fires for OS-level switches; document blur catches iframe focus.
+    window.addEventListener('blur', this.handlers.windowBlur);
+    document.addEventListener('blur', this.handlers.documentBlur, true);
     document.addEventListener('visibilitychange', this.handlers.visibilitychange);
   }
 
   cleanup() {
     window.removeEventListener('keydown', this.handlers.keydown, { capture: true });
     window.removeEventListener('keyup', this.handlers.keyup, { capture: true });
-    window.removeEventListener('blur', this.handlers.blur);
+    window.removeEventListener('blur', this.handlers.windowBlur);
+    document.removeEventListener('blur', this.handlers.documentBlur, true);
     document.removeEventListener('visibilitychange', this.handlers.visibilitychange);
 
     // Clear buffers
@@ -109,8 +115,8 @@ class InputManager {
 
     // Skip repeat events — key state unchanged, no need to dirty the cache.
     if (this.keys[key]) {
-return;
-}
+      return;
+    }
     this.keys[key] = true;
     this.movementDirty = true;
 

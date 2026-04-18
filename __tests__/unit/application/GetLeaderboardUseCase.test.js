@@ -100,4 +100,37 @@ describe('GetLeaderboardUseCase', () => {
     mockRepo.getTop.mockRejectedValue(new Error('db down'));
     await expect(useCase.execute()).rejects.toThrow('db down');
   });
+
+  describe('cache integration', () => {
+    let mockCache;
+
+    beforeEach(() => {
+      mockCache = { get: jest.fn(), set: jest.fn() };
+      useCase = new GetLeaderboardUseCase(mockRepo, mockCache);
+    });
+
+    test('serves from cache on hit', async () => {
+      const cached = [makeEntry({ score: 500 })];
+      mockCache.get.mockReturnValue(cached);
+
+      const result = await useCase.execute({ limit: 10 });
+      expect(result.entries).toHaveLength(1);
+      expect(mockRepo.getTop).not.toHaveBeenCalled();
+    });
+
+    test('calls cache.set with entries AND limit on miss', async () => {
+      mockCache.get.mockReturnValue(null);
+      const fresh = [makeEntry({ score: 999 })];
+      mockRepo.getTop.mockResolvedValue(fresh);
+
+      await useCase.execute({ limit: 25 });
+      expect(mockCache.set).toHaveBeenCalledWith(fresh, 25);
+    });
+
+    test('does not use cache for player-specific queries', async () => {
+      mockCache.get.mockReturnValue([makeEntry()]);
+      await useCase.execute({ playerId: 'p1' });
+      expect(mockCache.get).not.toHaveBeenCalled();
+    });
+  });
 });

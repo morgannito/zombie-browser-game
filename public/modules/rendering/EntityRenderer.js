@@ -1179,7 +1179,7 @@ class EntityRenderer {
     }
   }
 
-  _renderShooterDetails(ctx, zombie, baseSize, scale, bodyWidth, armOffset) {
+  _renderShooterDetails(ctx, _zombie, baseSize, scale, bodyWidth, armOffset) {
     ctx.fillStyle = '#333';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1;
@@ -1218,7 +1218,7 @@ class EntityRenderer {
     ctx.globalAlpha = 1;
   }
 
-  _renderTeleporterDetails(ctx, zombie, baseSize, scale, headRadius, now) {
+  _renderTeleporterDetails(ctx, _zombie, baseSize, scale, headRadius, now) {
     const pulseAmount = Math.sin(now / 150) * 0.2;
     ctx.strokeStyle = '#aa00ff';
     ctx.lineWidth = 2;
@@ -1250,7 +1250,7 @@ class EntityRenderer {
     ctx.stroke();
   }
 
-  _renderSummonerDetails(ctx, zombie, baseSize, scale, headRadius, now) {
+  _renderSummonerDetails(ctx, _zombie, baseSize, scale, headRadius, now) {
     const pulseAmount = Math.sin(now / 250) * 0.2;
     ctx.strokeStyle = '#00ddff';
     ctx.lineWidth = 2;
@@ -1325,7 +1325,7 @@ class EntityRenderer {
     ctx.restore();
   }
 
-  _renderBossCharnierDetails(ctx, zombie, scale, headRadius, now) {
+  _renderBossCharnierDetails(ctx, _zombie, scale, headRadius, now) {
     ctx.save();
 
     const pulseAmount = Math.sin(now / 300) * 0.2;

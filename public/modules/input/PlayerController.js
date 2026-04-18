@@ -144,11 +144,11 @@ class PlayerController {
 
     // Cancel velocity on blocked axes to avoid drift vs server clamp.
     if (blockedX) {
-this.velocity.x = 0;
-}
+      this.velocity.x = 0;
+    }
     if (blockedY) {
-this.velocity.y = 0;
-}
+      this.velocity.y = 0;
+    }
 
     const wt = this.gameState.config.WALL_THICKNESS || 40;
     const ps = this.gameState.config.PLAYER_SIZE || 20;
@@ -188,11 +188,11 @@ this.velocity.y = 0;
     );
     const angleDelta = Math.abs(angle - this.lastSentPosition.angle);
     if (now - this.lastNetworkUpdate < this.NET_INTERVAL_MOVING) {
-return;
-}
+      return;
+    }
     if (positionDelta <= this.positionThreshold && angleDelta <= this.angleThreshold) {
-return;
-}
+      return;
+    }
 
     this.network.playerMove({
       x: finalX,

@@ -352,8 +352,8 @@ class GameEngine {
     // (e.g. update() was heavy). Preserves interactivity under CPU load.
     // Allow once every 3 skips max to avoid visual freeze under sustained load.
     if (!this._renderSkipCount) {
- this._renderSkipCount = 0;
-}
+      this._renderSkipCount = 0;
+    }
     if (_t0 - this.lastFrameTime > 8 && this._renderSkipCount < 3) {
       this._renderSkipCount++;
       return;
@@ -561,10 +561,20 @@ class GameEngine {
     console.log('Performance settings updated in game engine:', settings);
   }
 
+  /**
+   * Start the game loop. Guards against double-registration of rAF: if a loop
+   * is already running (animationFrameId is set), cancel it first so we never
+   * have two concurrent loops draining into the same state.
+   */
   start() {
     console.log('🎮 Zombie Survival - Game Engine Started');
     if (typeof ReplayRecorder !== 'undefined') {
       window.replayRecorder = new ReplayRecorder();
+    }
+    // Cancel any previously-registered frame before starting a new loop.
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
     }
     this.gameLoop();
   }

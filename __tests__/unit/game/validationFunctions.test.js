@@ -3,6 +3,7 @@
 const {
   isValidNumber,
   isValidString,
+  isPlainObject,
   validateMovementData,
   validateShootData,
   validateUpgradeData,
@@ -18,6 +19,22 @@ const VALID_SHOP_CATEGORY = 'permanent';
 const VALID_SHOP_ITEM_ID = Object.keys(SHOP_ITEMS[VALID_SHOP_CATEGORY])[0];
 
 describe('validationFunctions', () => {
+  // isPlainObject
+  describe('isPlainObject', () => {
+    test('plain object returns true', () => {
+      expect(isPlainObject({ a: 1 })).toBe(true);
+    });
+    test('array returns false', () => {
+      expect(isPlainObject([1, 2, 3])).toBe(false);
+    });
+    test('null returns false', () => {
+      expect(isPlainObject(null)).toBe(false);
+    });
+    test('string returns false', () => {
+      expect(isPlainObject('str')).toBe(false);
+    });
+  });
+
   // isValidNumber
   describe('isValidNumber', () => {
     test('test_isValidNumber_regularNumber_returnsTrue', () => {
@@ -103,6 +120,12 @@ describe('validationFunctions', () => {
       expect(validateMovementData(data)).toBeNull();
     });
 
+    test('test_validateMovementData_array_returnsNull', () => {
+      const arr = [];
+      arr.x = 100; arr.y = 100; arr.angle = 0;
+      expect(validateMovementData(arr)).toBeNull();
+    });
+
     test('test_validateMovementData_returnsOnlyExpectedFields', () => {
       const data = { x: 50, y: 50, angle: 1, extra: 'ignored' };
       const result = validateMovementData(data);
@@ -166,6 +189,13 @@ describe('validationFunctions', () => {
 
     test('test_validateBuyItemData_unknownItemId_returnsNull', () => {
       expect(validateBuyItemData({ itemId: 'fakeItem', category: VALID_SHOP_CATEGORY })).toBeNull();
+    });
+
+    test('test_validateBuyItemData_array_returnsNull', () => {
+      const arr = [];
+      arr.itemId = VALID_SHOP_ITEM_ID;
+      arr.category = VALID_SHOP_CATEGORY;
+      expect(validateBuyItemData(arr)).toBeNull();
     });
 
     test('test_validateBuyItemData_null_returnsNull', () => {

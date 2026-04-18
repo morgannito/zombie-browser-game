@@ -2,11 +2,28 @@
 // Long-range hit test: respects fireRate, tracks hits by zombie distance bucket
 // Validates that bullets damage zombies at medium+ range (500-800px).
 
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
 
 const BASE = 'http://127.0.0.1:3000';
+
+/** @type {import('socket.io-client').Socket|null} */
+let activeSocket = null;
+function shutdown() {
+  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+/**
+ * Log in via HTTP.
+ * @param {string} u
+ * @returns {Promise<{token:string}>}
+ */
 function login(u) {
   return new Promise((res, rej) => {
     const b = JSON.stringify({ username: u });
@@ -28,6 +45,7 @@ rej(e);
 async function run() {
   const l = await login('rng' + Date.now().toString().slice(-6));
   const socket = io(BASE, { auth: { token: l.token }, transports: ['websocket'], parser: msgpackParser });
+  activeSocket = socket;
 
   let myId = null;
   let me = null;
@@ -157,10 +175,9 @@ return;
   const totalHits = Object.values(buckets).reduce((a, b) => a + b.hits, 0);
   console.log(`TOTAL  shots=${totalShots} hits=${totalHits} ratio=${(totalHits * 100 / totalShots).toFixed(1)}%`);
 
+  activeSocket = null;
   socket.disconnect();
   process.exit(0);
 }
 
-run().catch(e => {
- console.error(e); process.exit(1);
-});
+run().catch(e => { console.error(e); process.exit(1); });

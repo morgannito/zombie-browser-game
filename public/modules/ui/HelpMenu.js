@@ -8,12 +8,18 @@
 class HelpMenu {
   constructor() {
     this._visible = false;
-    this._layout = localStorage.getItem('keyboardLayout') || 'qwerty';
+    this._layout = this._loadLayout();
     this._el = null;
     this._tableBody = null;
     this._layoutBtn = null;
+    this._keyHandler = null;
     this._build();
     this._registerKeys();
+  }
+
+  /** @returns {string} persisted keyboard layout or 'qwerty' fallback. @private */
+  _loadLayout() {
+    try { return localStorage.getItem('keyboardLayout') || 'qwerty'; } catch (_) { return 'qwerty'; }
   }
 
   _keybinds() {
@@ -129,7 +135,7 @@ class HelpMenu {
 
   _toggleLayout() {
     this._layout = this._layout === 'azerty' ? 'qwerty' : 'azerty';
-    localStorage.setItem('keyboardLayout', this._layout);
+    try { localStorage.setItem('keyboardLayout', this._layout); } catch (_) { /* quota exceeded – ignore */ }
     this._renderRows();
   }
 
@@ -148,7 +154,7 @@ class HelpMenu {
   }
 
   _registerKeys() {
-    window.addEventListener('keydown', (e) => {
+    this._keyHandler = (e) => {
       if (e.repeat) return;
       const ae = document.activeElement;
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
@@ -159,7 +165,23 @@ class HelpMenu {
       if (e.key === 'Escape' && this._visible) {
         this.hide();
       }
-    });
+    };
+    window.addEventListener('keydown', this._keyHandler);
+  }
+
+  /**
+   * Removes DOM element and all event listeners.
+   * Call when the game unloads or HelpMenu is no longer needed.
+   */
+  cleanup() {
+    if (this._keyHandler) {
+      window.removeEventListener('keydown', this._keyHandler);
+      this._keyHandler = null;
+    }
+    if (this._el) {
+      this._el.remove();
+      this._el = null;
+    }
   }
 }
 

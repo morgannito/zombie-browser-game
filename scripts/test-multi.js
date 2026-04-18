@@ -2,6 +2,8 @@
 // Multi-client stress: spawn N concurrent bots, measure server behaviour
 // under load.
 
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
@@ -9,6 +11,17 @@ const msgpackParser = require('socket.io-msgpack-parser');
 const BASE = 'http://127.0.0.1:3000';
 const NB = parseInt(process.argv[2] || '5', 10);
 const DURATION = parseInt(process.argv[3] || '15', 10);
+
+/** @type {{socket:import('socket.io-client').Socket}[]} */
+let allBots = [];
+function shutdown() {
+  for (const b of allBots) {
+    try { b.socket.disconnect(); } catch (_) { /* ignore */ }
+  }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 function login(u) {
   return new Promise((res, rej) => {
@@ -92,6 +105,7 @@ async function run() {
     bots.push(await makeBot(i));
     await new Promise(r => setTimeout(r, 150));
   }
+  allBots = bots;
   console.log(`${NB} connected, waiting 2s for nickname/init...`);
   await new Promise(r => setTimeout(r, 2000));
 

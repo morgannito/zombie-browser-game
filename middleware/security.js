@@ -1,25 +1,28 @@
 /**
  * @fileoverview Security middleware configuration
+ * @description Configures Helmet CSP, rate limiters (with X-Forwarded-For
+ * spoofing protection) and bearer-token guard for monitoring endpoints.
  */
 
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const express = require('express');
 const { API_LIMITER_CONFIG, AUTH_LIMITER_CONFIG, METRICS_TOKEN } = require('../config/constants');
 
 /**
- * Configure Helmet security headers
- * Note: 'unsafe-inline' removed from scriptSrc — use nonces or hashes if inline
- * scripts are needed. styleSrc keeps 'unsafe-inline' because UI managers toggle
- * modal visibility via element.style.display (and the HTML template relies on
- * style="display:none" defaults). Without it all modals stay visible at boot.
- * @returns {Function} Helmet middleware
+ * Build Content Security Policy directives.
+ * scriptSrc deliberately omits 'unsafe-inline' — use nonces or hashes for
+ * any inline scripts. styleSrc retains 'unsafe-inline' because the UI relies
+ * on inline style="display:none" to hide modals at boot; removing it causes
+ * all modals to be visible until JS runs.
+ * @param {boolean} isDev - True when not in production
+ * @returns {Object} CSP directive map
  */
-function configureHelmet() {
-  const isDev = process.env.NODE_ENV !== 'production';
+function buildCspDirectives(isDev) {
   const directives = {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'https:'],
     connectSrc: ["'self'", 'ws:', 'wss:'],
@@ -27,12 +30,19 @@ function configureHelmet() {
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"]
   };
-  // Helmet injects `upgrade-insecure-requests` by default which breaks local
-  // HTTP development (browsers silently rewrite script src to https://localhost).
-  // Disable it in dev; production/HTTPS deployments keep the hardening.
   if (isDev) {
     directives.upgradeInsecureRequests = null;
   }
+  return directives;
+}
+
+/**
+ * Configure Helmet security headers with strict CSP.
+ * @returns {Function} Helmet middleware
+ */
+function configureHelmet() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const directives = buildCspDirectives(isDev);
   return helmet({
     contentSecurityPolicy: { directives },
     // HSTS instructs browsers to use HTTPS for a year — disastrous on
@@ -43,10 +53,25 @@ function configureHelmet() {
 }
 
 /**
- * Configure API rate limiter (100 req / 15 min per IP).
+ * Return the authoritative client IP from the raw TCP socket.
+ * This prevents rate-limit bypass via a spoofed X-Forwarded-For header.
+ * When behind a trusted reverse proxy, req.socket.remoteAddress is always
+ * the proxy's IP — which is what we want to rate-limit per-proxy, not per
+ * spoofed header. For direct connections it equals the real client IP.
+ * @param {Object} req - Express request
+ * @returns {string} IP address used as rate-limit key
+ */
+function getRateLimitKey(req) {
+  return req.socket.remoteAddress || 'unknown';
+}
+
+/**
+ * Configure API rate limiter (100 req / 15 min per TCP socket IP).
+ * keyGenerator ignores X-Forwarded-For to prevent spoofing bypass.
+ * @returns {Function} Rate limiter middleware
  */
 function configureApiLimiter() {
-  return rateLimit(API_LIMITER_CONFIG);
+  return rateLimit({ ...API_LIMITER_CONFIG, keyGenerator: getRateLimitKey });
 }
 
 /**
@@ -71,26 +96,61 @@ function additionalSecurityHeaders(req, res, next) {
 }
 
 /**
- * Configure Auth rate limiter — 20 req / 15 min per IP to block brute-force.
- * Can be bypassed in CI via DISABLE_AUTH_RATE_LIMIT=1.
+ * Configure Auth rate limiter — 20 req / 15 min per TCP socket IP.
+ * Brute-force protection. Bypass via DISABLE_AUTH_RATE_LIMIT=1 in CI.
+ * keyGenerator ignores X-Forwarded-For to prevent spoofing bypass.
  * @returns {Function} Rate limiter middleware
  */
 function configureAuthLimiter() {
-  return rateLimit(AUTH_LIMITER_CONFIG);
+  return rateLimit({ ...AUTH_LIMITER_CONFIG, keyGenerator: getRateLimitKey });
+}
+
+/**
+ * Extract bearer token from Authorization header.
+ * @param {string} authHeader - Raw Authorization header value
+ * @returns {string|null} Token string or null if malformed
+ */
+function extractBearerToken(authHeader) {
+  const parts = (authHeader || '').split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') return null;
+  return parts[1];
+}
+
+/**
+ * Compare two strings in constant time to prevent timing attacks.
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
+function timingSafeEqual(a, b) {
+  try {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+      // Compare against itself to keep constant time, then return false
+      crypto.timingSafeEqual(bufA, bufA);
+      return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Protect monitoring endpoints with a static bearer token.
+ * Uses timing-safe comparison to prevent token oracle attacks.
  * In development (no METRICS_TOKEN configured), requests pass through.
- * @returns {Function} Express middleware
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Next middleware
  */
 function requireMetricsToken(req, res, next) {
   if (!METRICS_TOKEN) {
     return next(); // dev mode — no token configured
   }
-  const authHeader = req.headers.authorization || '';
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer' || parts[1] !== METRICS_TOKEN) {
+  const token = extractBearerToken(req.headers.authorization);
+  if (!token || !timingSafeEqual(token, METRICS_TOKEN)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   return next();
@@ -102,5 +162,10 @@ module.exports = {
   configureAuthLimiter,
   configureBodyParser,
   additionalSecurityHeaders,
-  requireMetricsToken
+  requireMetricsToken,
+  // exported for unit tests
+  buildCspDirectives,
+  getRateLimitKey,
+  extractBearerToken,
+  timingSafeEqual
 };

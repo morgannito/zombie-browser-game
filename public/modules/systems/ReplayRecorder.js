@@ -64,7 +64,8 @@ class ReplayRecorder {
   /* ── death hook ──────────────────────────────────── */
 
   _listenDeath() {
-    document.addEventListener('session_death', () => this._onDeath());
+    this._deathHandler = () => this._onDeath();
+    document.addEventListener('session_death', this._deathHandler);
   }
 
   _onDeath() {
@@ -295,6 +296,10 @@ class ReplayRecorder {
   destroy() {
     clearInterval(this._captureInterval);
     if (this._animId) cancelAnimationFrame(this._animId);
+    if (this._deathHandler) {
+      document.removeEventListener('session_death', this._deathHandler);
+      this._deathHandler = null;
+    }
     this._replayBtn?.remove();
     this._replayOverlay?.remove();
   }

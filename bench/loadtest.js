@@ -15,6 +15,17 @@ const http = require('http');
 const https = require('https');
 const { io } = require('socket.io-client');
 
+/** Active sockets for SIGINT cleanup. @type {import('socket.io-client').Socket[]} */
+const _activeSockets = [];
+function _shutdown() {
+  for (const s of _activeSockets) {
+    try { s.disconnect(); } catch (_) { /* ignore */ }
+  }
+  process.exit(0);
+}
+process.on('SIGINT', _shutdown);
+process.on('SIGTERM', _shutdown);
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------

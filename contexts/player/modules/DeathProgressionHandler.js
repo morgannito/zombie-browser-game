@@ -48,8 +48,8 @@ function handlePlayerDeathProgression(player, playerId, gameState, now, isBoss =
   const tc = getTelemetryCollector();
   tc.record('death');
   if (isBoss) {
-tc.record('boss_kill');
-}
+    tc.record('boss_kill');
+  }
 
   if (!revived) {
     _markPlayerDead(player, gameState, now, isBoss, playerId, logger);
@@ -236,13 +236,13 @@ function cleanupOrphanedTrackingData(gameState, now) {
   // PERF: build Sets without intermediate Object.keys() array allocation
   const activeZombieIds = new Set();
   for (const id in gameState.zombies) {
- activeZombieIds.add(id);
-}
+    activeZombieIds.add(id);
+  }
   const activePoisonTrailIds = new Set();
   const trails = gameState.poisonTrails || {};
   for (const id in trails) {
- activePoisonTrailIds.add(id);
-}
+    activePoisonTrailIds.add(id);
+  }
 
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];

@@ -3,11 +3,22 @@
 // bullet deltas, position corrections. Connects, sets a nickname, does nothing,
 // and reports for 8 seconds.
 
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
 
 const BASE = 'http://127.0.0.1:3000';
+
+/** @type {import('socket.io-client').Socket|null} */
+let activeSocket = null;
+function shutdown() {
+  try { activeSocket && activeSocket.disconnect(); } catch (_) { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 function httpLogin(username) {
   return new Promise((resolve, reject) => {
@@ -32,6 +43,7 @@ reject(e);
 async function run() {
   const login = await httpLogin('obs' + Date.now().toString().slice(-6));
   const socket = io(BASE, { auth: { token: login.token }, transports: ['websocket'], parser: msgpackParser });
+  activeSocket = socket;
 
   let myId = null;
   const stats = {

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Memory leak detection: 5 bots, samples heapUsed every 30s, flags >50MB growth
 
+'use strict';
+
 const { io } = require('socket.io-client');
 const http = require('http');
 const msgpackParser = require('socket.io-msgpack-parser');
 
-// --- Config ---
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => a.replace('--', '').split('='))
 );
@@ -16,7 +17,26 @@ const LEAK_THRESHOLD_MB = parseInt(args.threshold || '50');
 const PORT = parseInt(args.port || '3001');
 const BASE = `http://127.0.0.1:${PORT}`;
 
-// --- HTTP login ---
+/** Active sockets for cleanup on interrupt. @type {(import('socket.io-client').Socket|null)[]} */
+let activeSockets = [];
+let samplerHandle = null;
+
+/** Disconnect all sockets and exit cleanly. */
+function shutdown() {
+  if (samplerHandle) clearInterval(samplerHandle);
+  for (const s of activeSockets) {
+    try { s && s.disconnect(); } catch (_) { /* ignore */ }
+  }
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+/**
+ * Log in via HTTP and return the auth payload.
+ * @param {string} username
+ * @returns {Promise<{token:string}>}
+ */
 function login(username) {
   return new Promise((res, rej) => {
     const body = JSON.stringify({ username });
@@ -27,12 +47,8 @@ function login(username) {
         let d = '';
         rs.on('data', c => d += c);
         rs.on('end', () => {
- try {
- res(JSON.parse(d));
-} catch (e) {
- rej(e);
-}
-});
+          try { res(JSON.parse(d)); } catch (e) { rej(e); }
+        });
       }
     );
     req.on('error', rej);
@@ -41,24 +57,28 @@ function login(username) {
   });
 }
 
-// --- Single bot (fire & forget) ---
+/**
+ * Connect a bot socket (fire-and-forget).
+ * @param {number} id
+ * @returns {Promise<import('socket.io-client').Socket|null>}
+ */
 async function spawnBot(id) {
   try {
     const auth = await login('leak_bot_' + id + '_' + Date.now().toString().slice(-4));
-    if (!auth.token) {
-return;
-}
+    if (!auth.token) return null;
     const socket = io(BASE, { auth: { token: auth.token }, transports: ['websocket'], parser: msgpackParser });
-    socket.on('init', d => {
- socket.emit('setNickname', { nickname: 'leakbot' + id });
-});
+    socket.on('init', () => socket.emit('setNickname', { nickname: 'leakbot' + id }));
     socket.on('connect_error', () => {});
-    // Keep alive until process exits
     return socket;
-  } catch (_) { /* ignore connect errors */ }
+  } catch (_) {
+    return null;
+  }
 }
 
-// --- ASCII graph ---
+/**
+ * Render an ASCII heap graph from samples.
+ * @param {{ts:number,mb:number}[]} samples
+ */
 function renderGraph(samples) {
   const MB = samples.map(s => s.mb);
   const max = Math.max(...MB);
@@ -74,44 +94,17 @@ function renderGraph(samples) {
     const line = MB.map(v => (v >= threshold ? '#' : ' ')).join('');
     console.log(`${label} | ${line}`);
   }
-  const axis = ' '.repeat(9) + '+' + '-'.repeat(WIDTH);
-  console.log(axis);
+  console.log(' '.repeat(9) + '+' + '-'.repeat(WIDTH));
   const tStart = samples[0] ? new Date(samples[0].ts).toISOString().slice(11, 19) : '';
   const tEnd = samples[samples.length - 1] ? new Date(samples[samples.length - 1].ts).toISOString().slice(11, 19) : '';
   console.log(`         ${tStart}${' '.repeat(Math.max(0, WIDTH - tStart.length - tEnd.length))}${tEnd}`);
 }
 
-// --- Main ---
-async function main() {
-  console.log(`[leak-test] ${N} bots | duration=${DURATION_MS / 1000}s | sample=${SAMPLE_INTERVAL_MS / 1000}s | threshold=${LEAK_THRESHOLD_MB}MB`);
-
-  const sockets = await Promise.all(Array.from({ length: N }, (_, i) => spawnBot(i + 1)));
-  const connected = sockets.filter(Boolean).length;
-  console.log(`[leak-test] ${connected}/${N} bots connected`);
-
-  const samples = [];
-
-  const takeSample = () => {
-    const { heapUsed } = process.memoryUsage();
-    const mb = heapUsed / 1024 / 1024;
-    const ts = Date.now();
-    samples.push({ ts, mb });
-    console.log(`[${new Date(ts).toISOString().slice(11, 19)}] heap=${mb.toFixed(2)} MB`);
-  };
-
-  takeSample(); // t=0
-
-  const sampler = setInterval(takeSample, SAMPLE_INTERVAL_MS);
-
-  await new Promise(resolve => setTimeout(resolve, DURATION_MS));
-
-  clearInterval(sampler);
-  takeSample(); // final
-
-  // Disconnect bots
-  sockets.forEach(s => s && s.disconnect());
-
-  // --- Report ---
+/**
+ * Print summary and exit with appropriate code.
+ * @param {{ts:number,mb:number}[]} samples
+ */
+function printSummaryAndExit(samples) {
   renderGraph(samples);
 
   const initial = samples[0].mb;
@@ -133,6 +126,36 @@ async function main() {
   }
 }
 
-main().catch(err => {
- console.error(err); process.exit(2);
-});
+async function main() {
+  console.log(`[leak-test] ${N} bots | duration=${DURATION_MS / 1000}s | sample=${SAMPLE_INTERVAL_MS / 1000}s | threshold=${LEAK_THRESHOLD_MB}MB`);
+
+  activeSockets = await Promise.all(Array.from({ length: N }, (_, i) => spawnBot(i + 1)));
+  const connected = activeSockets.filter(Boolean).length;
+  console.log(`[leak-test] ${connected}/${N} bots connected`);
+
+  const samples = [];
+
+  const takeSample = () => {
+    const { heapUsed } = process.memoryUsage();
+    const mb = heapUsed / 1024 / 1024;
+    const ts = Date.now();
+    samples.push({ ts, mb });
+    console.log(`[${new Date(ts).toISOString().slice(11, 19)}] heap=${mb.toFixed(2)} MB`);
+  };
+
+  takeSample();
+  samplerHandle = setInterval(takeSample, SAMPLE_INTERVAL_MS);
+
+  await new Promise(resolve => setTimeout(resolve, DURATION_MS));
+
+  clearInterval(samplerHandle);
+  samplerHandle = null;
+  takeSample();
+
+  activeSockets.forEach(s => s && s.disconnect());
+  activeSockets = [];
+
+  printSummaryAndExit(samples);
+}
+
+main().catch(err => { console.error(err); process.exit(2); });

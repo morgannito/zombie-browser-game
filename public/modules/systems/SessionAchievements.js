@@ -24,38 +24,52 @@ class SessionAchievements {
   }
 
   _bindEvents() {
-    document.addEventListener('session_kill', e => {
-      const delta = (e.detail && e.detail.delta) || 1;
-      this._counters.sessionKills += delta;
-      if (this._counters.lastCritPending) {
-        this._counters.consecutiveCritKills += delta;
-      } else {
+    this._handlers = {
+      session_kill: e => {
+        const delta = (e.detail && e.detail.delta) || 1;
+        this._counters.sessionKills += delta;
+        if (this._counters.lastCritPending) {
+          this._counters.consecutiveCritKills += delta;
+        } else {
+          this._counters.consecutiveCritKills = 0;
+        }
+        this._counters.lastCritPending = false;
+        this._counters.streakKills += delta;
+        this._checkAll();
+      },
+      session_death: () => {
+        this._counters.streakKills = 0;
         this._counters.consecutiveCritKills = 0;
+        this._counters.lastCritPending = false;
+      },
+      session_gold: e => {
+        this._gold = (e.detail && e.detail.gold) || 0;
+        this._checkAll();
+      },
+      wave_changed: e => {
+        this._wave = (e.detail && e.detail.wave) || 0;
+        this._checkAll();
+      },
+      crit_damage: () => {
+        this._counters.lastCritPending = true;
       }
-      this._counters.lastCritPending = false;
-      this._counters.streakKills += delta;
-      this._checkAll();
-    });
+    };
 
-    document.addEventListener('session_death', () => {
-      this._counters.streakKills = 0;
-      this._counters.consecutiveCritKills = 0;
-      this._counters.lastCritPending = false;
-    });
+    for (const [event, handler] of Object.entries(this._handlers)) {
+      document.addEventListener(event, handler);
+    }
+  }
 
-    document.addEventListener('session_gold', e => {
-      this._gold = (e.detail && e.detail.gold) || 0;
-      this._checkAll();
-    });
-
-    document.addEventListener('wave_changed', e => {
-      this._wave = (e.detail && e.detail.wave) || 0;
-      this._checkAll();
-    });
-
-    document.addEventListener('crit_damage', () => {
-      this._counters.lastCritPending = true;
-    });
+  /**
+   * Removes all document event listeners.
+   * Call on game teardown to prevent stacking across sessions.
+   */
+  cleanup() {
+    if (!this._handlers) return;
+    for (const [event, handler] of Object.entries(this._handlers)) {
+      document.removeEventListener(event, handler);
+    }
+    this._handlers = null;
   }
 
   _checkAll() {

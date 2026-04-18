@@ -257,7 +257,12 @@ function initSocketHandlers(
       }
       metricsCollector.incrementTotalPlayers();
     }
-    applySkillBonuses(socket, accountId, gameState);
+    // BUG FIX: skill bonuses are already embedded in recovered player state —
+    // calling applySkillBonuses on a recovered session would double-apply every
+    // multiplier/flat bonus, compounding stats on each reconnect.
+    if (!recovered) {
+      applySkillBonuses(socket, accountId, gameState);
+    }
     emitInitSnapshot(socket, gameState, recovered);
     registerAllHandlers(socket, {
       gameState,
