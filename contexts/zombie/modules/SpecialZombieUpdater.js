@@ -22,7 +22,7 @@ function canPlaceZombieAt(zombie, x, y, gameState) {
 /**
  * Update teleporter zombie
  */
-function updateTeleporterZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+function updateTeleporterZombie(zombie, _zombieId, now, collisionManager, entityManager, gameState) {
   if (zombie.type !== 'teleporter') {
     return;
   }
@@ -145,7 +145,7 @@ function spawnMinions(
 /**
  * Update berserker zombie
  */
-function updateBerserkerZombie(zombie, zombieId, now, collisionManager, entityManager, _gameState) {
+function updateBerserkerZombie(zombie, _zombieId, now, collisionManager, entityManager, _gameState) {
   if (zombie.type !== 'berserker') {
     return;
   }
@@ -241,7 +241,7 @@ function startDash(zombie, closestPlayer, now, berserkerType, entityManager) {
 /**
  * Update necromancer zombie
  */
-function updateNecromancerZombie(zombie, zombieId, now, entityManager, gameState) {
+function updateNecromancerZombie(zombie, _zombieId, now, entityManager, gameState) {
   if (zombie.type !== 'necromancer') {
     return;
   }
@@ -336,7 +336,7 @@ function updateBruteZombie(zombie, zombieId, now, collisionManager, entityManage
 /**
  * Execute brute ground slam
  */
-function executeGroundSlam(zombie, zombieId, now, bruteType, gameState, entityManager) {
+function executeGroundSlam(zombie, _zombieId, now, bruteType, gameState, entityManager) {
   zombie.lastGroundSlam = now;
   createParticles(zombie.x, zombie.y, bruteType.color, 30, entityManager);
 
@@ -358,7 +358,7 @@ function executeGroundSlam(zombie, zombieId, now, bruteType, gameState, entityMa
 /**
  * Update mimic zombie
  */
-function updateMimicZombie(zombie, zombieId, now, collisionManager, entityManager, gameState) {
+function updateMimicZombie(zombie, _zombieId, now, _collisionManager, entityManager, gameState) {
   if (zombie.type !== 'mimic') {
     return;
   }
@@ -373,7 +373,7 @@ function updateMimicZombie(zombie, zombieId, now, collisionManager, entityManage
 /**
  * Transform mimic to random zombie type
  */
-function transformMimic(zombie, now, mimicType, gameState, entityManager) {
+function transformMimic(zombie, now, _mimicType, _gameState, entityManager) {
   zombie.lastTransform = now;
 
   const availableTypes = ['tank', 'fast', 'healer', 'shooter', 'slower'];

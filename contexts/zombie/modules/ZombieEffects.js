@@ -147,7 +147,7 @@ function updateFrozenSlowedZombies(gameState, now) {
 /**
  * Handle splitter zombie death - split into smaller zombies
  */
-function handleSplitterDeath(zombie, zombieId, gameState, entityManager) {
+function handleSplitterDeath(zombie, _zombieId, gameState, entityManager) {
   if (zombie.type !== 'splitter' || zombie.isSplit) {
     return;
   }

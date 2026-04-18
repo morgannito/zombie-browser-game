@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Zombie constants module** — `contexts/zombie/constants.js` centralizes all magic numbers (speeds, HP, timers) across BossUpdater, SpecialZombieUpdater, ZombieEffects, ZombieUpdater
+- **Domain Invariants** — `lib/domain/shared/Invariants.js` guards for preconditions/postconditions across use-cases
+- **Deployment docs** — `docs/DEPLOYMENT.md` full production guide; `docs/WEBSOCKET.md` condensed reference
+- **JSON Schema validation** — zombie entities validated against JSON Schema; fuzz + error-path test suites added (`validation-fuzz`, `error-paths`, `AdminCommands`)
+- **Husky hooks** — `commit-msg` + `pre-commit` enforced; `.nvmrc` pinned
 - **Ultra/Insane tick modes** — 240Hz and 1000Hz server tick rates for stress testing
 - **Full client prediction + reconciliation** — input prediction with server authority rollback, adaptive tick rates, reconnect resync (`requestFullState`)
 - **MessagePack encoding** — 40–60% smaller payloads via Socket.IO msgpack parser
@@ -23,6 +28,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Metrics** — anti-cheat counters on `/api/v1/metrics`
 
 ### Changed
+- **Domain entities async audit** — `AccountProgression`, `LeaderboardEntry`, `PermanentUpgrades`, `Player` refactored for async-safe patterns and reduced coupling
+- **Input listeners passive** — all `touchstart`/`wheel` event listeners flagged `{ passive: true }` to unblock browser paint thread
+- **traceId propagation** — request traceId threaded through server logs and error responses for end-to-end correlation
 - **NetworkManager split (Phase 7)** — ZombieManager/BossAbilities/CollisionManager decomposed into SRP modules
 - **Flat broadcast** — dropped AOI for lobbies <5 players; path scales to 20+ clients at 60Hz+
 - **Input transport** — batched moves, delta-encoded, `TCP_NODELAY` enabled
