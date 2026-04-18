@@ -18,6 +18,18 @@ const logger = require('../../../infrastructure/logging/Logger');
 const MetricsCollector = require('../../../infrastructure/metrics/MetricsCollector');
 const { SESSION_RECOVERY_TIMEOUT } = require('../../../config/constants');
 
+/**
+ * Register the disconnect handler on a socket.
+ * Saves recoverable session state and cleans up bullets, rate-limits, and network queues.
+ * @param {import('socket.io').Socket} socket
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ * @param {string|null} sessionId
+ * @param {string|null} accountId
+ * @param {Object|null} networkManager
+ * @param {Function|null} stopZombieHeartbeat
+ * @returns {void}
+ */
 function registerDisconnectHandler(
   socket,
   gameState,

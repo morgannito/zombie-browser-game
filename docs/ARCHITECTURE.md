@@ -1,7 +1,7 @@
 # Architecture — zombie-browser-game
 
-**Index GitNexus** : 3409 symboles, 10234 relations, 286 flows d'exécution.
-**Commit indexé** : `105dd42`. Re-run `gitnexus analyze` après chaque merge.
+**Index GitNexus** : 4461 noeuds, 12866 relations, 300 flows d'exécution.
+**Commit indexé** : `83e63f5`. Re-run `gitnexus analyze` après chaque merge.
 
 ---
 

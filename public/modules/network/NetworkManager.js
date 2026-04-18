@@ -237,6 +237,46 @@ class NetworkManager {
   }
 
   /**
+   * Shared post-reconnect handler. Called once regardless of which Socket.IO
+   * event fires first ('reconnect' or 'connect' on the manual-backoff path).
+   * Sets justReconnected, resets prediction anchor, requests full state, and
+   * flushes the buffered move queue.
+   * @param {string} path - Log label ('socket.io-auto' | 'manual-backoff')
+   * @private
+   */
+  _handleReconnected(path) {
+    // Prevent double-execution when both 'reconnect' and 'connect' fire.
+    this._reconnectHandled = true;
+    setTimeout(() => { this._reconnectHandled = false; }, 500);
+
+    this.justReconnected = true;
+    this._resetReconnectBackoff();
+
+    // Reset PlayerController's lastSentPosition so the first post-reconnect
+    // playerMove doesn't compute a huge delta from a stale pre-disconnect
+    // reference, which the server anti-cheat would reject → teleport.
+    if (this._deps.playerController) {
+      const p = this._deps.gameState?.state?.players?.[this._deps.gameState.playerId];
+      if (p) {
+        this._deps.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
+        this._deps.playerController.lastNetworkUpdate = performance.now();
+      }
+    }
+
+    if (this._deps.toastManager) {
+      this._deps.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
+    }
+
+    console.log(`[Socket.IO] Post-reconnect sync (${path})`);
+
+    // Re-sync: request full authoritative state. Silent no-op if server does not support it.
+    this._syncFullState();
+    // Flush buffered moves AFTER justReconnected is set so the server receives
+    // the latest position and can prime a full-state response.
+    this._flushMoveBuffer();
+  }
+
+  /**
    * Batch-queue an emit and flush via queueMicrotask (once per microtask checkpoint).
    * Avoids redundant socket writes when multiple emits land in the same rAF tick.
    * @param {string} event
@@ -327,8 +367,8 @@ class NetworkManager {
     this._latencyBuf[this._latencyBufIdx] = latency;
     this._latencyBufIdx = (this._latencyBufIdx + 1) % this._latencyBuf.length;
     if (this._latencyBufCount < this._latencyBuf.length) {
-this._latencyBufCount++;
-}
+      this._latencyBufCount++;
+    }
 
     // Update UI indicator if available
     this.updateLatencyIndicator();
@@ -355,8 +395,8 @@ this._latencyBufCount++;
     }
     let sum = 0;
     for (let i = 0; i < this._latencyBufCount; i++) {
-sum += this._latencyBuf[i];
-}
+      sum += this._latencyBuf[i];
+    }
     return Math.round(sum / this._latencyBufCount);
   }
 
@@ -404,27 +444,13 @@ sum += this._latencyBuf[i];
           const quality = this.getConnectionQuality();
           this._deps.toastManager.show({ message: `✅ Connected (${quality.text})`, type: 'success' });
         }
-      } else {
-        // Manual reconnect path (backoff via _scheduleReconnect → socket.connect())
+      } else if (!this._reconnectHandled) {
+        // Manual reconnect path (backoff via _scheduleReconnect → socket.connect()).
+        // Guard with _reconnectHandled: Socket.IO fires both 'reconnect' and then
+        // 'connect' on auto-reconnect, which would double-flush the move buffer and
+        // reset the prediction anchor twice.
         console.log(`[Socket.IO] Reconnected (manual backoff path, transport: ${transport})`);
-        this.justReconnected = true;
-        this._resetReconnectBackoff();
-        // Reset PlayerController's lastSentPosition so the first post-reconnect
-        // playerMove doesn't compute a huge delta from a stale pre-disconnect
-        // reference, which the server anti-cheat would reject → teleport.
-        if (this._deps.playerController) {
-          const p = this._deps.gameState?.state?.players?.[this._deps.gameState.playerId];
-          if (p) {
-            this._deps.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
-            this._deps.playerController.lastNetworkUpdate = performance.now();
-          }
-        }
-        if (this._deps.toastManager) {
-          this._deps.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
-        }
-        // Re-sync: request full authoritative state. Silent no-op if server does not support it.
-        this._syncFullState();
-        this._flushMoveBuffer();
+        this._handleReconnected('manual-backoff');
       }
     });
 
@@ -456,23 +482,8 @@ sum += this._latencyBuf[i];
 
     this.on('reconnect', attemptNumber => {
       console.log('[Socket.IO] Reconnected after', attemptNumber, 'attempts');
-      // Set flag to disable client prediction temporarily
-      this.justReconnected = true;
-      this._resetReconnectBackoff();
-      // Reset lastSentPosition to prevent huge delta → anti-cheat reject on first move
-      if (this._deps.playerController) {
-        const p = this._deps.gameState?.state?.players?.[this._deps.gameState.playerId];
-        if (p) {
-          this._deps.playerController.lastSentPosition = { x: p.x, y: p.y, angle: p.angle };
-          this._deps.playerController.lastNetworkUpdate = performance.now();
-        }
-      }
-      if (this._deps.toastManager) {
-        this._deps.toastManager.show({ message: '✅ Reconnected to server', type: 'success' });
-      }
-      // Re-sync: request full authoritative state. Silent no-op if server does not support it.
-      this._syncFullState();
-      this._flushMoveBuffer();
+      // Socket.IO fires 'reconnect' then 'connect' — handle once, guard the 'connect' handler.
+      this._handleReconnected('socket.io-auto');
     });
 
     this.on('reconnect_attempt', attemptNumber => {
@@ -783,8 +794,12 @@ sum += this._latencyBuf[i];
   }
 
   /**
-   * Delta path: snap to server position when predicted drift > 50px.
-   * Matches handleGameState full-state policy.
+   * Delta path: snap to server position when predicted drift > 200px.
+   * Threshold matches the full-state path in handleGameState to avoid
+   * oscillating rubber-band caused by the delta path being more aggressive.
+   * @param {object} delta
+   * @param {{x:number,y:number,angle:number}|null} localPlayerState
+   * @private
    */
   _checkLocalPlayerDesync(delta, localPlayerState) {
     if (
@@ -797,19 +812,21 @@ sum += this._latencyBuf[i];
     }
     const serverPatch = delta.updated.players[this._deps.gameState.playerId];
     if (serverPatch.x === undefined || serverPatch.y === undefined) {
-return;
-}
+      return;
+    }
     const dx = localPlayerState.x - serverPatch.x;
     const dy = localPlayerState.y - serverPatch.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > 50) {
+    // BUG FIX: was 50px — too aggressive on delta path, causes rubber-band jitter.
+    // Now matches the 200px threshold used by the full-state path (handleGameState).
+    const PREDICTION_TRUST_PX = 200;
+    if (Math.sqrt(dx * dx + dy * dy) > PREDICTION_TRUST_PX) {
       const p = this._deps.gameState.state.players?.[this._deps.gameState.playerId];
       if (p) {
         p.x = serverPatch.x;
         p.y = serverPatch.y;
         if (typeof serverPatch.angle === 'number') {
-p.angle = serverPatch.angle;
-}
+          p.angle = serverPatch.angle;
+        }
       }
     }
   }
@@ -1136,10 +1153,16 @@ p.angle = serverPatch.angle;
     }
   }
 
+  /**
+   * Handle server-initiated session expiry.
+   * BUG FIX: replaced blocking confirm() (freezes render loop) with a
+   * non-blocking CustomEvent. UI layer can listen to 'session_timeout' and
+   * show a modal/button without stalling the game loop.
+   * @param {{reason:string}} data
+   */
   handleSessionTimeout(data) {
     console.log('[Socket.IO] Session timeout:', data.reason);
 
-    // Show error message to user
     if (this._deps.toastManager) {
       this._deps.toastManager.show({
         message: '⏱️ Session expirée: ' + (data.reason || 'Inactivité détectée'),
@@ -1147,12 +1170,9 @@ p.angle = serverPatch.angle;
       });
     }
 
-    // Show alert with option to reload
-    setTimeout(() => {
-      if (confirm('Votre session a expiré. Voulez-vous recharger la page ?')) {
-        window.location.reload();
-      }
-    }, 500);
+    // Dispatch non-blocking event so the UI can prompt the user without
+    // stalling the render loop (confirm() blocks the JS thread).
+    document.dispatchEvent(new CustomEvent('session_timeout', { detail: data }));
   }
 
   connectWithAuth(auth) {
@@ -1235,8 +1255,8 @@ p.angle = serverPatch.angle;
    */
   playerMoveBatch(batch) {
     if (!batch || batch.length === 0) {
-return;
-}
+      return;
+    }
     for (const item of batch) {
       this.socket.emit('playerMove', item);
     }

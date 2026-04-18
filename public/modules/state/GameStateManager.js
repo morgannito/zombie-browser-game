@@ -187,11 +187,6 @@ class GameStateManager {
   }
 
   /**
-   * Compute the adaptive interpolation delay.
-   * Base 100ms; bumped to 200ms when jitter > 50ms (unstable link).
-   * @returns {number} delay in ms
-   */
-  /**
    * Extrapolation cap scales with latency: more latency = longer extrap
    * leash before an entity freezes on its last snapshot. Capped to avoid
    * runaway hallucinated motion.
@@ -199,27 +194,32 @@ class GameStateManager {
    */
   _adaptiveExtrapCap() {
     if (this.networkLatency > 250) {
-return 140;
-}
+      return 140;
+    }
     if (this.networkLatency > 100) {
-return 100;
-}
+      return 100;
+    }
     return 75;
   }
 
+  /**
+   * Compute adaptive interpolation delay based on current network conditions.
+   * Minimal 30ms on stable link; raised on high-latency/jittery connections.
+   * @returns {number} delay in ms
+   */
   _adaptiveInterpDelay() {
     // Minimal buffer: 30ms covers ~2 server packets at 20Hz (50ms spacing)
     // on a stable link. On high-latency/jittery links, bump up gently.
     const base = 30;
     if (this.networkLatency > 300) {
-return 150;
-}
+      return 150;
+    }
     if (this.networkLatency > 150) {
-return 90;
-}
+      return 90;
+    }
     if (this._jitter > 40) {
-return 70;
-}
+      return 70;
+    }
     return base;
   }
 
@@ -612,7 +612,10 @@ return 70;
     for (const [id, player] of Object.entries(this.state.players)) {
       if (id === this.playerId) {
         // Apply smooth lerp correction if one was queued by handlePositionCorrection.
-        // This avoids the visible teleport of a hard snap for small isolated corrections.
+        // BUG FIX: previous code used `t = elapsed/duration` as a lerp weight applied
+        // additively each frame: player.x += (target - player.x) * t. Because t grows
+        // 0→1, each subsequent frame applies a larger fraction and can overshoot,
+        // causing oscillation / jitter. Use a constant per-frame exponential blend.
         // Uses Date.now() (not `now` which is server-epoch) to stay on the same time
         // base as ct.startTime, written by NetworkManager with Date.now().
         if (player._correctionTarget) {
@@ -623,9 +626,10 @@ return 70;
             player.y = ct.y;
             delete player._correctionTarget;
           } else {
-            const t = elapsed / ct.duration;
-            player.x += (ct.x - player.x) * t;
-            player.y += (ct.y - player.y) * t;
+            // Fixed blend factor per frame (~15%): resolves visually in ~30 frames (500ms).
+            const BLEND = 0.15;
+            player.x += (ct.x - player.x) * BLEND;
+            player.y += (ct.y - player.y) * BLEND;
           }
         }
         continue; // Skip remote interpolation for local player

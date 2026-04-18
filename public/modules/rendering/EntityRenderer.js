@@ -89,6 +89,34 @@ class EntityRenderer {
     // Maps: id -> { x, y }
     this._magnetPowerups = new Map();
     this._magnetLoot = new Map();
+
+    // Bullet trail history: bulletId -> [{x,y}] — evicted when bullet removed
+    this._bulletsByColor = new Map();
+    this._bulletTrailHistory = new Map();
+
+    // darkenColor result cache for renderDestructibleObstacles (cleared each call)
+    this._darkenCache = new Map();
+  }
+
+  /**
+   * Release all caches and pooled data structures.
+   * Call when the renderer is no longer needed (e.g. game over / scene teardown).
+   */
+  destroy() {
+    this._hitFlashes.clear();
+    this._deathAnimations.clear();
+    this._zombieSpriteCache.clear();
+    this._zombieSpriteCacheLRU.clear();
+    this._textWidthCache.clear();
+    this._powerupSpriteCache.clear();
+    this._playerBodyCache.clear();
+    this._visibleZombies.length = 0;
+    this._auraBuckets.clear();
+    this._magnetPowerups.clear();
+    this._magnetLoot.clear();
+    this._bulletsByColor.clear();
+    this._bulletTrailHistory.clear();
+    this._darkenCache.clear();
   }
 
   /**
@@ -132,8 +160,9 @@ class EntityRenderer {
    * Returns (from cache or freshly rendered) an offscreen canvas for the static player body.
    * Renders torso + head + hat at 64x64; caller places via drawImage.
    */
-  _getPlayerBodySprite(isCurrentPlayer) {
-    const key = isCurrentPlayer ? 'current' : 'other';
+  _getPlayerBodySprite(isCurrentPlayer, skinColor) {
+    const colorKey = isCurrentPlayer ? (skinColor || 'default') : 'other';
+    const key = isCurrentPlayer ? `current|${colorKey}` : 'other';
     if (this._playerBodyCache.has(key)) return this._playerBodyCache.get(key);
 
     const dim = 64;
@@ -150,8 +179,16 @@ class EntityRenderer {
     }
     const oc = offscreen.getContext('2d', { willReadFrequently: false });
     const baseSize = 20 / 20;
-    const primaryColor = isCurrentPlayer ? '#0088ff' : '#ff8800';
-    const borderColor = isCurrentPlayer ? '#00ffff' : '#ffaa00';
+    const SKIN_COLORS = {
+      cyan: { primary: '#0088ff', border: '#00ffff' },
+      red: { primary: '#cc1111', border: '#ff4444' },
+      green: { primary: '#009933', border: '#00cc44' },
+      purple: { primary: '#7722cc', border: '#aa44ff' },
+      gold: { primary: '#cc9900', border: '#ffd700' }
+    };
+    const sc = isCurrentPlayer ? (SKIN_COLORS[skinColor] || SKIN_COLORS.cyan) : null;
+    const primaryColor = isCurrentPlayer ? sc.primary : '#ff8800';
+    const borderColor = isCurrentPlayer ? sc.border : '#ffaa00';
 
     oc.save();
     oc.translate(cx, cy);
@@ -381,6 +418,12 @@ class EntityRenderer {
     return 1 - elapsed / flash.duration;
   }
 
+  /**
+   * Darken a hex color by a given percentage.
+   * @param {string} color - Hex color string e.g. '#ff0000'
+   * @param {number} percent - 0–100 darkening amount
+   * @returns {string} Darkened hex color
+   */
   darkenColor(color, percent) {
     const num = parseInt(color.replace('#', ''), 16);
     const amt = Math.round(2.55 * percent);
@@ -400,6 +443,17 @@ class EntityRenderer {
     );
   }
 
+  /**
+   * Render all powerup pickups with pulsing glow and magnet interpolation.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} camera
+   * @param {Object} powerups - Map of id -> powerup state
+   * @param {Object} powerupTypes - Type definitions keyed by type name
+   * @param {Object} config - Game config (POWERUP_SIZE)
+   * @param {number} now - Current timestamp ms
+   * @param {{x:number,y:number}|null} playerPos - For magnet pull
+   * @param {boolean} magnetEnabled
+   */
   renderPowerups(ctx, camera, powerups, powerupTypes, config, now, playerPos, magnetEnabled) {
     if (!powerups) {
       return;
@@ -491,6 +545,16 @@ class EntityRenderer {
     }
   }
 
+  /**
+   * Render all loot coins with rotation, pulse alpha, and magnet pull effect.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} camera
+   * @param {Object} loot - Map of id -> loot state
+   * @param {Object} config - Game config (LOOT_SIZE)
+   * @param {number} now - Current timestamp ms
+   * @param {{x:number,y:number}|null} playerPos
+   * @param {boolean} magnetEnabled
+   */
   renderLoot(ctx, camera, loot, config, now, playerPos, magnetEnabled) {
     if (!loot) {
       return;
@@ -575,23 +639,27 @@ class EntityRenderer {
     }
   }
 
+  /**
+   * Render all destructible obstacles (barrels, vases, tires, crates) with health bars.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} camera
+   * @param {Object[]} obstacles - Array of obstacle state objects
+   */
   renderDestructibleObstacles(ctx, camera, obstacles) {
     if (!obstacles || obstacles.length === 0) {
       return;
     }
 
     // Cache darkenColor results per base color (reset each call is fine — small set)
-    if (!this._darkenCache) {
- this._darkenCache = new Map();
-}
     const darkenCache = this._darkenCache;
     darkenCache.clear();
     const getDark = (color, pct) => {
       const key = color + pct;
       let v = darkenCache.get(key);
       if (v === undefined) {
- v = this.darkenColor(color, pct); darkenCache.set(key, v);
-}
+        v = this.darkenColor(color, pct);
+        darkenCache.set(key, v);
+      }
       return v;
     };
 
@@ -732,18 +800,19 @@ class EntityRenderer {
     });
   }
 
+  /**
+   * Render all bullets with gradient trails, batched by color for minimum state changes.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} camera
+   * @param {Object} bullets - Map of id -> bullet state
+   * @param {Object} config - Game config (BULLET_SIZE)
+   */
   renderBullets(ctx, camera, bullets, config) {
     if (!bullets || !config) {
       return;
     }
 
     // PERF: reuse instance-level Map + clear per frame instead of new Map() per frame.
-    if (!this._bulletsByColor) {
-      this._bulletsByColor = new Map();
-    }
-    if (!this._bulletTrailHistory) {
-      this._bulletTrailHistory = new Map(); // id → [{x,y}]
-    }
     const bulletsByColor = this._bulletsByColor;
     bulletsByColor.clear();
     const defaultColor = '#ffff00';
@@ -837,6 +906,14 @@ class EntityRenderer {
     ctx.shadowBlur = 0;
   }
 
+  /**
+   * Draw one zombie sprite (full animated, fast, or sprite-cached path depending on flags).
+   * Also draws hit flash overlay if active.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} zombie
+   * @param {number} timestamp - high-res timestamp for animations
+   * @param {number} [now] - Date.now() value (default: Date.now())
+   */
   drawZombieSprite(ctx, zombie, timestamp, now) {
     now = now || Date.now();
     // FASTEST PATH: offscreen-canvas blit.
@@ -1489,6 +1566,14 @@ class EntityRenderer {
     ctx.restore();
   }
 
+  /**
+   * Render all visible zombies: sprites, health bars, elite/boss overlays, batched auras.
+   * Applies frustum culling and Y-sorts for correct painter's-algorithm depth order.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} camera
+   * @param {Object} zombies - Map of id -> zombie state
+   * @param {number} [timestamp] - high-res animation timestamp
+   */
   renderZombies(ctx, camera, zombies, timestamp) {
     timestamp = timestamp || performance.now();
     const now = Date.now();
@@ -1506,8 +1591,8 @@ class EntityRenderer {
     for (const zombieId in zombies) {
       const zombie = zombies[zombieId];
       if (!zombie || zombie.health <= 0 || !Number.isFinite(zombie.x) || !Number.isFinite(zombie.y)) {
-continue;
-}
+        continue;
+      }
       const cullMargin = zombie.isBoss ? zombie.size * 4 : zombie.size * 2;
       if (!camera.isInViewport(zombie.x, zombie.y, cullMargin)) {
         this._culledEntities++;
@@ -1522,8 +1607,9 @@ continue;
         if (auraColor) {
           let bucket = auraBuckets.get(auraColor);
           if (!bucket) {
- bucket = []; auraBuckets.set(auraColor, bucket);
-}
+            bucket = [];
+            auraBuckets.set(auraColor, bucket);
+          }
           bucket.push(zombie);
         }
       }
@@ -1532,71 +1618,88 @@ continue;
     // Y-sort for correct depth (painter's algorithm: higher Y = drawn later = in front)
     visibleZombies.sort((a, b) => a.y - b.y);
 
-    // Draw sprites + health bars first (no save/restore needed here)
+    // Draw sprites + per-zombie overlays
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let i = 0; i < visibleZombies.length; i++) {
       const zombie = visibleZombies[i];
       this.drawZombieSprite(ctx, zombie, timestamp, now);
-
-      if (window.gameSettings?.showZombieOutlines) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-        ctx.lineWidth = zombie.isBoss ? 4 : 2;
-        ctx.beginPath();
-        ctx.arc(zombie.x, zombie.y, zombie.size * 0.6, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      if (zombie.maxHealth && zombie.health != null) {
-        const healthPercent = Math.max(0, Math.min(1, zombie.health / zombie.maxHealth));
-        const barWidth = zombie.size * 1.6;
-        const barY = zombie.y - zombie.size - 10;
-        const barColor = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-
-        this._setFill(ctx, barColor);
-        ctx.fillRect(zombie.x - barWidth / 2, barY, barWidth * healthPercent, 5);
-        this._setStroke(ctx, '#fff');
-        ctx.lineWidth = 1;
-        ctx.strokeRect(zombie.x - barWidth / 2, barY, barWidth, 5);
-      }
-
-      if (zombie.isElite) {
-        // Elite aura: no batch (gold shadow unique), but avoid save/restore via explicit reset
-        ctx.globalAlpha = 0.4 + Math.sin(timestamp / 200) * 0.2;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ffd700';
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(zombie.x, zombie.y, zombie.size + 15, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-
-        ctx.fillStyle = '#ffd700';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.font = 'bold 20px Arial';
-        ctx.strokeText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
-        ctx.fillText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
-      }
-
-      if (zombie.isBoss) {
-        const bossName = CONSTANTS.BOSS_NAMES[zombie.type] || 'BOSS';
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 14px Arial';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.strokeText(bossName, zombie.x, zombie.y - zombie.size - 25);
-        ctx.fillText(bossName, zombie.x, zombie.y - zombie.size - 25);
-      }
-
-      this.renderZombieSpecialIndicator(ctx, zombie, now);
+      this._renderZombieOverlay(ctx, zombie, timestamp, now);
     }
 
-    // Batched aura pass: one shadowBlur setup per color, N arcs per batch
+    this._renderAuraBatch(ctx, auraBuckets, timestamp);
+  }
+
+  /**
+   * Draw health bar, elite glow, boss name label, and special indicator for one zombie.
+   * Called once per visible zombie inside renderZombies.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} zombie
+   * @param {number} timestamp
+   * @param {number} now
+   */
+  _renderZombieOverlay(ctx, zombie, timestamp, now) {
+    if (window.gameSettings?.showZombieOutlines) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = zombie.isBoss ? 4 : 2;
+      ctx.beginPath();
+      ctx.arc(zombie.x, zombie.y, zombie.size * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (zombie.maxHealth && zombie.health != null) {
+      const healthPercent = Math.max(0, Math.min(1, zombie.health / zombie.maxHealth));
+      const barWidth = zombie.size * 1.6;
+      const barY = zombie.y - zombie.size - 10;
+      const barColor = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+      this._setFill(ctx, barColor);
+      ctx.fillRect(zombie.x - barWidth / 2, barY, barWidth * healthPercent, 5);
+      this._setStroke(ctx, '#fff');
+      ctx.lineWidth = 1;
+      ctx.strokeRect(zombie.x - barWidth / 2, barY, barWidth, 5);
+    }
+
+    if (zombie.isElite) {
+      ctx.globalAlpha = 0.4 + Math.sin(timestamp / 200) * 0.2;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ffd700';
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(zombie.x, zombie.y, zombie.size + 15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffd700';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.font = 'bold 20px Arial';
+      ctx.strokeText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
+      ctx.fillText('\uD83D\uDC51', zombie.x, zombie.y - zombie.size - 35);
+    }
+
+    if (zombie.isBoss) {
+      const bossName = CONSTANTS.BOSS_NAMES[zombie.type] || 'BOSS';
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px Arial';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(bossName, zombie.x, zombie.y - zombie.size - 25);
+      ctx.fillText(bossName, zombie.x, zombie.y - zombie.size - 25);
+    }
+
+    this.renderZombieSpecialIndicator(ctx, zombie, now);
+  }
+
+  /**
+   * Render one batched pass of danger-aura rings (one stroke call per color).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Map<string,Object[]>} auraBuckets
+   * @param {number} timestamp
+   */
+  _renderAuraBatch(ctx, auraBuckets, timestamp) {
     const auraPulse = 0.25 + Math.sin(timestamp / 220) * 0.1;
     ctx.lineWidth = 2;
     for (const [auraColor, bucket] of auraBuckets) {
@@ -1616,6 +1719,12 @@ continue;
     ctx.globalAlpha = 1;
   }
 
+  /**
+   * Draw the emoji/ring indicator for special zombie types (explosive, healer, poison, etc.).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} zombie
+   * @param {number} [now] - Date.now() value
+   */
   renderZombieSpecialIndicator(ctx, zombie, now) {
     now = now || Date.now();
 
@@ -2001,6 +2110,15 @@ continue;
     ctx.fillText(omegaName, zombie.x, zombie.y - zombie.size - 40);
   }
 
+  /**
+   * Draw the name label above a player, with rounded background bubble.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x
+   * @param {number} y
+   * @param {string} text - Label to display
+   * @param {boolean} isCurrentPlayer
+   * @param {number} [offsetY] - Y offset above player center (default -40)
+   */
   renderPlayerNameBubble(ctx, x, y, text, isCurrentPlayer, offsetY) {
     offsetY = offsetY || -40;
 
@@ -2243,24 +2361,57 @@ continue;
     ctx.fillRect(2, -5, 3, 10);
   }
 
+  /**
+   * Draw the animated player sprite (legs, arms, body blit) at the player's world position.
+   * Handles idle bob, walk cycle, and skin color.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} player - Player state with x, y, vx, vy
+   * @param {boolean} isCurrentPlayer
+   * @param {number} timestamp
+   */
   drawPlayerSprite(ctx, player, isCurrentPlayer, timestamp) {
     const velocity = Math.sqrt((player.vx || 0) ** 2 + (player.vy || 0) ** 2);
     const isMoving = velocity > 0.5;
-
-    // Idle: subtle vertical bob + arm sway when stationary
     const idleBob = isMoving ? 0 : Math.sin(timestamp / 600) * 1.5;
     const walkCycle = isMoving ? Math.sin(timestamp / 150) * 0.3 : Math.sin(timestamp / 700) * 0.07;
+
+    const SKIN_COLORS_DYN = {
+      cyan: { primary: '#0088ff', secondary: '#0066cc' },
+      red: { primary: '#cc1111', secondary: '#991111' },
+      green: { primary: '#009933', secondary: '#007722' },
+      purple: { primary: '#7722cc', secondary: '#551199' },
+      gold: { primary: '#cc9900', secondary: '#aa7700' }
+    };
+    const activeSkin = isCurrentPlayer ? localStorage.getItem('pref_skin') || 'cyan' : null;
+    const sc2 = isCurrentPlayer ? (SKIN_COLORS_DYN[activeSkin] || SKIN_COLORS_DYN.cyan) : null;
+    const secondaryColor = isCurrentPlayer ? sc2.secondary : '#cc6600';
+    const primaryColor = isCurrentPlayer ? sc2.primary : '#ff8800';
 
     ctx.save();
     ctx.translate(player.x, player.y + idleBob);
     const baseSize = 20 / 20;
-
-    const secondaryColor = isCurrentPlayer ? '#0066cc' : '#cc6600';
-    const primaryColor = isCurrentPlayer ? '#0088ff' : '#ff8800';
-
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
 
+    this._drawPlayerLegsAndArms(ctx, baseSize, secondaryColor, primaryColor, walkCycle, isMoving);
+
+    // Blit pre-rendered static body (torso + head + hat) — replaces ~20 canvas primitives
+    const bodySprite = this._getPlayerBodySprite(isCurrentPlayer, activeSkin);
+    const dim = 64;
+    ctx.drawImage(bodySprite, -dim / 2, -dim / 2 - 4, dim, dim);
+    ctx.restore();
+  }
+
+  /**
+   * Draw animated legs and arms for the player sprite (called from drawPlayerSprite).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} baseSize
+   * @param {string} secondaryColor
+   * @param {string} primaryColor
+   * @param {number} walkCycle
+   * @param {boolean} isMoving
+   */
+  _drawPlayerLegsAndArms(ctx, baseSize, secondaryColor, primaryColor, walkCycle, isMoving) {
     const legWidth = 5 * baseSize;
     const legHeight = 10 * baseSize;
     const legSpacing = 7 * baseSize;
@@ -2316,13 +2467,6 @@ continue;
     ctx.arc(0, armHeight, armWidth / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.restore();
-
-    // Blit pre-rendered static body (torso + head + hat) — replaces ~20 canvas primitives
-    const bodySprite = this._getPlayerBodySprite(isCurrentPlayer);
-    const dim = 64;
-    ctx.drawImage(bodySprite, -dim / 2, -dim / 2 - 4, dim, dim);
-
     ctx.restore();
   }
 

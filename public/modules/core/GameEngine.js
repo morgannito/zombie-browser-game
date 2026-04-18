@@ -229,6 +229,12 @@ class GameEngine {
       // Initialize with default map size
       this.parallaxBackground.init(3000, 2400);
 
+      // Pre-render offscreen depth layers sized to viewport
+      this.parallaxBackground.initDepthLayers(
+        this.canvas.width || window.innerWidth,
+        this.canvas.height || window.innerHeight
+      );
+
       // Populate gameState with parallax data
       window.gameState.state.parallax = this.parallaxBackground;
     } else {

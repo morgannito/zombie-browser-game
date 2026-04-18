@@ -4,6 +4,7 @@
 
 const { createParticles } = require('../../../../game/lootFunctions');
 const { distance } = require('../../../../game/utilityFunctions');
+const { handlePlayerDeathProgression } = require('../../../player/modules/DeathProgressionHandler');
 const { emitAOI } = require('./shared');
 
 function updateBossApocalypse(
@@ -125,8 +126,7 @@ function updateBossApocalypse(
         createParticles(player.x, player.y, '#8b0000', 30, entityManager);
 
         if (player.health <= 0) {
-          player.alive = false;
-          player.deaths++;
+          handlePlayerDeathProgression(player, playerId, gameState, now, true);
         }
       }
     }

@@ -87,6 +87,13 @@ function mountDocsRoutes(app) {
   });
 }
 
+/**
+ * Mount all routes on the express app.
+ * @param {import('express').Express} app
+ * @param {{ container: Object, jwtService: Object, requireAuth: Function,
+ *           dbAvailable: boolean, metricsCollector: Object, memoryMonitor: Object,
+ *           dbManager: Object, perfIntegration: Object, gameLoopRef: Object }} deps
+ */
 function configureRoutes(app, deps) {
   mountDocsRoutes(app);
   mountAuthRoutes(app, deps.container, deps.jwtService);

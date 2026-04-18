@@ -57,25 +57,59 @@ return { connected: false, latency_ms: null, error: 'health-db-unavailable' };
   }
 }
 
+/**
+ * Derive overall health status from DB probe result.
+ * @param {Object} db - Result of measureDbLatency
+ * @returns {'healthy'|'degraded'|'unhealthy'}
+ */
+function deriveStatus(db) {
+  if (!db.connected) return 'unhealthy';
+  if (db.degraded || (typeof db.latency_ms === 'number' && db.latency_ms > 200)) return 'degraded';
+  return 'healthy';
+}
+
+/**
+ * Build tick snapshot from game loop metrics.
+ * @param {Object|null} gameLoopRef
+ * @returns {Object|null}
+ */
+function buildTickSnapshot(gameLoopRef) {
+  const raw = gameLoopRef ? gameLoopRef.getMetrics() : null;
+  if (!raw || raw.avgTickDuration === undefined) return null;
+  return {
+    avgDurationMs: parseFloat(raw.avgTickDuration.toFixed(2)),
+    maxDurationMs: parseFloat(raw.maxTickDuration.toFixed(2)),
+    ticksPerSecond: parseFloat(raw.ticksPerSecond.toFixed(2))
+  };
+}
+
+/**
+ * Build error counts from metricsCollector timestamps.
+ * @param {Object} metricsCollector
+ * @returns {{ last5min: number, total: number }}
+ */
+function buildErrorCounts(metricsCollector) {
+  const ts = metricsCollector._errorTimestamps;
+  if (!ts) return { last5min: 0, total: 0 };
+  return {
+    last5min: ts.filter(t => t > Date.now() - 300000).length,
+    total: ts.length
+  };
+}
+
+/**
+ * Build complete health payload.
+ * @param {Object} dbManager
+ * @param {Object} metricsCollector
+ * @param {Object|null} gameLoopRef
+ * @returns {Object}
+ */
 function buildPayload(dbManager, metricsCollector, gameLoopRef) {
   const m = metricsCollector.getMetrics();
   const mem = process.memoryUsage();
   const db = measureDbLatency(dbManager);
-  const rawTick = gameLoopRef ? gameLoopRef.getMetrics() : null;
-  const tick = rawTick && rawTick.avgTickDuration !== undefined ? rawTick : null;
-  const errorsLast5min = metricsCollector._errorTimestamps
-    ? metricsCollector._errorTimestamps.filter(t => t > Date.now() - 300000).length
-    : 0;
-  const errorsTotal = metricsCollector._errorTimestamps
-    ? metricsCollector._errorTimestamps.length
-    : 0;
-
-  const status = !db.connected ? 'unhealthy'
-    : (db.degraded || (typeof db.latency_ms === 'number' && db.latency_ms > 200)) ? 'degraded'
-    : 'healthy';
-
   return {
-    status,
+    status: deriveStatus(db),
     uptime: m.system.uptime,
     memory: {
       rss: toMB(mem.rss),
@@ -90,15 +124,8 @@ function buildPayload(dbManager, metricsCollector, gameLoopRef) {
       wave: m.game.currentWave
     },
     db,
-    tick: tick ? {
-      avgDurationMs: parseFloat(tick.avgTickDuration.toFixed(2)),
-      maxDurationMs: parseFloat(tick.maxTickDuration.toFixed(2)),
-      ticksPerSecond: parseFloat(tick.ticksPerSecond.toFixed(2))
-    } : null,
-    errors: {
-      last5min: errorsLast5min,
-      total: errorsTotal
-    }
+    tick: buildTickSnapshot(gameLoopRef),
+    errors: buildErrorCounts(metricsCollector)
   };
 }
 

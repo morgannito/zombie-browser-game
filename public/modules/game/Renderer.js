@@ -33,6 +33,13 @@ class Renderer {
     this.uiRenderer = new window.UIRenderer();
     this.minimapRenderer = new window.MinimapRenderer();
     this.crosshairRenderer = window.CrosshairRenderer ? new window.CrosshairRenderer() : null;
+
+    // Day/night cycle overlay (wave-based)
+    this._dnCurrentColor = { r: 0, g: 0, b: 0, a: 0 };
+    this._dnTargetColor = { r: 0, g: 0, b: 0, a: 0 };
+    this._dnTransitionStart = 0;
+    this._dnTransitionDuration = 3000; // 3s lerp
+    this._dnLastWave = 0;
   }
 
   // Proxy: notify crosshair of a shot (spread feedback)
@@ -283,6 +290,16 @@ class Renderer {
     // Muzzle flashes — drawn above entities, below UI
     this.effectsRenderer.renderMuzzleFlashes(this.ctx, this.camera, dateNow);
 
+    // Hazard warning indicator
+    this.effectsRenderer.renderHazardWarning(
+      this.ctx,
+      this.camera,
+      player,
+      gameState.state.toxicPools,
+      gameState.state.poisonTrails,
+      dateNow
+    );
+
     // Render dynamic lights AFTER entities (additive blending)
     this.effectsRenderer.renderDynamicLights(this.ctx, this.camera, gameState.state.lighting);
 
@@ -327,6 +344,9 @@ class Renderer {
     this.uiRenderer.updateWaveProgress(gameState);
 
     this.ctx.restore(); // Restore pixelRatio scaling
+
+    // Day/night cycle overlay (wave-based, above game world, below HUD)
+    this._renderWaveDayNight(gameState.state.wave || 1);
 
     // POST-PROCESS: vignette + blood overlay (CSS-pixel space, no scaling needed)
     this._renderPostProcess(player);
@@ -377,6 +397,60 @@ class Renderer {
 
     // Expose culling stats for DebugOverlay
     window._cullingStats = this.entityRenderer.getCullingStats();
+  }
+
+  /**
+   * Returns the target overlay color for a given wave number.
+   * @param {number} wave
+   * @returns {{r,g,b,a}}
+   */
+  _getDayNightTarget(wave) {
+    if (wave >= 10) return { r: 80, g: 0, b: 0, a: 0.4 };
+    if (wave >= 7)  return { r: 10, g: 20, b: 60, a: 0.35 };
+    if (wave >= 4)  return { r: 255, g: 100, b: 0, a: 0.15 };
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  /**
+   * Renders a full-screen wave-based day/night color overlay.
+   * Transitions smoothly over 3s when the wave changes.
+   * @param {number} wave
+   */
+  _renderWaveDayNight(wave) {
+    const target = this._getDayNightTarget(wave);
+
+    if (wave !== this._dnLastWave) {
+      // Start a new transition from the current interpolated color
+      const now = performance.now();
+      const elapsed = now - this._dnTransitionStart;
+      const t = Math.min(1, elapsed / this._dnTransitionDuration);
+      this._dnCurrentColor = {
+        r: this._dnCurrentColor.r + (this._dnTargetColor.r - this._dnCurrentColor.r) * t,
+        g: this._dnCurrentColor.g + (this._dnTargetColor.g - this._dnCurrentColor.g) * t,
+        b: this._dnCurrentColor.b + (this._dnTargetColor.b - this._dnCurrentColor.b) * t,
+        a: this._dnCurrentColor.a + (this._dnTargetColor.a - this._dnCurrentColor.a) * t,
+      };
+      this._dnTargetColor = target;
+      this._dnTransitionStart = performance.now();
+      this._dnLastWave = wave;
+    }
+
+    const elapsed = performance.now() - this._dnTransitionStart;
+    const t = Math.min(1, elapsed / this._dnTransitionDuration);
+    const c = this._dnCurrentColor;
+    const tgt = this._dnTargetColor;
+    const r = Math.round(c.r + (tgt.r - c.r) * t);
+    const g = Math.round(c.g + (tgt.g - c.g) * t);
+    const b = Math.round(c.b + (tgt.b - c.b) * t);
+    const a = c.a + (tgt.a - c.a) * t;
+
+    if (a <= 0) return;
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
   }
 
   /**

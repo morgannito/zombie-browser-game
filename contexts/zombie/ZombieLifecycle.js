@@ -23,17 +23,6 @@ return false;
 }
 
     delete this.gameState.zombies[zombieId];
-
-    // Tracking maxZombieSize : mise à jour du pic si nécessaire
-    let count = 0;
-    for (const _ in this.gameState.zombies) {
-count++;
-}
-    if (this.gameState.maxZombieSize !== undefined) {
-      // maxZombieSize est un pic — on le met à jour à l'ajout, pas à la suppression
-      // On s'assure juste qu'il ne descend pas en dessous de la valeur actuelle
-    }
-
     return true;
   }
 

@@ -623,13 +623,21 @@ class BackgroundRenderer {
     }
   }
 
-  renderParallaxBackground(ctx, parallax, camera, _viewport) {
+  renderParallaxBackground(ctx, parallax, camera, viewport) {
     if (!parallax) {
       return;
     }
 
+    // Toggle check — default true when settingsManager unavailable
+    const parallaxEnabled =
+      !window.settingsManager || window.settingsManager.get('parallax') !== false;
+
+    if (parallaxEnabled && parallax._depthLayers && parallax._depthLayers.length > 0) {
+      this._blitDepthLayers(ctx, parallax._depthLayers, camera, viewport);
+    }
+
     const layers = parallax.layers || [];
-    if (layers.length === 0) {
+    if (!parallaxEnabled || layers.length === 0) {
       return;
     }
 
@@ -678,6 +686,30 @@ class BackgroundRenderer {
       });
 
       ctx.restore();
+    });
+  }
+  /**
+   * Blit pre-rendered offscreen depth layers scrolled by camera * speed.
+   * The offscreen canvas is 3x viewport wide; we wrap via modulo.
+   */
+  _blitDepthLayers(ctx, depthLayers, camera, viewport) {
+    const vW = viewport.width;
+    const vH = viewport.height;
+
+    depthLayers.forEach(layer => {
+      const totalW = layer.canvas.width; // 3x vW
+      // Scroll offset in offscreen canvas coords
+      const rawX = (camera.x * layer.speed) % totalW;
+      const srcX = rawX < 0 ? rawX + totalW : rawX;
+
+      // Blit in up to 2 passes to wrap seamlessly
+      const firstW = Math.min(totalW - srcX, vW);
+      ctx.drawImage(layer.canvas, srcX, 0, firstW, vH, 0, 0, firstW, vH);
+
+      if (firstW < vW) {
+        const secondW = vW - firstW;
+        ctx.drawImage(layer.canvas, 0, 0, secondW, vH, firstW, 0, secondW, vH);
+      }
     });
   }
 }

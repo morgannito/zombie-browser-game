@@ -270,9 +270,10 @@ function initProgressionRoutes(container, options = {}) {
 
         for (const prereqId of skill.prerequisites) {
           if (!progression.hasSkill(prereqId)) {
+            // Do not reflect prereqId in response to avoid XSS/info leak
             return res.status(400).json({
               success: false,
-              error: `Prerequisite skill '${prereqId}' not unlocked`
+              error: 'Prerequisite skill not unlocked'
             });
           }
         }
@@ -356,9 +357,14 @@ function initProgressionRoutes(container, options = {}) {
         });
       } catch (error) {
         logger.error('Error prestiging', { requestId: req.id, error: error.message });
+        const isSafeDomainError =
+          error.message &&
+          error.message.length < 120 &&
+          !error.message.includes('SQL') &&
+          !error.message.includes('sqlite');
         res.status(400).json({
           success: false,
-          error: error.message
+          error: isSafeDomainError ? error.message : 'Failed to prestige'
         });
       }
     }

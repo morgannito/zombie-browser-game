@@ -31,7 +31,13 @@ function getHandlePlayerDeathProgression() {
 }
 
 /**
- * Handle zombie bullet collisions with players
+ * Handle zombie bullet collisions with players.
+ * Destroys the bullet on first hit; applies dodge chance.
+ * @param {Object} bullet
+ * @param {string} bulletId
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ * @param {Object} collisionManager
  */
 function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager, collisionManager) {
   const bulletSize = bullet.size || CONFIG.BULLET_SIZE || 5;
@@ -66,7 +72,16 @@ function handleZombieBulletCollisions(bullet, bulletId, gameState, entityManager
 }
 
 /**
- * Handle player bullet collisions with zombies
+ * Handle player bullet collisions with zombies.
+ * Applies damage, piercing logic, special effects, and triggers zombie death.
+ * @param {Object} bullet
+ * @param {string} bulletId
+ * @param {Object} gameState
+ * @param {Object} io
+ * @param {Object} collisionManager
+ * @param {Object} entityManager
+ * @param {Object} zombieManager
+ * @param {*} _perfIntegration
  */
 function handlePlayerBulletCollisions(
   bullet,
@@ -195,6 +210,14 @@ function handlePiercing(bullet, bulletId, zombieId, entityManager) {
 
 /**
  * Handle zombie death from bullet
+ * @param {Object} zombie
+ * @param {string} zombieId
+ * @param {Object} bullet
+ * @param {Object} gameState
+ * @param {Object} io
+ * @param {Object} entityManager
+ * @param {Object} zombieManager
+ * @param {*} _perfIntegration
  */
 function handleZombieDeath(
   zombie,
@@ -213,7 +236,6 @@ function handleZombieDeath(
   }
 
   if (zombie.type === 'splitter') {
-    // OPTIMIZATION: handleSplitterDeath imported at module level
     handleSplitterDeath(zombie, zombieId, gameState, entityManager);
     delete gameState.zombies[zombieId];
     gameState.collisionManager?.invalidatePathfindingCache(zombieId);
@@ -221,6 +243,20 @@ function handleZombieDeath(
     return;
   }
 
+  handleNonSplitterZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager);
+}
+
+/**
+ * Finalize death for non-splitter zombies: loot, cleanup, wave progression.
+ * @param {Object} zombie
+ * @param {string} zombieId
+ * @param {Object} bullet
+ * @param {Object} gameState
+ * @param {Object} io
+ * @param {Object} entityManager
+ * @param {Object} zombieManager
+ */
+function handleNonSplitterZombieDeath(zombie, zombieId, bullet, gameState, io, entityManager, zombieManager) {
   saveDeadZombie(zombie, gameState);
 
   const { goldBonus, xpBonus } = calculateLootBonus(bullet, zombie, gameState, io);
@@ -233,7 +269,6 @@ function handleZombieDeath(
   gameState.zombiesKilledThisWave++;
 
   if (zombie.isBoss) {
-    // OPTIMIZATION: handleNewWave imported at module level
     handleNewWave(gameState, io, zombieManager);
   }
 }
@@ -244,11 +279,30 @@ function handleZombieDeath(
 // OPTIMIZATION: createExplosion imported at module level via lootFunctions
 const { createExplosion } = require('../../../game/lootFunctions');
 
+/**
+ * Handle explosive zombie death: chain explosion to nearby zombies and players.
+ * @param {Object} zombie - The dying explosive zombie
+ * @param {string} zombieId
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ */
 function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) {
   const explosiveType = ZOMBIE_TYPES.explosive;
   createExplosion(zombie.x, zombie.y, explosiveType.explosionRadius, false, entityManager);
+  _applyExplosiveZombieDamageToZombies(zombie, zombieId, explosiveType, gameState, entityManager);
+  _applyExplosiveZombieDamageToPlayers(zombie, explosiveType, gameState, entityManager);
+}
 
-  // PERF: use quadtree for broad-phase when available (parity with bullet explosions).
+/**
+ * Apply explosive zombie splash damage to nearby zombies.
+ * BUG FIX: use entity.entityId (not entity.id) when reading quadtree wrappers.
+ * @param {Object} zombie
+ * @param {string} zombieId
+ * @param {Object} explosiveType
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ */
+function _applyExplosiveZombieDamageToZombies(zombie, zombieId, explosiveType, gameState, entityManager) {
   const radius = explosiveType.explosionRadius;
   const radiusSq = radius * radius;
   const cm = gameState.collisionManager;
@@ -259,11 +313,15 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
 
   if (candidates) {
     for (const entity of candidates) {
-      if (!entity || entity.id === undefined) {
+      // BUG FIX: quadtree wrappers use entityId, not id
+      if (!entity || entity.entityId === undefined) {
         continue;
       }
-      const other = gameState.zombies[entity.id];
-      if (!other || String(entity.id) === String(zombieId)) {
+      if (String(entity.entityId) === String(zombieId)) {
+        continue;
+      }
+      const other = gameState.zombies[entity.entityId];
+      if (!other) {
         continue;
       }
       const dx = zombie.x - other.x;
@@ -275,31 +333,38 @@ function handleExplosiveZombieDeath(zombie, zombieId, gameState, entityManager) 
     }
   } else {
     for (const otherId in gameState.zombies) {
-      if (otherId !== zombieId) {
-        const other = gameState.zombies[otherId];
-        const dx = zombie.x - other.x;
-        const dy = zombie.y - other.y;
-        if (dx * dx + dy * dy < radiusSq) {
-          other.health -= explosiveType.explosionDamage;
-          createParticles(other.x, other.y, other.color, 8, entityManager);
-        }
+      if (otherId === zombieId) {
+        continue;
+      }
+      const other = gameState.zombies[otherId];
+      const dx = zombie.x - other.x;
+      const dy = zombie.y - other.y;
+      if (dx * dx + dy * dy < radiusSq) {
+        other.health -= explosiveType.explosionDamage;
+        createParticles(other.x, other.y, other.color, 8, entityManager);
       }
     }
   }
+}
 
+/**
+ * Apply explosive zombie splash damage to nearby players.
+ * @param {Object} zombie
+ * @param {Object} explosiveType
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ */
+function _applyExplosiveZombieDamageToPlayers(zombie, explosiveType, gameState, entityManager) {
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
     if (!player.alive || player.spawnProtection || player.invisible) {
       continue;
     }
-
     const dist = distance(zombie.x, zombie.y, player.x, player.y);
     if (dist < explosiveType.explosionRadius) {
       player.health -= explosiveType.explosionDamage;
       createParticles(player.x, player.y, '#ff8800', 10, entityManager);
-
       if (player.health <= 0) {
-        // OPTIMIZATION: Use cached reference instead of require() in loop
         getHandlePlayerDeathProgression()(player, playerId, gameState, Date.now(), false);
       }
     }
@@ -384,5 +449,8 @@ module.exports = {
   calculateLootBonus,
   cleanupZombieDamageTracking,
   // Exported for regression tests (audit round 2)
-  handleExplosiveZombieDeath
+  handleExplosiveZombieDeath,
+  // Internal helpers exported for testing
+  _applyExplosiveZombieDamageToZombies,
+  _applyExplosiveZombieDamageToPlayers
 };

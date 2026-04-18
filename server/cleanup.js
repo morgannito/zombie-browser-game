@@ -75,7 +75,16 @@ return;
   logger.info('Active sockets disconnected');
 }
 
-function closeRuntime(io, server, dbManager) {
+/**
+ * Drain all sockets, close the Socket.IO server, stop accepting new HTTP
+ * connections, close the database, then exit the process.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {import('http').Server} server
+ * @param {object} dbManager
+ * @param {number} [exitCode=0] - Process exit code (1 on crash, 0 on clean signal)
+ */
+function closeRuntime(io, server, dbManager, exitCode = 0) {
   drainSockets(io);
   io.close(() => {
     logger.info('All socket connections closed');
@@ -88,7 +97,7 @@ function closeRuntime(io, server, dbManager) {
       try {
         dbManager.close();
         logger.info('Database connection closed');
-        process.exit(0);
+        process.exit(exitCode);
       } catch (err) {
         logger.error('Database closure error', { error: err.message });
         process.exit(1);
@@ -109,7 +118,13 @@ function createCleanup(deps) {
     memoryMonitor, stopSessionCleanupInterval, getState } = deps;
   let isShuttingDown = false;
 
-  function cleanupServer() {
+  /**
+   * Orchestrate graceful shutdown. Idempotent — a second call while shutdown is
+   * already in progress is silently ignored.
+   *
+   * @param {number} [exitCode=0] - Process exit code forwarded to closeRuntime
+   */
+  function cleanupServer(exitCode = 0) {
     if (isShuttingDown) {
       logger.warn('⚠️  Shutdown already in progress, ignoring signal');
       return;
@@ -125,7 +140,7 @@ function createCleanup(deps) {
     stopSessionCleanupInterval();
     logger.info('Session cleanup interval stopped');
     stopHazards(state.gameState);
-    closeRuntime(io, server, dbManager);
+    closeRuntime(io, server, dbManager, exitCode);
 
     setTimeout(() => {
       logger.error('Forced shutdown after 30s timeout');
@@ -144,7 +159,9 @@ function createCleanup(deps) {
         code: err && err.code,
         ...(isDev ? { stack: err && err.stack } : {})
       });
-      cleanupServer();
+      // Always exit with a non-zero code after an uncaught exception so process
+      // managers (PM2, systemd) know the process crashed and can restart it.
+      cleanupServer(1);
     });
 
     process.on('unhandledRejection', reason => {

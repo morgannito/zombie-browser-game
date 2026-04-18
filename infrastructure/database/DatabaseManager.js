@@ -1,7 +1,6 @@
 /**
- * DATABASE MANAGER - SQLite connection and initialization
- * Production-ready with WAL mode, backups, and prepared statements
- * @version 1.0.0
+ * @fileoverview SQLite connection manager — WAL mode, schema init, online backup.
+ * @version 1.1.0
  */
 
 const Database = require('better-sqlite3');
@@ -19,36 +18,24 @@ class DatabaseManager {
   }
 
   /**
-   * Initialize database connection and schema
+   * Open the database, apply PRAGMAs and create schema.
+   * @throws {Error} If the database cannot be opened or schema creation fails.
    */
   initialize() {
     try {
-      // Ensure data directory exists
       if (!fs.existsSync(DB_DIR)) {
         fs.mkdirSync(DB_DIR, { recursive: true });
         logger.info('Created database directory', { path: DB_DIR });
       }
 
-      // Open database with optimized settings
       this.db = new Database(DB_PATH, {
-        verbose: logger.isDebugEnabled() ? logger.debug : null
+        verbose: logger.isDebugEnabled() ? logger.debug.bind(logger) : null
       });
 
-      // Enable WAL mode for better concurrency (100x better)
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma('synchronous = NORMAL'); // Faster, still safe
-      this.db.pragma('busy_timeout = 5000'); // Auto-retry on SQLITE_BUSY for 5s
-      this.db.pragma('cache_size = -64000'); // 64MB cache
-      this.db.pragma('temp_store = MEMORY');
-      this.db.pragma('mmap_size = 134217728'); // 128MB mmap
-
-      // better-sqlite3 est synchrone — pas d'API événementielle, pas de profiling via .on()
-
+      this._applyPragmas();
       logger.info('Database connection established', { path: DB_PATH });
 
-      // Create schema
       this.createSchema();
-
       this.isInitialized = true;
       logger.info('Database initialized successfully');
     } catch (error) {
@@ -58,10 +45,39 @@ class DatabaseManager {
   }
 
   /**
-   * Create database schema (tables, indexes, etc.)
+   * Apply performance and safety PRAGMAs.
+   * WAL autocheckpoint at 1000 pages prevents unbounded WAL growth (contention fix).
+   * @private
+   */
+  _applyPragmas() {
+    this.db.pragma('journal_mode = WAL');
+    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('busy_timeout = 5000');
+    this.db.pragma('cache_size = -64000');
+    this.db.pragma('temp_store = MEMORY');
+    this.db.pragma('mmap_size = 134217728');
+    this.db.pragma('wal_autocheckpoint = 1000');
+  }
+
+  /**
+   * Create all tables inside a single transaction.
+   * Each private helper creates one logical group of tables.
    */
   createSchema() {
-    // Players table - persistent player profiles
+    this.db.transaction(() => {
+      this._createPlayersTable();
+      this._createSessionsTable();
+      this._createUpgradesTable();
+      this._createLeaderboardTable();
+      this._createProgressionTable();
+      this._createSkillTreeTable();
+      this._createAchievementsTable();
+    })();
+    logger.info('Database schema created');
+  }
+
+  /** @private */
+  _createPlayersTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS players (
         id TEXT PRIMARY KEY,
@@ -75,31 +91,33 @@ class DatabaseManager {
         total_playtime INTEGER DEFAULT 0,
         total_gold_earned INTEGER DEFAULT 0
       );
-
       CREATE INDEX IF NOT EXISTS idx_players_username ON players(username);
       CREATE INDEX IF NOT EXISTS idx_players_highest_wave ON players(highest_wave DESC);
     `);
+  }
 
-    // Sessions table - active/recent sessions for recovery
+  /** @private */
+  _createSessionsTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         session_id TEXT PRIMARY KEY,
         player_id TEXT NOT NULL,
         socket_id TEXT,
-        state TEXT, -- JSON blob of game state
+        state TEXT,
         created_at INTEGER DEFAULT (strftime('%s', 'now')),
         updated_at INTEGER DEFAULT (strftime('%s', 'now')),
         disconnected_at INTEGER,
         FOREIGN KEY (player_id) REFERENCES players(id)
       );
-
       CREATE INDEX IF NOT EXISTS idx_sessions_player ON sessions(player_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_socket ON sessions(socket_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_disconnected ON sessions(disconnected_at) WHERE disconnected_at IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_sessions_active ON sessions(player_id) WHERE disconnected_at IS NULL;
     `);
+  }
 
-    // Permanent upgrades table - shop purchases that persist
+  /** @private */
+  _createUpgradesTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS permanent_upgrades (
         player_id TEXT PRIMARY KEY,
@@ -111,8 +129,10 @@ class DatabaseManager {
         FOREIGN KEY (player_id) REFERENCES players(id)
       );
     `);
+  }
 
-    // Leaderboard table - top scores
+  /** @private */
+  _createLeaderboardTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS leaderboard (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,12 +145,13 @@ class DatabaseManager {
         created_at INTEGER DEFAULT (strftime('%s', 'now')),
         FOREIGN KEY (player_id) REFERENCES players(id)
       );
-
       CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON leaderboard(score DESC);
       CREATE INDEX IF NOT EXISTS idx_leaderboard_player ON leaderboard(player_id);
     `);
+  }
 
-    // Account progression table - account leveling system
+  /** @private */
+  _createProgressionTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS account_progression (
         player_id TEXT PRIMARY KEY,
@@ -144,12 +165,13 @@ class DatabaseManager {
         last_updated INTEGER DEFAULT (strftime('%s', 'now')),
         FOREIGN KEY (player_id) REFERENCES players(id)
       );
-
       CREATE INDEX IF NOT EXISTS idx_progression_level ON account_progression(account_level DESC);
       CREATE INDEX IF NOT EXISTS idx_progression_prestige ON account_progression(prestige_level DESC);
     `);
+  }
 
-    // Skill tree table - available skills and their properties
+  /** @private */
+  _createSkillTreeTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS skill_tree (
         skill_id TEXT PRIMARY KEY,
@@ -164,12 +186,13 @@ class DatabaseManager {
         effects_json TEXT NOT NULL,
         sort_order INTEGER DEFAULT 0
       );
-
       CREATE INDEX IF NOT EXISTS idx_skill_category ON skill_tree(skill_category);
       CREATE INDEX IF NOT EXISTS idx_skill_tier ON skill_tree(tier);
     `);
+  }
 
-    // Achievements table - player achievements
+  /** @private */
+  _createAchievementsTable() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS achievements (
         achievement_id TEXT PRIMARY KEY,
@@ -184,7 +207,6 @@ class DatabaseManager {
         is_secret INTEGER DEFAULT 0,
         sort_order INTEGER DEFAULT 0
       );
-
       CREATE TABLE IF NOT EXISTS player_achievements (
         player_id TEXT NOT NULL,
         achievement_id TEXT NOT NULL,
@@ -195,15 +217,12 @@ class DatabaseManager {
         FOREIGN KEY (player_id) REFERENCES players(id),
         FOREIGN KEY (achievement_id) REFERENCES achievements(achievement_id)
       );
-
       CREATE INDEX IF NOT EXISTS idx_player_achievements ON player_achievements(player_id);
       CREATE INDEX IF NOT EXISTS idx_achievement_unlocked ON player_achievements(unlocked_at DESC);
-
       CREATE TABLE IF NOT EXISTS daily_challenges (
         challenge_date TEXT NOT NULL PRIMARY KEY,
         challenges_json TEXT NOT NULL
       );
-
       CREATE TABLE IF NOT EXISTS player_daily_challenges (
         player_id TEXT NOT NULL,
         challenge_date TEXT NOT NULL,
@@ -216,15 +235,14 @@ class DatabaseManager {
         PRIMARY KEY (player_id, challenge_date, challenge_id),
         FOREIGN KEY (player_id) REFERENCES players(id)
       );
-
       CREATE INDEX IF NOT EXISTS idx_player_daily_challenges ON player_daily_challenges(player_id, challenge_date);
     `);
-
-    logger.info('Database schema created');
   }
 
   /**
-   * Get database instance
+   * Return the raw better-sqlite3 Database instance.
+   * @returns {import('better-sqlite3').Database}
+   * @throws {Error} If not yet initialized.
    */
   getDb() {
     if (!this.isInitialized) {
@@ -234,7 +252,7 @@ class DatabaseManager {
   }
 
   /**
-   * Close database connection
+   * Close the database connection.
    */
   close() {
     if (this.db) {
@@ -244,17 +262,15 @@ class DatabaseManager {
   }
 
   /**
-   * Create backup of database
+   * Create an online backup using the better-sqlite3 async backup API.
+   * Non-blocking: uses page-by-page transfer so WAL readers are not blocked.
+   * @param {string} backupPath - Destination file path.
+   * @returns {Promise<void>}
    */
-  backup(backupPath) {
-    if (!this.db) {
-      return;
-    }
-
+  async backup(backupPath) {
+    if (!this.db) return;
     try {
-      const backup = this.db.backup(backupPath);
-      backup.step(-1); // Complete backup in one step
-      backup.finish();
+      await this.db.backup(backupPath);
       logger.info('Database backup created', { path: backupPath });
     } catch (error) {
       logger.error('Failed to create backup', { error: error.message });
@@ -262,10 +278,14 @@ class DatabaseManager {
   }
 }
 
-// Singleton instance
+/** @type {DatabaseManager|null} */
 let instance = null;
 
 module.exports = {
+  /**
+   * Return the singleton DatabaseManager instance.
+   * @returns {DatabaseManager}
+   */
   getInstance: () => {
     if (!instance) {
       instance = new DatabaseManager();

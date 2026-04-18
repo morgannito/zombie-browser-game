@@ -3407,6 +3407,30 @@ body {
 }
 
 /* ============================================
+   SKIN COLOR PALETTE
+   ============================================ */
+
+.skin-color-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  outline: none;
+}
+
+.skin-color-btn:hover {
+  transform: scale(1.15);
+}
+
+.skin-color-btn.active {
+  border-color: #fff !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+/* ============================================
    PAUSE MENU
    ============================================ */
 

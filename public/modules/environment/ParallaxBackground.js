@@ -41,6 +41,81 @@ class ParallaxBackground {
   }
 
   /**
+   * Initialize offscreen depth layers (far stars + mid dust).
+   * Call once with viewport dimensions; safe to call again on resize.
+   */
+  initDepthLayers(vpW, vpH) {
+    this._depthLayers = this._buildDepthLayers(vpW, vpH);
+  }
+
+  _buildDepthLayers(vpW, vpH) {
+    const rng = (seed) => {
+      let s = seed;
+      return () => {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        return (s >>> 0) / 0xffffffff;
+      };
+    };
+
+    // --- Far layer: large stars + distant silhouettes (speed 0.2x) ---
+    const farCanvas = document.createElement('canvas');
+    // 3x viewport width so we can tile by scrolling
+    farCanvas.width = vpW * 3;
+    farCanvas.height = vpH;
+    const farCtx = farCanvas.getContext('2d');
+    const r1 = rng(42);
+
+    // Stars
+    for (let i = 0; i < 120; i++) {
+      const x = r1() * farCanvas.width;
+      const y = r1() * vpH * 0.8;
+      const size = 1 + r1() * 3;
+      farCtx.fillStyle = `rgba(200,210,255,${0.3 + r1() * 0.5})`;
+      farCtx.beginPath();
+      farCtx.arc(x, y, size, 0, Math.PI * 2);
+      farCtx.fill();
+    }
+
+    // Distant silhouettes (ruins / mountain shapes)
+    for (let i = 0; i < 18; i++) {
+      const x = r1() * farCanvas.width;
+      const w = 60 + r1() * 120;
+      const h = 40 + r1() * 80;
+      const y = vpH * (0.55 + r1() * 0.2);
+      farCtx.fillStyle = `rgba(20,25,45,${0.5 + r1() * 0.3})`;
+      farCtx.beginPath();
+      farCtx.moveTo(x, y);
+      farCtx.lineTo(x + w * 0.5, y - h);
+      farCtx.lineTo(x + w, y);
+      farCtx.closePath();
+      farCtx.fill();
+    }
+
+    // --- Mid layer: grey dust particles (speed 0.5x) ---
+    const midCanvas = document.createElement('canvas');
+    midCanvas.width = vpW * 3;
+    midCanvas.height = vpH;
+    const midCtx = midCanvas.getContext('2d');
+    const r2 = rng(99);
+
+    for (let i = 0; i < 200; i++) {
+      const x = r2() * midCanvas.width;
+      const y = r2() * vpH;
+      const rx = 2 + r2() * 8;
+      const ry = 1 + r2() * 3;
+      midCtx.fillStyle = `rgba(160,150,140,${0.04 + r2() * 0.1})`;
+      midCtx.beginPath();
+      midCtx.ellipse(x, y, rx, ry, r2() * Math.PI, 0, Math.PI * 2);
+      midCtx.fill();
+    }
+
+    return [
+      { canvas: farCanvas, speed: 0.2, vpW, vpH },
+      { canvas: midCanvas, speed: 0.5, vpW, vpH }
+    ];
+  }
+
+  /**
    * Initialize layers with procedural generation
    */
   init(mapWidth, mapHeight) {

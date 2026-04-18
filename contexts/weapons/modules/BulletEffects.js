@@ -9,7 +9,13 @@ const MathUtils = require('../../../lib/MathUtils');
 const { createParticles, createExplosion, createLoot } = require('../../../game/lootFunctions');
 
 /**
- * Handle explosive bullet effect
+ * Handle explosive bullet effect: creates explosion visuals and deals AoE damage.
+ * @param {Object} bullet - Bullet with explosiveRounds, explosionRadius flags
+ * @param {Object} zombie - Primary hit zombie
+ * @param {string} zombieId
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ * @param {Object} collisionManager
  */
 function handleExplosiveBullet(bullet, zombie, zombieId, gameState, entityManager, collisionManager) {
   if (!bullet.explosiveRounds || bullet.explosionRadius <= 0) {
@@ -81,7 +87,14 @@ function applyExplosionDamage(bullet, zombie, zombieId, gameState, entityManager
 }
 
 /**
- * Handle chain lightning effect
+ * Handle chain lightning effect: recursively jumps to nearby zombies.
+ * @param {Object} bullet - Bullet with isChainLightning flag
+ * @param {Object} zombie - Current chain source zombie
+ * @param {string} zombieId
+ * @param {Object} gameState
+ * @param {Object} entityManager
+ * @param {Object} collisionManager
+ * @param {Object} io
  */
 function handleChainLightning(bullet, zombie, zombieId, gameState, entityManager, collisionManager, io) {
   if (!bullet.isChainLightning) {
@@ -216,7 +229,12 @@ function handleChainKill(zombie, zombieId, bullet, gameState, entityManager) {
 }
 
 /**
- * Handle poison dart effect
+ * Handle poison dart effect: applies and spreads poison.
+ * @param {Object} bullet - Bullet with isPoisonDart flag
+ * @param {Object} zombie
+ * @param {string} zombieId
+ * @param {Object} gameState
+ * @param {Object} entityManager
  */
 function handlePoisonDart(bullet, zombie, zombieId, gameState, entityManager) {
   if (!bullet.isPoisonDart) {
@@ -259,51 +277,53 @@ function applyPoison(zombie, weapon, now, entityManager) {
 }
 
 /**
- * Spread poison to nearby zombies
- * OPTIMIZED: Use distanceSquared and optimized loop
+ * Spread poison to nearby unpoisoned zombies with reduced potency.
+ * BUG FIX: removed dead `if (other.poisoned)` reuse branch inside a block
+ * already gated on `!other.poisoned` — the reuse path was unreachable.
+ * @param {Object} zombie - Source zombie
+ * @param {string} zombieId
+ * @param {Object} weapon - Weapon config
+ * @param {Object} gameState
+ * @param {number} now
+ * @param {Object} entityManager
  */
 function spreadPoison(zombie, zombieId, weapon, gameState, now, entityManager) {
-  if (Math.random() < weapon.poisonSpreadChance) {
-    // OPTIMIZATION: Pre-calculate squared radius
-    const spreadRadiusSq = weapon.poisonSpreadRadius * weapon.poisonSpreadRadius;
+  if (Math.random() >= weapon.poisonSpreadChance) {
+    return;
+  }
 
-    for (const otherId in gameState.zombies) {
-      if (otherId === zombieId) {
-        continue;
-      }
-      const other = gameState.zombies[otherId];
-      if (other.poisoned) {
-        continue;
-      }
-      const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
-      if (distSq < spreadRadiusSq) {
-        // PERF: réutilise l'objet si présent, sinon crée une seule fois
-        if (other.poisoned) {
-          other.poisoned.damage = weapon.poisonDamage * 0.7;
-          other.poisoned.duration = weapon.poisonDuration * 0.8;
-          other.poisoned.startTime = now;
-          other.poisoned.lastTick = now;
-          other.poisoned.spreadRadius = weapon.poisonSpreadRadius * 0.8;
-          other.poisoned.spreadChance = weapon.poisonSpreadChance * 0.5;
-        } else {
-          other.poisoned = {
-            damage: weapon.poisonDamage * 0.7,
-            duration: weapon.poisonDuration * 0.8,
-            startTime: now,
-            lastTick: now,
-            spreadRadius: weapon.poisonSpreadRadius * 0.8,
-            spreadChance: weapon.poisonSpreadChance * 0.5
-          };
-        }
+  const spreadRadiusSq = weapon.poisonSpreadRadius * weapon.poisonSpreadRadius;
 
-        createParticles(other.x, other.y, '#88ff00', 5, entityManager);
-      }
+  for (const otherId in gameState.zombies) {
+    if (otherId === zombieId) {
+      continue;
+    }
+    const other = gameState.zombies[otherId];
+    if (other.poisoned) {
+      continue;
+    }
+    const distSq = MathUtils.distanceSquared(zombie.x, zombie.y, other.x, other.y);
+    if (distSq < spreadRadiusSq) {
+      other.poisoned = {
+        damage: weapon.poisonDamage * 0.7,
+        duration: weapon.poisonDuration * 0.8,
+        startTime: now,
+        lastTick: now,
+        spreadRadius: weapon.poisonSpreadRadius * 0.8,
+        spreadChance: weapon.poisonSpreadChance * 0.5
+      };
+      createParticles(other.x, other.y, '#88ff00', 5, entityManager);
     }
   }
 }
 
 /**
- * Handle ice cannon effect
+ * Handle ice cannon effect: freezes or slows primary target, slows nearby zombies.
+ * @param {Object} bullet - Bullet with isIceCannon flag
+ * @param {Object} zombie
+ * @param {string} zombieId
+ * @param {Object} gameState
+ * @param {Object} entityManager
  */
 function handleIceCannon(bullet, zombie, zombieId, gameState, entityManager) {
   if (!bullet.isIceCannon) {

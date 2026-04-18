@@ -72,6 +72,14 @@ class EffectsRenderer {
     this.BLOOD_POOL_LIFETIME = 3000;
     this.BLOOD_PARTICLE_LIFETIME = 800;
     this.BLOOD_POOL_MAX = 32;
+
+    // --- HAZARD BUBBLES ---
+    this._hazardBubbles = []; // { x, y, vy, size, alpha, createdAt, lifetime }
+    this._lastBubbleSpawn = 0;
+
+    // --- HAZARD WARNING ---
+    this._hazardWarningStart = 0; // timestamp when player entered hazard
+    this._inHazardPrev = false;
   }
 
   _spawnScorchDecal(explosion, now) {
@@ -221,16 +229,19 @@ break;
       ctx.fill();
     }
 
-    // Draw fire/glow particles individually (shadow required)
+    // Draw fire/glow particles individually (shadow + flicker)
+    const fireNow = Date.now();
     for (const particle of glowParticles) {
       const color = particle.color;
       const alpha = particle.alpha !== null && particle.alpha !== undefined ? particle.alpha : 1;
-      ctx.globalAlpha = alpha;
+      // Flicker: each particle gets a unique phase based on position to avoid sync
+      const flicker = 0.7 + 0.3 * Math.abs(Math.sin(fireNow / 60 + particle.x * 0.1 + particle.y * 0.07));
+      ctx.globalAlpha = alpha * flicker;
       ctx.fillStyle = color;
-      ctx.shadowBlur = 5;
+      ctx.shadowBlur = 8 + 6 * flicker;
       ctx.shadowColor = color;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size * flicker, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -327,7 +338,41 @@ continue;
       ctx.shadowBlur = 20; ctx.shadowColor = '#00ff00';
       ctx.globalAlpha = (0.3 + pulseAmount) * fadeAmount;                                         ctx.fill(c.core);
       ctx.restore();
+
+      // Spawn bubbles periodically
+      if (now - this._lastBubbleSpawn > 80) {
+        this._lastBubbleSpawn = now;
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * pool.radius * 0.8;
+        this._hazardBubbles.push({
+          x: pool.x + Math.cos(angle) * dist,
+          y: pool.y + Math.sin(angle) * dist,
+          vy: -(0.4 + Math.random() * 0.6),
+          size: 2 + Math.random() * 3,
+          alpha: 0.7 + Math.random() * 0.3,
+          createdAt: now,
+          lifetime: 600 + Math.random() * 400
+        });
+      }
     }
+
+    // Render & update bubbles
+    ctx.save();
+    for (let i = this._hazardBubbles.length - 1; i >= 0; i--) {
+      const b = this._hazardBubbles[i];
+      const age = now - b.createdAt;
+      if (age >= b.lifetime) { this._hazardBubbles.splice(i, 1); continue; }
+      b.y += b.vy;
+      const t = age / b.lifetime;
+      ctx.globalAlpha = b.alpha * (1 - t);
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size * (1 - t * 0.5), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   renderExplosions(ctx, camera, explosions, now) {
@@ -859,6 +904,62 @@ continue;
       ctx.arc(g.x, g.y, g.size * (1 - t * 0.4), 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  /**
+   * Render a pulsing red "!" above the local player when inside a hazard zone.
+   * Call this in SCREEN SPACE (after ctx.translate(-cam.x, -cam.y)).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} camera
+   * @param {object} player  - { x, y }
+   * @param {Array}  toxicPools  - from gameState.state.toxicPools
+   * @param {object} poisonTrails - from gameState.state.poisonTrails
+   * @param {number} now
+   */
+  renderHazardWarning(ctx, camera, player, toxicPools, poisonTrails, now) {
+    if (!player) return;
+    now = now || Date.now();
+
+    let inHazard = false;
+    if (Array.isArray(toxicPools)) {
+      for (const p of toxicPools) {
+        const dx = player.x - p.x, dy = player.y - p.y;
+        if (dx * dx + dy * dy < p.radius * p.radius) { inHazard = true; break; }
+      }
+    }
+    if (!inHazard && poisonTrails) {
+      for (const id in poisonTrails) {
+        const t = poisonTrails[id];
+        const dx = player.x - t.x, dy = player.y - t.y;
+        if (dx * dx + dy * dy < t.radius * t.radius) { inHazard = true; break; }
+      }
+    }
+
+    if (!this._inHazardPrev && inHazard) this._hazardWarningStart = now;
+    this._inHazardPrev = inHazard;
+    if (!inHazard) return;
+
+    const elapsed = now - this._hazardWarningStart;
+    // Pulse: fast blink for first 1s, then slower
+    const blinkRate = elapsed < 1000 ? 150 : 400;
+    if (Math.floor(now / blinkRate) % 2 === 0) return;
+
+    const sx = player.x - camera.x;
+    const sy = player.y - camera.y - 36; // above player head
+
+    ctx.save();
+    const pulse = 0.8 + 0.2 * Math.sin(now / 120);
+    ctx.globalAlpha = 0.9 * pulse;
+    ctx.font = `bold ${Math.round(22 * pulse)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Glow
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#ff0000';
+    ctx.fillStyle = '#ff2222';
+    ctx.fillText('!', sx, sy);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();

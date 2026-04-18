@@ -196,24 +196,22 @@ interval = Math.floor(interval * 0.85);
     return Math.max(Math.floor(interval * spawnIntervalMultiplier), 350);
   }
 
+  /** Start the zombie spawner interval. Clears any existing timer first. */
   startZombieSpawner() {
     if (this.zombieSpawnTimer) {
-clearInterval(this.zombieSpawnTimer);
-}
+      clearInterval(this.zombieSpawnTimer);
+    }
     this.zombieSpawnTimer = setInterval(() => {
       this.spawnZombie();
     }, this.getSpawnInterval());
   }
 
+  /** Restart the zombie spawner (recalculates interval for current wave). */
   restartZombieSpawner() {
-    if (this.zombieSpawnTimer) {
-clearInterval(this.zombieSpawnTimer);
-}
-    this.zombieSpawnTimer = setInterval(() => {
-      this.spawnZombie();
-    }, this.getSpawnInterval());
+    this.startZombieSpawner();
   }
 
+  /** Stop the zombie spawner interval and clear the timer reference. */
   stopZombieSpawner() {
     if (this.zombieSpawnTimer) {
       clearInterval(this.zombieSpawnTimer);

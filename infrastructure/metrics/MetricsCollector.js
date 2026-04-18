@@ -78,12 +78,27 @@ class MetricsCollector {
 }
 
   // ── Counters jeu ──
-  incrementShots(count = 1)   {
- this.metrics.game.total_shots += count;
-}
-  incrementHits(count = 1)    {
- this.metrics.game.total_hits += count;
-}
+  /**
+   * Increment shot counter, capped at Number.MAX_SAFE_INTEGER to prevent overflow.
+   * @param {number} [count=1]
+   */
+  incrementShots(count = 1) {
+    this.metrics.game.total_shots = Math.min(
+      this.metrics.game.total_shots + count,
+      Number.MAX_SAFE_INTEGER
+    );
+  }
+
+  /**
+   * Increment hit counter, capped at Number.MAX_SAFE_INTEGER to prevent overflow.
+   * @param {number} [count=1]
+   */
+  incrementHits(count = 1) {
+    this.metrics.game.total_hits = Math.min(
+      this.metrics.game.total_hits + count,
+      Number.MAX_SAFE_INTEGER
+    );
+  }
 
   // ── Erreurs ──
   incrementError(context = 'unknown') {
@@ -176,13 +191,27 @@ count++;
 }
 
   // ── Performance ──
+  /**
+   * Record a single frame time sample, update FPS counter and frame stats.
+   * @param {number} frameTime - Duration of the frame in milliseconds.
+   */
   recordFrameTime(frameTime) {
+    this._pushFrameSample(frameTime);
+    this._maybeUpdateFps();
+    this._recalcFrameStats();
+  }
+
+  /** @private */
+  _pushFrameSample(frameTime) {
     this.frameTimes.push(frameTime);
     if (this.frameTimes.length > this.maxFrameTimeSamples) {
-this.frameTimes.shift();
-}
-
+      this.frameTimes.shift();
+    }
     this.frameCount++;
+  }
+
+  /** @private */
+  _maybeUpdateFps() {
     const now = Date.now();
     const elapsed = now - this.lastFpsSample;
     if (elapsed >= 1000) {
@@ -191,13 +220,15 @@ this.frameTimes.shift();
       this.frameCount = 0;
       this.lastFpsSample = now;
     }
+  }
 
-    let sum = 0; let max = 0;
+  /** @private */
+  _recalcFrameStats() {
+    let sum = 0;
+    let max = 0;
     for (let i = 0; i < this.frameTimes.length; i++) {
       sum += this.frameTimes[i];
-      if (this.frameTimes[i] > max) {
-max = this.frameTimes[i];
-}
+      if (this.frameTimes[i] > max) max = this.frameTimes[i];
     }
     this.metrics.performance.avgFrameTime = sum / this.frameTimes.length;
     this.metrics.performance.maxFrameTime = max;
@@ -208,13 +239,27 @@ max = this.frameTimes[i];
 }
 
   // ── Réseau ──
+  /**
+   * Record inbound network traffic. Byte counters are capped at MAX_SAFE_INTEGER.
+   * @param {number} bytes
+   */
   recordNetworkIn(bytes) {
-    this.metrics.network.bytesIn += bytes;
+    this.metrics.network.bytesIn = Math.min(
+      this.metrics.network.bytesIn + bytes,
+      Number.MAX_SAFE_INTEGER
+    );
     this.metrics.network.messagesIn++;
   }
 
+  /**
+   * Record outbound network traffic. Byte counters are capped at MAX_SAFE_INTEGER.
+   * @param {number} bytes
+   */
   recordNetworkOut(bytes) {
-    this.metrics.network.bytesOut += bytes;
+    this.metrics.network.bytesOut = Math.min(
+      this.metrics.network.bytesOut + bytes,
+      Number.MAX_SAFE_INTEGER
+    );
     this.metrics.network.messagesOut++;
   }
 
@@ -233,33 +278,54 @@ activePlayers++;
   }
 
   // ── Système ──
+  /**
+   * Collect process and OS-level metrics snapshot.
+   * @returns {{ uptime: number, processUptime: number, memory: object, cpu: object, system: object }}
+   */
   getSystemMetrics() {
-    const memUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
     return {
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
       processUptime: Math.floor(process.uptime()),
-      memory: {
-        heapUsed: memUsage.heapUsed,
-        heapTotal: memUsage.heapTotal,
-        rss: memUsage.rss,
-        external: memUsage.external,
-        heapUsedMB: (memUsage.heapUsed / 1024 / 1024).toFixed(2),
-        heapTotalMB: (memUsage.heapTotal / 1024 / 1024).toFixed(2),
-        rssMB: (memUsage.rss / 1024 / 1024).toFixed(2)
-      },
-      cpu: { user: cpuUsage.user, system: cpuUsage.system },
-      system: {
-        totalMemory: os.totalmem(),
-        freeMemory: os.freemem(),
-        totalMemoryMB: (os.totalmem() / 1024 / 1024).toFixed(2),
-        freeMemoryMB: (os.freemem() / 1024 / 1024).toFixed(2),
-        memoryUsagePercent: ((1 - os.freemem() / os.totalmem()) * 100).toFixed(2),
-        loadAverage: os.loadavg(),
-        cpus: os.cpus().length,
-        platform: os.platform(),
-        arch: os.arch()
-      }
+      memory: this._getMemoryMetrics(),
+      cpu: this._getCpuMetrics(),
+      system: this._getOsMetrics()
+    };
+  }
+
+  /** @private */
+  _getMemoryMetrics() {
+    const m = process.memoryUsage();
+    return {
+      heapUsed: m.heapUsed,
+      heapTotal: m.heapTotal,
+      rss: m.rss,
+      external: m.external,
+      heapUsedMB: (m.heapUsed / 1024 / 1024).toFixed(2),
+      heapTotalMB: (m.heapTotal / 1024 / 1024).toFixed(2),
+      rssMB: (m.rss / 1024 / 1024).toFixed(2)
+    };
+  }
+
+  /** @private */
+  _getCpuMetrics() {
+    const c = process.cpuUsage();
+    return { user: c.user, system: c.system };
+  }
+
+  /** @private */
+  _getOsMetrics() {
+    const total = os.totalmem();
+    const free = os.freemem();
+    return {
+      totalMemory: total,
+      freeMemory: free,
+      totalMemoryMB: (total / 1024 / 1024).toFixed(2),
+      freeMemoryMB: (free / 1024 / 1024).toFixed(2),
+      memoryUsagePercent: ((1 - free / total) * 100).toFixed(2),
+      loadAverage: os.loadavg(),
+      cpus: os.cpus().length,
+      platform: os.platform(),
+      arch: os.arch()
     };
   }
 

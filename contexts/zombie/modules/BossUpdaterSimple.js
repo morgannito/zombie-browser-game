@@ -1,142 +1,108 @@
 /**
  * @fileoverview Simple boss updaters
- * @description Handles Boss Charnier, Infect, and Colosse
+ * @description Handles Boss Charnier, Infect, Colosse, Roi and Omega.
  */
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
+const { handlePlayerDeathProgression } = require('../../player/modules/DeathProgressionHandler');
+const { clampToRoomBounds, moveZombieSafely } = require('./bosses/shared');
 
-const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+const { ZOMBIE_TYPES } = ConfigManager;
 
-function clampToRoomBounds(zombie, x, y) {
-  const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
-  return {
-    x: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
-    y: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
-  };
-}
-
+/** @returns {boolean} true when (x,y) is not inside a wall */
 function canPlaceZombieAt(zombie, x, y, gameState) {
   const roomManager = gameState?.roomManager;
-  if (!roomManager) {
-    return true;
-  }
+  if (!roomManager) return true;
   return !roomManager.checkWallCollision(x, y, zombie.size);
 }
 
-function moveZombieSafely(zombie, targetX, targetY, gameState) {
-  const clamped = clampToRoomBounds(zombie, targetX, targetY);
-  if (!canPlaceZombieAt(zombie, clamped.x, clamped.y, gameState)) {
-    return false;
-  }
-  zombie.x = clamped.x;
-  zombie.y = clamped.y;
-  return true;
-}
-let handlePlayerDeathProgressionRef = null;
-function getHandlePlayerDeathProgression() {
-  if (!handlePlayerDeathProgressionRef) {
-    handlePlayerDeathProgressionRef = require('../../../game/gameLoop').handlePlayerDeathProgression;
-  }
-  return handlePlayerDeathProgressionRef;
-}
+// ─── Boss Charnier ────────────────────────────────────────────────────────────
+
+/**
+ * Update Boss Charnier — periodically spawns regular zombies.
+ * @param {Object} zombie @param {number} now @param {Object} zombieManager
+ * @param {Object} perfIntegration @param {Object} entityManager @param {Object} gameState
+ */
 function updateBossCharnier(zombie, now, zombieManager, perfIntegration, entityManager, gameState) {
-  if (zombie.type !== 'bossCharnier') {
-    return;
-  }
+  if (zombie.type !== 'bossCharnier') return;
 
   const bossType = ZOMBIE_TYPES.bossCharnier;
   if (!zombie.lastSpawn || now - zombie.lastSpawn >= bossType.spawnCooldown) {
     zombie.lastSpawn = now;
-
-    // Spawner plusieurs zombies autour du boss (avec limite performance)
     for (let i = 0; i < bossType.spawnCount; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) {
-zombieCount++;
-}
-      if (perfIntegration.canSpawnZombie(zombieCount) && zombieManager.spawnSingleZombie()) {
+      let n = 0; for (const _ in gameState.zombies) { n++; }
+      if (perfIntegration.canSpawnZombie(n) && zombieManager.spawnSingleZombie()) {
         createParticles(zombie.x, zombie.y, bossType.color, 15, entityManager);
       }
     }
   }
 }
 
-/**
- * Update Boss Infect
- */
-function updateBossInfect(zombie, now, entityManager, gameState) {
-  if (zombie.type !== 'bossInfect') {
-    return;
-  }
+// ─── Boss Infect ──────────────────────────────────────────────────────────────
 
-  const bossType = ZOMBIE_TYPES.bossInfect;
+/** Drop a toxic pool at current position. */
+function _infectToxicPool(zombie, now, bossType, entityManager, gameState) {
+  zombie.lastToxicPool = now;
+  gameState.toxicPools = gameState.toxicPools || [];
+  gameState.toxicPools.push({
+    id: `toxic_${now}_${Math.random()}`,
+    x: zombie.x, y: zombie.y,
+    radius: bossType.toxicPoolRadius,
+    damage: bossType.toxicPoolDamage,
+    createdAt: now, duration: bossType.toxicPoolDuration
+  });
+  createParticles(zombie.x, zombie.y, bossType.color, 25, entityManager);
+}
 
-  // Flaques toxiques
-  if (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown) {
-    zombie.lastToxicPool = now;
-
-    // Créer une flaque toxique à la position actuelle
-    gameState.toxicPools = gameState.toxicPools || [];
-    gameState.toxicPools.push({
-      id: `toxic_${now}_${Math.random()}`,
-      x: zombie.x,
-      y: zombie.y,
-      radius: bossType.toxicPoolRadius,
-      damage: bossType.toxicPoolDamage,
-      createdAt: now,
-      duration: bossType.toxicPoolDuration
-    });
-
-    createParticles(zombie.x, zombie.y, bossType.color, 25, entityManager);
-  }
-
-  // Aura de mort passive - 5 dégâts/sec dans 80px
-  if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
-    zombie.lastAuraDamage = now;
-
-    // Trouver tous les joueurs dans le rayon de l'aura
-    for (const playerId in gameState.players) {
-      const player = gameState.players[playerId];
-      if (!player.alive || player.spawnProtection || player.invisible) {
-        continue;
-      }
-
-      const dist = distance(zombie.x, zombie.y, player.x, player.y);
-      if (dist < bossType.deathAuraRadius) {
-        player.lastKillerType = zombie.type;
-        player.health -= bossType.deathAuraDamage;
-
-        // Particules vertes toxiques
-        createParticles(player.x, player.y, '#00ff00', 5, entityManager);
-
-        if (player.health <= 0) {
-          const handlePlayerDeathProgression = getHandlePlayerDeathProgression();
-          handlePlayerDeathProgression(player, playerId, gameState, now, true);
-        }
-      }
+/** Apply death-aura damage to nearby players. */
+function _infectDeathAura(zombie, now, bossType, entityManager, gameState) {
+  zombie.lastAuraDamage = now;
+  for (const playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    if (distance(zombie.x, zombie.y, player.x, player.y) < bossType.deathAuraRadius) {
+      player.lastKillerType = zombie.type;
+      player.health -= bossType.deathAuraDamage;
+      createParticles(player.x, player.y, '#00ff00', 5, entityManager);
+      if (player.health <= 0) handlePlayerDeathProgression(player, playerId, gameState, now, true);
     }
-
-    // Effet visuel de l'aura autour du boss
-    createParticles(zombie.x, zombie.y, '#00ff00', 12, entityManager);
   }
+  createParticles(zombie.x, zombie.y, '#00ff00', 12, entityManager);
 }
 
 /**
- * Update Boss Colosse
+ * Update Boss Infect — toxic pools + death aura.
+ * @param {Object} zombie @param {number} now @param {Object} entityManager @param {Object} gameState
+ */
+function updateBossInfect(zombie, now, entityManager, gameState) {
+  if (zombie.type !== 'bossInfect') return;
+
+  const bossType = ZOMBIE_TYPES.bossInfect;
+  if (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown) {
+    _infectToxicPool(zombie, now, bossType, entityManager, gameState);
+  }
+  if (!zombie.lastAuraDamage || now - zombie.lastAuraDamage >= 1000) {
+    _infectDeathAura(zombie, now, bossType, entityManager, gameState);
+  }
+}
+
+// ─── Boss Colosse ─────────────────────────────────────────────────────────────
+
+/**
+ * Update Boss Colosse — shield before enrage, speed+damage boost on enrage.
+ * @param {Object} zombie @param {string} zombieId @param {number} now
+ * @param {Object} io @param {Object} entityManager
  */
 function updateBossColosse(zombie, zombieId, now, io, entityManager) {
-  if (zombie.type !== 'bossColosse') {
-    return;
-  }
+  if (zombie.type !== 'bossColosse') return;
 
   const bossType = ZOMBIE_TYPES.bossColosse;
   const healthPercent = zombie.health / zombie.maxHealth;
 
-  // Bouclier pré-rage (actif tant que NOT enragé)
   if (!zombie.isEnraged) {
     zombie.hasShield = true;
-    // Effet visuel de bouclier toutes les secondes
     if (!zombie.lastShieldEffect || now - zombie.lastShieldEffect >= 1000) {
       zombie.lastShieldEffect = now;
       createParticles(zombie.x, zombie.y, bossType.shieldColor, 8, entityManager);
@@ -147,168 +113,103 @@ function updateBossColosse(zombie, zombieId, now, io, entityManager) {
 
   if (!zombie.isEnraged && healthPercent <= bossType.enrageThreshold) {
     zombie.isEnraged = true;
-    zombie.hasShield = false; // Désactiver le bouclier
+    zombie.hasShield = false;
     zombie.speed *= bossType.enrageSpeedMultiplier;
     zombie.damage = Math.floor(zombie.damage * bossType.enrageDamageMultiplier);
-
-    // Effet visuel d'enrage
     createParticles(zombie.x, zombie.y, '#ff0000', 50, entityManager);
-    io.emit('bossEnraged', {
-      bossId: zombieId,
-      message: 'LE COLOSSE EST ENRAGÉ!'
-    });
+    io.emit('bossEnraged', { bossId: zombieId, message: 'LE COLOSSE EST ENRAGÉ!' });
   }
+}
+
+// ─── Boss Roi ─────────────────────────────────────────────────────────────────
+
+/** @returns {number} current phase (1-3) */
+function _roiDetectPhase(bossType, healthPercent) {
+  if (healthPercent <= bossType.phase3Threshold) return 3;
+  if (healthPercent <= bossType.phase2Threshold) return 2;
+  return 1;
+}
+
+/** Teleport bossRoi near closest player (Phase 2+). */
+function _roiTeleport(zombie, now, bossType, collisionManager, entityManager, gameState) {
+  zombie.lastTeleport = now;
+  const p = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, { ignoreSpawnProtection: true, ignoreInvisible: false });
+  if (!p) return;
+  const a = Math.atan2(p.y - zombie.y, p.x - zombie.x);
+  const d = 200 + Math.random() * 200;
+  const oldX = zombie.x, oldY = zombie.y;
+  if (moveZombieSafely(zombie, p.x - Math.cos(a) * d, p.y - Math.sin(a) * d, gameState)) {
+    createParticles(oldX, oldY, bossType.color, 30, entityManager);
+    createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
+  }
+}
+
+/** Summon 5 regular zombies (Phase 3, non-clone only). */
+function _roiSummon(zombie, now, bossType, zombieManager, perfIntegration, entityManager, gameState) {
+  zombie.lastSummon = now;
+  for (let i = 0; i < 5; i++) {
+    let n = 0; for (const _ in gameState.zombies) { n++; }
+    if (perfIntegration.canSpawnZombie(n)) zombieManager.spawnSingleZombie();
+  }
+  createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+}
+
+/** Spawn clones around bossRoi (Phase 3, non-clone only). */
+function _roiSpawnClones(zombie, zombieId, now, bossType, io, entityManager, gameState) {
+  zombie.lastClone = now;
+  for (let i = 0; i < bossType.cloneCount; i++) {
+    const angle = (Math.PI * 2 * i) / bossType.cloneCount;
+    const cloneSize = bossType.size * 0.7;
+    const pos = clampToRoomBounds({ size: cloneSize }, zombie.x + Math.cos(angle) * 150, zombie.y + Math.sin(angle) * 150);
+    if (!canPlaceZombieAt({ size: cloneSize }, pos.x, pos.y, gameState)) continue;
+    const cloneId = gameState.nextZombieId++;
+    gameState.zombies[cloneId] = {
+      id: cloneId, x: pos.x, y: pos.y, size: cloneSize, color: '#ff69b4',
+      type: 'bossRoi', health: bossType.cloneHealth, maxHealth: bossType.cloneHealth,
+      speed: bossType.speed * 1.2, damage: bossType.damage * 0.5,
+      goldDrop: 100, xpDrop: 50, isBoss: false, isClone: true,
+      phase: 1, createdAt: now, despawnTime: now + bossType.cloneDuration
+    };
+    createParticles(pos.x, pos.y, '#ff69b4', 30, entityManager);
+  }
+  createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
+  io.emit('bossClones', { bossId: zombieId, message: 'LE ROI INVOQUE SES CLONES!' });
 }
 
 /**
- * Update Boss Roi
+ * Update Boss Roi — 3 phases: teleport (P2), summon + clones (P3).
+ * @param {Object} zombie @param {string} zombieId @param {number} now
+ * @param {Object} io @param {Object} zombieManager @param {Object} perfIntegration
+ * @param {Object} entityManager @param {Object} gameState @param {Object} collisionManager
  */
 function updateBossRoi(
-  zombie,
-  zombieId,
-  now,
-  io,
-  zombieManager,
-  perfIntegration,
-  entityManager,
-  gameState,
-  collisionManager
+  zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager
 ) {
-  if (zombie.type !== 'bossRoi') {
-    return;
-  }
+  if (zombie.type !== 'bossRoi') return;
 
   const bossType = ZOMBIE_TYPES.bossRoi;
   const healthPercent = zombie.health / zombie.maxHealth;
+  const currentPhase = _roiDetectPhase(bossType, healthPercent);
 
-  // Détection de phase
-  let currentPhase = 1;
-  if (healthPercent <= bossType.phase3Threshold) {
-    currentPhase = 3;
-  } else if (healthPercent <= bossType.phase2Threshold) {
-    currentPhase = 2;
-  }
-
-  // Changement de phase
   if (currentPhase > zombie.phase) {
     zombie.phase = currentPhase;
-    io.emit('bossPhaseChange', {
-      bossId: zombieId,
-      phase: currentPhase,
-      message: `ROI ZOMBIE - PHASE ${currentPhase}!`
-    });
+    io.emit('bossPhaseChange', { bossId: zombieId, phase: currentPhase, message: `ROI ZOMBIE - PHASE ${currentPhase}!` });
     createParticles(zombie.x, zombie.y, bossType.color, 60, entityManager);
   }
 
-  // Téléportation (Phase 2+)
-  if (
-    zombie.phase >= 2 &&
-    (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown)
-  ) {
-    zombie.lastTeleport = now;
-
-    // Trouver le joueur le plus proche
-    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, {
-      ignoreSpawnProtection: true,
-      ignoreInvisible: false
-    });
-
-    if (closestPlayer) {
-      // Angle vers le joueur
-      const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
-
-      // Se téléporter à une distance moyenne du joueur (200-400 pixels)
-      const teleportDistance = 200 + Math.random() * 200;
-
-      // Nouvelle position près du joueur
-      const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
-      const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
-
-      const oldX = zombie.x;
-      const oldY = zombie.y;
-      if (moveZombieSafely(zombie, newX, newY, gameState)) {
-        createParticles(oldX, oldY, bossType.color, 30, entityManager);
-        createParticles(zombie.x, zombie.y, bossType.color, 30, entityManager);
-      }
-    }
+  if (zombie.phase >= 2 && (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown)) {
+    _roiTeleport(zombie, now, bossType, collisionManager, entityManager, gameState);
   }
 
-  // Invocation (Phase 3) - SEULEMENT le vrai boss, pas les clones
-  if (
-    !zombie.isClone &&
-    zombie.phase >= 3 &&
-    (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)
-  ) {
-    zombie.lastSummon = now;
-
-    // Invoquer 5 zombies normaux (avec limite performance)
-    for (let i = 0; i < 5; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) {
-zombieCount++;
-}
-      if (perfIntegration.canSpawnZombie(zombieCount)) {
-        zombieManager.spawnSingleZombie();
-      }
-    }
-    createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
+    _roiSummon(zombie, now, bossType, zombieManager, perfIntegration, entityManager, gameState);
   }
 
-  // Clones (Phase 3) - SEULEMENT le vrai boss, pas les clones (FIX LAG)
-  if (
-    !zombie.isClone &&
-    zombie.phase >= 3 &&
-    (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)
-  ) {
-    zombie.lastClone = now;
-
-    // Créer 2 clones autour du boss
-    for (let i = 0; i < bossType.cloneCount; i++) {
-      const angle = (Math.PI * 2 * i) / bossType.cloneCount; // Répartition circulaire
-      const spawnDistance = 150; // Distance de spawn autour du boss
-      const cloneSize = bossType.size * 0.7;
-      const targetCloneX = zombie.x + Math.cos(angle) * spawnDistance;
-      const targetCloneY = zombie.y + Math.sin(angle) * spawnDistance;
-      const clampedClonePos = clampToRoomBounds({ size: cloneSize }, targetCloneX, targetCloneY);
-      if (!canPlaceZombieAt({ size: cloneSize }, clampedClonePos.x, clampedClonePos.y, gameState)) {
-        continue;
-      }
-
-      const cloneId = gameState.nextZombieId++;
-      gameState.zombies[cloneId] = {
-        id: cloneId,
-        x: clampedClonePos.x,
-        y: clampedClonePos.y,
-        size: cloneSize, // Clones plus petits (70%)
-        color: '#ff69b4', // Rose pour différencier des vrais boss
-        type: 'bossRoi',
-        health: bossType.cloneHealth,
-        maxHealth: bossType.cloneHealth,
-        speed: bossType.speed * 1.2, // Clones plus rapides
-        damage: bossType.damage * 0.5, // Clones moins puissants
-        goldDrop: 100,
-        xpDrop: 50,
-        isBoss: false, // Les clones ne sont pas des vrais boss
-        isClone: true, // Marqueur de clone
-        phase: 1,
-        createdAt: now,
-        despawnTime: now + bossType.cloneDuration // Despawn après 30 secondes
-      };
-
-      // Effet visuel de spawn
-      createParticles(clampedClonePos.x, clampedClonePos.y, '#ff69b4', 30, entityManager);
-    }
-
-    // Effet visuel massif au boss principal
-    createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
-
-    // Notifier les clients de la création des clones
-    io.emit('bossClones', {
-      bossId: zombieId,
-      message: 'LE ROI INVOQUE SES CLONES!'
-    });
+  if (!zombie.isClone && zombie.phase >= 3 && (!zombie.lastClone || now - zombie.lastClone >= bossType.cloneCooldown)) {
+    _roiSpawnClones(zombie, zombieId, now, bossType, io, entityManager, gameState);
   }
 
-  // Despawn des clones expirés
+  // Despawn expired clones
   if (zombie.isClone && now >= zombie.despawnTime) {
     createParticles(zombie.x, zombie.y, '#ff69b4', 20, entityManager);
     delete gameState.zombies[zombieId];
@@ -316,192 +217,109 @@ zombieCount++;
   }
 }
 
-/**
- * Update Boss Omega
- */
-function updateBossOmega(
-  zombie,
-  zombieId,
-  now,
-  io,
-  zombieManager,
-  perfIntegration,
-  entityManager,
-  gameState,
-  collisionManager
-) {
-  if (zombie.type !== 'bossOmega') {
-    return;
+// ─── Boss Omega ───────────────────────────────────────────────────────────────
+
+/** @returns {number} current phase (1-4) */
+function _omegaDetectPhase(bossType, healthPercent) {
+  if (healthPercent <= bossType.phase4Threshold) return 4;
+  if (healthPercent <= bossType.phase3Threshold) return 3;
+  if (healthPercent <= bossType.phase2Threshold) return 2;
+  return 1;
+}
+
+/** Teleport bossOmega near closest player (all phases). */
+function _omegaTeleport(zombie, now, bossType, collisionManager, entityManager, gameState) {
+  zombie.lastTeleport = now;
+  const p = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, { ignoreSpawnProtection: true, ignoreInvisible: false });
+  if (!p) return;
+  const a = Math.atan2(p.y - zombie.y, p.x - zombie.x);
+  const d = 150 + Math.random() * 200;
+  const oldX = zombie.x, oldY = zombie.y;
+  if (moveZombieSafely(zombie, p.x - Math.cos(a) * d, p.y - Math.sin(a) * d, gameState)) {
+    createParticles(oldX, oldY, bossType.color, 40, entityManager);
+    createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
+  }
+}
+
+/** Fire laser at closest player and apply damage (Phase 4). */
+function _omegaLaser(zombie, zombieId, now, bossType, io, collisionManager, entityManager, gameState) {
+  zombie.lastLaser = now;
+  const p = collisionManager.findClosestPlayer(zombie.x, zombie.y, bossType.laserRange, { ignoreSpawnProtection: true, ignoreInvisible: false });
+  if (!p) return;
+
+  const angle = Math.atan2(p.y - zombie.y, p.x - zombie.x);
+  const steps = 40;
+  for (let i = 0; i < steps; i++) {
+    createParticles(
+      zombie.x + Math.cos(angle) * (i * bossType.laserRange / steps),
+      zombie.y + Math.sin(angle) * (i * bossType.laserRange / steps),
+      bossType.laserColor, 2, entityManager
+    );
   }
 
-  const bossType = ZOMBIE_TYPES.bossOmega;
-  const healthPercent = zombie.health / zombie.maxHealth;
-
-  // Détection de phase (4 phases)
-  let currentPhase = 1;
-  if (healthPercent <= bossType.phase4Threshold) {
-    currentPhase = 4;
-  } else if (healthPercent <= bossType.phase3Threshold) {
-    currentPhase = 3;
-  } else if (healthPercent <= bossType.phase2Threshold) {
-    currentPhase = 2;
-  }
-
-  // Changement de phase
-  if (currentPhase > zombie.phase) {
-    zombie.phase = currentPhase;
-    io.emit('bossPhaseChange', {
-      bossId: zombieId,
-      phase: currentPhase,
-      message: `OMEGA - PHASE ${currentPhase}!`
-    });
-    createParticles(zombie.x, zombie.y, bossType.color, 80, entityManager);
-  }
-
-  // Téléportation (toutes phases)
-  if (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown) {
-    zombie.lastTeleport = now;
-
-    // Trouver le joueur le plus proche
-    const closestPlayer = collisionManager.findClosestPlayer(zombie.x, zombie.y, Infinity, {
-      ignoreSpawnProtection: true,
-      ignoreInvisible: false
-    });
-
-    if (closestPlayer) {
-      // Angle vers le joueur
-      const angleToPlayer = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
-
-      // Se téléporter à une distance moyenne du joueur (150-350 pixels)
-      const teleportDistance = 150 + Math.random() * 200;
-
-      // Nouvelle position près du joueur
-      const newX = closestPlayer.x - Math.cos(angleToPlayer) * teleportDistance;
-      const newY = closestPlayer.y - Math.sin(angleToPlayer) * teleportDistance;
-
-      const oldX = zombie.x;
-      const oldY = zombie.y;
-      if (moveZombieSafely(zombie, newX, newY, gameState)) {
-        createParticles(oldX, oldY, bossType.color, 40, entityManager);
-        createParticles(zombie.x, zombie.y, bossType.color, 40, entityManager);
-      }
+  for (const playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (!player.alive || player.spawnProtection || player.invisible) continue;
+    const playerAngle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
+    const angleDiff = Math.abs(playerAngle - angle);
+    const dist = distance(zombie.x, zombie.y, player.x, player.y);
+    if (angleDiff < bossType.laserWidth / 2 / dist && dist < bossType.laserRange) {
+      player.lastKillerType = zombie.type;
+      player.health -= bossType.laserDamage;
+      createParticles(player.x, player.y, '#ff0000', 15, entityManager);
+      if (player.health <= 0) handlePlayerDeathProgression(player, playerId, gameState, now, true);
     }
   }
 
-  // Flaques toxiques (Phase 2+)
-  if (
-    zombie.phase >= 2 &&
-    (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown)
-  ) {
+  createParticles(zombie.x, zombie.y, bossType.laserColor, 30, entityManager);
+  io.emit('bossLaser', { bossId: zombieId, x: zombie.x, y: zombie.y, angle, range: bossType.laserRange, color: bossType.laserColor });
+}
+
+/**
+ * Update Boss Omega — 4 phases: teleport (all), toxic pools (P2), summon (P3), laser (P4).
+ * @param {Object} zombie @param {string} zombieId @param {number} now
+ * @param {Object} io @param {Object} zombieManager @param {Object} perfIntegration
+ * @param {Object} entityManager @param {Object} gameState @param {Object} collisionManager
+ */
+function updateBossOmega(
+  zombie, zombieId, now, io, zombieManager, perfIntegration, entityManager, gameState, collisionManager
+) {
+  if (zombie.type !== 'bossOmega') return;
+
+  const bossType = ZOMBIE_TYPES.bossOmega;
+  const healthPercent = zombie.health / zombie.maxHealth;
+  const currentPhase = _omegaDetectPhase(bossType, healthPercent);
+
+  if (currentPhase > zombie.phase) {
+    zombie.phase = currentPhase;
+    io.emit('bossPhaseChange', { bossId: zombieId, phase: currentPhase, message: `OMEGA - PHASE ${currentPhase}!` });
+    createParticles(zombie.x, zombie.y, bossType.color, 80, entityManager);
+  }
+
+  if (!zombie.lastTeleport || now - zombie.lastTeleport >= bossType.teleportCooldown) {
+    _omegaTeleport(zombie, now, bossType, collisionManager, entityManager, gameState);
+  }
+
+  if (zombie.phase >= 2 && (!zombie.lastToxicPool || now - zombie.lastToxicPool >= bossType.toxicPoolCooldown)) {
     zombie.lastToxicPool = now;
     gameState.toxicPools = gameState.toxicPools || [];
-    gameState.toxicPools.push({
-      id: `toxic_${now}_${Math.random()}`,
-      x: zombie.x,
-      y: zombie.y,
-      radius: 70,
-      damage: 20,
-      createdAt: now,
-      duration: 10000
-    });
+    gameState.toxicPools.push({ id: `toxic_${now}_${Math.random()}`, x: zombie.x, y: zombie.y, radius: 70, damage: 20, createdAt: now, duration: 10000 });
     createParticles(zombie.x, zombie.y, '#00ff00', 30, entityManager);
   }
 
-  // Invocation (Phase 3+)
-  if (
-    zombie.phase >= 3 &&
-    (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)
-  ) {
+  if (zombie.phase >= 3 && (!zombie.lastSummon || now - zombie.lastSummon >= bossType.summonCooldown)) {
     zombie.lastSummon = now;
     for (let i = 0; i < 8; i++) {
-      let zombieCount = 0; for (const _ in gameState.zombies) {
-zombieCount++;
-}
-      if (perfIntegration.canSpawnZombie(zombieCount)) {
-        zombieManager.spawnSingleZombie();
-      }
+      let n = 0; for (const _ in gameState.zombies) { n++; }
+      if (perfIntegration.canSpawnZombie(n)) zombieManager.spawnSingleZombie();
     }
     createParticles(zombie.x, zombie.y, bossType.color, 50, entityManager);
   }
 
-  // Laser (Phase 4)
-  if (
-    zombie.phase >= 4 &&
-    (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)
-  ) {
-    zombie.lastLaser = now;
-
-    // Trouver le joueur le plus proche pour cibler le laser
-    const closestPlayer = collisionManager.findClosestPlayer(
-      zombie.x,
-      zombie.y,
-      bossType.laserRange,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
-
-    if (closestPlayer) {
-      // Angle vers le joueur
-      const angle = Math.atan2(closestPlayer.y - zombie.y, closestPlayer.x - zombie.x);
-
-      // Créer le laser (ligne de particules + dégâts en ligne)
-      const laserSteps = 40; // Nombre de points du laser
-      for (let i = 0; i < laserSteps; i++) {
-        const laserX = zombie.x + Math.cos(angle) * (i * (bossType.laserRange / laserSteps));
-        const laserY = zombie.y + Math.sin(angle) * (i * (bossType.laserRange / laserSteps));
-
-        // Créer particules visuelles du laser
-        createParticles(laserX, laserY, bossType.laserColor, 2, entityManager);
-      }
-
-      // Dégâts aux joueurs touchés par le laser
-      for (const playerId in gameState.players) {
-        const player = gameState.players[playerId];
-        if (!player.alive || player.spawnProtection || player.invisible) {
-          continue;
-        }
-
-        // Vérifier si le joueur est dans la trajectoire du laser
-        const playerAngle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
-        const angleDiff = Math.abs(playerAngle - angle);
-        const distToZombie = distance(zombie.x, zombie.y, player.x, player.y);
-
-        // Si dans la largeur du laser et dans la portée
-        if (
-          angleDiff < bossType.laserWidth / 2 / distToZombie &&
-          distToZombie < bossType.laserRange
-        ) {
-          player.lastKillerType = zombie.type;
-          player.health -= bossType.laserDamage;
-
-          // Particules d'impact
-          createParticles(player.x, player.y, '#ff0000', 15, entityManager);
-
-          if (player.health <= 0) {
-            const handlePlayerDeathProgression = getHandlePlayerDeathProgression();
-            handlePlayerDeathProgression(player, playerId, gameState, now, true);
-          }
-        }
-      }
-
-      // Effet visuel explosif au départ du laser
-      createParticles(zombie.x, zombie.y, bossType.laserColor, 30, entityManager);
-
-      // Notifier les clients du laser pour effet visuel
-      io.emit('bossLaser', {
-        bossId: zombieId,
-        x: zombie.x,
-        y: zombie.y,
-        angle: angle,
-        range: bossType.laserRange,
-        color: bossType.laserColor
-      });
-    }
+  if (zombie.phase >= 4 && (!zombie.lastLaser || now - zombie.lastLaser >= bossType.laserCooldown)) {
+    _omegaLaser(zombie, zombieId, now, bossType, io, collisionManager, entityManager, gameState);
   }
 }
-
-/**
- * Move zombie towards player or randomly
- */
 
 module.exports = {
   updateBossCharnier,

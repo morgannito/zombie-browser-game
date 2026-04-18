@@ -124,6 +124,17 @@
         window.renderEnhancedEffects(this.ctx, this.canvas.width, this.canvas.height);
         this.ctx.restore();
       }
+
+      // Effets météo (screen-space, par dessus tout le reste)
+      if (window.weatherRenderer) {
+        this.ctx.save();
+        const pixelRatio = window.devicePixelRatio || 1;
+        this.ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        const cw = this.canvas.width / pixelRatio;
+        const ch = this.canvas.height / pixelRatio;
+        window.weatherRenderer.render(this.ctx, cw, ch);
+        this.ctx.restore();
+      }
     };
 
     // ===============================================

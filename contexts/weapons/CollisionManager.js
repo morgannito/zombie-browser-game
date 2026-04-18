@@ -241,8 +241,10 @@ class CollisionManager {
     const cached = this.pathfindingCache.get(cacheKey);
     if (cached && cached.frame >= this.currentFrame - this.cacheInvalidationInterval) {
       const player = this.gameState.players[cached.playerId];
-      // Verify player still exists and is alive
-      if (player && player.alive && !player.spawnProtection && !player.invisible) {
+      // BUG FIX: respect options flags instead of hardcoded checks
+      const spawnOk = options.ignoreSpawnProtection || !player?.spawnProtection;
+      const invisOk = options.ignoreInvisible || !player?.invisible;
+      if (player && player.alive && spawnOk && invisOk) {
         return player;
       }
     }

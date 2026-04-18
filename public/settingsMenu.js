@@ -17,7 +17,8 @@ class SettingsMenu {
         particles: true,
         screenShake: true,
         blood: true,
-        customCursor: true
+        customCursor: true,
+        weatherEffects: false
       },
       controls: {
         azerty: false
@@ -96,6 +97,9 @@ class SettingsMenu {
     selects.forEach(select => {
       select.addEventListener('change', (e) => this.updateSelect(e.target));
     });
+
+    // Skin color palette
+    this._initSkinPalette();
 
     // Footer buttons
     const applyBtn = document.getElementById('settings-apply-btn');
@@ -209,6 +213,9 @@ class SettingsMenu {
     } else if (toggle.id === 'magnet-pickup-toggle') {
       if (!this.currentSettings.graphics) this.currentSettings.graphics = {};
       this.currentSettings.graphics.magnetPickup = toggle.checked;
+    } else if (toggle.id === 'weather-effects-toggle') {
+      if (!this.currentSettings.graphics) this.currentSettings.graphics = {};
+      this.currentSettings.graphics.weatherEffects = toggle.checked;
     }
   }
 
@@ -314,6 +321,12 @@ class SettingsMenu {
       magnetToggle.checked = this.currentSettings.graphics.magnetPickup ?? true;
     }
 
+    // Update weather effects toggle
+    const weatherToggle = document.getElementById('weather-effects-toggle');
+    if (weatherToggle) {
+      weatherToggle.checked = this.currentSettings.graphics.weatherEffects ?? false;
+    }
+
     // Update AZERTY toggle
     const azertyToggle = document.getElementById('azerty-toggle');
     if (azertyToggle) {
@@ -400,6 +413,10 @@ class SettingsMenu {
     window.gameSettings.customCursor = customCursor;
     if (window.CursorManager) window.CursorManager.setEnabled(customCursor);
 
+    const weatherEffects = this.currentSettings.graphics.weatherEffects ?? false;
+    window.gameSettings.weatherEffects = weatherEffects;
+    if (window.weatherRenderer) window.weatherRenderer.setEnabled(weatherEffects);
+
     // Apply quality presets
     switch (quality) {
     case 'low':
@@ -452,6 +469,30 @@ class SettingsMenu {
     document.documentElement.classList.add(`theme-${theme}`);
     document.body.classList.add(`theme-${theme}`);
     localStorage.setItem(this.THEME_KEY, theme);
+  }
+
+  _initSkinPalette() {
+    const palette = document.getElementById('skin-color-palette');
+    if (!palette) return;
+
+    const saved = localStorage.getItem('pref_skin') || 'cyan';
+
+    palette.querySelectorAll('.skin-color-btn').forEach(btn => {
+      if (btn.dataset.color === saved) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+
+      btn.addEventListener('click', () => {
+        palette.querySelectorAll('.skin-color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        localStorage.setItem('pref_skin', btn.dataset.color);
+        // Invalidate cached body sprite so next frame redraws with new color
+        const er = window.gameEngine && window.gameEngine.renderer && window.gameEngine.renderer.entityRenderer;
+        if (er) er._playerBodyCache.clear();
+      });
+    });
   }
 }
 

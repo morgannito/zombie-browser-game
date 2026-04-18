@@ -22,18 +22,14 @@ class CounterCollector {
     this.VIOLATION_WINDOW_MS = 60000;
   }
 
-  incrementKills(count = 1)       {
- this.kills += count;
-}
-  incrementShots(count = 1)       {
- this.shots += count;
-}
-  incrementHits(count = 1)        {
- this.hits += count;
-}
-  incrementConnections(count = 1) {
- this.connections += count;
-}
+  /** @param {number} [count=1] */
+  incrementKills(count = 1)       { this.kills       = Math.min(this.kills       + count, Number.MAX_SAFE_INTEGER); }
+  /** @param {number} [count=1] */
+  incrementShots(count = 1)       { this.shots       = Math.min(this.shots       + count, Number.MAX_SAFE_INTEGER); }
+  /** @param {number} [count=1] */
+  incrementHits(count = 1)        { this.hits        = Math.min(this.hits        + count, Number.MAX_SAFE_INTEGER); }
+  /** @param {number} [count=1] */
+  incrementConnections(count = 1) { this.connections = Math.min(this.connections + count, Number.MAX_SAFE_INTEGER); }
 
   recordCheatAttempt(type) {
     const b = this.anticheat.cheat_attempts_total;

@@ -79,6 +79,14 @@ function applyNickname(player, nickname) {
   player.spawnProtectionEndTime = Date.now() + SPAWN_PROTECTION_MS;
 }
 
+/**
+ * Register the setNickname socket handler.
+ * @param {import('socket.io').Socket} socket
+ * @param {Object} gameState
+ * @param {import('socket.io').Server} io
+ * @param {Object|null} container - DI container for player repository access
+ * @returns {void}
+ */
 function registerSetNicknameHandler(socket, gameState, io, container) {
   socket.on(
     SOCKET_EVENTS.CLIENT.SET_NICKNAME,
@@ -95,7 +103,7 @@ return;
 }
 
       player.lastActivityTime = Date.now();
-      const nickname = sanitizeNickname(data.nickname);
+      const nickname = sanitizeNickname(data?.nickname);
       if (rejectIfTooShort(socket, nickname)) {
 return;
 }

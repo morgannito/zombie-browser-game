@@ -359,6 +359,7 @@
                     <button class="settings-tab" data-tab="controls">🎮 Contrôles</button>
                     <button class="settings-tab" data-tab="interface">🖥️ Interface</button>
                     <button class="settings-tab" data-tab="advanced">⚙️ Avancé</button>
+                    <button class="settings-tab" data-tab="personalize">🎭 Personnaliser</button>
                 </div>
 
                 <div class="settings-content">
@@ -433,6 +434,13 @@
                                 <label for="magnet-pickup-toggle">Aimant auto (powerups/gold)</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="magnet-pickup-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="weather-effects-toggle">Effets météo</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="weather-effects-toggle">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -586,6 +594,23 @@
                         </div>
                     </div>
                 </div>
+
+                    <!-- Personalize Tab -->
+                    <div class="settings-tab-content" id="settings-personalize">
+                        <div class="settings-section">
+                            <h3 class="settings-section-title">🎭 Couleur du joueur</h3>
+                            <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+                                <label>Choisissez la couleur de votre personnage :</label>
+                                <div id="skin-color-palette" style="display:flex;gap:12px;flex-wrap:wrap;">
+                                    <button class="skin-color-btn active" data-color="cyan" style="background:#00ccff;border:3px solid #fff;" title="Cyan"></button>
+                                    <button class="skin-color-btn" data-color="red" style="background:#ff2222;" title="Rouge"></button>
+                                    <button class="skin-color-btn" data-color="green" style="background:#00cc44;" title="Vert"></button>
+                                    <button class="skin-color-btn" data-color="purple" style="background:#aa44ff;" title="Violet"></button>
+                                    <button class="skin-color-btn" data-color="gold" style="background:#ffd700;" title="Or"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 <div class="settings-footer">
                     <button id="settings-reset-btn" class="btn-secondary">Réinitialiser</button>
@@ -751,6 +776,7 @@
     <script src="assetIntegration.js"></script>
     <script src="visualEffects.js"></script>
     <script src="screenEffects.js"></script>
+    <script src="WeatherRenderer.js"></script>
     <script src="modules/audio/OptimizedAudioCore.js"></script>
     <script src="modules/audio/OptimizedSoundEffects.js"></script>
     <script src="weaponStatsData.js"></script>

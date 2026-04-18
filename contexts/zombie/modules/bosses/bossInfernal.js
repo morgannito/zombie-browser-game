@@ -5,6 +5,7 @@
 const ConfigManager = require('../../../../lib/server/ConfigManager');
 const { createParticles } = require('../../../../game/lootFunctions');
 const { distance } = require('../../../../game/utilityFunctions');
+const { handlePlayerDeathProgression } = require('../../../player/modules/DeathProgressionHandler');
 const { emitAOI } = require('./shared');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
@@ -46,8 +47,7 @@ function updateBossInfernal(
         createParticles(player.x, player.y, '#ff4500', 6, entityManager);
 
         if (player.health <= 0) {
-          player.alive = false;
-          player.deaths++;
+          handlePlayerDeathProgression(player, playerId, gameState, now, true);
         }
       }
     }

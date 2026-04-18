@@ -111,35 +111,46 @@ function isLevelEnabled(level) {
 }
 
 /**
- * Wrapped logger with level guards
- * Only performs expensive operations if level is enabled
+ * Sanitize a log message to prevent log injection via CRLF.
+ * Strips CR, LF, and null bytes that could forge fake log entries.
+ * @param {string} message
+ * @returns {string}
+ */
+function sanitize(message) {
+  return String(message).replace(/[\r\n\0]/g, ' ');
+}
+
+/**
+ * Wrapped logger with level guards and log-injection prevention.
+ * Only performs expensive operations if the log level is enabled.
  */
 const errorTracker = require('../metrics/ErrorTracker');
 
 module.exports = {
   error: (message, meta = {}) => {
-    const err = meta instanceof Error ? meta : new Error(message);
+    const safe = sanitize(message);
+    const err = meta instanceof Error ? meta : new Error(safe);
     errorTracker.record(err, meta instanceof Error ? {} : meta);
-    logger.error(message, meta);
+    logger.error(safe, meta);
   },
   warn: (message, meta = {}) => {
     if (isLevelEnabled('warn')) {
-      logger.warn(message, meta);
+      logger.warn(sanitize(message), meta);
     }
   },
   info: (message, meta = {}) => {
     if (isLevelEnabled('info')) {
-      logger.info(message, meta);
+      logger.info(sanitize(message), meta);
     }
   },
   http: (message, meta = {}) => {
     if (isLevelEnabled('http')) {
-      logger.http(message, meta);
+      logger.http(sanitize(message), meta);
     }
   },
   debug: (message, meta = {}) => {
     if (isLevelEnabled('debug')) {
-      logger.debug(message, meta);
+      logger.debug(sanitize(message), meta);
     }
   },
 

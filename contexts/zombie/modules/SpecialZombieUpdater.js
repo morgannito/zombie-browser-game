@@ -6,16 +6,9 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
+const { clampToRoomBounds, moveZombieSafely } = require('./bosses/shared');
 
-const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
-
-function clampToRoomBounds(zombie, x, y) {
-  const margin = Math.max(1, (zombie.size || CONFIG.ZOMBIE_SIZE || 20) + 1);
-  return {
-    x: Math.max(margin, Math.min(x, CONFIG.ROOM_WIDTH - margin)),
-    y: Math.max(margin, Math.min(y, CONFIG.ROOM_HEIGHT - margin))
-  };
-}
+const { ZOMBIE_TYPES } = ConfigManager;
 
 function canPlaceZombieAt(zombie, x, y, gameState) {
   const roomManager = gameState?.roomManager;
@@ -23,16 +16,6 @@ function canPlaceZombieAt(zombie, x, y, gameState) {
     return true;
   }
   return !roomManager.checkWallCollision(x, y, zombie.size);
-}
-
-function moveZombieSafely(zombie, targetX, targetY, gameState) {
-  const clamped = clampToRoomBounds(zombie, targetX, targetY);
-  if (!canPlaceZombieAt(zombie, clamped.x, clamped.y, gameState)) {
-    return false;
-  }
-  zombie.x = clamped.x;
-  zombie.y = clamped.y;
-  return true;
 }
 
 /**
