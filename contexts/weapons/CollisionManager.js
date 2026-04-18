@@ -40,6 +40,32 @@ class CollisionManager {
     this._hitPool = [];
     this._hitPoolSize = 0;
     this._hitResultBuf = [];
+
+    // Cache for dynamically computed maxZombieSize (invalidated each tick).
+    this._maxZombieSizeCache = null;
+    this._maxZombieSizeTick = -1;
+  }
+
+  /**
+   * Returns the maximum zombie size from gameState.zombies, cached per tick.
+   * Falls back to 40 if no zombies are present.
+   */
+  _getMaxZombieSize() {
+    const tick = this.currentFrame;
+    if (this._maxZombieSizeCache !== null && this._maxZombieSizeTick === tick) {
+      return this._maxZombieSizeCache;
+    }
+    const zombies = this.gameState.zombies;
+    let max = 0;
+    if (zombies) {
+      for (const id in zombies) {
+        const z = zombies[id];
+        if (z && z.size > max) max = z.size;
+      }
+    }
+    this._maxZombieSizeCache = max > 0 ? max : 40;
+    this._maxZombieSizeTick = tick;
+    return this._maxZombieSizeCache;
   }
 
   /** Acquire a hit record from the pool (or allocate if exhausted). */
@@ -337,8 +363,7 @@ class CollisionManager {
     // NOTE: gameState.maxZombieSize is not currently tracked at runtime.
     // Using hardcoded 120 (boss size) as safe upper bound for broadphase.
     // For non-boss zombies this over-queries slightly but correctness is preserved.
-    // TODO: track gameState.maxZombieSize dynamically to tighten this radius.
-    const maxZombieSize = this.gameState.maxZombieSize || 120;
+    const maxZombieSize = this._getMaxZombieSize();
     // BULLET_HIT_TOLERANCE=8 accounts for network lag; must be included in broadphase
     const hitTolerance = this.config.BULLET_HIT_TOLERANCE || 8;
     const candidates = this._zombieGrid.nearby(

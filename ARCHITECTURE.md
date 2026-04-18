@@ -315,3 +315,51 @@ Renderer (frustum culling -> canvas 2D)
 | Memoire | ~65MB RSS |
 | Types de zombies | 100+ |
 | Armes | 12+ |
+
+---
+
+## Clean Architecture — Dependency Rule
+
+```
+                        ┌─────────────────────────────────────────────────────┐
+                        │               TRANSPORT LAYER                       │
+                        │   server.js · routes/ · sockets/ · middleware/      │
+                        │   Express HTTP · Socket.IO WebSocket                │
+                        │   Entrypoints uniquement — aucune logique metier    │
+                        └───────────────────┬─────────────────────────────────┘
+                                            │ depends on
+                        ┌───────────────────▼─────────────────────────────────┐
+                        │             APPLICATION LAYER                       │
+                        │          lib/application/ · Use Cases               │
+                        │   Orchestration, DI Container, Services             │
+                        │   Ne connait pas Transport ni Infrastructure        │
+                        └───────────────────┬─────────────────────────────────┘
+                                            │ depends on
+                        ┌───────────────────▼─────────────────────────────────┐
+                        │               DOMAIN LAYER                         │
+                        │     lib/domain/ · Entities · Repository Interfaces  │
+                        │     DomainErrors · Value Objects                   │
+                        │   ZERO dependance externe — noyau immuable          │
+                        └─────────────────────────────────────────────────────┘
+                                            ▲
+                                            │ implements interfaces
+                        ┌───────────────────┴─────────────────────────────────┐
+                        │            INFRASTRUCTURE LAYER                     │
+                        │   lib/infrastructure/ · infrastructure/             │
+                        │   SQLite Repos · Logger · JWT · Joi · Metrics       │
+                        │   Depend du Domain, jamais de Application           │
+                        └─────────────────────────────────────────────────────┘
+
+                        ┌─────────────────────────────────────────────────────┐
+                        │              BOUNDED CONTEXTS (DDD)                 │
+                        │   contexts/                                         │
+                        │   ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │
+                        │   │  Player  │ │  Zombie  │ │  Wave / Session  │  │
+                        │   └──────────┘ └──────────┘ └──────────────────┘  │
+                        │   Chaque context = domain propre, pas de fuite     │
+                        └─────────────────────────────────────────────────────┘
+
+  Dependency Rule : les fleches pointent TOUJOURS vers le Domain.
+  Transport → Application → Domain ← Infrastructure
+  Le Domain n'importe RIEN des couches exterieures.
+```

@@ -359,6 +359,46 @@ describe('isOutOfBounds', () => {
   });
 });
 
+describe('_getMaxZombieSize', () => {
+  test('returns 40 (fallback) when zombies is empty', () => {
+    const cm = new CollisionManager(makeGameState(), CONFIG);
+    expect(cm._getMaxZombieSize()).toBe(40);
+  });
+
+  test('returns max size from zombies', () => {
+    const gs = makeGameState();
+    gs.zombies = { a: { size: 25 }, b: { size: 120 }, c: { size: 60 } };
+    const cm = new CollisionManager(gs, CONFIG);
+    expect(cm._getMaxZombieSize()).toBe(120);
+  });
+
+  test('returns cached value within same tick', () => {
+    const gs = makeGameState();
+    gs.zombies = { a: { size: 50 } };
+    const cm = new CollisionManager(gs, CONFIG);
+    const first = cm._getMaxZombieSize();
+    // Mutate zombies without changing tick — should still return cached value
+    gs.zombies.b = { size: 200 };
+    expect(cm._getMaxZombieSize()).toBe(first);
+  });
+
+  test('invalidates cache on next tick (currentFrame change)', () => {
+    const gs = makeGameState();
+    gs.zombies = { a: { size: 50 } };
+    const cm = new CollisionManager(gs, CONFIG);
+    expect(cm._getMaxZombieSize()).toBe(50);
+    // Simulate tick increment
+    cm.currentFrame++;
+    gs.zombies.b = { size: 200 };
+    expect(cm._getMaxZombieSize()).toBe(200);
+  });
+
+  test('returns 40 when gameState.zombies is undefined', () => {
+    const cm = new CollisionManager({}, CONFIG);
+    expect(cm._getMaxZombieSize()).toBe(40);
+  });
+});
+
 describe('getQuadtreeStats', () => {
   test('returns zeros when quadtree not built', () => {
     const cm = new CollisionManager(makeGameState(), CONFIG);
