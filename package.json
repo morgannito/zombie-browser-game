@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Jeu de zombie multijoueur en temps réel sur navigateur",
   "main": "server.js",
+  "engines": {"node": ">=20"},
   "scripts": {
     "build": "node scripts/build-bundle.js",
     "start": "node server.js",
@@ -30,6 +31,7 @@
     "health": "curl -sf http://localhost:${PORT:-3000}/health | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log('status:',d.status);process.exit(d.status==='ok'?0:1)\"",
     "bench": "node bench/loadtest.js",
     "bench:report": "node bench/metrics-report.js",
+    "typecheck": "tsc -p tsconfig.check.json",
     "prepare": "husky"
   },
   "keywords": [
@@ -55,6 +57,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "canvas": "^3.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^9.39.2",

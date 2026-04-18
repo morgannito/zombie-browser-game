@@ -17,8 +17,7 @@ const {
   configureHelmet,
   configureApiLimiter,
   configureBodyParser,
-  additionalSecurityHeaders,
-  generateNonce
+  additionalSecurityHeaders
 } = require('../middleware/security');
 
 /**

@@ -120,7 +120,7 @@ fs.writeFileSync(tmpConcat, parts.join('\n'));
 console.log('Minifying with esbuild...');
 try {
   const esbuildBin = path.resolve(__dirname, '../node_modules/.bin/esbuild');
-  execFileSync(esbuildBin, [tmpConcat, '--minify', '--outfile=' + outFile, '--log-level=warning'], {
+  execFileSync(esbuildBin, [tmpConcat, '--minify', '--drop:console', '--outfile=' + outFile, '--log-level=warning'], {
     stdio: 'inherit',
     cwd: path.resolve(__dirname, '..')
   });

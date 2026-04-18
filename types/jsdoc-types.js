@@ -203,3 +203,29 @@
  * @property {PermanentUpgrades} permanentUpgrades
  * @property {function(string): number} getNextId
  */
+
+/**
+ * @typedef {Object} SocketEvent
+ * @property {string} name - Event name (e.g. 'playerMove', 'gameState')
+ * @property {*} payload - Event data
+ * @property {string} from - Emitter socket ID
+ * @property {string|null} to - Target socket ID, null for broadcast
+ * @property {number} timestamp - Unix ms when event was emitted
+ */
+
+/**
+ * @typedef {Object} LoadTestResult
+ * @property {number} bots - Number of concurrent bot clients
+ * @property {number} durationMs - Total test duration in milliseconds
+ * @property {number} totalBytes - Total bytes received across all bots
+ * @property {number} errors - Total error/disconnect count
+ * @property {number} deltasPerSec - Average delta updates received per second
+ */
+
+/**
+ * @typedef {Object} PerfSnapshot
+ * @property {number} tickAvgMs - Average server tick duration in ms
+ * @property {number} tickMaxMs - Max server tick duration in ms
+ * @property {number} heapMB - Node.js heap used in megabytes
+ * @property {number} playersCount - Number of connected players at snapshot time
+ */

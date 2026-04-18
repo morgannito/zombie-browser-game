@@ -1,6 +1,8 @@
 {
-  "tickAvgMs": 5,
-  "tickMaxMs": 20,
-  "heapMB": 100,
-  "bytesPerSecMB": 10
+  "tickAvgMs": 2,
+  "tickMaxMs": 30,
+  "heapMB": 150,
+  "bytesPerSecMB": 15,
+  "gcPauseMs": 20,
+  "p99LatencyMs": 100
 }

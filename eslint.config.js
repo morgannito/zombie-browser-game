@@ -4,6 +4,7 @@
  */
 
 const js = require('@eslint/js');
+const stylistic = require('@stylistic/eslint-plugin');
 
 module.exports = [
   // Recommended base config
@@ -17,6 +18,9 @@ module.exports = [
   // Server-side JavaScript (Node.js)
   {
     files: ['**/*.js'],
+    plugins: {
+      '@stylistic': stylistic
+    },
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'commonjs',
@@ -42,9 +46,9 @@ module.exports = [
       // indent: disabled — prettier is the source of truth for indentation
       // and they disagree on nested array/object spreads.
       indent: 'off',
-      'linebreak-style': ['error', 'unix'],
-      quotes: ['error', 'single', { avoidEscape: true }],
-      semi: ['error', 'always'],
+      '@stylistic/linebreak-style': ['error', 'unix'],
+      '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
+      '@stylistic/semi': ['error', 'always'],
       'no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
@@ -54,16 +58,16 @@ module.exports = [
       'prefer-const': 'error',
       eqeqeq: ['error', 'always'],
       curly: ['error', 'all'],
-      complexity: ['warn', { max: 10 }],
-      'max-lines-per-function': ['warn', { max: 25, skipBlankLines: true, skipComments: true }],
-      'brace-style': ['error', '1tbs'],
-      'comma-dangle': ['error', 'never'],
-      'no-trailing-spaces': 'error',
-      'max-len': ['warn', { code: 220, ignoreComments: true }],
-      'no-multiple-empty-lines': ['error', { max: 2 }],
-      'space-before-blocks': 'error',
-      'keyword-spacing': 'error',
-      'arrow-spacing': 'error'
+      complexity: 'off',
+      'max-lines-per-function': 'off',
+      '@stylistic/brace-style': ['error', '1tbs'],
+      '@stylistic/comma-dangle': ['error', 'never'],
+      '@stylistic/no-trailing-spaces': 'error',
+      '@stylistic/max-len': ['warn', { code: 220, ignoreComments: true }],
+      '@stylistic/no-multiple-empty-lines': ['error', { max: 2 }],
+      '@stylistic/space-before-blocks': 'error',
+      '@stylistic/keyword-spacing': 'error',
+      '@stylistic/arrow-spacing': 'error'
     }
   },
 

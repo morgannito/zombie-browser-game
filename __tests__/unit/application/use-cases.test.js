@@ -210,7 +210,7 @@ describe('UpdatePlayerStatsUseCase', () => {
     const repo = playerRepo();
     repo.findById.mockResolvedValue(null);
     const uc = new UpdatePlayerStatsUseCase(repo);
-    await expect(uc.execute({ playerId: 'p1' })).rejects.toThrow('Player p1 not found');
+    await expect(uc.execute({ playerId: 'p1' })).rejects.toThrow("Player with identifier 'p1' not found");
   });
 
   test('updates stats with defaults for missing fields', async () => {

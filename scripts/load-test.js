@@ -16,6 +16,9 @@ const DURATION = parseInt((args.duration || '30s').replace('s', '')) * 1000;
 const PORT = parseInt(args.port || '3001');
 const BASE = `http://127.0.0.1:${PORT}`;
 
+/** @typedef {import('../types/jsdoc-types').LoadTestResult} LoadTestResult */
+/** @typedef {import('../types/jsdoc-types').PerfSnapshot} PerfSnapshot */
+
 /** Active sockets for cleanup on interrupt. @type {import('socket.io-client').Socket[]} */
 const activeSockets = [];
 
@@ -63,7 +66,7 @@ function login(username) {
 /**
  * Run a single bot for DURATION ms and return its stats.
  * @param {number} id
- * @returns {Promise<Object>}
+ * @returns {Promise<LoadTestResult>}
  */
 async function runBot(id) {
   const stats = {

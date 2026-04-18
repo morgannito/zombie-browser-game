@@ -90,7 +90,9 @@ function createSocketIOServer(httpServer) {
     perMessageDeflate:
       process.env.ENABLE_WS_COMPRESSION === 'true' ? { threshold: 1024 } : false,
     httpCompression: true,
-    maxHttpBufferSize: 1e6,
+    // 10 KB is ample for any game event (move ~50B, shoot ~80B, nickname ~30B).
+    // Rejects oversized frames before Socket.IO parses them — primary DoS guard.
+    maxHttpBufferSize: 1e4,
     ...parserOption
   });
 

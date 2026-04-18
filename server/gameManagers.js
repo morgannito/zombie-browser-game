@@ -10,6 +10,7 @@ const NetworkManager = require('../lib/server/NetworkManager');
 const RoomManager = require('../contexts/wave/RoomManager');
 const RunMutatorManager = require('../lib/server/RunMutatorManager');
 const ZombieManager = require('../contexts/zombie/ZombieManager');
+const { resetRunPRNG } = require('../lib/runPRNG');
 const logger = require('../infrastructure/logging/Logger');
 
 function buildZombieManager(gameState, config, zombieTypes, roomManager, io) {
@@ -27,6 +28,7 @@ function buildZombieManager(gameState, config, zombieTypes, roomManager, io) {
  * @param {{gameState, config, zombieTypes, io}} deps
  */
 function createGameManagers({ gameState, config, zombieTypes, io }) {
+  resetRunPRNG(Date.now());
   const entityManager = new EntityManager(gameState, config);
   const collisionManager = new CollisionManager(gameState, config);
   const networkManager = new NetworkManager(io, gameState);

@@ -53,7 +53,7 @@ function isDuplicate(players, socketId, nickname) {
   );
 }
 
-async function ensurePlayerInDb(container, accountId, nickname) {
+async function ensurePlayerInDb(container, accountId, nickname, traceId = null) {
   if (!container || !accountId) {
 return;
 }
@@ -63,11 +63,11 @@ return;
     if (!existingPlayer) {
       const createPlayerUseCase = container.get('createPlayerUseCase');
       await createPlayerUseCase.execute({ id: accountId, username: nickname });
-      logger.info('Player created in database', { accountId });
+      logger.info('Player created in database', { accountId, traceId });
     }
   } catch (error) {
     logger.warn('Failed to ensure player exists in database', {
-      accountId, error: error.message
+      accountId, error: error.message, traceId
     });
   }
 }
@@ -115,10 +115,10 @@ return;
       }
 
       applyNickname(player, nickname);
-      logger.info('Player chose nickname', { socketId: socket.id });
+      logger.info('Player chose nickname', { socketId: socket.id, nickname, traceId: socket.traceId || null });
 
       const accountId = player.accountId || socket.userId || null;
-      await ensurePlayerInDb(container, accountId, nickname);
+      await ensurePlayerInDb(container, accountId, nickname, socket.traceId || null);
 
       io.emit(SOCKET_EVENTS.SERVER.PLAYER_NICKNAME_SET, {
         playerId: socket.id, nickname

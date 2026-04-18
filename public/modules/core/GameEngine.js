@@ -57,6 +57,18 @@ class GameEngine {
 
     // Handle orientation changes on mobile
     window.addEventListener('orientationchange', this.handlers.resize);
+
+    // Canvas context loss (GPU crash, tab suspend, driver reset)
+    this.canvas.addEventListener('contextlost', (e) => {
+      e.preventDefault();
+      console.warn('[GameEngine] Canvas context lost — reloading page');
+      window.location.reload();
+    });
+    this.canvas.addEventListener('contextrestored', () => {
+      console.info('[GameEngine] Canvas context restored');
+      this.ctx = this.canvas.getContext('2d', { willReadFrequently: false });
+      this.ctx.imageSmoothingEnabled = false;
+    });
   }
 
   resizeCanvas() {

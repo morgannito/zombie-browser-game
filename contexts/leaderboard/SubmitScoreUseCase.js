@@ -23,11 +23,18 @@ class SubmitScoreUseCase {
   }
 
   _checkThrottle(playerId) {
-    const last = this._throttle.get(playerId) || 0;
-    if (Date.now() - last < THROTTLE_MS) {
-throw new Error('Rate limit: 1 submit per minute');
+    const now = Date.now();
+    // Purge expired entries to prevent unbounded Map growth
+    for (const [id, ts] of this._throttle) {
+      if (now - ts >= THROTTLE_MS) {
+this._throttle.delete(id);
 }
-    this._throttle.set(playerId, Date.now());
+    }
+    const last = this._throttle.get(playerId) || 0;
+    if (now - last < THROTTLE_MS) {
+      throw new Error('Rate limit: 1 submit per minute');
+    }
+    this._throttle.set(playerId, now);
   }
 
   /**

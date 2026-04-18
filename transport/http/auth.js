@@ -1,7 +1,7 @@
 /**
  * @fileoverview Authentication routes
  * @description Handles JWT authentication for players
- * - POST /api/auth/login - Creates a new anonymous session with unique UUID
+ * - POST /api/v1/auth/login - Creates a new anonymous session with unique UUID
  * - Username is display-only; each login creates a fresh identity
  */
 
@@ -21,7 +21,7 @@ const authLimiter = configureAuthLimiter();
  */
 function initAuthRoutes(container, jwtService) {
   /**
-   * POST /api/auth/login
+   * POST /api/v1/auth/login
    * Always creates a new anonymous identity — username is display-only.
    * Never reuses an existing account by username to prevent account takeover.
    */

@@ -149,8 +149,8 @@ function createCleanup(deps) {
   }
 
   function install() {
-    process.on('SIGTERM', cleanupServer);
-    process.on('SIGINT', cleanupServer);
+    process.on('SIGTERM', () => cleanupServer(0));
+    process.on('SIGINT', () => cleanupServer(0));
 
     process.on('uncaughtException', err => {
       const isDev = process.env.NODE_ENV !== 'production';

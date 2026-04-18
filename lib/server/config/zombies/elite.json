@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../../types/zombie-config.schema.json",
   "necromancer": {
     "name": "Necromancien",
     "health": 250,

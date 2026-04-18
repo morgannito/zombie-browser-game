@@ -1,0 +1,519 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://zombie-browser-game/types/zombie-config.schema.json",
+  "title": "ZombieConfig",
+  "description": "Schema for zombie type definition files (lib/server/config/zombies/*.json). Each file is a map of zombieKey → ZombieDefinition.",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/ZombieDefinition"
+  },
+  "definitions": {
+    "ZombieDefinition": {
+      "type": "object",
+      "description": "Definition of a single zombie type. Required fields are validated at boot by ZombieConfig.js via Joi.",
+      "required": ["name", "health", "speed", "damage", "color"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the zombie (e.g. 'Zombie Normal', 'BOSS ZOMBIE').",
+          "minLength": 1
+        },
+        "health": {
+          "type": "number",
+          "description": "Base HP. Scaled per wave by waveMultiplier / bossMultiplier in ZombieManager.",
+          "exclusiveMinimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "description": "Movement speed in units/tick. 0 is allowed for stationary types (e.g. turret). Capped at speed×1.8 after wave scaling.",
+          "minimum": 0
+        },
+        "damage": {
+          "type": "number",
+          "description": "Base melee damage per hit.",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "type": "string",
+          "description": "Primary render color as a 6-digit hex string (e.g. '#00ff00').",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "xp": {
+          "type": "number",
+          "description": "XP awarded on kill.",
+          "minimum": 0
+        },
+        "gold": {
+          "type": "number",
+          "description": "Gold awarded on kill. Elites receive ×3 multiplier applied by ZombieManager.",
+          "minimum": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "Hitbox/sprite radius in pixels.",
+          "exclusiveMinimum": 0
+        },
+        "isElite": {
+          "type": "boolean",
+          "description": "Marks zombie as elite tier (×2 hp/damage, ×3 gold applied by ZombieManager)."
+        },
+        "isBoss": {
+          "type": "boolean",
+          "description": "Marks zombie as a boss tier. Uses bossMultiplier for wave scaling."
+        },
+        "isMinion": {
+          "type": "boolean",
+          "description": "Marks zombie as a summonable minion."
+        },
+        "wave": {
+          "type": "integer",
+          "description": "Minimum wave at which this boss can appear.",
+          "minimum": 1
+        },
+        "spawnCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between spawning minions.",
+          "minimum": 0
+        },
+        "spawnCount": {
+          "type": "integer",
+          "description": "Number of minions spawned per spawn event.",
+          "minimum": 1
+        },
+        "toxicPoolCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between toxic pool placements.",
+          "minimum": 0
+        },
+        "toxicPoolDamage": {
+          "type": "number",
+          "description": "Damage per tick for toxic pools.",
+          "minimum": 0
+        },
+        "toxicPoolDuration": {
+          "type": "number",
+          "description": "Duration in ms for toxic pools.",
+          "minimum": 0
+        },
+        "toxicPoolRadius": {
+          "type": "number",
+          "description": "Radius in pixels of toxic pools.",
+          "minimum": 0
+        },
+        "deathAuraRadius": {
+          "type": "number",
+          "description": "Radius of the death aura triggered on kill.",
+          "minimum": 0
+        },
+        "deathAuraDamage": {
+          "type": "number",
+          "description": "Damage dealt by the death aura.",
+          "minimum": 0
+        },
+        "enrageThreshold": {
+          "type": "number",
+          "description": "HP fraction (0–1) at which the zombie enrages.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "enrageDamageMultiplier": {
+          "type": "number",
+          "description": "Damage multiplier applied when enraged.",
+          "minimum": 1
+        },
+        "enrageSpeedMultiplier": {
+          "type": "number",
+          "description": "Speed multiplier applied when enraged.",
+          "minimum": 1
+        },
+        "phase2Threshold": {
+          "type": "number",
+          "description": "HP fraction triggering phase 2.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "phase3Threshold": {
+          "type": "number",
+          "description": "HP fraction triggering phase 3.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "phase4Threshold": {
+          "type": "number",
+          "description": "HP fraction triggering phase 4.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cloneCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between clone spawns.",
+          "minimum": 0
+        },
+        "cloneCount": {
+          "type": "integer",
+          "description": "Number of clones spawned per event.",
+          "minimum": 1
+        },
+        "cloneDuration": {
+          "type": "number",
+          "description": "Duration in ms for each clone.",
+          "minimum": 0
+        },
+        "cloneHealth": {
+          "type": "number",
+          "description": "HP for each clone.",
+          "exclusiveMinimum": 0
+        },
+        "laserCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between laser attacks.",
+          "minimum": 0
+        },
+        "laserDamage": {
+          "type": "number",
+          "description": "Damage per tick of laser.",
+          "minimum": 0
+        },
+        "laserDuration": {
+          "type": "number",
+          "description": "Duration in ms of laser beam.",
+          "minimum": 0
+        },
+        "laserRange": {
+          "type": "number",
+          "description": "Max range of laser in pixels.",
+          "minimum": 0
+        },
+        "laserWidth": {
+          "type": "number",
+          "description": "Width of laser beam in pixels.",
+          "minimum": 0
+        },
+        "laserColor": {
+          "type": "string",
+          "description": "Color of laser beam (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "shieldColor": {
+          "type": "string",
+          "description": "Color of damage shield (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "shieldDamageReduction": {
+          "type": "number",
+          "description": "Fraction (0–1) of incoming damage absorbed by shield.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "shieldAngle": {
+          "type": "number",
+          "description": "Angular coverage in degrees of the damage shield.",
+          "minimum": 0,
+          "maximum": 360
+        },
+        "frontDamageReduction": {
+          "type": "number",
+          "description": "Damage reduction applied to frontal hits.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "chargeCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between charge attacks.",
+          "minimum": 0
+        },
+        "chargeDuration": {
+          "type": "number",
+          "description": "Duration in ms of charge attack.",
+          "minimum": 0
+        },
+        "chargeRange": {
+          "type": "number",
+          "description": "Max trigger range for charge attack in pixels.",
+          "minimum": 0
+        },
+        "chargeSpeed": {
+          "type": "number",
+          "description": "Speed multiplier during charge.",
+          "minimum": 1
+        },
+        "chargeColor": {
+          "type": "string",
+          "description": "Color during charge (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "stunRadius": {
+          "type": "number",
+          "description": "AoE radius of stun effect in pixels.",
+          "minimum": 0
+        },
+        "stunDuration": {
+          "type": "number",
+          "description": "Duration in ms of stun applied to players.",
+          "minimum": 0
+        },
+        "splitCount": {
+          "type": "integer",
+          "description": "Number of sub-zombies spawned on split.",
+          "minimum": 1
+        },
+        "splitSize": {
+          "type": "number",
+          "description": "Size of sub-zombies after split.",
+          "exclusiveMinimum": 0
+        },
+        "splitSpeedMultiplier": {
+          "type": "number",
+          "description": "Speed multiplier applied to split sub-zombies.",
+          "minimum": 0
+        },
+        "splitDamageMultiplier": {
+          "type": "number",
+          "description": "Damage multiplier applied to split sub-zombies.",
+          "minimum": 0
+        },
+        "splitHealthPercent": {
+          "type": "number",
+          "description": "HP fraction (0–1) at which split triggers.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "splitExplosionRadius": {
+          "type": "number",
+          "description": "Explosion radius on split in pixels.",
+          "minimum": 0
+        },
+        "splitColor": {
+          "type": "string",
+          "description": "Color of split sub-zombies (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "resurrectCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between resurrection events.",
+          "minimum": 0
+        },
+        "resurrectRange": {
+          "type": "number",
+          "description": "Range in pixels for resurrection ability.",
+          "minimum": 0
+        },
+        "resurrectMaxTargets": {
+          "type": "integer",
+          "description": "Max number of zombies that can be resurrected per event.",
+          "minimum": 1
+        },
+        "resurrectHealthPercent": {
+          "type": "number",
+          "description": "HP fraction (0–1) at which resurrected zombie starts.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ambushDamageMultiplier": {
+          "type": "number",
+          "description": "Damage multiplier applied on ambush/reveal.",
+          "minimum": 1
+        },
+        "disguiseColor": {
+          "type": "string",
+          "description": "Color while disguised (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "disguisedSize": {
+          "type": "number",
+          "description": "Hitbox size while disguised.",
+          "exclusiveMinimum": 0
+        },
+        "revealRange": {
+          "type": "number",
+          "description": "Range in pixels at which disguise is broken.",
+          "minimum": 0
+        },
+        "revealedColor": {
+          "type": "string",
+          "description": "Color after reveal (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "revealedSize": {
+          "type": "number",
+          "description": "Hitbox size after reveal.",
+          "exclusiveMinimum": 0
+        },
+        "auraColor": {
+          "type": "string",
+          "description": "Color of persistent aura effect (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "healCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between healing pulses.",
+          "minimum": 0
+        },
+        "healAmount": {
+          "type": "number",
+          "description": "HP restored per healing pulse.",
+          "minimum": 0
+        },
+        "healRadius": {
+          "type": "number",
+          "description": "Radius in pixels of healing aura.",
+          "minimum": 0
+        },
+        "summonCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between minion summons.",
+          "minimum": 0
+        },
+        "summonRange": {
+          "type": "number",
+          "description": "Max range in pixels for minion summons.",
+          "minimum": 0
+        },
+        "maxMinions": {
+          "type": "integer",
+          "description": "Maximum number of simultaneously active minions.",
+          "minimum": 0
+        },
+        "minionsPerSummon": {
+          "type": "integer",
+          "description": "Number of minions summoned per event.",
+          "minimum": 1
+        },
+        "shootCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between ranged shots.",
+          "minimum": 0
+        },
+        "shootRange": {
+          "type": "number",
+          "description": "Max range in pixels for ranged attacks.",
+          "minimum": 0
+        },
+        "bulletColor": {
+          "type": "string",
+          "description": "Projectile color (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "bulletSpeed": {
+          "type": "number",
+          "description": "Projectile travel speed.",
+          "exclusiveMinimum": 0
+        },
+        "teleportCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between teleports.",
+          "minimum": 0
+        },
+        "teleportRange": {
+          "type": "number",
+          "description": "Max teleport distance in pixels.",
+          "minimum": 0
+        },
+        "teleportMinRange": {
+          "type": "number",
+          "description": "Minimum teleport distance in pixels.",
+          "minimum": 0
+        },
+        "dashCooldown": {
+          "type": "number",
+          "description": "Cooldown in ms between dash attacks.",
+          "minimum": 0
+        },
+        "dashDuration": {
+          "type": "number",
+          "description": "Duration in ms of dash movement.",
+          "minimum": 0
+        },
+        "dashSpeed": {
+          "type": "number",
+          "description": "Speed multiplier during dash.",
+          "minimum": 1
+        },
+        "poisonDamage": {
+          "type": "number",
+          "description": "Damage per tick applied by poison trail.",
+          "minimum": 0
+        },
+        "poisonDuration": {
+          "type": "number",
+          "description": "Duration in ms of poison effect.",
+          "minimum": 0
+        },
+        "poisonRadius": {
+          "type": "number",
+          "description": "Radius in pixels of poison cloud.",
+          "minimum": 0
+        },
+        "poisonTrailInterval": {
+          "type": "number",
+          "description": "Interval in ms between poison trail placements.",
+          "minimum": 0
+        },
+        "slowAmount": {
+          "type": "number",
+          "description": "Speed reduction fraction (0–1) applied by slow effect.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "slowDuration": {
+          "type": "number",
+          "description": "Duration in ms of slow effect.",
+          "minimum": 0
+        },
+        "slowRadius": {
+          "type": "number",
+          "description": "Radius in pixels of slow aura.",
+          "minimum": 0
+        },
+        "rageThreshold": {
+          "type": "number",
+          "description": "HP fraction (0–1) at which rage mode activates.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rageDamageMultiplier": {
+          "type": "number",
+          "description": "Damage multiplier during rage.",
+          "minimum": 1
+        },
+        "rageSpeedMultiplier": {
+          "type": "number",
+          "description": "Speed multiplier during rage.",
+          "minimum": 1
+        },
+        "rageColor": {
+          "type": "string",
+          "description": "Color during rage (6-digit hex).",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "extremeRageThreshold": {
+          "type": "number",
+          "description": "HP fraction (0–1) at which extreme rage activates.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "extremeRageDamageMultiplier": {
+          "type": "number",
+          "description": "Damage multiplier during extreme rage.",
+          "minimum": 1
+        },
+        "extremeRageSpeedMultiplier": {
+          "type": "number",
+          "description": "Speed multiplier during extreme rage.",
+          "minimum": 1
+        },
+        "explosionDamage": {
+          "type": "number",
+          "description": "AoE explosion damage on death.",
+          "minimum": 0
+        },
+        "explosionRadius": {
+          "type": "number",
+          "description": "Radius in pixels of death explosion.",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

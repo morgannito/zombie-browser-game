@@ -13,9 +13,16 @@ try {
   }
 }
 const path = require('path');
+const os = require('os');
+
+const DEFAULT_META = {
+  hostname: os.hostname(),
+  pid: process.pid,
+  service: process.env.SERVICE_NAME || 'zombie-browser-game'
+};
 
 const LOG_LEVEL =
-  process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+  process.env.NODE_LOG_LEVEL || process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
 const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, '../../logs');
 
 let logger = null;
@@ -47,14 +54,17 @@ if (winston) {
   };
   winston.addColors(customLevels.colors);
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   // Create logger instance
   logger = winston.createLogger({
     levels: customLevels.levels,
     level: LOG_LEVEL,
+    defaultMeta: DEFAULT_META,
     transports: [
-      // Console transport (always enabled)
+      // Console transport: JSON in prod, colored text in dev
       new winston.transports.Console({
-        format: consoleFormat
+        format: isProd ? fileFormat : consoleFormat
       })
     ],
     // Don't exit on error
@@ -62,7 +72,7 @@ if (winston) {
   });
 
   // Add file transports only in production
-  if (process.env.NODE_ENV === 'production') {
+  if (isProd) {
     logger.add(
       new winston.transports.File({
         filename: path.join(LOG_DIR, 'error.log'),

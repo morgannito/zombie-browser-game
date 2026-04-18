@@ -616,6 +616,9 @@ body {
 
 .re-death-title {
   margin-bottom: 8px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 

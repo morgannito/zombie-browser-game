@@ -225,6 +225,11 @@ return;
       if (!data || typeof data !== 'object') {
 return;
 }
+      // DoS guard: reject oversized payloads before any further processing.
+      if (Buffer.byteLength(JSON.stringify(data), 'utf8') > 512) {
+        logger.warn('playerMove: oversized payload rejected', { socketId: socket.id });
+        return;
+      }
       _processSingleMove(socket, gameState, roomManager, data);
     })
   );

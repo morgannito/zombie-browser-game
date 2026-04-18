@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "checkJs": true,
+    "strict": true,
+    "lib": ["ES2017"],
+    "noEmit": true
+  },
+  "include": [
+    "lib/domain/**/*.js",
+    "lib/application/**/*.js",
+    "types/**/*.d.ts"
+  ],
+  "exclude": ["node_modules"]
+}

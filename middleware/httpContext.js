@@ -25,8 +25,10 @@ function maskIp(ip) {
 }
 
 function buildHttpContext(req, extra = {}) {
+  const traceId = req.traceId || req.id || req.headers['x-trace-id'] || req.headers['x-request-id'] || null;
   return {
-    requestId: req.id || req.headers['x-request-id'] || null,
+    traceId,
+    requestId: traceId,
     method: req.method,
     path: req.originalUrl || req.url,
     ip: maskIp(req.ip),

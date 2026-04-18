@@ -12,6 +12,9 @@
 const fs = require('fs');
 const path = require('path');
 
+/** @typedef {import('../types/jsdoc-types').LoadTestResult} LoadTestResult */
+/** @typedef {import('../types/jsdoc-types').PerfSnapshot} PerfSnapshot */
+
 const dataPath = process.argv[2] || path.join(__dirname, 'last-run.json');
 const baselinePath = path.join(__dirname, 'baseline.json');
 

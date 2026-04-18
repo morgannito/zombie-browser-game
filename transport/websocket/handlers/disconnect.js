@@ -52,7 +52,8 @@ function registerDisconnectHandler(
       logger.info('Player disconnected', {
         socketId: socket.id,
         sessionId: sessionId || 'none',
-        accountId: accountId || 'none'
+        accountId: accountId || 'none',
+        traceId: socket.traceId || null
       });
       MetricsCollector.getInstance().clearViolations(socket.id);
 

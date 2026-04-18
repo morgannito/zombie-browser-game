@@ -211,7 +211,14 @@ function _processQueueEntry(entry, index, gameState, now, logger) {
         });
       }
     })
-    .catch(() => {
+    .catch(err => {
+      if (logger) {
+        logger.warn('Failed death retry attempt failed', {
+          playerId: entry.player?.id,
+          retryCount: entry.retryCount,
+          error: err.message
+        });
+      }
       // Will retry on next processFailedDeathQueue call
     });
 }

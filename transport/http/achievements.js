@@ -24,7 +24,7 @@ function initAchievementRoutes(container, options = {}) {
   router.use(requireAuth);
 
   /**
-   * GET /api/achievements/all
+   * GET /api/v1/achievements/all
    * Get all available achievements
    */
   router.get('/all', async (req, res) => {
@@ -45,7 +45,7 @@ function initAchievementRoutes(container, options = {}) {
   });
 
   /**
-   * GET /api/achievements/:playerId
+   * GET /api/v1/achievements/:playerId
    * Get player's unlocked achievements
    */
   router.get(
@@ -81,7 +81,7 @@ function initAchievementRoutes(container, options = {}) {
   );
 
   /**
-   * GET /api/achievements/:playerId/progress
+   * GET /api/v1/achievements/:playerId/progress
    * Get player's achievement progress (unlocked + locked)
    */
   router.get(
@@ -117,7 +117,7 @@ function initAchievementRoutes(container, options = {}) {
   );
 
   /**
-   * POST /api/achievements/:playerId/check
+   * POST /api/v1/achievements/:playerId/check
    * Check and unlock achievements for player
    */
   router.post(

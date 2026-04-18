@@ -255,16 +255,7 @@ function initProgressionRoutes(container, options = {}) {
         const { playerId } = req.params;
         const { skillId } = req.body;
 
-        const progression = await progressionRepo.findByPlayerId(playerId);
-
-        if (!progression) {
-          return res.status(404).json({
-            success: false,
-            error: 'PROGRESSION_NOT_FOUND',
-            message: 'Progression introuvable pour ce joueur.'
-          });
-        }
-
+        // Validate skill exists before entering the DB transaction
         const skill = await progressionRepo.getSkillById(skillId);
 
         if (!skill) {
@@ -275,30 +266,59 @@ function initProgressionRoutes(container, options = {}) {
           });
         }
 
-        for (const prereqId of skill.prerequisites) {
-          if (!progression.hasSkill(prereqId)) {
-            // Do not reflect prereqId in response to avoid XSS/info leak
-            return res.status(400).json({
+        // Wrap load + business-rule check + update in a single atomic transaction
+        // to prevent TOCTOU race conditions (double spend of skill points).
+        let progression;
+        if (typeof progressionRepo.updateAtomic === 'function') {
+          try {
+            progression = progressionRepo.updateAtomic(playerId, prog => {
+              for (const prereqId of skill.prerequisites) {
+                if (!prog.hasSkill(prereqId)) {
+                  const err = new Error('SKILL_PREREQ_MISSING');
+                  err.code = 'SKILL_PREREQ_MISSING';
+                  throw err;
+                }
+              }
+              prog.unlockSkill(skillId, skill.cost);
+            });
+          } catch (txErr) {
+            if (txErr.code === 'SKILL_PREREQ_MISSING') {
+              return res.status(400).json({
+                success: false,
+                error: 'SKILL_PREREQ_MISSING',
+                message: 'Tu dois d\'abord débloquer les compétences prérequises.'
+              });
+            }
+            if (txErr.name === 'NotFoundError') {
+              return res.status(404).json({
+                success: false,
+                error: 'PROGRESSION_NOT_FOUND',
+                message: 'Progression introuvable pour ce joueur.'
+              });
+            }
+            throw txErr;
+          }
+        } else {
+          // Fallback for repos without updateAtomic (e.g. test mocks)
+          progression = await progressionRepo.findByPlayerId(playerId);
+          if (!progression) {
+            return res.status(404).json({
               success: false,
-              error: 'SKILL_PREREQ_MISSING',
-              message: 'Tu dois d\'abord débloquer les compétences prérequises.'
+              error: 'PROGRESSION_NOT_FOUND',
+              message: 'Progression introuvable pour ce joueur.'
             });
           }
-        }
-
-        // Snapshot for rollback
-        const prevSkillPoints = progression.skillPoints;
-        const prevUnlockedSkills = [...progression.unlockedSkills];
-
-        progression.unlockSkill(skillId, skill.cost);
-
-        try {
+          for (const prereqId of skill.prerequisites) {
+            if (!progression.hasSkill(prereqId)) {
+              return res.status(400).json({
+                success: false,
+                error: 'SKILL_PREREQ_MISSING',
+                message: 'Tu dois d\'abord débloquer les compétences prérequises.'
+              });
+            }
+          }
+          progression.unlockSkill(skillId, skill.cost);
           await progressionRepo.update(progression);
-        } catch (dbErr) {
-          // Rollback in-memory state on DB failure
-          progression.skillPoints = prevSkillPoints;
-          progression.unlockedSkills = prevUnlockedSkills;
-          throw dbErr;
         }
 
         // Invalidate skill bonus cache so next spawn picks up new skill

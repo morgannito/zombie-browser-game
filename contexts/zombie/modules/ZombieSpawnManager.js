@@ -5,6 +5,7 @@
 
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { ZOMBIE_TYPES } = ConfigManager;
+const { runPRNG } = require('../../../lib/runPRNG');
 
 class ZombieSpawnManager {
   constructor() {
@@ -121,7 +122,7 @@ class ZombieSpawnManager {
     // Mode ALL (chaos waves)
     if (wavePhase.types === 'ALL') {
       const allTypes = Object.keys(ZOMBIE_TYPES).filter(type => !ZOMBIE_TYPES[type].isBoss);
-      return allTypes[Math.floor(Math.random() * allTypes.length)];
+      return runPRNG.pick(allTypes);
     }
 
     // Sélection pondérée normale
@@ -167,12 +168,12 @@ class ZombieSpawnManager {
       this._eliteCache.set(cacheKey, split);
     }
 
-    if (split.elites.length > 0 && Math.random() < eliteChance) {
-      return split.elites[Math.floor(Math.random() * split.elites.length)];
+    if (split.elites.length > 0 && runPRNG.chance(eliteChance)) {
+      return runPRNG.pick(split.elites);
     }
     return split.normals.length > 0
-      ? split.normals[Math.floor(Math.random() * split.normals.length)]
-      : availableTypes[Math.floor(Math.random() * availableTypes.length)];
+      ? runPRNG.pick(split.normals)
+      : runPRNG.pick(availableTypes);
   }
 
   /**

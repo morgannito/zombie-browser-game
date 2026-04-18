@@ -6,7 +6,8 @@ const STATIC_ASSETS = [
   '/style.css',
   '/addictionStyles.css',
   '/offline.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/app.bundle.js'
 ];
 
 // Installation : pré-cache les assets statiques (attend signal client pour activer)

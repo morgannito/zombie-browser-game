@@ -154,6 +154,11 @@ function registerShootHandler(socket, gameState, entityManager, _roomManager) {
       if (socket.spectator) {
         return;
       }
+      // DoS guard: a shoot payload is never more than a few fields.
+      if (!data || Buffer.byteLength(JSON.stringify(data), 'utf8') > 512) {
+        logger.warn('shoot: oversized payload rejected', { socketId: socket.id });
+        return;
+      }
       const validatedData = validateShootData(data);
       if (!validatedData) {
         logger.warn('Invalid shoot data received', { socketId: socket.id, data });

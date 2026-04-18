@@ -126,6 +126,16 @@ describe('validationFunctions', () => {
       expect(validateMovementData(arr)).toBeNull();
     });
 
+    // Guard: angle must be within [-π, π] (not ±2π)
+    test('test_validateMovementData_angleBetweenPiAnd2Pi_returnsNull', () => {
+      expect(validateMovementData({ x: 100, y: 100, angle: Math.PI + 0.1 })).toBeNull();
+    });
+
+    // Guard: NaN coordinates rejected
+    test('test_validateMovementData_NaNX_returnsNull', () => {
+      expect(validateMovementData({ x: NaN, y: 100, angle: 0 })).toBeNull();
+    });
+
     test('test_validateMovementData_returnsOnlyExpectedFields', () => {
       const data = { x: 50, y: 50, angle: 1, extra: 'ignored' };
       const result = validateMovementData(data);
@@ -149,6 +159,23 @@ describe('validationFunctions', () => {
 
     test('test_validateShootData_missingAngle_returnsNull', () => {
       expect(validateShootData({})).toBeNull();
+    });
+
+    // Guard: angle must be within [-π, π]
+    test('test_validateShootData_angleAbovePi_returnsNull', () => {
+      expect(validateShootData({ angle: Math.PI + 0.1 })).toBeNull();
+    });
+
+    // Guard: optional x/y must be within room bounds
+    test('test_validateShootData_xBeyondRoomWidth_dropsOptionalCoords', () => {
+      const result = validateShootData({ angle: 1.0, x: CONFIG.ROOM_WIDTH + 1, y: 100 });
+      expect(result).toEqual({ angle: 1.0 });
+      expect(result.x).toBeUndefined();
+    });
+
+    // Guard: NaN angle rejected
+    test('test_validateShootData_NaNAngle_returnsNull', () => {
+      expect(validateShootData({ angle: NaN })).toBeNull();
     });
   });
 

@@ -18,7 +18,7 @@ Jeu de survie zombie multijoueur en temps reel, type rogue-like avec progression
 
 ## Quick Start
 
-**Prerequisites:** Node.js 18+
+**Prerequisites:** Node.js 20+
 
 ```bash
 # 1. Install dependencies

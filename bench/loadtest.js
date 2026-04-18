@@ -15,6 +15,9 @@ const http = require('http');
 const https = require('https');
 const { io } = require('socket.io-client');
 
+/** @typedef {import('../types/jsdoc-types').LoadTestResult} LoadTestResult */
+/** @typedef {import('../types/jsdoc-types').SocketEvent} SocketEvent */
+
 /** Active sockets for SIGINT cleanup. @type {import('socket.io-client').Socket[]} */
 const _activeSockets = [];
 function _shutdown() {

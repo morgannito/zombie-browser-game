@@ -6,6 +6,7 @@
  */
 
 const { getMutatorEffect } = require('./utils');
+const { runPRNG } = require('../../lib/runPRNG');
 const logger = require('../../infrastructure/logging/Logger');
 
 class ZombieFactory {
@@ -42,8 +43,8 @@ class ZombieFactory {
     const maxAttempts = 50;
 
     do {
-      x = safetyMargin + Math.random() * (this.config.ROOM_WIDTH - 2 * safetyMargin);
-      y = safetyMargin + Math.random() * (this.config.ROOM_HEIGHT - 2 * safetyMargin);
+      x = safetyMargin + runPRNG.random() * (this.config.ROOM_WIDTH - 2 * safetyMargin);
+      y = safetyMargin + runPRNG.random() * (this.config.ROOM_HEIGHT - 2 * safetyMargin);
       attempts++;
 
       if (this.checkWallCollision(x, y, zombieSize)) {
@@ -74,7 +75,7 @@ break;
       }
     }
 
-    const isElite = this.gameState.wave >= 5 && Math.random() < 0.05;
+    const isElite = this.gameState.wave >= 5 && runPRNG.chance(0.05);
     const zombieId = this.gameState.nextZombieId++;
 
     // CORRECTION: Plafonner l'escalade à la vague 130 pour éviter les valeurs démesurées

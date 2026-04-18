@@ -56,7 +56,7 @@ function validateMovementData(data) {
   // Valider x, y, angle comme nombres valides
   if (!isValidNumber(data.x, 0, CONFIG.ROOM_WIDTH) ||
       !isValidNumber(data.y, 0, CONFIG.ROOM_HEIGHT) ||
-      !isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {
+      !isValidNumber(data.angle, -Math.PI, Math.PI)) {
     return null;
   }
 
@@ -77,14 +77,14 @@ function validateShootData(data) {
     return null;
   }
 
-  if (!isValidNumber(data.angle, -Math.PI * 2, Math.PI * 2)) {
+  if (!isValidNumber(data.angle, -Math.PI, Math.PI)) {
     return null;
   }
 
   const out = { angle: data.angle };
   // Optional client-supplied origin (player's predicted position). Shoot
   // handler caps it to MAX_CLIENT_OFFSET from the server's player position.
-  if (isValidNumber(data.x, 0, 10000) && isValidNumber(data.y, 0, 10000)) {
+  if (isValidNumber(data.x, 0, CONFIG.ROOM_WIDTH) && isValidNumber(data.y, 0, CONFIG.ROOM_HEIGHT)) {
     out.x = data.x;
     out.y = data.y;
   }
