@@ -7,9 +7,23 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { CONFIG } = ConfigManager;
 
 /**
- * Handle new wave when boss is killed
+ * Handle new wave when boss is killed.
+ *
+ * BUG FIX (wave skip): Guard against double-invocation. If the boss kill event
+ * fires twice in the same tick (e.g. two simultaneous bullet hits on the boss),
+ * a second call would increment wave again, effectively skipping a wave.
+ * The flag is synchronously cleared after the transition completes.
+ *
+ * @param {Object} gameState
+ * @param {Object} io - Socket.io server instance
+ * @param {Object} zombieManager
  */
 function handleNewWave(gameState, io, zombieManager) {
+  if (gameState._waveTransitionInProgress) {
+    return;
+  }
+  gameState._waveTransitionInProgress = true;
+
   incrementWave(gameState);
   if (gameState.mutatorManager) {
     gameState.mutatorManager.handleWaveChange(gameState.wave);
@@ -17,6 +31,8 @@ function handleNewWave(gameState, io, zombieManager) {
   restartSpawner(zombieManager);
   notifyPlayers(gameState, io);
   rewardSurvivors(gameState);
+
+  gameState._waveTransitionInProgress = false;
 }
 
 /**

@@ -148,17 +148,25 @@ return;
     const adjustedZombiesForThisWave = Math.max(1, Math.floor(zombiesForThisWave * spawnCountMultiplier));
 
     if (this.gameState.zombiesSpawnedThisWave >= adjustedZombiesForThisWave) {
+      // BUG FIX (boss spawn duplicate): Set bossSpawned = true immediately (optimistic lock)
+      // before calling spawnBoss(). Without this, back-to-back ticks arriving while
+      // zombieCount transitions through 0 could both pass the guard and spawn two bosses.
       if (!this.gameState.bossSpawned && zombieCount === 0) {
+        this.gameState.bossSpawned = true;
         this.spawnBoss();
       }
       return;
     }
 
     // Burst de début de wave : spawn 30% des zombies d'un coup dès le 1er appel
+    // BUG FIX (spawn count overflow): cap burstSize to remaining quota so
+    // zombiesSpawnedThisWave never exceeds adjustedZombiesForThisWave.
+    const remaining = adjustedZombiesForThisWave - this.gameState.zombiesSpawnedThisWave;
     const isWaveStart = this.gameState.zombiesSpawnedThisWave === 0;
-    const burstSize = isWaveStart
+    const rawBurst = isWaveStart
       ? Math.max(this.getZombiesPerBatch(), Math.floor(adjustedZombiesForThisWave * 0.30))
       : this.getZombiesPerBatch();
+    const burstSize = Math.min(rawBurst, remaining);
 
     for (let i = 0; i < burstSize; i++) {
       if (zombieCount >= dynamicCap) {

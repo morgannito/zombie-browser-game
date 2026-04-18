@@ -21,6 +21,18 @@ const PIXELS_PER_MS = (CONFIG.PLAYER_SPEED * 60) / 1000;
 const MAX_BUDGET = PIXELS_PER_MS * 2000;
 const ACCRUAL_FACTOR = 1.5;
 const MIN_ALLOWANCE = 100;
+/**
+ * Maximum combined speed multiplier (speedMultiplier × boostMultiplier) applied
+ * during budget accrual. Prevents a slow-attack exploit where an idle player
+ * accumulates a large budget via stacked multipliers then teleports in one move.
+ */
+const MAX_ACCRUAL_MULTIPLIER = 3;
+/**
+ * Threshold above which player.speedMultiplier is considered suspicious.
+ * Worst-case legitimate stack: base(1) × milestone-lvl10(×1.20) × 12 shop ×
+ * skill ≈ 8. Threshold is 10 to provide headroom and avoid false positives.
+ */
+const SUSPICIOUS_SPEED_THRESHOLD = 10;
 // Anti-cheat leaky-bucket: disabled by default. Set ENABLE_ANTICHEAT=true to activate.
 const ENABLE_ANTICHEAT = process.env.ENABLE_ANTICHEAT === 'true';
 
@@ -154,7 +166,7 @@ return;
 return;
 }
 
-  if (ENABLE_ANTICHEAT && player.speedMultiplier > 5) {
+  if (ENABLE_ANTICHEAT && player.speedMultiplier > SUSPICIOUS_SPEED_THRESHOLD) {
     logger.warn('Anti-cheat: Suspicious speedMultiplier detected', { player: player.nickname || socket.id, speedMultiplier: player.speedMultiplier });
     _mc.recordCheatAttempt('speed_multiplier');
     if (_mc.recordViolation(socket.id)) {
@@ -171,7 +183,7 @@ player.moveBudget = MAX_BUDGET;
 }
   const speedMultiplier = player.speedMultiplier || 1;
   const boostMultiplier = (player.speedBoost && now < player.speedBoost) ? 2 : 1;
-  player.moveBudget = Math.min(MAX_BUDGET, player.moveBudget + timeDelta * PIXELS_PER_MS * speedMultiplier * boostMultiplier * ACCRUAL_FACTOR);
+  player.moveBudget = Math.min(MAX_BUDGET, player.moveBudget + timeDelta * PIXELS_PER_MS * Math.min(speedMultiplier * boostMultiplier, MAX_ACCRUAL_MULTIPLIER) * ACCRUAL_FACTOR);
 
   const { newX, newY } = _resolveMovementPosition(player, validatedData, CONFIG);
 

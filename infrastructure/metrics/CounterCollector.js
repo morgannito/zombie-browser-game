@@ -41,8 +41,15 @@ class CounterCollector {
     b[event] = (b[event] || 0) + 1;
   }
 
+  /**
+   * Increment movement corrections counter, capped at MAX_SAFE_INTEGER to
+   * prevent integer overflow on long-running servers.
+   */
   recordMovementCorrection() {
-    this.anticheat.movement_corrections_total++;
+    this.anticheat.movement_corrections_total = Math.min(
+      this.anticheat.movement_corrections_total + 1,
+      Number.MAX_SAFE_INTEGER
+    );
   }
 
   recordViolation(socketId) {

@@ -15,6 +15,8 @@ class RoomManager {
     this._grid = new Map();
     this._gridCols = 0;
     this._gridRows = 0;
+    /** @type {boolean} Guard against room transition race (two players hitting door simultaneously) */
+    this._roomTransitionInProgress = false;
   }
 
   /**
@@ -290,9 +292,18 @@ candidates.add(w);
    *   roomManager.loadRoom(0);
    */
   loadRoom(roomIndex) {
+    // BUG FIX (room transition race): Two players walking through the door at the
+    // same time would both trigger loadRoom, causing a double state-reset and
+    // potentially emitting roomChanged twice with corrupted state.
+    if (this._roomTransitionInProgress) {
+      return;
+    }
+    this._roomTransitionInProgress = true;
+
     // CORRECTION: Vérifier que l'index est valide
     if (roomIndex < 0 || roomIndex >= this.gameState.rooms.length) {
       console.error(`[ROOM MANAGER] Invalid room index: ${roomIndex}`);
+      this._roomTransitionInProgress = false;
       return;
     }
 
@@ -301,6 +312,7 @@ candidates.add(w);
     // CORRECTION: Vérifier que la room existe
     if (!room) {
       console.error(`[ROOM MANAGER] Room ${roomIndex} does not exist`);
+      this._roomTransitionInProgress = false;
       return;
     }
 
@@ -330,6 +342,8 @@ candidates.add(w);
       walls: this.gameState.walls,
       doors: room.doors
     });
+
+    this._roomTransitionInProgress = false;
   }
 
   /**
