@@ -25,7 +25,11 @@ class LeaderboardSystem {
   loadLeaderboard() {
     const saved = localStorage.getItem('zombieGameLeaderboard');
     if (saved) {
-      return JSON.parse(saved);
+      try {
+        return JSON.parse(saved);
+      } catch {
+        localStorage.removeItem('zombieGameLeaderboard');
+      }
     }
     return {
       highestScore: 0,
@@ -342,6 +346,12 @@ class LeaderboardSystem {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+
+  _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
   createLeaderboardWidget() {
     const widget = document.createElement('div');
     widget.className = 'leaderboard-widget';
@@ -358,7 +368,7 @@ class LeaderboardSystem {
             (entry, index) => `
           <div class="leaderboard-widget-entry">
             <span class="rank">#${index + 1}</span>
-            <span class="player">${entry.playerName}</span>
+            <span class="player">${this._escapeHtml(entry.playerName)}</span>
             <span class="score">${entry.score.toLocaleString()}</span>
           </div>
         `

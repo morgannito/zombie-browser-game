@@ -5,7 +5,7 @@
  * Bug: zombies proches du bord de la cellule manqués sans hitTolerance
  */
 
-const MathUtils = require('../../../lib/MathUtils');
+const _MathUtils = require('../../../lib/MathUtils');
 
 describe('CollisionManager — broadphase inclut BULLET_HIT_TOLERANCE', () => {
   function makeSpatialGrid(captured) {

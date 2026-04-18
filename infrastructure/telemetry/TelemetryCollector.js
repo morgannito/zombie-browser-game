@@ -24,7 +24,7 @@ class TelemetryCollector {
    * @param {string} eventType
    * @param {Object} [payload]
    */
-  record(eventType, payload = {}) {
+  record(eventType, _payload = {}) {
     if (!VALID_EVENTS.has(eventType)) {
 return;
 }

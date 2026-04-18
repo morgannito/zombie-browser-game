@@ -106,7 +106,7 @@ describe('collectLoot — pickup race condition', () => {
   test('loot collected by first eligible player only, not twice', () => {
     const gs = makeGameState();
     createLoot(100, 100, 10, 20, gs);
-    const lootId = Object.keys(gs.loot)[0];
+    const _lootId = Object.keys(gs.loot)[0];
 
     // Two players standing on the same loot
     gs.players = {

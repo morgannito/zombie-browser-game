@@ -55,5 +55,5 @@ hasY++;
       process.exit(0);
     }
   });
-  socket.on('init', d => socket.emit('setNickname', { nickname: 'ins_' + Date.now().toString().slice(-4) }));
+  socket.on('init', _d => socket.emit('setNickname', { nickname: 'ins_' + Date.now().toString().slice(-4) }));
 })();

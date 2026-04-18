@@ -41,7 +41,7 @@ async function run() {
   const socket = io(BASE, { auth: { token: l.token }, transports: ['websocket'], parser: msgpackParser });
   activeSocket = socket;
 
-  socket.on('init', d => socket.emit('setNickname', { nickname: 'ins_' + Date.now().toString().slice(-4) }));
+  socket.on('init', _d => socket.emit('setNickname', { nickname: 'ins_' + Date.now().toString().slice(-4) }));
 
   await new Promise(r => setTimeout(r, 1500));
 

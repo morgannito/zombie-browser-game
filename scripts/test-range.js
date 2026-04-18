@@ -120,7 +120,7 @@ buckets[b].hits++;
   console.log(`bot position ${me.x.toFixed(0)},${me.y.toFixed(0)}, zombies seen: ${Object.keys(zombies).length}`);
 
   // Track which bucket each zombie was in at last shot
-  const lastShotBucket = {};
+  const _lastShotBucket = {};
 
   // Fire at 180ms interval (pistol fireRate) at farthest zombie in <800px range
   let tickCount = 0;

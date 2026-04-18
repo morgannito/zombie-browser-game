@@ -45,7 +45,7 @@ async function run() {
   const socket = io(BASE, { auth: { token: login.token }, transports: ['websocket'], parser: msgpackParser });
   activeSocket = socket;
 
-  let myId = null;
+  let _myId = null;
   const stats = {
     gameStateBytes: 0, deltaBytes: 0,
     gameStateCount: 0, deltaCount: 0, emptyDeltaCount: 0,
@@ -56,7 +56,7 @@ async function run() {
   socket.on('connect', () => console.log('[obs] connected', socket.id));
   socket.on('disconnect', r => console.log('[obs] disconnect:', r));
   socket.on('init', d => {
-    myId = d.playerId;
+    _myId = d.playerId;
     socket.emit('setNickname', { nickname: 'obs_' + Date.now().toString().slice(-5) });
   });
 

@@ -8,7 +8,7 @@
 
 const logger = require('../infrastructure/logging/Logger');
 
-const FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
+const _FATAL_OS_CODES = new Set(['ENOMEM', 'EACCES', 'EADDRINUSE', 'EMFILE']);
 const FORCED_EXIT_MS = 30000;
 
 function stopTimers(state) {
@@ -70,7 +70,7 @@ return;
     try {
       socket.emit('server:shutdown', { reason: 'Server shutting down', saveState: true });
       socket.disconnect(true);
-    } catch (e) { /* ignore per-socket errors */ }
+    } catch (_e) { /* ignore per-socket errors */ }
   });
   logger.info('Active sockets disconnected');
 }

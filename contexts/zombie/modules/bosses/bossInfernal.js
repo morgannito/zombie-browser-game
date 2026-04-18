@@ -7,7 +7,7 @@ const { createParticles } = require('../../../../game/lootFunctions');
 const { distance } = require('../../../../game/utilityFunctions');
 const { emitAOI, applyDamage, killPlayer } = require('./shared');
 
-const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
+const { CONFIG: _CONFIG, ZOMBIE_TYPES } = ConfigManager;
 
 const FIRE_AURA_COOLDOWN = 1000;
 const FIRE_AURA_RADIUS = 120;

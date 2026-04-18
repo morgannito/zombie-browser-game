@@ -101,7 +101,7 @@ stats.damageTaken += stats.lastHealth - p.health;
     }
     stats.lastZombieCount = Object.keys(s.zombies || {}).length;
   });
-  socket.on('gameStateDelta', d => {
+  socket.on('gameStateDelta', _d => {
  stats.gameStateDelta++;
 });
   socket.on('positionCorrection', () => {

@@ -6,7 +6,7 @@ const {
   extractBearerToken,
   timingSafeEqual,
   additionalSecurityHeaders,
-  requireMetricsToken
+  requireMetricsToken: _requireMetricsToken
 } = require('../../../middleware/security');
 
 // ── CSP ──────────────────────────────────────────────────────────────────────

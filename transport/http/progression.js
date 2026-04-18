@@ -63,7 +63,8 @@ function initProgressionRoutes(container, options = {}) {
       logger.error('Error fetching skill tree', { requestId: req.id, error: error.message });
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch skill tree'
+        error: 'SKILL_TREE_FETCH_FAILED',
+        message: 'Impossible de charger l\'arbre de compétences.'
       });
     }
   });
@@ -98,7 +99,8 @@ function initProgressionRoutes(container, options = {}) {
         logger.error('Error fetching leaderboard', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
-          error: 'Failed to fetch leaderboard'
+          error: 'LEADERBOARD_FETCH_FAILED',
+          message: 'Impossible de charger le classement.'
         });
       }
     }
@@ -137,7 +139,8 @@ function initProgressionRoutes(container, options = {}) {
         });
         res.status(500).json({
           success: false,
-          error: 'Failed to fetch prestige leaderboard'
+          error: 'PRESTIGE_LEADERBOARD_FETCH_FAILED',
+          message: 'Impossible de charger le classement prestige.'
         });
       }
     }
@@ -177,7 +180,8 @@ function initProgressionRoutes(container, options = {}) {
         logger.error('Error fetching progression', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
-          error: 'Failed to fetch progression'
+          error: 'PROGRESSION_FETCH_FAILED',
+          message: 'Impossible de charger ta progression.'
         });
       }
     }
@@ -224,7 +228,8 @@ function initProgressionRoutes(container, options = {}) {
         logger.error('Error adding XP', { requestId: req.id, error: error.message });
         res.status(500).json({
           success: false,
-          error: 'Failed to add XP'
+          error: 'XP_ADD_FAILED',
+          message: 'Impossible d\'enregistrer l\'XP. Ta progression sera mise à jour à la prochaine partie.'
         });
       }
     }
@@ -255,7 +260,8 @@ function initProgressionRoutes(container, options = {}) {
         if (!progression) {
           return res.status(404).json({
             success: false,
-            error: 'Progression not found'
+            error: 'PROGRESSION_NOT_FOUND',
+            message: 'Progression introuvable pour ce joueur.'
           });
         }
 
@@ -264,7 +270,8 @@ function initProgressionRoutes(container, options = {}) {
         if (!skill) {
           return res.status(404).json({
             success: false,
-            error: 'Skill not found'
+            error: 'SKILL_NOT_FOUND',
+            message: 'Cette compétence n\'existe pas.'
           });
         }
 
@@ -273,7 +280,8 @@ function initProgressionRoutes(container, options = {}) {
             // Do not reflect prereqId in response to avoid XSS/info leak
             return res.status(400).json({
               success: false,
-              error: 'Prerequisite skill not unlocked'
+              error: 'SKILL_PREREQ_MISSING',
+              message: 'Tu dois d\'abord débloquer les compétences prérequises.'
             });
           }
         }
@@ -341,7 +349,8 @@ function initProgressionRoutes(container, options = {}) {
         if (!progression) {
           return res.status(404).json({
             success: false,
-            error: 'Progression not found'
+            error: 'PROGRESSION_NOT_FOUND',
+            message: 'Progression introuvable pour ce joueur.'
           });
         }
 

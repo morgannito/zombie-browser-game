@@ -1,6 +1,6 @@
 'use strict';
 const CollisionManager = require('../contexts/weapons/CollisionManager');
-const { SpatialGrid } = require('../contexts/zombie/SpatialGrid');
+const { SpatialGrid: _SpatialGrid } = require('../contexts/zombie/SpatialGrid');
 
 const SIZES = [100, 500, 1000];
 const ITERS = 500;

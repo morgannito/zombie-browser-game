@@ -186,7 +186,7 @@
     }, 4000);
   }
 
-  window.addEventListener('error', function (event) {
+  window.addEventListener('error', function (_event) {
     showErrorToast();
   });
 

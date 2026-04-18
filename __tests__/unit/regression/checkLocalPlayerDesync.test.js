@@ -6,7 +6,7 @@
  */
 
 describe('_checkLocalPlayerDesync — seuil 200px', () => {
-  let nm;
+  let _nm;
 
   function makeNM(localX, localY, serverX, serverY) {
     global.window = {
@@ -17,7 +17,7 @@ describe('_checkLocalPlayerDesync — seuil 200px', () => {
     };
     const delta = { updated: { players: { p1: { x: serverX, y: serverY } } } };
     const localPlayerState = { x: localX, y: localY };
-    return { nm: { _checkLocalPlayerDesync }, delta, localPlayerState };
+    return { _nm: { _checkLocalPlayerDesync }, delta, localPlayerState };
   }
 
   function _checkLocalPlayerDesync(delta, localPlayerState) {

@@ -42,7 +42,7 @@ function mountDbRoutes(app, container, requireAuth) {
 }
 
 function mountSystemRoutes(app, deps) {
-  const { metricsCollector, memoryMonitor, dbManager, perfIntegration, gameLoopRef } = deps;
+  const { metricsCollector, memoryMonitor, dbManager, perfIntegration: _perfIntegration, gameLoopRef } = deps;
   const metricsRoutes = initMetricsRoutes(metricsCollector);
   app.use('/api/v1/metrics', requireMetricsToken, metricsRoutes);
   // Endpoint Prometheus standard (scrape direct sans préfixe API)

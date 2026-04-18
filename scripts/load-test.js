@@ -71,7 +71,7 @@ async function runBot(id) {
     const auth = await login('bot_' + id + '_' + Date.now().toString().slice(-4));
     token = auth.token;
     if (!token) throw new Error('No token: ' + JSON.stringify(auth));
-  } catch (e) {
+  } catch (_e) {
     stats.errors++;
     return stats;
   }

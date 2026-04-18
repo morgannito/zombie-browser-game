@@ -24,7 +24,7 @@ function initDailyChallengesRoutes(container, options = {}) {
         res.json({ success: true, data });
       } catch (err) {
         logger.error('GET daily challenges failed', { error: err.message, playerId: req.params.playerId });
-        res.status(500).json({ success: false, error: 'Failed to fetch daily challenges' });
+        res.status(500).json({ success: false, error: 'CHALLENGES_FETCH_FAILED', message: 'Impossible de charger les défis du jour.' });
       }
     });
 
@@ -42,7 +42,7 @@ function initDailyChallengesRoutes(container, options = {}) {
         res.json({ success: true, data: results });
       } catch (err) {
         logger.error('POST daily event failed', { error: err.message });
-        res.status(500).json({ success: false, error: 'Failed to apply event' });
+        res.status(500).json({ success: false, error: 'EVENT_APPLY_FAILED', message: 'Impossible d\'enregistrer l\'événement de jeu.' });
       }
     });
 
@@ -57,12 +57,12 @@ function initDailyChallengesRoutes(container, options = {}) {
       try {
         const reward = dailyChallengeService.claimReward(req.params.playerId, req.body.challengeId);
         if (!reward) {
-return res.status(409).json({ success: false, error: 'Not claimable (already claimed or not completed)' });
+return res.status(409).json({ success: false, error: 'CHALLENGE_NOT_CLAIMABLE', message: 'Ce défi ne peut pas être réclamé (déjà réclamé ou non terminé).' });
 }
         res.json({ success: true, data: { reward } });
       } catch (err) {
         logger.error('POST daily claim failed', { error: err.message });
-        res.status(500).json({ success: false, error: 'Failed to claim reward' });
+        res.status(500).json({ success: false, error: 'REWARD_CLAIM_FAILED', message: 'Impossible de réclamer la récompense. Réessaie dans un moment.' });
       }
     });
 

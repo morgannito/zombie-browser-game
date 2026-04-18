@@ -147,7 +147,7 @@ function _spawnBullets(entityManager, validatedData, player, weapon, mutatorEffe
  * @param {Object} roomManager
  * @returns {void}
  */
-function registerShootHandler(socket, gameState, entityManager, roomManager) {
+function registerShootHandler(socket, gameState, entityManager, _roomManager) {
   socket.on(
     SOCKET_EVENTS.CLIENT.SHOOT,
     safeHandler('shoot', function (data) {

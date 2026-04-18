@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <meta charset="UTF-8">
   <script>
     (function(){var t=localStorage.getItem('pref_theme')||'dark';document.documentElement.classList.add('theme-'+t);})();
   </script>
-      <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jeu de Zombie Multijoueur</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
@@ -59,6 +59,7 @@
             <div class="nickname-container">
                 <h1>🧟 ZOMBIE SURVIVAL 🧟</h1>
                 <p class="nickname-subtitle">Entrez votre pseudo pour commencer</p>
+                <label for="nickname-input" class="sr-only">Pseudo du joueur</label>
                 <input type="text" id="nickname-input" placeholder="Votre pseudo..." maxlength="15" autofocus>
                 <button id="start-game-btn">Commencer la partie</button>
                 <div class="game-info">
@@ -602,11 +603,11 @@
                             <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
                                 <label>Choisissez la couleur de votre personnage :</label>
                                 <div id="skin-color-palette" style="display:flex;gap:12px;flex-wrap:wrap;">
-                                    <button class="skin-color-btn active" data-color="cyan" style="background:#00ccff;border:3px solid #fff;" title="Cyan"></button>
-                                    <button class="skin-color-btn" data-color="red" style="background:#ff2222;" title="Rouge"></button>
-                                    <button class="skin-color-btn" data-color="green" style="background:#00cc44;" title="Vert"></button>
-                                    <button class="skin-color-btn" data-color="purple" style="background:#aa44ff;" title="Violet"></button>
-                                    <button class="skin-color-btn" data-color="gold" style="background:#ffd700;" title="Or"></button>
+                                    <button class="skin-color-btn active" data-color="cyan" style="background:#00ccff;border:3px solid #fff;" title="Cyan" aria-label="Couleur cyan" aria-pressed="true"></button>
+                                    <button class="skin-color-btn" data-color="red" style="background:#ff2222;" title="Rouge" aria-label="Couleur rouge" aria-pressed="false"></button>
+                                    <button class="skin-color-btn" data-color="green" style="background:#00cc44;" title="Vert" aria-label="Couleur verte" aria-pressed="false"></button>
+                                    <button class="skin-color-btn" data-color="purple" style="background:#aa44ff;" title="Violet" aria-label="Couleur violette" aria-pressed="false"></button>
+                                    <button class="skin-color-btn" data-color="gold" style="background:#ffd700;" title="Or" aria-label="Couleur or" aria-pressed="false"></button>
                                 </div>
                             </div>
                         </div>

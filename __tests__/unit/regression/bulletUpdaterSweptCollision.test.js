@@ -6,7 +6,7 @@
  */
 
 const MAX_SUBSTEP_DISTANCE = 15;
-const TARGET_FRAME_TIME = 1000 / 60;
+const _TARGET_FRAME_TIME = 1000 / 60;
 
 function simulateBulletMove(bullet, deltaMultiplier, wallHitFn) {
   const totalVx = bullet.vx * deltaMultiplier;

@@ -30,12 +30,12 @@ function initAuthRoutes(container, jwtService) {
       const rawUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
 
       if (!rawUsername || rawUsername.length < 2 || rawUsername.length > 15) {
-        return res.status(400).json({ error: 'Invalid username (2-15 characters required)' });
+        return res.status(400).json({ error: 'USERNAME_INVALID', message: 'Le pseudo doit contenir entre 2 et 15 caractères.' });
       }
 
       if (!/^[a-zA-Z0-9 _-]+$/.test(rawUsername)) {
         return res.status(400).json({
-          error: 'Username can only contain letters, numbers, spaces, underscore and dash'
+          error: 'USERNAME_CHARS_INVALID', message: 'Le pseudo ne peut contenir que des lettres, chiffres, espaces, tirets et underscores.'
         });
       }
 
@@ -60,7 +60,7 @@ function initAuthRoutes(container, jwtService) {
       });
     } catch (error) {
       logger.error('Login failed', { requestId: req.id, error: error.message });
-      res.status(500).json({ error: 'Login failed' });
+      res.status(500).json({ error: 'LOGIN_FAILED', message: 'Impossible de créer la session. Réessaie dans un moment.' });
     }
   });
 
