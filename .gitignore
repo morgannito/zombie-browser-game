@@ -40,6 +40,12 @@ tmp/
 temp/
 *.tmp
 
+# Runtime artifacts
+test-results/
+output/
+isolate-*.log
+*.heapsnapshot
+
 # Legacy
 legacy/
 
