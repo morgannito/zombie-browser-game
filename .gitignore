@@ -63,6 +63,7 @@ public/index.html.bak
 # Generated bundle (built via `npm run build`, not committed)
 public/app.bundle.js
 public/app.bundle.concat.js
+public/*.purged.css
 
 # Benchmark snapshots
 bench/last-micro.json

@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /**
- * Build script: concatenate all 82 client scripts in load order into app.bundle.js
- * Strategy: simple concatenation (no ES modules, all globals via window.*)
- * esbuild is used for minification only (--bundle=false)
+ * Build script: concatenate all client scripts in load order into app.bundle.js,
+ * and purge unused CSS into public/*.purged.css.
+ *
+ * Strategy:
+ *   - JS: simple concatenation (no ES modules, all globals via window.*),
+ *         minified via esbuild.
+ *   - CSS: PurgeCSS with a permissive safelist (see scripts/purge-css.js).
  *
  * To activate: run `npm run build`
- * index.html detects app.bundle.js and uses it instead of 82 separate <script> tags
+ * index.html detects app.bundle.js and uses it instead of individual <script> tags.
  */
 
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -170,4 +174,15 @@ try {
   fs.renameSync(tmpConcat, outFile);
   const size = fs.statSync(outFile).size;
   console.log('app.bundle.js (unminified): ' + (size / 1024).toFixed(1) + ' KB');
+}
+
+// 4. CSS purge (non-fatal on failure — keeps JS build usable)
+if (!process.env.SKIP_CSS_PURGE) {
+  console.log('\nPurging CSS...');
+  const purge = spawnSync(process.execPath, [path.join(__dirname, 'purge-css.js')], {
+    stdio: 'inherit'
+  });
+  if (purge.status !== 0) {
+    console.warn('CSS purge failed — keeping original public/*.css');
+  }
 }
