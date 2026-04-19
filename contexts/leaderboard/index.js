@@ -1,8 +1,7 @@
 /**
  * @fileoverview Leaderboard bounded context — public facade.
- * @description Score submission + leaderboard read use cases. Note: the
- *   client-side leaderboardSystem.js mirror still lives under public/ and
- *   will be migrated in Phase 4 (client mirror).
+ * @description Score submission + leaderboard read use cases. Client mirror:
+ *   public/modules/systems/LeaderboardSystem.js.
  */
 
 const SubmitScoreUseCase = require('./SubmitScoreUseCase');
