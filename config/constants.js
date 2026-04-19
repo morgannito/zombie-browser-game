@@ -39,13 +39,13 @@ const RATE_LIMIT_CONFIG = {
   shopOpened: { maxRequests: 5, windowMs: 10000 } // Prevent invisible-spam abuse
 };
 
-// API Rate limiter configuration
+// API Rate limiter configuration.
+// RATE_LIMIT_WINDOW_MS / RATE_LIMIT_MAX override defaults (15 min / 100 req).
 const API_LIMITER_CONFIG = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
-
   legacyHeaders: false
 };
 
