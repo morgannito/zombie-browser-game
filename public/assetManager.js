@@ -324,35 +324,6 @@ class AssetManager {
 
     return report;
   }
-
-  /**
-   * Retourne les coordonnées d'un sprite dans l'atlas.
-   * @param {string} name - Nom du sprite (ex: "zombie_normal")
-   * @returns {{ x: number, y: number, w: number, h: number } | null}
-   */
-  getSpriteRect(name) {
-    if (!this._atlasData) {
-return null;
-}
-    return this._atlasData.sprites[name] ?? null;
-  }
-
-  /**
-   * Charge les métadonnées de l'atlas depuis atlas.json.
-   * @returns {Promise<void>}
-   */
-  async loadAtlas() {
-    try {
-      const response = await fetch('assets/atlas.json');
-      if (!response.ok) {
-throw new Error(`HTTP ${response.status}`);
-}
-      this._atlasData = await response.json();
-    } catch (err) {
-      console.warn('[AssetManager] Atlas non disponible:', err.message);
-      this._atlasData = null;
-    }
-  }
 }
 
 // Export pour utilisation dans d'autres fichiers
