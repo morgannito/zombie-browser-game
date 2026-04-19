@@ -747,7 +747,7 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <script src="/socket.io/socket.io.js?v=a86016d"></script>
+    <script src="/socket.io/socket.io.js?v=a86016d" defer></script>
     <!-- MessagePack parser is injected server-side by mountMsgpackMetaRoute
          when ENABLE_MSGPACK=true — it writes a blocking <script src="/lib/
          msgpack-parser.js"> right after <head> so window.msgpackParser is set
@@ -758,100 +758,107 @@
          Dev: individual script tags below.
          Build bundle: node scripts/build-bundle.js
     -->
-    <script src="modules/i18n/i18n.js"></script>
-    <script>I18n.init('fr');</script>
-    <script src="modules/utils/ErrorTracker.js"></script>
-    <script src="modules/utils/ErrorBoundary.js"></script>
-    <script src="perfPatches.js"></script>
-    <script src="EventListenerManager.js"></script>
-    <script src="TimerManager.js"></script>
-    <script src="lib/ClientLogger.js"></script>
-    <script src="lib/MathUtils.js"></script>
-    <script src="lib/PerformanceUtils.js"></script>
-    <script src="lib/StorageManager.js"></script>
-    <script src="assetManager.js"></script>
-    <script src="professionalAssetGenerator.js"></script>
-    <script src="assetIntegration.js"></script>
-    <script src="visualEffects.js"></script>
-    <script src="screenEffects.js"></script>
-    <script src="WeatherRenderer.js"></script>
-    <script src="modules/audio/OptimizedAudioCore.js"></script>
-    <script src="modules/audio/OptimizedSoundEffects.js"></script>
-    <script src="weaponStatsData.js"></script>
-    <script src="weaponAudioSystem.js"></script>
-    <script src="audioSystem.js"></script>
-    <script src="skinSystem.js"></script>
-    <script src="enhancedUI.js"></script>
-    <script src="performanceSettings.js"></script>
-    <script src="gameIntegration.js"></script>
-    <script src="achievementSystem.js"></script>
-    <script src="dailyChallenges.js"></script>
-    <script src="unlockSystem.js"></script>
-    <script src="synergySystem.js"></script>
-    <script src="synergyTracker.js"></script>
-    <script src="missionSystem.js"></script>
-    <script src="lifetimeStats.js"></script>
-    <script src="gemSystem.js"></script>
-    <script src="retentionHooks.js"></script>
-    <script src="eventSystem.js"></script>
-    <script src="contracts.js"></script>
-    <script src="runMutators.js"></script>
-    <script src="riskRewardSystem.js"></script>
-    <script src="telemetrySystem.js"></script>
-    <script src="weaponRecords.js"></script>
-    <script src="metaProgression.js"></script>
-    <script src="biomeSystem.js"></script>
-    <script src="addictionIntegration.js"></script>
-    <script src="auth.js"></script>
-    <script src="modules/core/Constants.js"></script>
-    <script src="modules/core/globals.js"></script>
-    <script src="modules/core/SessionManager.js"></script>
-    <script src="modules/state/GameStateManager.js"></script>
-    <script src="modules/input/InputManager.js"></script>
-    <script src="modules/managers/AudioManager.js"></script>
-    <script src="modules/input/MobileControlsManager.js"></script>
-    <script src="modules/managers/CameraManager.js"></script>
-    <script src="modules/ui/UIManager.js"></script>
-    <script src="modules/ui/NicknameManager.js"></script>
-    <script src="modules/ui/HelpMenu.js"></script>
-    <script src="modules/systems/ComboSystem.js"></script>
-    <script src="modules/systems/ToastManager.js"></script>
-    <script src="modules/systems/ScreenshotManager.js"></script>
+    <script src="modules/i18n/i18n.js" defer></script>
+    <script>
+      // i18n.js is loaded with `defer`, so wait for it before init.
+      document.addEventListener('DOMContentLoaded', function () {
+        if (typeof I18n !== 'undefined') {
+          I18n.init('fr');
+        }
+      });
+    </script>
+    <script src="modules/utils/ErrorTracker.js" defer></script>
+    <script src="modules/utils/ErrorBoundary.js" defer></script>
+    <script src="perfPatches.js" defer></script>
+    <script src="EventListenerManager.js" defer></script>
+    <script src="TimerManager.js" defer></script>
+    <script src="lib/ClientLogger.js" defer></script>
+    <script src="lib/MathUtils.js" defer></script>
+    <script src="lib/PerformanceUtils.js" defer></script>
+    <script src="lib/StorageManager.js" defer></script>
+    <script src="assetManager.js" defer></script>
+    <script src="professionalAssetGenerator.js" defer></script>
+    <script src="assetIntegration.js" defer></script>
+    <script src="visualEffects.js" defer></script>
+    <script src="screenEffects.js" defer></script>
+    <script src="WeatherRenderer.js" defer></script>
+    <script src="modules/audio/OptimizedAudioCore.js" defer></script>
+    <script src="modules/audio/OptimizedSoundEffects.js" defer></script>
+    <script src="weaponStatsData.js" defer></script>
+    <script src="weaponAudioSystem.js" defer></script>
+    <script src="audioSystem.js" defer></script>
+    <script src="skinSystem.js" defer></script>
+    <script src="enhancedUI.js" defer></script>
+    <script src="performanceSettings.js" defer></script>
+    <script src="gameIntegration.js" defer></script>
+    <script src="achievementSystem.js" defer></script>
+    <script src="dailyChallenges.js" defer></script>
+    <script src="unlockSystem.js" defer></script>
+    <script src="synergySystem.js" defer></script>
+    <script src="synergyTracker.js" defer></script>
+    <script src="missionSystem.js" defer></script>
+    <script src="lifetimeStats.js" defer></script>
+    <script src="gemSystem.js" defer></script>
+    <script src="retentionHooks.js" defer></script>
+    <script src="eventSystem.js" defer></script>
+    <script src="contracts.js" defer></script>
+    <script src="runMutators.js" defer></script>
+    <script src="riskRewardSystem.js" defer></script>
+    <script src="telemetrySystem.js" defer></script>
+    <script src="weaponRecords.js" defer></script>
+    <script src="metaProgression.js" defer></script>
+    <script src="biomeSystem.js" defer></script>
+    <script src="addictionIntegration.js" defer></script>
+    <script src="auth.js" defer></script>
+    <script src="modules/core/Constants.js" defer></script>
+    <script src="modules/core/globals.js" defer></script>
+    <script src="modules/core/SessionManager.js" defer></script>
+    <script src="modules/state/GameStateManager.js" defer></script>
+    <script src="modules/input/InputManager.js" defer></script>
+    <script src="modules/managers/AudioManager.js" defer></script>
+    <script src="modules/input/MobileControlsManager.js" defer></script>
+    <script src="modules/managers/CameraManager.js" defer></script>
+    <script src="modules/ui/UIManager.js" defer></script>
+    <script src="modules/ui/NicknameManager.js" defer></script>
+    <script src="modules/ui/HelpMenu.js" defer></script>
+    <script src="modules/systems/ComboSystem.js" defer></script>
+    <script src="modules/systems/ToastManager.js" defer></script>
+    <script src="modules/systems/ScreenshotManager.js" defer></script>
     <script src="modules/systems/SessionAchievements.js" defer></script>
-    <script src="modules/systems/LeaderboardSystem.js"></script>
-    <script src="modules/network/NetworkManager.js"></script>
-    <script src="modules/systems/AccountProgressionManager.js"></script>
-    <script src="modules/entities/DestructibleObstacles.js"></script>
-    <script src="modules/entities/StaticProps.js"></script>
-    <script src="modules/entities/DynamicProps.js"></script>
-    <script src="modules/environment/WeatherSystem.js"></script>
-    <script src="modules/environment/DayNightCycle.js"></script>
-    <script src="modules/environment/LightingSystem.js"></script>
-    <script src="modules/environment/ParallaxBackground.js"></script>
-    <script src="modules/environment/EnvironmentalParticles.js"></script>
-    <script src="modules/audio/AmbientAudioSystem.js"></script>
-    <script src="modules/rendering/BackgroundRenderer.js"></script>
-    <script src="modules/rendering/EntityRenderer.js"></script>
-    <script src="modules/rendering/EffectsRenderer.js"></script>
-    <script src="modules/rendering/MinimapRenderer.js"></script>
-    <script src="modules/rendering/UIRenderer.js"></script>
-    <script src="modules/rendering/CrosshairRenderer.js"></script>
-    <script src="modules/input/PlayerController.js"></script>
-    <script src="modules/game/Renderer.js"></script>
-    <script src="modules/core/GameEngine.js"></script>
-    <script src="modules/systems/ReplayRecorder.js"></script>
-    <script src="modules/utils/initHelpers.js"></script>
-    <script src="tutorialSystem.js"></script>
-    <script src="modules/tutorial/TutorialOverlay.js"></script>
-    <script src="settingsMenu.js"></script>
-    <script src="cursorManager.js"></script>
-    <script src="pauseMenu.js"></script>
-    <script src="weaponWheel.js"></script>
-    <script src="enemyMarkers.js"></script>
-    <script src="modules/ui/SpectatorManager.js"></script>
-    <script src="game.js"></script>
-    <script src="gamePatch.js"></script>
-    <script src="emoteWheel.js"></script>
+    <script src="modules/systems/LeaderboardSystem.js" defer></script>
+    <script src="modules/network/NetworkManager.js" defer></script>
+    <script src="modules/systems/AccountProgressionManager.js" defer></script>
+    <script src="modules/entities/DestructibleObstacles.js" defer></script>
+    <script src="modules/entities/StaticProps.js" defer></script>
+    <script src="modules/entities/DynamicProps.js" defer></script>
+    <script src="modules/environment/WeatherSystem.js" defer></script>
+    <script src="modules/environment/DayNightCycle.js" defer></script>
+    <script src="modules/environment/LightingSystem.js" defer></script>
+    <script src="modules/environment/ParallaxBackground.js" defer></script>
+    <script src="modules/environment/EnvironmentalParticles.js" defer></script>
+    <script src="modules/audio/AmbientAudioSystem.js" defer></script>
+    <script src="modules/rendering/BackgroundRenderer.js" defer></script>
+    <script src="modules/rendering/EntityRenderer.js" defer></script>
+    <script src="modules/rendering/EffectsRenderer.js" defer></script>
+    <script src="modules/rendering/MinimapRenderer.js" defer></script>
+    <script src="modules/rendering/UIRenderer.js" defer></script>
+    <script src="modules/rendering/CrosshairRenderer.js" defer></script>
+    <script src="modules/input/PlayerController.js" defer></script>
+    <script src="modules/game/Renderer.js" defer></script>
+    <script src="modules/core/GameEngine.js" defer></script>
+    <script src="modules/systems/ReplayRecorder.js" defer></script>
+    <script src="modules/utils/initHelpers.js" defer></script>
+    <script src="tutorialSystem.js" defer></script>
+    <script src="modules/tutorial/TutorialOverlay.js" defer></script>
+    <script src="settingsMenu.js" defer></script>
+    <script src="cursorManager.js" defer></script>
+    <script src="pauseMenu.js" defer></script>
+    <script src="weaponWheel.js" defer></script>
+    <script src="enemyMarkers.js" defer></script>
+    <script src="modules/ui/SpectatorManager.js" defer></script>
+    <script src="game.js" defer></script>
+    <script src="gamePatch.js" defer></script>
+    <script src="emoteWheel.js" defer></script>
     <!-- APP_SCRIPTS_END -->
 
     <!-- Portrait-hint body class: toggled on game start/over/death -->

@@ -66,7 +66,9 @@ function mountIndexRoute(app) {
           const commentEnd = patched.indexOf('-->', startIdx) + 3;
           patched =
             patched.slice(0, commentEnd) +
-            '\n    <script src="app.bundle.js?v=' + bundleVersion() + '"></script>\n    ' +
+            '\n    <script src="app.bundle.js?v=' +
+            bundleVersion() +
+            '" defer></script>\n    ' +
             patched.slice(endIdx);
         }
       }
@@ -109,7 +111,13 @@ function mountStaticAssets(app) {
     }
   };
 
-  app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets'), { fallthrough: false, setHeaders }));
+  app.use(
+    '/assets',
+    express.static(path.join(__dirname, '..', 'public', 'assets'), {
+      fallthrough: false,
+      setHeaders
+    })
+  );
   app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders }));
 }
 
