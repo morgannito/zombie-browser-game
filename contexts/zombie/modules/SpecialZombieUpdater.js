@@ -6,23 +6,26 @@
 const ConfigManager = require('../../../lib/server/ConfigManager');
 const { distance } = require('../../../game/utilityFunctions');
 const { createParticles } = require('../../../game/lootFunctions');
-const { clampToRoomBounds, moveZombieSafely } = require('./bosses/shared');
-const { MULTIPLIER_70_PCT, CLONE_DAMAGE_MULTIPLIER, PARTICLES_DEFAULT_COUNT } = require('../constants');
+const { clampToRoomBounds, moveZombieSafely, canPlaceZombieAt } = require('./bosses/shared');
+const {
+  MULTIPLIER_70_PCT,
+  CLONE_DAMAGE_MULTIPLIER,
+  PARTICLES_DEFAULT_COUNT
+} = require('../constants');
 
 const { ZOMBIE_TYPES } = ConfigManager;
-
-function canPlaceZombieAt(zombie, x, y, gameState) {
-  const roomManager = gameState?.roomManager;
-  if (!roomManager) {
-    return true;
-  }
-  return !roomManager.checkWallCollision(x, y, zombie.size);
-}
 
 /**
  * Update teleporter zombie
  */
-function updateTeleporterZombie(zombie, _zombieId, now, collisionManager, entityManager, gameState) {
+function updateTeleporterZombie(
+  zombie,
+  _zombieId,
+  now,
+  collisionManager,
+  entityManager,
+  gameState
+) {
   if (zombie.type !== 'teleporter') {
     return;
   }
@@ -62,7 +65,13 @@ function executeTeleport(zombie, closestPlayer, teleporterType, now, gameState, 
   const oldY = zombie.y;
   if (moveZombieSafely(zombie, newX, newY, gameState)) {
     createParticles(oldX, oldY, teleporterType.color, PARTICLES_DEFAULT_COUNT, entityManager);
-    createParticles(zombie.x, zombie.y, teleporterType.color, PARTICLES_DEFAULT_COUNT, entityManager);
+    createParticles(
+      zombie.x,
+      zombie.y,
+      teleporterType.color,
+      PARTICLES_DEFAULT_COUNT,
+      entityManager
+    );
   }
 }
 
@@ -84,7 +93,15 @@ function updateSummonerZombie(zombie, zombieId, now, zombieManager, entityManage
   }
 
   if (shouldSpawnMinions(zombie, zombie.minionCount, summonerType, now)) {
-    spawnMinions(zombie, zombieId, zombie.minionCount, summonerType, zombieManager, entityManager, now);
+    spawnMinions(
+      zombie,
+      zombieId,
+      zombie.minionCount,
+      summonerType,
+      zombieManager,
+      entityManager,
+      now
+    );
   }
 }
 
@@ -145,7 +162,14 @@ function spawnMinions(
 /**
  * Update berserker zombie
  */
-function updateBerserkerZombie(zombie, _zombieId, now, collisionManager, entityManager, _gameState) {
+function updateBerserkerZombie(
+  zombie,
+  _zombieId,
+  now,
+  collisionManager,
+  entityManager,
+  _gameState
+) {
   if (zombie.type !== 'berserker') {
     return;
   }

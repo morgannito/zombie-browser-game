@@ -21,7 +21,12 @@ const http = require('http');
 // ============================================
 // IMPORTS - Configuration
 // ============================================
-const { PORT, ALLOWED_ORIGINS } = require('./config/constants');
+const {
+  PORT,
+  ALLOWED_ORIGINS,
+  INACTIVITY_TIMEOUT,
+  HEARTBEAT_CHECK_INTERVAL
+} = require('./config/constants');
 
 // ============================================
 // BOOT VALIDATION - Environment + game configs (fail-fast)
@@ -62,7 +67,6 @@ const ConfigManager = require('./lib/server/ConfigManager');
 const perfIntegration = require('./lib/server/PerformanceIntegration');
 
 const { CONFIG, ZOMBIE_TYPES } = ConfigManager;
-const { INACTIVITY_TIMEOUT, HEARTBEAT_CHECK_INTERVAL } = require('./config/constants');
 
 // ============================================
 // IMPORTS - Socket Handlers
@@ -108,13 +112,20 @@ const { startGameLoop } = require('./server/timers');
 // Bootstrap orchestrator: composes all factories into startServer().
 const { createBootstrap } = require('./server/bootstrap');
 const { startServer } = createBootstrap({
-  app, server, io,
+  app,
+  server,
+  io,
   config: CONFIG,
   zombieTypes: ZOMBIE_TYPES,
   allowedOrigins: ALLOWED_ORIGINS,
   port: PORT,
-  metricsCollector, memoryMonitor, dbManager, perfIntegration,
-  initSocketHandlers, gameLoop, startGameLoop,
+  metricsCollector,
+  memoryMonitor,
+  dbManager,
+  perfIntegration,
+  initSocketHandlers,
+  gameLoop,
+  startGameLoop,
   errorHandlers: { notFoundHandler, serverErrorHandler, apiErrorHandler },
   inactivityTimeout: INACTIVITY_TIMEOUT,
   heartbeatCheckInterval: HEARTBEAT_CHECK_INTERVAL
@@ -126,7 +137,12 @@ const { startServer } = createBootstrap({
 // Install BEFORE startServer() so signals received during boot are handled.
 const { createCleanup } = require('./server/cleanup');
 createCleanup({
-  io, server, dbManager, perfIntegration, memoryMonitor, stopSessionCleanupInterval,
+  io,
+  server,
+  dbManager,
+  perfIntegration,
+  memoryMonitor,
+  stopSessionCleanupInterval,
   // Lexical capture: cleanup needs the latest values of the runtime state mutated
   // by the bootstrap orchestrator's resolution (timers, gameState, ...).
   getState: () => ({ gameState, stopGameLoop, heartbeatTimer, powerupSpawnerTimer })

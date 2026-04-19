@@ -99,4 +99,28 @@ function killPlayer(player) {
   player.deaths = (player.deaths || 0) + 1;
 }
 
-module.exports = { emitAOI, clampToRoomBounds, moveZombieSafely, applyDamage, killPlayer };
+/**
+ * Check whether a zombie-shaped entity can be placed at (x, y).
+ * Returns true if no room manager is available.
+ * @param {object} zombie - must expose `size`
+ * @param {number} x
+ * @param {number} y
+ * @param {object} gameState
+ * @returns {boolean}
+ */
+function canPlaceZombieAt(zombie, x, y, gameState) {
+  const roomManager = gameState?.roomManager;
+  if (!roomManager) {
+    return true;
+  }
+  return !roomManager.checkWallCollision(x, y, zombie.size);
+}
+
+module.exports = {
+  emitAOI,
+  clampToRoomBounds,
+  moveZombieSafely,
+  applyDamage,
+  killPlayer,
+  canPlaceZombieAt
+};

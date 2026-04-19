@@ -17,7 +17,6 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const MathUtils = require('../../../lib/MathUtils');
 const { DAMAGE_INTERVAL, ZOMBIE_MAX_SPEED } = require('../constants');
 const { distance } = require('../../../game/utilityFunctions');
-const { createParticles } = require('../../../game/lootFunctions');
 // Direct import — DeathProgressionHandler is a leaf module (only depends on
 // ConfigManager) so no cycle is possible here. gameLoop re-exports it, which
 // is what previously forced the lazy-load workaround.
@@ -340,134 +339,12 @@ function updateZombies(
   );
 }
 
-/**
- * Process healer zombie ability
- */
-function processHealerAbility(zombie, zombieId, now, collisionManager, entityManager) {
-  if (zombie.type !== 'healer') {
-    return;
-  }
-
-  const healerType = ZOMBIE_TYPES.healer;
-  if (!zombie.lastHeal || now - zombie.lastHeal >= healerType.healCooldown) {
-    zombie.lastHeal = now;
-
-    const nearbyZombies = collisionManager.findZombiesInRadius(
-      zombie.x,
-      zombie.y,
-      healerType.healRadius,
-      zombieId
-    );
-
-    for (const other of nearbyZombies) {
-      if (other.health < other.maxHealth) {
-        other.health = Math.min(other.health + healerType.healAmount, other.maxHealth);
-        createParticles(other.x, other.y, '#00ffff', 5, entityManager);
-      }
-    }
-  }
-}
-
-/**
- * Process slower zombie ability
- */
-function processSlowerAbility(zombie, now, collisionManager) {
-  if (zombie.type !== 'slower') {
-    return;
-  }
-
-  const slowerType = ZOMBIE_TYPES.slower;
-  const nearbyPlayers = collisionManager.findPlayersInRadius(
-    zombie.x,
-    zombie.y,
-    slowerType.slowRadius
-  );
-
-  for (const player of nearbyPlayers) {
-    player.slowedUntil = now + slowerType.slowDuration;
-    player.slowAmount = slowerType.slowAmount;
-  }
-}
-
-/**
- * Process shooter zombie ability
- */
-function processShooterAbility(zombie, zombieId, now, collisionManager, entityManager) {
-  if (zombie.type !== 'shooter') {
-    return;
-  }
-
-  const shooterType = ZOMBIE_TYPES.shooter;
-
-  if (!zombie.lastShot || now - zombie.lastShot >= shooterType.shootCooldown) {
-    // SSSS OPTIMIZATION: Use cached pathfinding for shooter targeting
-    const targetPlayer = collisionManager.findClosestPlayerCached(
-      zombieId,
-      zombie.x,
-      zombie.y,
-      shooterType.shootRange,
-      { ignoreSpawnProtection: true, ignoreInvisible: false }
-    );
-
-    if (targetPlayer) {
-      shootAtPlayer(zombie, zombieId, targetPlayer, shooterType, now, entityManager);
-    }
-  }
-}
-
-/**
- * Shoot bullet at player
- */
-function shootAtPlayer(zombie, zombieId, targetPlayer, shooterType, now, entityManager) {
-  zombie.lastShot = now;
-  const angle = Math.atan2(targetPlayer.y - zombie.y, targetPlayer.x - zombie.x);
-
-  entityManager.createBullet({
-    x: zombie.x,
-    y: zombie.y,
-    vx: MathUtils.fastCos(angle) * shooterType.bulletSpeed,
-    vy: MathUtils.fastSin(angle) * shooterType.bulletSpeed,
-    zombieId: zombieId,
-    damage: zombie.damage,
-    color: shooterType.bulletColor,
-    isZombieBullet: true,
-    piercing: 0,
-    piercedZombies: [],
-    explosiveRounds: false,
-    explosionRadius: 0,
-    explosionDamagePercent: 0
-  });
-
-  createParticles(zombie.x, zombie.y, shooterType.bulletColor, 5, entityManager);
-}
-
-/**
- * Process poison trail for poison zombie
- */
-function processPoisonTrail(zombie, now, gameState, entityManager) {
-  if (zombie.type !== 'poison') {
-    return;
-  }
-
-  const poisonType = ZOMBIE_TYPES.poison;
-
-  if (!zombie.lastPoisonTrail || now - zombie.lastPoisonTrail >= poisonType.poisonTrailInterval) {
-    zombie.lastPoisonTrail = now;
-
-    const trailId = gameState.nextPoisonTrailId++;
-    gameState.poisonTrails[trailId] = {
-      id: trailId,
-      x: zombie.x,
-      y: zombie.y,
-      radius: poisonType.poisonRadius,
-      damage: poisonType.poisonDamage,
-      createdAt: now,
-      duration: poisonType.poisonDuration
-    };
-
-    createParticles(zombie.x, zombie.y, poisonType.color, 3, entityManager);
-  }
-}
+// Ability processors extracted to ./updater/abilities — re-bind locally so
+// tests keep importing them from this module (backwards-compatible surface).
+const processHealerAbility = _processHealerAbility;
+const processSlowerAbility = _processSlowerAbility;
+const processShooterAbility = _processShooterAbility;
+const processPoisonTrail = _processPoisonTrail;
 
 /**
  * Move zombie towards player or randomly.

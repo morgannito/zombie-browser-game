@@ -13,12 +13,12 @@ const { configureRoutes } = require('./routes');
 const { createGameManagers } = require('./gameManagers');
 const { startHeartbeat } = require('./heartbeat');
 const { initializeGameState } = require('../game/gameState');
-const { initializeRooms } = require('../game/roomFunctions');
+const { initializeRooms, loadRoom } = require('../game/roomFunctions');
 
 function buildContainer(dbAvailable) {
   if (!dbAvailable) {
-return null;
-}
+    return null;
+  }
   const container = Container.getInstance();
   container.initialize();
   return container;
@@ -57,12 +57,27 @@ function startPowerupSpawner(deps) {
 }
 
 function makeTickFn(deps) {
-  const { gameLoop, gameState, io, metricsCollector, perfIntegration,
-    collisionManager, entityManager, zombieManager, networkManager } = deps;
+  const {
+    gameLoop,
+    gameState,
+    io,
+    metricsCollector,
+    perfIntegration,
+    collisionManager,
+    entityManager,
+    zombieManager,
+    networkManager
+  } = deps;
   return (overBudget = false) => {
     gameLoop(
-      gameState, io, metricsCollector, perfIntegration,
-      collisionManager, entityManager, zombieManager, logger
+      gameState,
+      io,
+      metricsCollector,
+      perfIntegration,
+      collisionManager,
+      entityManager,
+      zombieManager,
+      logger
     );
     // PERF: Decouple broadcast from sim tick — schedule as setImmediate tail so
     // the tick returns to the event loop first, reducing measured tick duration.
@@ -75,13 +90,29 @@ function makeTickFn(deps) {
 }
 
 function wireSocketHandlers(deps) {
-  const { io, jwtService, initSocketHandlers, gameState, entityManager,
-    roomManager, metricsCollector, perfIntegration, container, dbAvailable, networkManager } = deps;
+  const {
+    io,
+    jwtService,
+    initSocketHandlers,
+    gameState,
+    entityManager,
+    roomManager,
+    metricsCollector,
+    perfIntegration,
+    container,
+    dbAvailable,
+    networkManager
+  } = deps;
   io.use(jwtService.socketMiddleware());
   const socketHandler = initSocketHandlers(
-    io, gameState, entityManager, roomManager,
-    metricsCollector, perfIntegration,
-    dbAvailable ? container : null, networkManager
+    io,
+    gameState,
+    entityManager,
+    roomManager,
+    metricsCollector,
+    perfIntegration,
+    dbAvailable ? container : null,
+    networkManager
   );
   // Disable Nagle's algorithm on every new TCP connection so move packets
   // are flushed immediately without waiting for the 40ms Nagle coalescing
@@ -106,10 +137,10 @@ function listenAndLog(server, port, allowedOrigins, dbAvailable) {
     logger.info(`📡 Allowed origins: ${allowedOrigins.join(', ')}`);
     logger.info('🎮 Game server initialized');
     if (dbAvailable) {
-logger.info('🗄️  Database connected');
-} else {
-logger.warn('⚠️  Running in degraded mode - no database');
-}
+      logger.info('🗄️  Database connected');
+    } else {
+      logger.warn('⚠️  Running in degraded mode - no database');
+    }
   });
 }
 
@@ -122,10 +153,25 @@ logger.warn('⚠️  Running in degraded mode - no database');
  *           heartbeatTimer, powerupSpawnerTimer}>}}
  */
 function createBootstrap(deps) {
-  const { app, server, io, config, zombieTypes, allowedOrigins, port,
-    metricsCollector, memoryMonitor, dbManager, perfIntegration,
-    initSocketHandlers, gameLoop, startGameLoop, errorHandlers,
-    inactivityTimeout, heartbeatCheckInterval } = deps;
+  const {
+    app,
+    server,
+    io,
+    config,
+    zombieTypes,
+    allowedOrigins,
+    port,
+    metricsCollector,
+    memoryMonitor,
+    dbManager,
+    perfIntegration,
+    initSocketHandlers,
+    gameLoop,
+    startGameLoop,
+    errorHandlers,
+    inactivityTimeout,
+    heartbeatCheckInterval
+  } = deps;
 
   async function startServer() {
     const dbAvailable = await initializeDatabase();
@@ -135,18 +181,25 @@ function createBootstrap(deps) {
 
     const gameLoopRef = { getMetrics: () => null };
     configureRoutes(app, {
-      container, jwtService, requireAuth, dbAvailable,
-      metricsCollector, memoryMonitor, dbManager, perfIntegration, gameLoopRef
+      container,
+      jwtService,
+      requireAuth,
+      dbAvailable,
+      metricsCollector,
+      memoryMonitor,
+      dbManager,
+      perfIntegration,
+      gameLoopRef
     });
 
     const gameState = initializeGameState();
     initializeRooms(gameState, config);
     const managers = createGameManagers({ gameState, config, zombieTypes, io });
-    const { entityManager, collisionManager, networkManager, roomManager, zombieManager } = managers;
+    const { entityManager, collisionManager, networkManager, roomManager, zombieManager } =
+      managers;
 
     attachProgression(dbAvailable, container, io, gameState);
 
-    const { loadRoom } = require('../game/roomFunctions');
     loadRoom(0, roomManager);
 
     zombieManager.startZombieSpawner();
@@ -154,33 +207,64 @@ function createBootstrap(deps) {
 
     attachAdminCommands(io, gameState, zombieManager);
     const powerupSpawnerTimer = startPowerupSpawner({
-      gameState, roomManager, perfIntegration, metricsCollector, config
+      gameState,
+      roomManager,
+      perfIntegration,
+      metricsCollector,
+      config
     });
 
-    const gameLoopHandle = startGameLoop(perfIntegration, makeTickFn({
-      gameLoop, gameState, io, metricsCollector, perfIntegration,
-      collisionManager, entityManager, zombieManager, networkManager
-    }));
+    const gameLoopHandle = startGameLoop(
+      perfIntegration,
+      makeTickFn({
+        gameLoop,
+        gameState,
+        io,
+        metricsCollector,
+        perfIntegration,
+        collisionManager,
+        entityManager,
+        zombieManager,
+        networkManager
+      })
+    );
     const stopGameLoop = gameLoopHandle.stop;
     const getLoopMetrics = gameLoopHandle.getMetrics;
     gameLoopRef.getMetrics = getLoopMetrics;
 
     const heartbeat = startHeartbeat({
-      gameState, io, networkManager, metricsCollector,
-      inactivityTimeout, interval: heartbeatCheckInterval
+      gameState,
+      io,
+      networkManager,
+      metricsCollector,
+      inactivityTimeout,
+      interval: heartbeatCheckInterval
     });
 
     wireSocketHandlers({
-      io, jwtService, initSocketHandlers, gameState, entityManager, roomManager,
-      metricsCollector, perfIntegration, container, dbAvailable, networkManager
+      io,
+      jwtService,
+      initSocketHandlers,
+      gameState,
+      entityManager,
+      roomManager,
+      metricsCollector,
+      perfIntegration,
+      container,
+      dbAvailable,
+      networkManager
     });
 
     attachErrorHandlers(app, errorHandlers);
     listenAndLog(server, port, allowedOrigins, dbAvailable);
 
     return {
-      dbAvailable, gameState, stopGameLoop, getLoopMetrics,
-      heartbeatTimer: heartbeat.timer, powerupSpawnerTimer
+      dbAvailable,
+      gameState,
+      stopGameLoop,
+      getLoopMetrics,
+      heartbeatTimer: heartbeat.timer,
+      powerupSpawnerTimer
     };
   }
 
