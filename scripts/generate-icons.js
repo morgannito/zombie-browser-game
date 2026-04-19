@@ -3,13 +3,13 @@
  * generate-icons.js
  * Generates SVG icon files for the zombie survival game UI.
  * All icons: 48x48 viewBox, clean vectors, currentColor for CSS theming.
- * Output: assets/icons/
+ * Output: public/assets/icons/
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'icons');
+const OUTPUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'icons');
 
 function svg(inner, extra = '') {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"${extra}>\n${inner}\n</svg>\n`;

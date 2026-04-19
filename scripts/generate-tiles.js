@@ -4,11 +4,11 @@
  * Generates PNG tile images, backgrounds, item sprites, and effect sprites
  * for a top-down zombie survival game using node-canvas.
  *
- * Output directories:
- *   assets/tiles/        - 64x64 seamless floor/wall tiles
- *   assets/backgrounds/  - 512x512 parallax backgrounds
- *   assets/sprites/items/ - 64x64 item/powerup sprites
- *   assets/sprites/effects/ - various effect sprite sheets
+ * Output directories (public/assets/ = the folder served by express.static):
+ *   public/assets/tiles/        - 64x64 seamless floor/wall tiles
+ *   public/assets/backgrounds/  - 512x512 parallax backgrounds
+ *   public/assets/sprites/items/ - 64x64 item/powerup sprites
+ *   public/assets/sprites/effects/ - various effect sprite sheets
  */
 
 const { createCanvas } = require('canvas');
@@ -18,12 +18,12 @@ const path = require('path');
 // ---------------------------------------------------------------------------
 // Directories
 // ---------------------------------------------------------------------------
-const BASE = path.resolve(__dirname, '..');
+const BASE = path.resolve(__dirname, '..', 'public', 'assets');
 const DIRS = {
-  tiles: path.join(BASE, 'assets', 'tiles'),
-  backgrounds: path.join(BASE, 'assets', 'backgrounds'),
-  items: path.join(BASE, 'assets', 'sprites', 'items'),
-  effects: path.join(BASE, 'assets', 'sprites', 'effects')
+  tiles: path.join(BASE, 'tiles'),
+  backgrounds: path.join(BASE, 'backgrounds'),
+  items: path.join(BASE, 'sprites', 'items'),
+  effects: path.join(BASE, 'sprites', 'effects')
 };
 
 for (const dir of Object.values(DIRS)) {

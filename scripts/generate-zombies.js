@@ -2,7 +2,7 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'sprites', 'zombies');
+const OUTPUT_DIR = path.join(__dirname, '..', 'public', 'assets', 'sprites', 'zombies');
 const SIZE = 128;
 const HALF = SIZE / 2;
 

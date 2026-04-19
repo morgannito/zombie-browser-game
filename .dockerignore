@@ -19,7 +19,6 @@ deploy-server.js
 downloadAssets.js
 setup-deploy.sh
 scripts/
-assets/
 
 # Secrets et config sensibles
 .env
