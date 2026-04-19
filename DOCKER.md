@@ -260,21 +260,65 @@ CMD ["node", "--expose-gc", "server.js"]
    - Utiliser des volumes nommés pour meilleure performance
    - Sauvegarder régulièrement `data/game.db`
 
-3. **Reverse proxy (Nginx):**
+3. **Reverse proxy (Nginx) — config recommandée:**
    ```nginx
+   # http {} block: enable brotli + gzip globally (Nginx must have ngx_brotli).
+   brotli on;
+   brotli_comp_level 5;
+   brotli_types text/plain text/css application/javascript application/json image/svg+xml;
+   gzip on;
+   gzip_comp_level 6;
+   gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+
    server {
-       listen 80;
+       listen 443 ssl http2;
        server_name votredomaine.com;
 
-       location / {
+       # SSL (replace with Let's Encrypt paths)
+       ssl_certificate     /etc/letsencrypt/live/votredomaine.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/votredomaine.com/privkey.pem;
+       ssl_protocols       TLSv1.2 TLSv1.3;
+
+       # Static assets: long-lived cache for fingerprinted URLs (?v=…)
+       location ~ \.(webp|png|svg|woff2)$ {
+           proxy_pass http://localhost:3000;
+           proxy_cache_valid 200 30d;
+           expires 30d;
+           add_header Cache-Control "public, immutable";
+       }
+
+       # Socket.IO WebSocket upgrade
+       location /socket.io/ {
            proxy_pass http://localhost:3000;
            proxy_http_version 1.1;
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection "upgrade";
            proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_read_timeout 3600s;
+       }
+
+       # Everything else (HTML + API)
+       location / {
+           proxy_pass http://localhost:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
        }
    }
+
+   # Redirect HTTP → HTTPS
+   server {
+       listen 80;
+       server_name votredomaine.com;
+       return 301 https://$host$request_uri;
+   }
    ```
+
+   **Compression gain** (brotli vs raw): `app.bundle.js` minified ~800K → ~180K
+   sur le fil. Installez `ngx_brotli` via votre distro (ex: `apt install nginx-module-brotli`)
+   ou utilisez l'image `openresty/openresty` qui l'inclut.
 
 4. **SSL/TLS:**
    - Utiliser Let's Encrypt avec certbot
