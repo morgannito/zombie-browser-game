@@ -9,10 +9,22 @@ primary_region = "cdg"
 [http_service]
   internal_port = 3000
   force_https = true
+  # auto_stop with min=0 saves cost on free tier but disconnects active
+  # WebSocket sessions when the last machine stops. Bump min_machines_running
+  # to 1 once the player base justifies keeping one instance hot.
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
   processes = ["app"]
+
+# Health check: Fly stops routing traffic to an instance that fails /health.
+[[http_service.checks]]
+  grace_period = "15s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  protocol = "http"
+  timeout = "5s"
 
 [[vm]]
   cpu_kind = "shared"
