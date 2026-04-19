@@ -45,19 +45,6 @@ function envBool(key, defaultValue) {
 }
 
 /**
- * Check if a feature is enabled.
- * @param {string} feature - Feature key from FEATURES map
- * @returns {boolean}
- */
-function isEnabled(feature) {
-  if (FEATURES[feature] === undefined) {
-    console.warn(`[FeatureFlags] Unknown feature: ${feature}`);
-    return false;
-  }
-  return FEATURES[feature];
-}
-
-/**
  * Get a snapshot of all feature flags.
  * @returns {Object} Shallow copy of FEATURES
  */
@@ -65,4 +52,4 @@ function getAll() {
   return { ...FEATURES };
 }
 
-module.exports = { FEATURES, isEnabled, getAll };
+module.exports = { getAll };

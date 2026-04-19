@@ -94,4 +94,4 @@ class SpatialGrid {
   }
 }
 
-module.exports = { SpatialGrid, CELL_SIZE };
+module.exports = { SpatialGrid };
