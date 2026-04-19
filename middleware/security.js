@@ -33,8 +33,8 @@ function generateNonce() {
 function buildCspDirectives(isDev, nonce) {
   const scriptSrc = ["'self'"];
   if (nonce) {
-scriptSrc.push(`'nonce-${nonce}'`);
-}
+    scriptSrc.push(`'nonce-${nonce}'`);
+  }
 
   const directives = {
     defaultSrc: ["'self'"],
@@ -114,7 +114,16 @@ function configureBodyParser() {
 function additionalSecurityHeaders(req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Referrer-Policy: don't leak full URLs to third-parties.
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Permissions-Policy: explicitly deny powerful APIs the game doesn't need.
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  );
+  // X-XSS-Protection is deprecated in modern browsers (Chrome 78+, Edge) and
+  // CSP supersedes it. Do not set — modern UAs ignore it, legacy UAs have
+  // known XSS filter bypasses.
   next();
 }
 
@@ -136,8 +145,8 @@ function configureAuthLimiter() {
 function extractBearerToken(authHeader) {
   const parts = (authHeader || '').split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
-return null;
-}
+    return null;
+  }
   return parts[1];
 }
 

@@ -103,7 +103,10 @@ describe('additionalSecurityHeaders', () => {
     additionalSecurityHeaders({}, res, next);
     expect(headers['X-Content-Type-Options']).toBe('nosniff');
     expect(headers['X-Frame-Options']).toBe('DENY');
-    expect(headers['X-XSS-Protection']).toBe('1; mode=block');
+    expect(headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin');
+    expect(headers['Permissions-Policy']).toContain('geolocation=()');
+    // X-XSS-Protection is deprecated — we no longer set it.
+    expect(headers['X-XSS-Protection']).toBeUndefined();
     expect(next).toHaveBeenCalled();
   });
 });
@@ -121,15 +124,18 @@ describe('requireMetricsToken', () => {
 
   it('passes through when no token guard is configured (null METRICS_TOKEN)', () => {
     // Simulate the guard logic with metricsToken=null (dev mode)
-    const guardFn = (metricsToken) => (req, res, next) => {
+    const guardFn = metricsToken => (req, res, next) => {
       if (!metricsToken) {
-return next();
-}
-      const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
+        return next();
+      }
+      const {
+        extractBearerToken: ext,
+        timingSafeEqual: tse
+      } = require('../../../middleware/security');
       const token = ext(req.headers.authorization);
       if (!token || !tse(token, metricsToken)) {
-return res.status(401).json({ error: 'Unauthorized' });
-}
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       return next();
     };
     const guard = guardFn(null);
@@ -141,15 +147,18 @@ return res.status(401).json({ error: 'Unauthorized' });
 
   it('rejects request with no Authorization header when token env is set', () => {
     // Simulate the guard with a manually-crafted closure
-    const guardFn = (metricsToken) => (req, res, next) => {
+    const guardFn = metricsToken => (req, res, next) => {
       if (!metricsToken) {
-return next();
-}
-      const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
+        return next();
+      }
+      const {
+        extractBearerToken: ext,
+        timingSafeEqual: tse
+      } = require('../../../middleware/security');
       const token = ext(req.headers.authorization);
       if (!token || !tse(token, metricsToken)) {
-return res.status(401).json({ error: 'Unauthorized' });
-}
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       return next();
     };
     const guard = guardFn(validToken);
@@ -161,13 +170,19 @@ return res.status(401).json({ error: 'Unauthorized' });
   });
 
   it('rejects request with wrong token', () => {
-    const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
+    const {
+      extractBearerToken: ext,
+      timingSafeEqual: tse
+    } = require('../../../middleware/security');
     const token = ext('Bearer wrongtoken');
     expect(tse(token, validToken)).toBe(false);
   });
 
   it('accepts request with correct token', () => {
-    const { extractBearerToken: ext, timingSafeEqual: tse } = require('../../../middleware/security');
+    const {
+      extractBearerToken: ext,
+      timingSafeEqual: tse
+    } = require('../../../middleware/security');
     const token = ext(`Bearer ${validToken}`);
     expect(tse(token, validToken)).toBe(true);
   });
