@@ -143,19 +143,30 @@ function createRecoverablePlayerState(player) {
 
 function restoreRecoverablePlayerState(savedState, socketId, sessionId, accountId) {
   const now = Date.now();
-  return {
+  // If the saved snapshot is dead, treat reconnect as a fresh respawn:
+  // restore progression but bring the player back to life with full health
+  // and a fresh spawn-protection window. Otherwise leaving alive=false
+  // dumps the user straight onto the game-over screen on every reconnect.
+  const wasDead = savedState.alive === false || (savedState.health || 0) <= 0;
+  const restored = {
     ...savedState,
     id: socketId,
     socketId,
     sessionId,
     accountId,
     lastActivityTime: now,
-    // Reset anti-cheat state on recovery: without this, first post-reconnect
-    // playerMove sees timeDelta=0 and accrues 0px budget, rejecting a legit
-    // move that carries prediction from during the disconnect → teleport back.
-    moveBudget: undefined, // forces re-init to MAX_BUDGET on first move
+    moveBudget: undefined,
     lastMoveTime: now
   };
+  if (wasDead) {
+    restored.alive = true;
+    restored.health = savedState.maxHealth || 100;
+    restored.spawnProtection = true;
+    restored.spawnProtectionEndTime = now + 8000;
+    restored.combo = 0;
+    restored.comboTimer = 0;
+  }
+  return restored;
 }
 
 /**
