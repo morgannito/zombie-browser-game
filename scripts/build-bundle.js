@@ -22,13 +22,14 @@ function scriptsFromTemplate() {
   const startIdx = tpl.indexOf('APP_SCRIPTS_START');
   const endIdx = tpl.indexOf('APP_SCRIPTS_END');
   if (startIdx === -1 || endIdx === -1) return null;
-  const block = tpl.slice(startIdx, endIdx);
+  // Strip HTML comments so <script> tags referenced in comments aren't picked up.
+  const block = tpl.slice(startIdx, endIdx).replace(/<!--[\s\S]*?-->/g, '');
   const re = /<script[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"/g;
   const out = [];
   let m;
   while ((m = re.exec(block)) !== null) {
     const src = m[1].replace(/^\/+/, '');
-    if (src.startsWith('socket.io') || src.includes('msgpack-parser')) continue;
+    if (src.startsWith('socket.io') || src.includes('msgpack-parser') || src.includes('app.bundle')) continue;
     out.push(src);
   }
   return out.length ? out : null;
