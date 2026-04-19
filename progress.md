@@ -166,3 +166,69 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
 - JSDoc `@param`/`@returns` ajoutés sur toutes les fonctions publiques: AutoTurretHandler, TeslaCoilHandler, DeathProgressionHandler, shopEvents, socketUtils
 - ARCHITECTURE.md mis à jour: table player/ complétée (6 modules)
 - README mis à jour: player/ reflète les 6 modules extraits
+
+## 2026-04-19 - Fix critique gameplay: delta réseau corrompu
+- Bug reproductible confirmé via Playwright headless:
+  - démarrage OK, mais `Vie: NaN`, overlay de game over visible immédiatement, focus sur `respawn-btn`, joueur immobile.
+  - cause racine: les `gameStateDelta` réutilisaient des objets poolés contenant des clés stale à `undefined` (`health`, `maxHealth`, `alive`, `nickname`, etc.), ce qui écrasait l'état complet reçu juste avant.
+- Correctif appliqué:
+  - `lib/server/network/DeltaBuilder.js`: nettoyage réel des objets de pool à la réutilisation (`delete`) au lieu de conserver des clés à `undefined`.
+- Test ajouté:
+  - `__tests__/unit/lib/DeltaBuilder.test.js` verrouille l'absence de clés stale `undefined` sur un second delta.
+- Validation en cours:
+  - redémarrage serveur + tests ciblés + repro navigateur pour confirmer disparition de `NaN` / game over fantôme.
+
+## 2026-04-19 - Fix tir longue distance
+- Symptôme utilisateur: les zombies ne prenaient pas de dégâts à distance alors que le tir semblait visuellement toucher.
+- Analyse:
+  - `transport/websocket/handlers/shoot.js` contenait déjà la doc du problème (viseur aligné sur une position zombie interpolée dans le passé).
+  - La compensation de spawn avait été neutralisée, puis l'ancienne formule réintroduite (`150ms + RTT`) restait incohérente avec le client actuel.
+  - Le client n'utilise plus un buffer fixe: `public/modules/state/GameStateManager.js` applique un délai d'interpolation adaptatif de `30/90/150ms` selon la qualité réseau.
+- Correctif appliqué:
+  - `transport/websocket/handlers/shoot.js`: la compensation serveur reflète maintenant les mêmes paliers que le client (`30/90/150ms`) au lieu d'un `150ms + RTT` figé.
+  - `__tests__/unit/sockets/shootLagCompensation.test.js`: test de régression réactivé et aligné sur cette nouvelle formule.
+- Validation:
+  - `npx jest __tests__/unit/sockets/shootLagCompensation.test.js --runInBand` OK
+
+## 2026-04-19 - Fix réel tir à distance: horloge projectile incohérente
+- Symptôme confirmé en repro headless:
+  - le handler `shoot` acceptait bien les tirs,
+  - mais `gameState.bullets` côté serveur/client restait quasi vide ou passait à `0` immédiatement,
+  - seuls les bullets prédits client existaient, et les zombies ne perdaient aucun PV à distance.
+- Cause racine:
+  - `game/gameLoop.js` pilote les bullets avec `perf.now()`,
+  - mais `lib/server/entity/BulletPool.js` initialisait `createdAt/lastUpdateTime` avec `Date.now()`,
+  - et `transport/websocket/handlers/shoot.js` passait aussi un `createdAt/lifetime` en horloge epoch.
+  - Résultat: au premier `updateBullets`, `deltaTime` devenait massivement négatif, la balle partait hors trajectoire et se faisait détruire immédiatement.
+- Correctif appliqué:
+  - `lib/server/entity/BulletPool.js`: normalisation des timestamps de projectiles vers l'horloge monotone (`perf.now()`), avec conversion automatique des callsites encore en `Date.now()`.
+  - `__tests__/unit/server/entityPools.test.js`: test de non-régression pour verrouiller cette conversion epoch -> monotonic.
+  - Instrumentation temporaire dans `transport/websocket/handlers/shoot.js` utilisée pour confirmer le diagnostic puis retirée.
+- Validation:
+  - `npx jest __tests__/unit/server/entityPools.test.js __tests__/unit/sockets/shootLagCompensation.test.js --runInBand` OK
+  - Repro navigateur headless après patch:
+    - les bullets serveur restent présents (`bullets: 1 -> 6+` au lieu de `0`),
+    - un zombie avec ligne de vue libre perd bien `40 PV` à distance,
+    - seconde repro: plusieurs impacts consécutifs jusqu'à mort du zombie cible.
+
+## 2026-04-19 - Fix critique gameplay: spawn joueur sur pack de zombies
+- Symptôme utilisateur: impossible de lancer une partie correctement, le joueur apparaissait puis tombait quasi immédiatement en mort.
+- Reproduction:
+  - Playwright headless: après `#start-game-btn`, le joueur spawnait à proximité immédiate de zombies existants.
+  - Mesure réelle avant correctif: zombies à `~14`, `20`, `28` et `31 px` du joueur au spawn.
+- Cause racine:
+  - le spawn initial et le respawn utilisaient une position "bas-centre" quasi fixe, sans tenir compte des zombies déjà présents dans `gameState`.
+- Correctif appliqué:
+  - `contexts/session/playerStateFactory.js`: ajout d'un calcul de spawn sûr qui choisit le meilleur candidat valide en maximisant la distance au zombie le plus proche.
+  - `transport/websocket/index.js`: `spawnNewPlayer` passe désormais `gameState` au factory de spawn.
+  - `contexts/player/modules/RespawnHelpers.js` + `transport/websocket/handlers/respawn.js`: même logique réutilisée au respawn.
+- Tests ajoutés/étendus:
+  - `__tests__/unit/sockets/playerStateFactory.test.js`
+  - `contexts/player/modules/__tests__/RespawnHelpers.test.js`
+- Validation:
+  - `npx jest __tests__/unit/sockets/playerStateFactory.test.js --runInBand` OK
+  - `npx jest contexts/player/modules/__tests__/RespawnHelpers.test.js --runInBand` OK
+  - Repro navigateur après redémarrage serveur:
+    - spawn à `x=2880, y=2280`
+    - zombie le plus proche à `~600 px` au démarrage
+    - après 4s, joueur toujours `alive: true`, pas d'overlay de game over.

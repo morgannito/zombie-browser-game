@@ -366,13 +366,11 @@ class CollisionManager {
     // Using hardcoded 120 (boss size) as safe upper bound for broadphase.
     // For non-boss zombies this over-queries slightly but correctness is preserved.
     const maxZombieSize = this._getMaxZombieSize();
-    // BULLET_HIT_TOLERANCE=8 accounts for network lag; must be included in broadphase
-    const hitTolerance = this.config.BULLET_HIT_TOLERANCE || 8;
-    const candidates = this._zombieGrid.nearby(
-      bullet.x,
-      bullet.y,
-      maxZombieSize + this.config.BULLET_SIZE + hitTolerance
-    );
+    // BULLET_HIT_TOLERANCE=8 accounts for network lag; it must affect both
+    // candidate lookup and the exact circle-vs-circle acceptance.
+    const hitTolerance = this.config.BULLET_HIT_TOLERANCE ?? 8;
+    const bulletHitRadius = this.config.BULLET_SIZE + hitTolerance;
+    const candidates = this._zombieGrid.nearby(bullet.x, bullet.y, maxZombieSize + bulletHitRadius);
 
     this._releaseHits();
 
@@ -391,7 +389,7 @@ class CollisionManager {
         MathUtils.circleCollision(
           bullet.x,
           bullet.y,
-          this.config.BULLET_SIZE,
+          bulletHitRadius,
           zombie.x,
           zombie.y,
           zombieSize

@@ -28,11 +28,15 @@ describe('CollisionManager — broadphase inclut BULLET_HIT_TOLERANCE', () => {
       _zombieGrid: grid,
       checkBulletZombieCollisions(bullet) {
         if (!this.quadtree) {
-return [];
-}
+          return [];
+        }
         const maxZombieSize = this.gameState.maxZombieSize || 120;
-        const hitTolerance = this.config.BULLET_HIT_TOLERANCE || 8;
-        this._zombieGrid.nearby(bullet.x, bullet.y, maxZombieSize + this.config.BULLET_SIZE + hitTolerance);
+        const hitTolerance = this.config.BULLET_HIT_TOLERANCE ?? 8;
+        this._zombieGrid.nearby(
+          bullet.x,
+          bullet.y,
+          maxZombieSize + this.config.BULLET_SIZE + hitTolerance
+        );
         return [];
       }
     };

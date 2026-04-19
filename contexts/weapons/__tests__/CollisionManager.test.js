@@ -155,7 +155,9 @@ describe('findClosestPlayer', () => {
     mockQuadtreeInstance.queryRadius.mockReturnValue([
       { type: 'player', entityId: 'p1', x: 10, y: 10 }
     ]);
-    expect(cm.findClosestPlayer(0, 0, Infinity, { ignoreSpawnProtection: true })).toBe(gs.players.p1);
+    expect(cm.findClosestPlayer(0, 0, Infinity, { ignoreSpawnProtection: true })).toBe(
+      gs.players.p1
+    );
   });
 
   test('skips dead players', () => {
@@ -290,10 +292,7 @@ describe('checkBulletZombieCollisions', () => {
     gs.zombies.z2 = { x: 500, y: 500, size: 25 };
     const cm = new CollisionManager(gs, CONFIG);
     cm.rebuildQuadtree();
-    mockGridInstance.nearby.mockReturnValue([
-      { entityId: 'z1' },
-      { entityId: 'z2' }
-    ]);
+    mockGridInstance.nearby.mockReturnValue([{ entityId: 'z1' }, { entityId: 'z2' }]);
     const hits = cm.checkBulletZombieCollisions({ x: 0, y: 0 });
     expect(hits).toHaveLength(1);
     expect(hits[0].id).toBe('z1');
@@ -304,10 +303,7 @@ describe('checkBulletZombieCollisions', () => {
     gs.zombies.z1 = { x: 0, y: 0, size: 25 };
     const cm = new CollisionManager(gs, CONFIG);
     cm.rebuildQuadtree();
-    mockGridInstance.nearby.mockReturnValue([
-      { entityId: 'z1' },
-      { entityId: 'z-deleted' }
-    ]);
+    mockGridInstance.nearby.mockReturnValue([{ entityId: 'z1' }, { entityId: 'z-deleted' }]);
     const hits = cm.checkBulletZombieCollisions({ x: 0, y: 0 });
     expect(hits).toHaveLength(1);
     expect(hits[0].id).toBe('z1');
@@ -320,6 +316,24 @@ describe('checkBulletZombieCollisions', () => {
     cm.rebuildQuadtree();
     mockGridInstance.nearby.mockReturnValue([{ entityId: 'z1' }]);
     expect(cm.checkBulletZombieCollisions({ x: 0, y: 0 })).toHaveLength(1);
+  });
+
+  test('applies BULLET_HIT_TOLERANCE to exact hit validation', () => {
+    const gs = makeGameState();
+    gs.zombies.z1 = { x: 35, y: 0, size: 25 };
+    const cm = new CollisionManager(gs, { ...CONFIG, BULLET_HIT_TOLERANCE: 8 });
+    cm.rebuildQuadtree();
+    mockGridInstance.nearby.mockReturnValue([{ entityId: 'z1' }]);
+    expect(cm.checkBulletZombieCollisions({ x: 0, y: 0 })).toHaveLength(1);
+  });
+
+  test('respects BULLET_HIT_TOLERANCE=0 when exact hit margin is disabled', () => {
+    const gs = makeGameState();
+    gs.zombies.z1 = { x: 35, y: 0, size: 25 };
+    const cm = new CollisionManager(gs, { ...CONFIG, BULLET_HIT_TOLERANCE: 0 });
+    cm.rebuildQuadtree();
+    mockGridInstance.nearby.mockReturnValue([{ entityId: 'z1' }]);
+    expect(cm.checkBulletZombieCollisions({ x: 0, y: 0 })).toHaveLength(0);
   });
 });
 
@@ -351,9 +365,9 @@ describe.skip('checkZombiePlayerCollisions', () => {
 describe('isOutOfBounds', () => {
   test('detects each of the 4 walls', () => {
     const cm = new CollisionManager(makeGameState(), CONFIG);
-    expect(cm.isOutOfBounds(10, 500)).toBe(true);  // left
+    expect(cm.isOutOfBounds(10, 500)).toBe(true); // left
     expect(cm.isOutOfBounds(1990, 500)).toBe(true); // right
-    expect(cm.isOutOfBounds(500, 10)).toBe(true);  // top
+    expect(cm.isOutOfBounds(500, 10)).toBe(true); // top
     expect(cm.isOutOfBounds(500, 1990)).toBe(true); // bottom
     expect(cm.isOutOfBounds(1000, 1000)).toBe(false); // center
   });

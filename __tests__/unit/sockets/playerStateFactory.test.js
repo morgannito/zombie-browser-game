@@ -1,4 +1,7 @@
-const { createPlayerState } = require('../../../contexts/session/playerStateFactory');
+const {
+  createPlayerState,
+  resolvePlayerSpawnPosition
+} = require('../../../contexts/session/playerStateFactory');
 
 describe('playerStateFactory', () => {
   afterEach(() => {
@@ -76,5 +79,31 @@ describe('playerStateFactory', () => {
     const player = createPlayerState(config, 'socket-c');
     expect(player.x).toBe(60);
     expect(player.y).toBe(60);
+  });
+
+  test('chooses a spawn away from an existing zombie cluster when gameState is provided', () => {
+    const config = {
+      ROOM_WIDTH: 3000,
+      ROOM_HEIGHT: 2400,
+      WALL_THICKNESS: 40,
+      PLAYER_SIZE: 20,
+      PLAYER_MAX_HEALTH: 100
+    };
+    const gameState = {
+      zombies: {
+        z1: { x: 1500, y: 2240, health: 100 },
+        z2: { x: 1460, y: 2200, health: 100 },
+        z3: { x: 1540, y: 2200, health: 100 }
+      },
+      walls: []
+    };
+
+    const spawn = resolvePlayerSpawnPosition(config, gameState);
+    const nearestDist = Math.min(
+      ...Object.values(gameState.zombies).map(z => Math.hypot(z.x - spawn.x, z.y - spawn.y))
+    );
+
+    expect(nearestDist).toBeGreaterThan(300);
+    expect(spawn.y).toBeLessThan(1000);
   });
 });

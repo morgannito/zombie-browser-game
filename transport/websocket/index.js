@@ -108,7 +108,13 @@ function spawnNewPlayer(socket, sessionId, accountId, gameState, perfIntegration
   if (rejectIfServerFull(socket, perfIntegration, gameState)) {
     return false;
   }
-  gameState.players[socket.id] = createPlayerState(CONFIG, socket.id, sessionId || null, accountId);
+  gameState.players[socket.id] = createPlayerState(
+    CONFIG,
+    socket.id,
+    sessionId || null,
+    accountId,
+    gameState
+  );
   return true;
 }
 
@@ -244,7 +250,15 @@ function initSocketHandlers(
     if (socket.spectator) {
       logger.info('Spectator connected', { socketId: socket.id, traceId });
       emitInitSnapshot(socket, gameState, false);
-      registerDisconnectHandler(socket, gameState, entityManager, sessionId, accountId, networkManager, () => {});
+      registerDisconnectHandler(
+        socket,
+        gameState,
+        entityManager,
+        sessionId,
+        accountId,
+        networkManager,
+        () => {}
+      );
       return;
     }
 

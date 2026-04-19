@@ -2,6 +2,8 @@
  * @fileoverview Pure helpers for player respawn logic
  */
 
+const { resolvePlayerSpawnPosition } = require('../../session/playerStateFactory');
+
 /**
  * Captures upgrades, multipliers, level/xp and level-up stats from a player.
  * @param {object} player
@@ -42,11 +44,7 @@ function savePlayerProgressionSnapshot(player) {
  * @param {object} config - CONFIG object
  * @param {number} totalMaxHealth - pre-computed max health
  */
-function resetPlayerRunState(player, config, totalMaxHealth) {
-  const wallThickness = config.WALL_THICKNESS || 40;
-  const playerSize = config.PLAYER_SIZE || 20;
-  const safeMargin = wallThickness + playerSize + 20;
-
+function resetPlayerRunState(player, config, totalMaxHealth, gameState = null) {
   player.nickname = null;
   player.hasNickname = false;
   player.spawnProtection = false;
@@ -54,10 +52,9 @@ function resetPlayerRunState(player, config, totalMaxHealth) {
   player.invisible = false;
   player.invisibleEndTime = 0;
 
-  const offsetX = (Math.random() - 0.5) * 100;
-  const offsetY = Math.random() * 40;
-  player.x = config.ROOM_WIDTH / 2 + offsetX;
-  player.y = config.ROOM_HEIGHT - safeMargin - 50 - offsetY;
+  const spawn = resolvePlayerSpawnPosition(config, gameState);
+  player.x = spawn.x;
+  player.y = spawn.y;
 
   player.health = totalMaxHealth;
   player.maxHealth = totalMaxHealth;

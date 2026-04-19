@@ -8,14 +8,14 @@
  *   by the time the bullet arrives the zombie has moved. Hits visually, misses
  *   on the server.
  *
- * Fix: at shoot time, advance the bullet spawn along its velocity by
- * (player.latency + CLIENT_INTERP_DELAY_MS) worth of travel, clamped to a safe
- * maximum and stopped at walls.
+ * Fix: at shoot time, mirror the client's adaptive interpolation delay
+ * (30/90/150ms buckets) so the server bullet starts from the same temporal
+ * reference frame as the crosshair.
  */
 'use strict';
 
 jest.mock('../../../game/validationFunctions', () => ({
-  validateShootData: d => d && typeof d.angle === 'number' ? d : null
+  validateShootData: d => (d && typeof d.angle === 'number' ? d : null)
 }));
 
 jest.mock('../../../sockets/rateLimitStore', () => ({
@@ -23,7 +23,10 @@ jest.mock('../../../sockets/rateLimitStore', () => ({
 }));
 
 jest.mock('../../../infrastructure/logging/Logger', () => ({
-  warn: jest.fn(), info: jest.fn(), debug: jest.fn(), error: jest.fn()
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  error: jest.fn()
 }));
 
 jest.mock('../../../infrastructure/metrics/MetricsCollector', () => ({
@@ -58,13 +61,13 @@ function makeSocket() {
   return {
     id: 'sh-1',
     on(event, handler) {
- handlers[event] = handler;
-},
+      handlers[event] = handler;
+    },
     emit: jest.fn(),
     disconnect: jest.fn(),
     trigger(event, payload) {
- handlers[event](payload);
-}
+      handlers[event](payload);
+    }
   };
 }
 
@@ -86,14 +89,13 @@ function captureBullets() {
   const spawned = [];
   return {
     createBullet(b) {
- spawned.push({ ...b });
-},
+      spawned.push({ ...b });
+    },
     spawned
   };
 }
 
-// TODO: spawnCompensationMs not yet implemented in shoot handler
-describe.skip('shoot handler lag compensation (regression)', () => {
+describe('shoot handler lag compensation (regression)', () => {
   test('bullet carries spawnCompensationMs flag for BulletUpdater consumption', () => {
     const socket = makeSocket();
     const player = makePlayer();
@@ -109,28 +111,26 @@ describe.skip('shoot handler lag compensation (regression)', () => {
     expect(b.x).toBe(player.x);
     expect(b.y).toBe(player.y);
     expect(b.vx).toBeCloseTo(12);
-    // Default interp delay 150ms, no latency → spawnCompensationMs = 150.
-    expect(b.spawnCompensationMs).toBe(150);
+    // Stable link → client interpolation buffer is 30ms.
+    expect(b.spawnCompensationMs).toBe(30);
   });
 
-  test('higher latency yields proportionally larger compensation', () => {
+  test('medium latency maps to the client medium interpolation bucket', () => {
     const socket = makeSocket();
     const player = makePlayer({ latency: 200 });
     const em = captureBullets();
     registerShootHandler(socket, { players: { [socket.id]: player } }, em, {});
     socket.trigger(SOCKET_EVENTS.CLIENT.SHOOT, { angle: 0 });
-    // latency (200) + interp (150) = 350
-    expect(em.spawned[0].spawnCompensationMs).toBe(350);
+    expect(em.spawned[0].spawnCompensationMs).toBe(90);
   });
 
-  test('latency clamped at MAX_LAG_COMPENSATION_MS (250)', () => {
+  test('high latency maps to the client high interpolation bucket', () => {
     const socket = makeSocket();
     const player = makePlayer({ latency: 5000 });
     const em = captureBullets();
     registerShootHandler(socket, { players: { [socket.id]: player } }, em, {});
     socket.trigger(SOCKET_EVENTS.CLIENT.SHOOT, { angle: 0 });
-    // capped 250 + 150 interp = 400ms max
-    expect(em.spawned[0].spawnCompensationMs).toBe(400);
+    expect(em.spawned[0].spawnCompensationMs).toBe(150);
   });
 
   test('BulletUpdater fast-forwards first tick by spawnCompensationMs then clears it', () => {
@@ -138,8 +138,12 @@ describe.skip('shoot handler lag compensation (regression)', () => {
     // actually running a full tick loop (collision deps are heavy). We inline
     // the relevant logic to verify the contract.
     const bullet = {
-      x: 0, y: 0, vx: 12, vy: 0,
-      lastUpdateTime: 100, createdAt: 100,
+      x: 0,
+      y: 0,
+      vx: 12,
+      vy: 0,
+      lastUpdateTime: 100,
+      createdAt: 100,
       spawnCompensationMs: 350
     };
     const now = 116; // one frame elapsed

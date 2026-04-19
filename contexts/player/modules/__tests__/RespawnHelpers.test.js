@@ -12,12 +12,23 @@ describe('savePlayerProgressionSnapshot', () => {
   test('captures upgrades, multipliers, progression, and level-up stats', () => {
     const player = {
       upgrades: { damage: 2, fireRate: 1 },
-      damageMultiplier: 1.5, speedMultiplier: 1.2, fireRateMultiplier: 0.8,
-      level: 7, xp: 1200,
-      regeneration: 5, bulletPiercing: 1, lifeSteal: 0.1,
-      criticalChance: 0.15, goldMagnetRadius: 100, dodgeChance: 0.05,
-      explosiveRounds: true, explosionRadius: 50, explosionDamagePercent: 0.5,
-      extraBullets: 2, thorns: 0.3, autoTurrets: 1
+      damageMultiplier: 1.5,
+      speedMultiplier: 1.2,
+      fireRateMultiplier: 0.8,
+      level: 7,
+      xp: 1200,
+      regeneration: 5,
+      bulletPiercing: 1,
+      lifeSteal: 0.1,
+      criticalChance: 0.15,
+      goldMagnetRadius: 100,
+      dodgeChance: 0.05,
+      explosiveRounds: true,
+      explosionRadius: 50,
+      explosionDamagePercent: 0.5,
+      extraBullets: 2,
+      thorns: 0.3,
+      autoTurrets: 1
     };
     const snap = savePlayerProgressionSnapshot(player);
     expect(snap.upgrades).toEqual({ damage: 2, fireRate: 1 });
@@ -50,8 +61,10 @@ describe('resetPlayerRunState', () => {
       gold: 999,
       score: 9999,
       weapon: 'rocketLauncher',
-      combo: 15, highestCombo: 20,
-      kills: 10, zombiesKilled: 10,
+      combo: 15,
+      highestCombo: 20,
+      kills: 10,
+      zombiesKilled: 10,
       level: 7 // kept by caller
     };
     resetPlayerRunState(player, config, 250);
@@ -82,12 +95,33 @@ describe('resetPlayerRunState', () => {
     const minConfig = { ROOM_WIDTH: 800, ROOM_HEIGHT: 800 };
     expect(() => resetPlayerRunState(player, minConfig, 100)).not.toThrow();
   });
+
+  test('repositions player away from nearby zombie cluster when gameState is provided', () => {
+    const player = {};
+    const gameState = {
+      zombies: {
+        z1: { x: 500, y: 900, health: 100 },
+        z2: { x: 470, y: 860, health: 100 },
+        z3: { x: 530, y: 860, health: 100 }
+      },
+      walls: []
+    };
+
+    resetPlayerRunState(player, config, 100, gameState);
+
+    const nearestDist = Math.min(
+      ...Object.values(gameState.zombies).map(z => Math.hypot(z.x - player.x, z.y - player.y))
+    );
+    expect(nearestDist).toBeGreaterThan(250);
+  });
 });
 
 describe('restorePlayerProgression', () => {
   test('reapplies snapshot fields and resets timers', () => {
     const player = {
-      level: 1, xp: 0, damageMultiplier: 1,
+      level: 1,
+      xp: 0,
+      damageMultiplier: 1,
       regeneration: 0
     };
     const snapshot = {

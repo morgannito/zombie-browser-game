@@ -15,15 +15,29 @@ const ConfigManager = require('../../../lib/server/ConfigManager');
 const { CONFIG, WEAPONS } = ConfigManager;
 
 // LAG COMPENSATION:
-// Clients render remote entities ~150ms behind server time (interpolation
-// buffer). When a player shoots, their crosshair is aligned with THAT past
-// state, but by the time the bullet lands the zombie has moved (latency +
-// interp_delay) ms forward. Bullets "visually hit" but server sees a miss.
-// We tag new bullets with `spawnCompensationMs`; the BulletUpdater consumes
-// this on the first tick and advances the bullet through its normal swept
-// collision pipeline, which already handles zombies AND walls correctly.
-const CLIENT_INTERP_DELAY_MS = 150;
-const MAX_LAG_COMPENSATION_MS = 250;
+// The client renders remote entities from its interpolation buffer using the
+// adaptive delay in GameStateManager: 30ms on a stable link, 90ms when latency
+// rises, 150ms on a poor connection. The server must mirror THAT visual delay
+// when spawning bullets, otherwise the first authoritative bullet step starts
+// too far ahead/behind the target the player actually aimed at.
+//
+// Important: the client time-sync path already estimates current server time,
+// so the render lag is the interpolation buffer itself, not "buffer + full RTT".
+// Using a fixed 150ms (or worse, 150ms + RTT) over-compensates on low-latency
+// links and makes distant shots miss even when the crosshair is on the zombie.
+const CLIENT_INTERP_DELAY_LOW_MS = 30;
+const CLIENT_INTERP_DELAY_MEDIUM_MS = 90;
+const CLIENT_INTERP_DELAY_HIGH_MS = 150;
+
+function _estimateClientInterpDelayMs(reportedLatencyMs) {
+  if (reportedLatencyMs > 300) {
+    return CLIENT_INTERP_DELAY_HIGH_MS;
+  }
+  if (reportedLatencyMs > 150) {
+    return CLIENT_INTERP_DELAY_MEDIUM_MS;
+  }
+  return CLIENT_INTERP_DELAY_LOW_MS;
+}
 
 /**
  * Compute effective fire rate for a player/weapon combination.
@@ -46,9 +60,7 @@ function _computeFireRate(weapon, player, mutatorEffects) {
  */
 function _rollBulletDamage(weapon, player, mutatorEffects) {
   let damage =
-    weapon.damage *
-    (player.damageMultiplier || 1) *
-    (mutatorEffects.playerDamageMultiplier || 1);
+    weapon.damage * (player.damageMultiplier || 1) * (mutatorEffects.playerDamageMultiplier || 1);
   const totalCritChance = (player.criticalChance || 0) + (weapon.criticalChance || 0);
   const isCritical = Math.random() < totalCritChance;
   if (isCritical) {
@@ -86,15 +98,22 @@ function _resolveBulletOrigin(validatedData, player) {
  * @param {number} now
  * @returns {void}
  */
-function _spawnBullets(entityManager, validatedData, player, weapon, mutatorEffects, socketId, now) {
+function _spawnBullets(
+  entityManager,
+  validatedData,
+  player,
+  weapon,
+  mutatorEffects,
+  socketId,
+  now
+) {
   const totalBullets = weapon.bulletCount + (player.extraBullets || 0);
   const MAX_TOTAL_BULLETS = 50;
   const safeBulletCount = Math.min(totalBullets, MAX_TOTAL_BULLETS);
 
-  // Lag compensation removed: fast-forwarding the bullet against a
-  // non-rewound zombie position produced trajectory mismatches.
-  const compensationMs = 0;
-  void CLIENT_INTERP_DELAY_MS; void MAX_LAG_COMPENSATION_MS;
+  // Mirror the client's adaptive interpolation buffer so the authoritative
+  // bullet starts from the same temporal reference frame as the crosshair.
+  const compensationMs = _estimateClientInterpDelayMs(Math.max(player.latency || 0, 0));
 
   const weaponPiercing = weapon.piercing || weapon.plasmaPiercing || 0;
   const totalPiercing = (player.bulletPiercing || 0) + weaponPiercing;
@@ -156,12 +175,19 @@ function registerShootHandler(socket, gameState, entityManager, _roomManager) {
       }
       // DoS guard: a shoot payload is never more than a few fields.
       if (!data || Buffer.byteLength(JSON.stringify(data), 'utf8') > 512) {
-        logger.warn('shoot: oversized payload rejected', { socketId: socket.id, traceId: socket.traceId || null });
+        logger.warn('shoot: oversized payload rejected', {
+          socketId: socket.id,
+          traceId: socket.traceId || null
+        });
         return;
       }
       const validatedData = validateShootData(data);
       if (!validatedData) {
-        logger.warn('Invalid shoot data received', { socketId: socket.id, data, traceId: socket.traceId || null });
+        logger.warn('Invalid shoot data received', {
+          socketId: socket.id,
+          data,
+          traceId: socket.traceId || null
+        });
         return;
       }
 
@@ -192,7 +218,6 @@ function registerShootHandler(socket, gameState, entityManager, _roomManager) {
         return;
       }
       player.lastShot = now;
-
       _spawnBullets(entityManager, validatedData, player, weapon, mutatorEffects, socket.id, now);
     })
   );

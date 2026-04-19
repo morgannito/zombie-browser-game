@@ -1,5 +1,7 @@
 'use strict';
 
+const { performance } = require('perf_hooks');
+
 const BulletPool = require('../../../lib/server/entity/BulletPool');
 const ParticlePool = require('../../../lib/server/entity/ParticlePool');
 const EffectPool = require('../../../lib/server/entity/EffectPool');
@@ -21,6 +23,10 @@ function makeGameState() {
 const CONFIG = { BULLET_SIZE: 5 };
 
 describe('BulletPool', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('test_createBullet_registers_in_gameState', () => {
     const pool = new BulletPool(CONFIG);
     const gs = makeGameState();
@@ -65,6 +71,30 @@ describe('BulletPool', () => {
     pool.destroyBullet(b1.id, gs);
     const b2 = pool.createBullet({ x: 0, y: 0, vx: 0, vy: 0, damage: 5 }, gs);
     expect(b2.spawnCompensationMs).toBe(0);
+  });
+
+  test('test_epoch_timestamps_are_normalized_to_monotonic_clock', () => {
+    const pool = new BulletPool(CONFIG);
+    const gs = makeGameState();
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    jest.spyOn(performance, 'now').mockReturnValue(12_345);
+
+    const bullet = pool.createBullet(
+      {
+        x: 10,
+        y: 20,
+        vx: 5,
+        vy: 0,
+        damage: 5,
+        createdAt: 1_700_000_000_000,
+        lifetime: 1_700_000_001_500
+      },
+      gs
+    );
+
+    expect(bullet.createdAt).toBe(12_345);
+    expect(bullet.lastUpdateTime).toBe(12_345);
+    expect(bullet.lifetime).toBe(13_845);
   });
 
   test('test_destroyBullet_unknown_id_does_not_throw', () => {

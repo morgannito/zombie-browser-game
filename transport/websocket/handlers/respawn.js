@@ -38,11 +38,10 @@ function registerRespawnHandler(socket, gameState, entityManager) {
       player.lastActivityTime = Date.now();
 
       const snapshot = savePlayerProgressionSnapshot(player);
-      const totalMaxHealth =
-        CONFIG.PLAYER_MAX_HEALTH + (snapshot.upgrades.maxHealth || 0) * 20;
+      const totalMaxHealth = CONFIG.PLAYER_MAX_HEALTH + (snapshot.upgrades.maxHealth || 0) * 20;
 
       cleanupPlayerBullets(socket.id, gameState, entityManager);
-      resetPlayerRunState(player, CONFIG, totalMaxHealth);
+      resetPlayerRunState(player, CONFIG, totalMaxHealth, gameState);
       restorePlayerProgression(player, snapshot);
     })
   );
