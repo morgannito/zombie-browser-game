@@ -32,7 +32,16 @@ const {
  */
 function mountIndexRoute(app) {
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  const bundlePath = path.join(__dirname, '..', 'public', 'app.bundle.js');
   const msgpackEnabled = process.env.ENABLE_MSGPACK === 'true';
+  // Cache-bust the bundle URL using the file mtime so browsers refetch on rebuild.
+  function bundleVersion() {
+    try {
+      return fs.statSync(bundlePath).mtimeMs.toString(36);
+    } catch (_) {
+      return Date.now().toString(36);
+    }
+  }
 
   app.get(['/', '/index.html'], function (req, res) {
     fs.readFile(indexPath, 'utf8', function (err, html) {
@@ -57,7 +66,7 @@ function mountIndexRoute(app) {
           const commentEnd = patched.indexOf('-->', startIdx) + 3;
           patched =
             patched.slice(0, commentEnd) +
-            '\n    <script src="app.bundle.js"></script>\n    ' +
+            '\n    <script src="app.bundle.js?v=' + bundleVersion() + '"></script>\n    ' +
             patched.slice(endIdx);
         }
       }
