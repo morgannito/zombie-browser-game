@@ -65,6 +65,7 @@ const SCRIPTS = [
   'modules/managers/CameraManager.js',
   'modules/ui/UIManager.js',
   'modules/ui/NicknameManager.js',
+  'modules/ui/HelpMenu.js',
   'modules/systems/ComboSystem.js',
   'modules/systems/ToastManager.js',
   'modules/systems/LeaderboardSystem.js',
