@@ -7,16 +7,20 @@ class TutorialOverlay {
 
   static STEPS = [
     { text: 'Bouge avec WASD / ZQSD', hint: 'Déplace-toi pour continuer', waitEvent: 'zbg:moved' },
-    { text: 'Clique pour tirer sur les zombies', hint: 'Tue un zombie pour continuer', waitEvent: 'zbg:kill' },
-    { text: 'E pour changer d\'arme · P pour ouvrir le shop', hint: null, waitEvent: null }
+    {
+      text: 'Clique pour tirer sur les zombies',
+      hint: 'Tue un zombie pour continuer',
+      waitEvent: 'zbg:kill'
+    },
+    { text: "E pour changer d'arme · P pour ouvrir le shop", hint: null, waitEvent: null }
   ];
 
   constructor() {
     this.current = 0;
     this._stepUnlocked = false;
     if (this._isCompleted()) {
-return;
-}
+      return;
+    }
     // Wait for game start (nickname dismissed) before showing tutorial.
     // Otherwise the overlay blocks the #start-game-btn click.
     this._waitForGameStart(() => {
@@ -40,10 +44,10 @@ return;
 
   _isCompleted() {
     try {
- return !!localStorage.getItem(TutorialOverlay.STORAGE_KEY);
-} catch {
- return true;
-}
+      return !!localStorage.getItem(TutorialOverlay.STORAGE_KEY);
+    } catch {
+      return true;
+    }
   }
 
   _inject() {
@@ -87,7 +91,9 @@ return;
     const s = document.createElement('style');
     s.textContent = [
       '#zbg-tutorial{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);}',
-      '.zbg-tut-box{background:linear-gradient(135deg,rgba(15,15,30,.97),rgba(25,25,45,.97));border:2px solid #00ff00;border-radius:12px;padding:32px 36px;min-width:320px;max-width:480px;text-align:center;box-shadow:0 0 40px rgba(0,255,0,.4);color:#fff;font-family:inherit;}',
+      '.zbg-tut-box{background:linear-gradient(135deg,rgba(15,15,30,.97),rgba(25,25,45,.97));' +
+        'border:2px solid #00ff00;border-radius:12px;padding:32px 36px;min-width:320px;max-width:480px;' +
+        'text-align:center;box-shadow:0 0 40px rgba(0,255,0,.4);color:#fff;font-family:inherit;}',
       '.zbg-tut-step{color:#00ff00;font-size:13px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.08em;}',
       '.zbg-tut-text{font-size:22px;font-weight:bold;margin:0 0 24px;}',
       '.zbg-tut-footer{display:flex;justify-content:space-between;gap:12px;}',
@@ -101,7 +107,18 @@ return;
 
   _bindGameEvents() {
     // Movement detection (WASD / ZQSD / arrows)
-    const moveKeys = new Set(['w','a','s','d','z','q','arrowup','arrowdown','arrowleft','arrowright']);
+    const moveKeys = new Set([
+      'w',
+      'a',
+      's',
+      'd',
+      'z',
+      'q',
+      'arrowup',
+      'arrowdown',
+      'arrowleft',
+      'arrowright'
+    ]);
     this._onKey = e => {
       if (moveKeys.has(e.key.toLowerCase())) {
         document.dispatchEvent(new CustomEvent('zbg:moved'));
@@ -158,29 +175,33 @@ return;
 
   _complete() {
     try {
- localStorage.setItem(TutorialOverlay.STORAGE_KEY, '1');
-} catch { /* ignore */ }
+      localStorage.setItem(TutorialOverlay.STORAGE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
     if (this._onKey) {
-document.removeEventListener('keydown', this._onKey);
-}
+      document.removeEventListener('keydown', this._onKey);
+    }
     if (this._onKill) {
-document.removeEventListener('zbg:zombie:killed', this._onKill);
-}
+      document.removeEventListener('zbg:zombie:killed', this._onKill);
+    }
     this.el.remove();
   }
 
   /** Public: reset depuis SettingsMenu */
   static reset() {
     try {
- localStorage.removeItem(TutorialOverlay.STORAGE_KEY);
-} catch { /* ignore */ }
+      localStorage.removeItem(TutorialOverlay.STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
 if (typeof window !== 'undefined') {
   const init = () => {
- window.tutorialOverlay = new TutorialOverlay();
-};
+    window.tutorialOverlay = new TutorialOverlay();
+  };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

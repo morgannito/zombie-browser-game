@@ -33,7 +33,7 @@ class PerformanceSettingsManager {
     // Adaptive quality: track sustained FPS windows
     this.adaptiveQualityEnabled = true; // User-toggleable
     this.adaptiveQualityActive = false; // Whether quality is currently reduced
-    this._lowFpsStart = null;  // Timestamp when FPS first dropped below 45
+    this._lowFpsStart = null; // Timestamp when FPS first dropped below 45
     this._highFpsStart = null; // Timestamp when FPS first rose above 55
 
     // MEMORY LEAK FIX: Track FPS monitoring interval
@@ -197,7 +197,8 @@ class PerformanceSettingsManager {
     const isPerf = mode === 'performance';
     document.getElementById('resolution-slider').value = isPerf ? 75 : 100;
     document.getElementById('resolution-value').textContent = isPerf ? '75%' : '100%';
-    document.querySelector(`input[name="targetFPS"][value="${isPerf ? '30' : '60'}"]`).checked = true;
+    document.querySelector(`input[name="targetFPS"][value="${isPerf ? '30' : '60'}"]`).checked =
+      true;
     document.getElementById('particles-checkbox').checked = !isPerf;
     document.getElementById('grid-checkbox').checked = !isPerf;
   }
@@ -332,8 +333,8 @@ class PerformanceSettingsManager {
       ${this._buildPerfSectionHTML()}
       ${this._buildDisplaySectionHTML()}
       <div style="margin-top: 20px; text-align: center;">
-        <button id="apply-settings-btn" style="background:linear-gradient(135deg,#00ff00,#00cc00);color:#000;border:none;padding:12px 30px;font-size:16px;font-weight:bold;border-radius:8px;cursor:pointer;margin-right:10px;transition:all 0.3s ease;">Appliquer</button>
-        <button id="close-settings-btn" style="background:rgba(100,100,100,0.8);color:#fff;border:none;padding:12px 30px;font-size:16px;font-weight:bold;border-radius:8px;cursor:pointer;transition:all 0.3s ease;">Fermer</button>
+        <button id="apply-settings-btn" class="ps-btn ps-btn-apply">Appliquer</button>
+        <button id="close-settings-btn" class="ps-btn ps-btn-close">Fermer</button>
       </div>
     `;
 
@@ -937,14 +938,14 @@ class PerformanceSettingsManager {
    */
   _tickAdaptiveQuality(now) {
     if (!this.adaptiveQualityEnabled || this.currentFPS <= 0) {
-return;
-}
+      return;
+    }
 
     if (!this.adaptiveQualityActive) {
       if (this.currentFPS < 45) {
         if (!this._lowFpsStart) {
-this._lowFpsStart = now;
-} else if (now - this._lowFpsStart >= 3000) {
+          this._lowFpsStart = now;
+        } else if (now - this._lowFpsStart >= 3000) {
           this._lowFpsStart = null;
           this._highFpsStart = null;
           this._applyAdaptiveQualityLow();
@@ -955,8 +956,8 @@ this._lowFpsStart = now;
     } else {
       if (this.currentFPS > 55) {
         if (!this._highFpsStart) {
-this._highFpsStart = now;
-} else if (now - this._highFpsStart >= 5000) {
+          this._highFpsStart = now;
+        } else if (now - this._highFpsStart >= 5000) {
           this._highFpsStart = null;
           this._lowFpsStart = null;
           this._applyAdaptiveQualityRestore();
@@ -1046,11 +1047,15 @@ this._highFpsStart = now;
 
     this.saveSettings();
     if (window.gameEngine) {
-window.gameEngine.onPerformanceSettingsChanged(this.settings);
-}
+      window.gameEngine.onPerformanceSettingsChanged(this.settings);
+    }
 
     if (window.toastManager) {
-      window.toastManager.show({ message: '⚡ Qualité auto-réduite (FPS bas)', type: 'warning', duration: 4000 });
+      window.toastManager.show({
+        message: '⚡ Qualité auto-réduite (FPS bas)',
+        type: 'warning',
+        duration: 4000
+      });
     }
   }
 
@@ -1071,11 +1076,15 @@ window.gameEngine.onPerformanceSettingsChanged(this.settings);
 
     this.saveSettings();
     if (window.gameEngine) {
-window.gameEngine.onPerformanceSettingsChanged(this.settings);
-}
+      window.gameEngine.onPerformanceSettingsChanged(this.settings);
+    }
 
     if (window.toastManager) {
-      window.toastManager.show({ message: '✅ Qualité restaurée', type: 'success', duration: 3000 });
+      window.toastManager.show({
+        message: '✅ Qualité restaurée',
+        type: 'success',
+        duration: 3000
+      });
     }
   }
 
@@ -1091,8 +1100,8 @@ window.gameEngine.onPerformanceSettingsChanged(this.settings);
       this.settings.gridEnabled === false &&
       this.settings.resolutionScale <= 0.5;
     if (allDowngraded) {
-return;
-}
+      return;
+    }
 
     logger.warn(`Low FPS detected (${this.currentFPS} FPS), auto-adjusting performance...`);
 

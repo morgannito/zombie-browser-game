@@ -17,11 +17,15 @@ const PUBLIC = path.resolve(__dirname, '../public');
 // Parse index.html.tpl as single source of truth for script load order.
 function scriptsFromTemplate() {
   const tplPath = path.join(PUBLIC, 'index.html.tpl');
-  if (!fs.existsSync(tplPath)) return null;
+  if (!fs.existsSync(tplPath)) {
+    return null;
+  }
   const tpl = fs.readFileSync(tplPath, 'utf8');
   const startIdx = tpl.indexOf('APP_SCRIPTS_START');
   const endIdx = tpl.indexOf('APP_SCRIPTS_END');
-  if (startIdx === -1 || endIdx === -1) return null;
+  if (startIdx === -1 || endIdx === -1) {
+    return null;
+  }
   // Strip HTML comments so <script> tags referenced in comments aren't picked up.
   const block = tpl.slice(startIdx, endIdx).replace(/<!--[\s\S]*?-->/g, '');
   const re = /<script[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"/g;
@@ -29,7 +33,13 @@ function scriptsFromTemplate() {
   let m;
   while ((m = re.exec(block)) !== null) {
     const src = m[1].replace(/^\/+/, '');
-    if (src.startsWith('socket.io') || src.includes('msgpack-parser') || src.includes('app.bundle')) continue;
+    if (
+      src.startsWith('socket.io') ||
+      src.includes('msgpack-parser') ||
+      src.includes('app.bundle')
+    ) {
+      continue;
+    }
     out.push(src);
   }
   return out.length ? out : null;
@@ -142,10 +152,14 @@ fs.writeFileSync(tmpConcat, parts.join('\n'));
 console.log('Minifying with esbuild...');
 try {
   const esbuildBin = path.resolve(__dirname, '../node_modules/.bin/esbuild');
-  execFileSync(esbuildBin, [tmpConcat, '--minify', '--drop:console', '--outfile=' + outFile, '--log-level=warning'], {
-    stdio: 'inherit',
-    cwd: path.resolve(__dirname, '..')
-  });
+  execFileSync(
+    esbuildBin,
+    [tmpConcat, '--minify', '--drop:console', '--outfile=' + outFile, '--log-level=warning'],
+    {
+      stdio: 'inherit',
+      cwd: path.resolve(__dirname, '..')
+    }
+  );
   fs.unlinkSync(tmpConcat);
 
   const size = fs.statSync(outFile).size;

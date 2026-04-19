@@ -52,9 +52,10 @@ class LeaderboardSystem {
       // it as a start timestamp; otherwise treat it as already in seconds.
       let survivalTime = 0;
       if (typeof player.survivalTime === 'number' && player.survivalTime > 0) {
-        survivalTime = player.survivalTime > 1e12
-          ? Math.floor((Date.now() - player.survivalTime) / 1000)
-          : Math.floor(player.survivalTime);
+        survivalTime =
+          player.survivalTime > 1e12
+            ? Math.floor((Date.now() - player.survivalTime) / 1000)
+            : Math.floor(player.survivalTime);
       }
 
       const entry = {
@@ -290,13 +291,27 @@ class LeaderboardSystem {
     table.style.cssText = 'width:100%;color:white;border-collapse:collapse;';
     const thead = document.createElement('tr');
     thead.style.cssText = 'background:rgba(255,215,0,0.2);border-bottom:2px solid #FFD700;';
-    thead.innerHTML = '<th style="padding:10px;text-align:left;">Rang</th><th style="padding:10px;text-align:left;">Joueur</th><th style="padding:10px;text-align:center;">Score</th><th style="padding:10px;text-align:center;">Kills</th><th style="padding:10px;text-align:center;">Vague</th>';
+    const thL = 'padding:10px;text-align:left;';
+    const thC = 'padding:10px;text-align:center;';
+    [
+      ['Rang', thL],
+      ['Joueur', thL],
+      ['Score', thC],
+      ['Kills', thC],
+      ['Vague', thC]
+    ].forEach(([label, css]) => {
+      const th = document.createElement('th');
+      th.style.cssText = css;
+      th.textContent = label;
+      thead.appendChild(th);
+    });
     table.appendChild(thead);
 
     pageEntries.forEach((entry, i) => {
       const index = start + i;
-      const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
-      const rankIcon = index < 3 ? ['🥇','🥈','🥉'][index] : String(index + 1);
+      const rankColor =
+        index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#fff';
+      const rankIcon = index < 3 ? ['🥇', '🥈', '🥉'][index] : String(index + 1);
       const tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
       const tdRank = document.createElement('td');
@@ -319,21 +334,26 @@ class LeaderboardSystem {
     });
 
     const nav = document.createElement('div');
-    nav.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:#ccc;';
+    nav.style.cssText =
+      'display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:#ccc;';
     const btnPrev = document.createElement('button');
     btnPrev.textContent = '<';
-    btnPrev.style.cssText = 'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
+    btnPrev.style.cssText =
+      'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
     btnPrev.onclick = () => {
- this._page = Math.max(0, this._page - 1); this.updateUI();
-};
+      this._page = Math.max(0, this._page - 1);
+      this.updateUI();
+    };
     const pageInfo = document.createElement('span');
     pageInfo.textContent = `Page ${this._page + 1} / ${totalPages}`;
     const btnNext = document.createElement('button');
     btnNext.textContent = '>';
-    btnNext.style.cssText = 'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
+    btnNext.style.cssText =
+      'background:rgba(255,215,0,0.2);border:1px solid #FFD700;color:#FFD700;padding:5px 12px;border-radius:4px;cursor:pointer;';
     btnNext.onclick = () => {
- this._page = Math.min(totalPages - 1, this._page + 1); this.updateUI();
-};
+      this._page = Math.min(totalPages - 1, this._page + 1);
+      this.updateUI();
+    };
     nav.append(btnPrev, pageInfo, btnNext);
 
     contentDiv.textContent = '';
@@ -345,7 +365,6 @@ class LeaderboardSystem {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
-
 
   _escapeHtml(str) {
     const div = document.createElement('div');

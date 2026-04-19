@@ -137,14 +137,23 @@ class MissionSystem {
   // Afficher notifications des nouvelles missions
   showMissionNotifications() {
     if (window.toastManager) {
-      window.toastManager.show({ message: `🎯 ${this.currentMissions.length} nouvelle${this.currentMissions.length > 1 ? 's' : ''} mission${this.currentMissions.length > 1 ? 's' : ''}!`, type: 'mission', duration: 4000 });
+      const n = this.currentMissions.length;
+      const s = n > 1 ? 's' : '';
+      window.toastManager.show({
+        message: `🎯 ${n} nouvelle${s} mission${s}!`,
+        type: 'mission',
+        duration: 4000
+      });
     }
 
     // Créer une notification spéciale pour chaque mission
     this.currentMissions.forEach((mission, index) => {
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
-        this.showMissionCard(mission);
-      }, 500 + index * 1000);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+        () => {
+          this.showMissionCard(mission);
+        },
+        500 + index * 1000
+      );
     });
   }
 
@@ -167,7 +176,10 @@ class MissionSystem {
 
     document.body.appendChild(card);
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => card.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+      () => card.classList.add('show'),
+      100
+    );
 
     (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       card.classList.remove('show');
@@ -183,45 +195,45 @@ class MissionSystem {
       }
 
       switch (mission.type) {
-      case 'speed_kills':
-        this.trackSpeedKills(mission, data);
-        break;
+        case 'speed_kills':
+          this.trackSpeedKills(mission, data);
+          break;
 
-      case 'no_damage_time':
-        this.trackNoDamageTime(mission, data);
-        break;
+        case 'no_damage_time':
+          this.trackNoDamageTime(mission, data);
+          break;
 
-      case 'boss_speed':
-        this.trackBossSpeed(mission, data);
-        break;
+        case 'boss_speed':
+          this.trackBossSpeed(mission, data);
+          break;
 
-      case 'perfect_room':
-        this.trackPerfectRoom(mission, data);
-        break;
+        case 'perfect_room':
+          this.trackPerfectRoom(mission, data);
+          break;
 
-      case 'crit_streak':
-        this.trackCritStreak(mission, data);
-        break;
+        case 'crit_streak':
+          this.trackCritStreak(mission, data);
+          break;
 
-      case 'gold_collect':
-        this.trackGoldCollect(mission, data);
-        break;
+        case 'gold_collect':
+          this.trackGoldCollect(mission, data);
+          break;
 
-      case 'efficient_kills':
-        this.trackEfficientKills(mission, data);
-        break;
+        case 'efficient_kills':
+          this.trackEfficientKills(mission, data);
+          break;
 
-      case 'close_kills':
-        this.trackCloseKills(mission, data);
-        break;
+        case 'close_kills':
+          this.trackCloseKills(mission, data);
+          break;
 
-      case 'single_weapon':
-        this.trackSingleWeapon(mission, data);
-        break;
+        case 'single_weapon':
+          this.trackSingleWeapon(mission, data);
+          break;
 
-      case 'no_shop':
-        this.trackNoShop(mission, data);
-        break;
+        case 'no_shop':
+          this.trackNoShop(mission, data);
+          break;
       }
     });
   }
@@ -343,7 +355,10 @@ class MissionSystem {
         mission.tracking.failed = true;
       }
     } else if (data.event === 'room_complete') {
-      if (!mission.tracking.failed && (!mission.tracking.weapons || mission.tracking.weapons.size <= 1)) {
+      if (
+        !mission.tracking.failed &&
+        (!mission.tracking.weapons || mission.tracking.weapons.size <= 1)
+      ) {
         this.completeMission(mission);
       }
     }
@@ -381,7 +396,11 @@ class MissionSystem {
   // Afficher notification de mission complétée
   showMissionComplete(mission) {
     if (window.toastManager) {
-      window.toastManager.show({ message: `✅ MISSION COMPLÉTÉE!\n${mission.name}`, type: 'mission', duration: 5000 });
+      window.toastManager.show({
+        message: `✅ MISSION COMPLÉTÉE!\n${mission.name}`,
+        type: 'mission',
+        duration: 5000
+      });
     }
 
     // Popup spéciale
@@ -401,11 +420,17 @@ class MissionSystem {
 
     document.body.appendChild(popup);
 
-    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.classList.add('show'), 100);
+    (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+      () => popup.classList.add('show'),
+      100
+    );
 
     (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => {
       popup.classList.remove('show');
-      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(() => popup.remove(), 500);
+      (window.timerManager ? window.timerManager.setTimeout : setTimeout)(
+        () => popup.remove(),
+        500
+      );
     }, 5000);
   }
 
@@ -475,10 +500,11 @@ class MissionSystem {
       return '<div class="mission-empty">Aucune mission active</div>';
     }
 
-    return this.currentMissions.map(mission => {
-      const completed = mission.completed;
+    return this.currentMissions
+      .map(mission => {
+        const completed = mission.completed;
 
-      return `
+        return `
         <div class="mission-item ${completed ? 'completed' : 'active'}">
           <div class="mission-item-name">${mission.name}</div>
           <div class="mission-item-desc">${mission.description}</div>
@@ -487,7 +513,8 @@ class MissionSystem {
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
   }
 
   // Mettre à jour le widget
