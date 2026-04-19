@@ -16,7 +16,9 @@ if ! command -v cwebp >/dev/null 2>&1; then
 fi
 
 count=0
-find "$ROOT/assets" -name "*.png" -type f | while IFS= read -r png; do
+# Serve dir is public/assets (mounted at /assets by express.static).
+# The root-level assets/ is a workspace folder, not served.
+find "$ROOT/public/assets" -name "*.png" -type f | while IFS= read -r png; do
   webp="${png%.png}.webp"
   # Skip if webp is fresher than png
   if [ -f "$webp" ] && [ "$webp" -nt "$png" ]; then
