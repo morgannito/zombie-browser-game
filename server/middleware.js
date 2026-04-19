@@ -109,8 +109,8 @@ function mountStaticAssets(app) {
     }
   };
 
-  app.use('/assets', express.static('assets', { fallthrough: false, setHeaders }));
-  app.use(express.static('public', { setHeaders }));
+  app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets'), { fallthrough: false, setHeaders }));
+  app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders }));
 }
 
 /** Inject Link preload hint for socket.io.js on HTML responses. */
