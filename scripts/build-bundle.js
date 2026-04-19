@@ -56,7 +56,6 @@ const SCRIPTS = scriptsFromTemplate() || [
   'lib/StorageManager.js',
   'assetManager.js',
   'professionalAssetGenerator.js',
-  'demoAssetGenerator.js',
   'assetIntegration.js',
   'visualEffects.js',
   'screenEffects.js',

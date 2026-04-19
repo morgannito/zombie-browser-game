@@ -12,7 +12,19 @@ module.exports = [
 
   // Global ignores
   {
-    ignores: ['node_modules/**', 'data/**', 'uploads/**', 'dist/**', 'build/**', '**/*.min.js', 'public/lib/**', 'public/assets/**', 'coverage/**', 'logs/**', 'public/app.bundle.js']
+    ignores: [
+      'node_modules/**',
+      'data/**',
+      'uploads/**',
+      'dist/**',
+      'build/**',
+      '**/*.min.js',
+      'public/lib/**',
+      'public/assets/**',
+      'coverage/**',
+      'logs/**',
+      'public/app.bundle.js'
+    ]
   },
 
   // Server-side JavaScript (Node.js)
@@ -118,7 +130,6 @@ module.exports = [
         MathUtils: 'readonly',
         AssetManager: 'readonly',
         ProfessionalAssetGenerator: 'readonly',
-        DemoAssetGenerator: 'readonly',
         ToastManager: 'readonly',
         GameEngine: 'readonly',
         GameStateManager: 'readonly',

@@ -28,9 +28,6 @@
         if (typeof ProfessionalAssetGenerator !== 'undefined') {
           const gen = new ProfessionalAssetGenerator();
           await gen.loadProfessionalAssetsIntoManager(window.assetManager);
-        } else if (typeof DemoAssetGenerator !== 'undefined') {
-          const gen = new DemoAssetGenerator();
-          await gen.loadDemoAssetsIntoManager(window.assetManager);
         }
       } else {
         logger.info(`${report.images.available} images chargees`);
