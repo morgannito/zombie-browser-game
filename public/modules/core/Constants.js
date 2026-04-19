@@ -12,7 +12,7 @@ const CONSTANTS = {
     MAX_LENGTH: 15
   },
   SPAWN_PROTECTION: {
-    DURATION: 3000, // 3 seconds
+    DURATION: 8000, // 8 seconds — give players time to orient before zombies engage
     UPDATE_INTERVAL: 100
   },
   MINIMAP: {

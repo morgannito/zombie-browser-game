@@ -10,7 +10,7 @@ const { SOCKET_EVENTS } = require('../events');
 const { checkRateLimit } = require('../../../sockets/rateLimitStore');
 const { safeHandler } = require('../../../sockets/socketUtils');
 
-const SPAWN_PROTECTION_MS = 3000;
+const SPAWN_PROTECTION_MS = 8000;
 
 function rejectIfAlreadyChosen(socket, player) {
   if (!player.hasNickname) {
