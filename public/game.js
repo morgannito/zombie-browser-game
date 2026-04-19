@@ -19,20 +19,17 @@ window.PlayerController = window.PlayerController || PlayerController;
    ============================================ */
 
 // Start the game when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initInstructionsToggle();
-    initMinimapToggle();
-    initCameraRecenter();
-    window.helpMenu = new HelpMenu();
-    new GameEngine();
-    window.screenshotManager = new ScreenshotManager();
-  });
-} else {
+function bootGame() {
   initInstructionsToggle();
   initMinimapToggle();
   initCameraRecenter();
   window.helpMenu = new HelpMenu();
   new GameEngine();
   window.screenshotManager = new ScreenshotManager();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootGame);
+} else {
+  bootGame();
 }
