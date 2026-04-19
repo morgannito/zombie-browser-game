@@ -10,34 +10,8 @@
 const ConfigManager = require('../lib/server/ConfigManager');
 const { LEVEL_UP_UPGRADES } = ConfigManager;
 const logger = require('../infrastructure/logging/Logger');
-
-/**
- * Fonction utilitaire pour calculer la distance
- * @param {number} x1 - X coordinate of first point
- * @param {number} y1 - Y coordinate of first point
- * @param {number} x2 - X coordinate of second point
- * @param {number} y2 - Y coordinate of second point
- * @returns {number} Distance between the two points
- */
-function distance(x1, y1, x2, y2) {
-  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-}
-
-/**
- * OPTIMISATION: Calculer la distance au carré (évite le sqrt coûteux)
- * Utilisez cette fonction quand vous comparez des distances (>, <, ===)
- * car distance1² < distance2² ⟺ distance1 < distance2
- * @param {number} x1 - X coordinate of first point
- * @param {number} y1 - Y coordinate of first point
- * @param {number} x2 - X coordinate of second point
- * @param {number} y2 - Y coordinate of second point
- * @returns {number} Squared distance between the two points
- */
-function distanceSquared(x1, y1, x2, y2) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return dx * dx + dy * dy;
-}
+// Single source of truth for math helpers (deduplicates game/ vs lib/).
+const { distance, distanceSquared } = require('../lib/MathUtils');
 
 /**
  * CORRECTION: Fonction partagée pour nettoyer les balles d'un joueur
