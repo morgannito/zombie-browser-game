@@ -17,9 +17,25 @@ class TutorialOverlay {
     if (this._isCompleted()) {
 return;
 }
-    this._inject();
-    this._bindGameEvents();
-    this._show();
+    // Wait for game start (nickname dismissed) before showing tutorial.
+    // Otherwise the overlay blocks the #start-game-btn click.
+    this._waitForGameStart(() => {
+      this._inject();
+      this._bindGameEvents();
+      this._show();
+    });
+  }
+
+  _waitForGameStart(cb) {
+    const check = () => {
+      const ns = document.getElementById('nickname-screen');
+      if (!ns || ns.style.display === 'none' || !ns.offsetParent) {
+        cb();
+        return;
+      }
+      setTimeout(check, 250);
+    };
+    check();
   }
 
   _isCompleted() {
