@@ -1,5 +1,7 @@
 # API HTTP — Zombie Browser Game
 
+> **Couverture doc** : `openapi.yaml` (racine) documente auth, progression, leaderboard, daily challenges, health et metrics. Les groupes `/api/v1/players`, `/api/v1/achievements`, `/api/v1/features` et `/api/v1/client-error` existent côté serveur mais **ne sont pas encore dans l'OpenAPI** — voir `server/routes.js` pour la liste complète des mounts. Ce fichier est un résumé français des endpoints clients principaux.
+
 Base URL : `https://<host>/api/v1`  
 Authentification : header `Authorization: Bearer <token>` (JWT)
 
