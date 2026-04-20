@@ -1,12 +1,25 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+const START_TIMEOUT_MS = 15_000;
+const TUTORIAL_STORAGE_KEY = 'zbg:tutorial:completed';
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(storageKey => {
+    try {
+      window.localStorage.setItem(storageKey, '1');
+    } catch {
+      // Ignore storage failures in restricted browser contexts.
+    }
+  }, TUTORIAL_STORAGE_KEY);
+});
+
 // ---------------------------------------------------------------------------
 // Helper: collect console messages that match a pattern during a test
 // ---------------------------------------------------------------------------
 function collectConsoleMatches(page, pattern) {
   const hits = [];
-  page.on('console', (msg) => {
+  page.on('console', msg => {
     if (pattern.test(msg.text())) {
       hits.push(msg.text());
     }
@@ -22,25 +35,28 @@ function collectConsoleMatches(page, pattern) {
 // have caught this because #nickname-screen would still be visible and the
 // socket would never connect.
 // ---------------------------------------------------------------------------
-test.skip('boot: fill nickname and start game', async ({ page }) => {
-  // TODO: nickname screen does not dismiss after click in CI headless.
-  // Likely socket.io connection delayed past the 15s timeout.
+test('boot: fill nickname and start game', async ({ page }) => {
   await page.goto('/');
 
   // The nickname screen must be visible at boot
   const nicknameScreen = page.locator('#nickname-screen');
-  await expect(nicknameScreen).toBeVisible({ timeout: 10_000 });
+  await expect(nicknameScreen).toBeVisible({ timeout: START_TIMEOUT_MS });
 
-  // Fill nickname and submit
-  await page.fill('#nickname-input', 'TestPlayer');
+  // Keep the nickname within the server-side 15 character limit so the button
+  // never stays disabled because of client validation.
+  await page.fill('#nickname-input', `Smk${Date.now().toString(36).slice(-6)}`);
   await page.click('#start-game-btn');
 
-  // After a successful start, #nickname-screen must be hidden
-  await expect(nicknameScreen).toBeHidden({ timeout: 15_000 });
+  await expect(nicknameScreen).toBeHidden({ timeout: START_TIMEOUT_MS });
+  await expect(page.locator('#gameCanvas')).toBeVisible({ timeout: START_TIMEOUT_MS });
+  await page.waitForFunction(
+    () => Boolean(window.socket?.connected || window.networkManager?.socket?.connected),
+    { timeout: START_TIMEOUT_MS }
+  );
 
   // The socket must be connected and the game session established
   const state = await page.evaluate(() => ({
-    connected: Boolean(window.socket?.connected),
+    connected: Boolean(window.socket?.connected || window.networkManager?.socket?.connected),
     nicknameHidden: document.getElementById('nickname-screen')?.style.display === 'none'
   }));
 
@@ -69,8 +85,8 @@ test('boot: no blocking modal visible', async ({ page }) => {
     function isBlocking(id) {
       const el = document.getElementById(id);
       if (!el) {
-return false;
-}
+        return false;
+      }
       // offsetParent is null when the element (or an ancestor) has display:none
       return el.offsetParent !== null;
     }

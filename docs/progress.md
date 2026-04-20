@@ -257,3 +257,15 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
   - `public/modules/systems/LeaderboardSystem.js`: bouton classement décalé pour ne plus recouvrir l'action paramètres.
 - Validation:
   - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test e2e/gameplay.spec.js e2e/critical-gameplay.spec.js --project=chromium` OK (`4 passed`).
+
+## 2026-04-20 - Réactivation smoke/rendering skips
+- `e2e/smoke.spec.js`:
+  - le scénario `boot: fill nickname and start game` n'est plus `skip`,
+  - pseudo de test borné sous la limite 15 caractères,
+  - tutoriel neutralisé en `beforeEach`,
+  - attente alignée sur la vraie connexion socket/canvas visible au lieu d'un simple clic + timeout.
+- `e2e/rendering.spec.js`:
+  - le scénario `renderer: main canvas paints non-trivial content after boot` n'est plus `skip`,
+  - vérification rendue moins flaky via `expect.poll()` sur la variance du canvas au lieu d'un `waitForTimeout(500)` figé.
+- Validation:
+  - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test --project=chromium` à rejouer après patch pour confirmer la disparition des `2 skipped`.

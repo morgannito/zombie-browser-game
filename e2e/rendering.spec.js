@@ -58,27 +58,27 @@ async function sampleCanvasHealth(page, selector) {
   }, selector);
 }
 
-test.skip('renderer: main canvas paints non-trivial content after boot', async ({ page }) => {
-  // TODO: flaky in CI headless — canvas reports variance=0 even after 500ms wait.
-  // Likely needs longer boot timeout or asset preload completion signal.
+test('renderer: main canvas paints non-trivial content after boot', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('#gameCanvas', { timeout: 10_000 });
 
-  // Give the renderer at least 3 frames to tick — the main menu/background
-  // fills the canvas before the nickname overlay is dismissed.
-  await page.waitForTimeout(500);
+  await expect
+    .poll(
+      async () => {
+        const health = await sampleCanvasHealth(page, '#gameCanvas');
+        return health.found ? health.luminanceVariance : -1;
+      },
+      {
+        timeout: 5_000,
+        message: 'canvas should render non-trivial luminance variance after boot'
+      }
+    )
+    .toBeGreaterThan(10);
 
   const health = await sampleCanvasHealth(page, '#gameCanvas');
   expect(health.found, '#gameCanvas must exist in the DOM').toBe(true);
   expect(health.width, 'canvas width must be positive').toBeGreaterThan(0);
   expect(health.height, 'canvas height must be positive').toBeGreaterThan(0);
-
-  // Variance > 10 is a very loose bound — a fully black frame is ≈0,
-  // a solid colour is ≈0, a real frame with ANY detail easily exceeds 100.
-  expect(
-    health.luminanceVariance,
-    `canvas looks blank (variance=${health.luminanceVariance.toFixed(2)}, mean=${health.meanLuminance.toFixed(2)}) — renderer likely broken`
-  ).toBeGreaterThan(10);
 });
 
 test('renderer: no uncaught client errors reach the error tracker', async ({ page }) => {
