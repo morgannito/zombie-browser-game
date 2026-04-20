@@ -232,3 +232,28 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
     - spawn à `x=2880, y=2280`
     - zombie le plus proche à `~600 px` au démarrage
     - après 4s, joueur toujours `alive: true`, pas d'overlay de game over.
+
+## 2026-04-20 - Test E2E gameplay critique
+- Ajout de `e2e/critical-gameplay.spec.js` pour verrouiller le flux gameplay critique sans dependre des anciens specs `skip`.
+- Couverture du scenario:
+  - demarrage de partie reel via ecran pseudo,
+  - mouvement clavier reel,
+  - approche d'un zombie avec visee runtime jusqu'a perte de PV ou suppression de la cible,
+  - respawn serveur direct (`window.networkManager.respawn()`) avec verification etat joueur + repositionnement + distance de securite.
+- Choix de conception:
+  - le respawn est pilote directement au niveau websocket pour garder un test deterministe; la mort serveur complete n'a pas encore de hook rapide et stable pour un E2E court.
+
+## 2026-04-20 - Réactivation gameplay.spec + fix HUD paramètres
+- Réactivation de `e2e/gameplay.spec.js`:
+  - login flow,
+  - ouverture/apply du menu paramètres,
+  - pause / resume via `Escape`.
+- Durcissements de test:
+  - pseudos de test bornés a 15 caracteres max,
+  - tutoriel neutralisé via localStorage avant chargement,
+  - flow paramètres aligné sur l'API publique `window.gameSettingsMenu`.
+- Correctifs produit associés:
+  - `public/performanceSettings.js`: le bouton performance n'utilise plus `#settings-btn`, label clarifié, position descendue pour ne plus chevaucher le bouton principal.
+  - `public/modules/systems/LeaderboardSystem.js`: bouton classement décalé pour ne plus recouvrir l'action paramètres.
+- Validation:
+  - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test e2e/gameplay.spec.js e2e/critical-gameplay.spec.js --project=chromium` OK (`4 passed`).

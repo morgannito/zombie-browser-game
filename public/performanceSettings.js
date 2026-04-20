@@ -79,12 +79,14 @@ class PerformanceSettingsManager {
   createUI() {
     // Settings button (gear icon)
     const settingsBtn = document.createElement('button');
-    settingsBtn.id = 'settings-btn';
+    // Keep the gameplay settings button as the sole `#settings-btn` in DOM.
+    settingsBtn.id = 'performance-settings-btn';
     settingsBtn.innerHTML = '⚙️';
-    settingsBtn.title = 'Paramètres';
+    settingsBtn.title = 'Paramètres performance';
+    settingsBtn.setAttribute('aria-label', 'Ouvrir les paramètres de performance');
     settingsBtn.style.cssText = `
       position: fixed;
-      top: 10px;
+      top: 84px;
       right: 10px;
       z-index: 1001;
       background: rgba(0, 0, 0, 0.8);

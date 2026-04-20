@@ -157,7 +157,7 @@ class LeaderboardSystem {
     btn.style.cssText = `
       position: fixed;
       top: 20px;
-      right: 20px;
+      right: 90px;
       padding: 10px 20px;
       background: rgba(255, 215, 0, 0.9);
       border: 2px solid #FFD700;
