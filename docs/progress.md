@@ -269,3 +269,15 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
   - vérification rendue moins flaky via `expect.poll()` sur la variance du canvas au lieu d'un `waitForTimeout(500)` figé.
 - Validation:
   - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test --project=chromium` à rejouer après patch pour confirmer la disparition des `2 skipped`.
+
+## 2026-04-21 - Réactivation skips Jest obsolètes
+- `__tests__/unit/sockets/rateLimitStore.test.js`:
+  - la suite n'est plus `skip`,
+  - attentes alignées sur `RATE_LIMIT_CONFIG.shoot` au lieu d'anciens hardcodes (`20` / `1000ms`),
+  - le test suit maintenant la vraie limite active sans toucher au runtime `checkRateLimit` (blast radius GitNexus `CRITICAL`, volontairement évité).
+- `__tests__/integration/http.smoke.test.js`:
+  - le scénario `/health` n'est plus `skip`,
+  - contrat ré-aligné sur l'environnement smoke actuel: `503 unhealthy` quand la DB de prod smoke est indisponible (`DB_PATH=':memory:'` dans ce boot).
+- Validation:
+  - `npx jest __tests__/integration/http.smoke.test.js __tests__/unit/sockets/rateLimitStore.test.js --runInBand` OK (`12 passed`).
+  - `npx eslint __tests__/integration/http.smoke.test.js __tests__/unit/sockets/rateLimitStore.test.js` OK.

@@ -3,10 +3,10 @@ jest.mock('../../../infrastructure/logging/Logger', () => ({
 }));
 
 const logger = require('../../../infrastructure/logging/Logger');
+const { RATE_LIMIT_CONFIG } = require('../../../config/constants');
 const { checkRateLimit, cleanupRateLimits } = require('../../../sockets/rateLimitStore');
 
-// TODO: rate limits globally disabled (RATE_LIMITS_DISABLED=true in rateLimitStore.js) - re-enable when shoot rate limiting is re-activated
-describe.skip('rateLimitStore', () => {
+describe('rateLimitStore', () => {
   afterEach(() => {
     cleanupRateLimits('socket-1');
     cleanupRateLimits('socket-2');
@@ -20,8 +20,9 @@ describe.skip('rateLimitStore', () => {
 
   test('blocks requests after configured limit and logs warning', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1000);
+    const shootLimit = RATE_LIMIT_CONFIG.shoot.maxRequests;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < shootLimit; i++) {
       expect(checkRateLimit('socket-1', 'shoot')).toBe(true);
     }
 
@@ -31,7 +32,7 @@ describe.skip('rateLimitStore', () => {
       expect.objectContaining({
         socketId: 'socket-1',
         event: 'shoot',
-        limit: 20
+        limit: shootLimit
       })
     );
   });
@@ -39,20 +40,23 @@ describe.skip('rateLimitStore', () => {
   test('resets counter when request lands at window boundary', () => {
     let now = 1000;
     jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const shootLimit = RATE_LIMIT_CONFIG.shoot.maxRequests;
+    const shootWindowMs = RATE_LIMIT_CONFIG.shoot.windowMs;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < shootLimit; i++) {
       expect(checkRateLimit('socket-2', 'shoot')).toBe(true);
     }
     expect(checkRateLimit('socket-2', 'shoot')).toBe(false);
 
-    now = 2000; // exact boundary for shoot window (1000ms)
+    now = 1000 + shootWindowMs; // exact boundary for the active shoot window
     expect(checkRateLimit('socket-2', 'shoot')).toBe(true);
   });
 
   test('cleanup removes socket counters', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1000);
+    const shootLimit = RATE_LIMIT_CONFIG.shoot.maxRequests;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < shootLimit; i++) {
       expect(checkRateLimit('socket-1', 'shoot')).toBe(true);
     }
     expect(checkRateLimit('socket-1', 'shoot')).toBe(false);

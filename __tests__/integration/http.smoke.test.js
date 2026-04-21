@@ -115,16 +115,23 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 
 describe('GET /health', () => {
-  // TODO: DB latency too high in test env → health returns 503 (degraded). Re-enable when SQLite is pre-warmed in CI.
-  test.skip('test_health_endpoint_returns_200', async () => {
+  test('test_health_endpoint_returns_503_when_db_is_unavailable', async () => {
     // Arrange
     const url = `${BASE_URL}/health`;
 
     // Act
-    const { status } = await httpGetAuth(url, SMOKE_METRICS_TOKEN);
+    const { status, body } = await httpGetAuth(url, SMOKE_METRICS_TOKEN);
+    const parsed = JSON.parse(body);
 
     // Assert
-    expect(status).toBe(200);
+    expect(status).toBe(503);
+    expect(parsed.status).toBe('unhealthy');
+    expect(parsed.db).toEqual(
+      expect.objectContaining({
+        connected: false,
+        error: 'health-db-unavailable'
+      })
+    );
   });
 
   test('test_health_response_is_json', async () => {
