@@ -4,12 +4,10 @@
  * Tests for NetworkManager shared-state broadcasting.
  *
  * AOI per-player filtering was removed for performance reasons. These tests
- * lock the current shared-broadcast contract so stale AOI-specific assertions
- * do not stay skipped forever.
+ * lock the current shared-broadcast contract and the simplified emit path.
  */
 
 const NetworkManager = require('../../lib/server/NetworkManager');
-const { AOI_HALF_WIDTH, AOI_HALF_HEIGHT } = require('../../lib/server/NetworkManager');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,20 +58,17 @@ const PLAYER_B_ID = 'playerB';
 const playerA = { id: PLAYER_A_ID, x: 0, y: 0, health: 100 };
 const playerB = { id: PLAYER_B_ID, x: 10000, y: 10000, health: 100 };
 
-// AOI filtering only activates with ≥5 concurrent players (small-lobby fast-path
-// bypasses it). Pad with three idle players parked off-grid so they do not
-// influence A/B AOI windows.
+// Extra players keep the shape close to live lobbies, but shared broadcasting
+// now ignores per-player AOI entirely.
 const PADDING_PLAYERS = {
   pad1: { id: 'pad1', x: -50000, y: -50000, health: 100 },
   pad2: { id: 'pad2', x: -50000, y: 50000, health: 100 },
   pad3: { id: 'pad3', x: 50000, y: -50000, health: 100 }
 };
 
-// z1: near player A (within AOI)
+// Distributed on purpose to prove there is no per-player filtering.
 const z1 = { id: 'z1', x: 100, y: 100, health: 50 };
-// z2: near player B (far from A)
 const z2 = { id: 'z2', x: 10100, y: 10100, health: 50 };
-// z3: far from both
 const z3 = { id: 'z3', x: 50000, y: 50000, health: 50 };
 
 function makePlayersFixture() {
@@ -84,27 +79,7 @@ function makePlayersFixture() {
   };
 }
 
-// ---------------------------------------------------------------------------
-// AOI constant exports
-// ---------------------------------------------------------------------------
-
-describe('AOI constants', () => {
-  test('AOI_HALF_WIDTH is a positive number', () => {
-    expect(typeof AOI_HALF_WIDTH).toBe('number');
-    expect(AOI_HALF_WIDTH).toBeGreaterThan(0);
-  });
-
-  test('AOI_HALF_HEIGHT is a positive number', () => {
-    expect(typeof AOI_HALF_HEIGHT).toBe('number');
-    expect(AOI_HALF_HEIGHT).toBeGreaterThan(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// _buildPublicStateForPlayer
-// ---------------------------------------------------------------------------
-
-describe('_buildPublicStateForPlayer', () => {
+describe('_buildPublicState', () => {
   let nm;
 
   beforeEach(() => {
@@ -112,55 +87,46 @@ describe('_buildPublicStateForPlayer', () => {
     nm = new NetworkManager(makeMockIo(), gameState);
   });
 
-  test('player A receives the shared zombie state without AOI filtering', () => {
-    const state = nm._buildPublicStateForPlayer(PLAYER_A_ID);
+  test('includes every zombie regardless of player proximity', () => {
+    const state = nm._buildPublicState();
     expect(state.zombies).toHaveProperty('z1');
     expect(state.zombies).toHaveProperty('z2');
     expect(state.zombies).toHaveProperty('z3');
   });
 
-  test('player B also receives the same shared zombie state', () => {
-    const state = nm._buildPublicStateForPlayer(PLAYER_B_ID);
-    expect(state.zombies).toHaveProperty('z1');
-    expect(state.zombies).toHaveProperty('z2');
-    expect(state.zombies).toHaveProperty('z3');
-  });
-
-  test('players are always included unfiltered', () => {
-    const state = nm._buildPublicStateForPlayer(PLAYER_A_ID);
-    expect(state.players).toHaveProperty(PLAYER_A_ID);
-    expect(state.players).toHaveProperty(PLAYER_B_ID);
-  });
-
-  test('uses sanitized players when they are provided explicitly', () => {
-    const sanitizedPlayers = {
-      [PLAYER_A_ID]: { id: PLAYER_A_ID, x: 1, y: 2, health: 50 }
+  test('sanitizes player identifiers before broadcasting', () => {
+    nm.gameState.players[PLAYER_A_ID] = {
+      id: PLAYER_A_ID,
+      x: 10,
+      y: 20,
+      health: 100,
+      sessionId: 'sess-1',
+      socketId: 'socket-1',
+      accountId: 'acct-1'
     };
-    const state = nm._buildPublicStateForPlayer(PLAYER_A_ID, sanitizedPlayers);
-    expect(state.players).toEqual(sanitizedPlayers);
+
+    const state = nm._buildPublicState();
+    expect(state.players[PLAYER_A_ID]).toEqual(
+      expect.objectContaining({
+        id: PLAYER_A_ID,
+        x: 10,
+        y: 20,
+        health: 100
+      })
+    );
+    expect(state.players[PLAYER_A_ID].sessionId).toBeUndefined();
+    expect(state.players[PLAYER_A_ID].socketId).toBeUndefined();
+    expect(state.players[PLAYER_A_ID].accountId).toBeUndefined();
   });
 
-  test('falls back to full state when player position unknown', () => {
-    const state = nm._buildPublicStateForPlayer('unknownSocket');
-    expect(state.zombies).toHaveProperty('z1');
-    expect(state.zombies).toHaveProperty('z2');
-    expect(state.zombies).toHaveProperty('z3');
-  });
-
-  test('AOI boundaries no longer affect included zombies', () => {
-    const boundaryZombie = { id: 'zBound', x: AOI_HALF_WIDTH, y: 0, health: 10 };
-    const outsideZombie = { id: 'zOut', x: AOI_HALF_WIDTH + 1, y: 0, health: 10 };
-    nm.gameState.zombies.zBound = boundaryZombie;
-    nm.gameState.zombies.zOut = outsideZombie;
-    const state = nm._buildPublicStateForPlayer(PLAYER_A_ID);
-    expect(state.zombies).toHaveProperty('zBound');
-    expect(state.zombies).toHaveProperty('zOut');
+  test('keeps shared metadata and drops server-side particles', () => {
+    const state = nm._buildPublicState();
+    expect(state.wave).toBe(1);
+    expect(state.currentRoom).toBe('room1');
+    expect(state.bossSpawned).toBe(false);
+    expect(state.particles).toEqual({});
   });
 });
-
-// ---------------------------------------------------------------------------
-// emitGameState — per-player socket.emit with filtered zombies
-// ---------------------------------------------------------------------------
 
 describe('emitGameState — shared broadcast without AOI filtering', () => {
   let socketA, socketB, mockIo, nm;
@@ -224,10 +190,25 @@ describe('emitGameState — shared broadcast without AOI filtering', () => {
     expect(deltaCall).toBeDefined();
   });
 
-  test('cleanupPlayer removes per-player previous state', () => {
-    nm.playerPreviousStates.set(PLAYER_A_ID, { players: {}, zombies: {} });
-    expect(nm.playerPreviousStates.get(PLAYER_A_ID)).toBeDefined();
-    nm.cleanupPlayer(PLAYER_A_ID);
-    expect(nm.playerPreviousStates.get(PLAYER_A_ID)).toBeUndefined();
+  test('falls back to plain io.emit when compress helper is absent', () => {
+    const emit = jest.fn();
+    const io = { emit, sockets: { sockets: new Map() } };
+    const gameState = makeGameState(makePlayersFixture(), { z1, z2, z3 });
+    const instance = new NetworkManager(io, gameState);
+    instance.fullStateCounter = instance.FULL_STATE_INTERVAL - 1;
+
+    instance.emitGameState();
+
+    expect(emit).toHaveBeenCalledWith(
+      'gameState',
+      expect.objectContaining({
+        full: true,
+        zombies: expect.objectContaining({
+          z1: expect.any(Object),
+          z2: expect.any(Object),
+          z3: expect.any(Object)
+        })
+      })
+    );
   });
 });

@@ -293,3 +293,17 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
   - `npx jest contexts/weapons/__tests__/CollisionManager.test.js __tests__/unit/networkManager.viewport.test.js --runInBand` OK (`48 passed`).
   - `npx eslint contexts/weapons/__tests__/CollisionManager.test.js __tests__/unit/networkManager.viewport.test.js` OK.
   - `rg -n "test\\.skip|describe\\.skip|it\\.skip" __tests__ contexts e2e` ne retourne plus aucun résultat.
+
+## 2026-04-21 - Nettoyage de lib/server/NetworkManager.js
+- Refactor réalisé sans changer le contrat runtime:
+  - suppression de l'infra AOI morte (`SpatialGrid`, constantes/buffers/helpers bucket/per-player),
+  - suppression de `playerPreviousStates`, devenu inutile depuis le passage au broadcast partagé,
+  - `emitGameState()` simplifié vers un seul chemin de diffusion partagé,
+  - ajout d'un fallback léger `io.emit(...)` quand `compress(false)` n'existe pas (bench/fakes).
+- Tests réalignés:
+  - `__tests__/unit/networkManager.viewport.test.js` verrouille désormais `_buildPublicState()` + le chemin de broadcast partagé,
+  - le test de fallback `io.emit` couvre les environnements sans helper socket.io complet.
+- Validation:
+  - `npx jest __tests__/unit/networkManager.viewport.test.js __tests__/unit/lib/ServerNetworkManager.test.js __tests__/unit/game/regression.bugs.test.js __tests__/unit/server/networkManagerSocketCleanup.test.js --runInBand` OK (`30 passed`).
+  - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test e2e/critical-gameplay.spec.js e2e/gameplay.spec.js --project=chromium` OK (`4 passed`).
+  - `npx eslint lib/server/NetworkManager.js __tests__/unit/networkManager.viewport.test.js` OK.
