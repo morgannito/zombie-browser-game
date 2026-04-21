@@ -281,3 +281,15 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
 - Validation:
   - `npx jest __tests__/integration/http.smoke.test.js __tests__/unit/sockets/rateLimitStore.test.js --runInBand` OK (`12 passed`).
   - `npx eslint __tests__/integration/http.smoke.test.js __tests__/unit/sockets/rateLimitStore.test.js` OK.
+
+## 2026-04-21 - Fin des skips de test restants
+- `__tests__/unit/networkManager.viewport.test.js`:
+  - les deux `describe.skip` ont été réécrits vers le comportement actuel,
+  - le contrat verrouillé est maintenant: broadcast partagé compressé, pas de filtrage AOI par socket, `_buildPublicStateForPlayer()` renvoie l'état global.
+  - `makeMockIo()` couvre désormais `compress(false).emit(...)`.
+- `contexts/weapons/__tests__/CollisionManager.test.js`:
+  - suppression du bloc `describe.skip('checkZombiePlayerCollisions')`, devenu mort car l'API n'existe pas et les comportements utiles sont déjà couverts par `findClosestPlayer`.
+- Validation:
+  - `npx jest contexts/weapons/__tests__/CollisionManager.test.js __tests__/unit/networkManager.viewport.test.js --runInBand` OK (`48 passed`).
+  - `npx eslint contexts/weapons/__tests__/CollisionManager.test.js __tests__/unit/networkManager.viewport.test.js` OK.
+  - `rg -n "test\\.skip|describe\\.skip|it\\.skip" __tests__ contexts e2e` ne retourne plus aucun résultat.

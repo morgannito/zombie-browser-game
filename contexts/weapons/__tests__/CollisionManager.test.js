@@ -337,31 +337,6 @@ describe('checkBulletZombieCollisions', () => {
   });
 });
 
-// TODO: checkZombiePlayerCollisions not yet implemented in CollisionManager
-describe.skip('checkZombiePlayerCollisions', () => {
-  test('returns pairs excluding protected/invisible players', () => {
-    const gs = makeGameState();
-    gs.zombies.z1 = { x: 100, y: 100, size: 25 };
-    gs.players.p1 = { x: 105, y: 105, alive: true };
-    gs.players.p2 = { x: 110, y: 110, alive: true, spawnProtection: true };
-    const cm = new CollisionManager(gs, CONFIG);
-    cm.rebuildQuadtree();
-    mockQuadtreeInstance.queryRadius.mockReturnValue([
-      { type: 'player', entityId: 'p1', x: 105, y: 105 },
-      { type: 'player', entityId: 'p2', x: 110, y: 110 }
-    ]);
-    const collisions = cm.checkZombiePlayerCollisions();
-    expect(collisions).toHaveLength(1);
-    expect(collisions[0].player).toBe(gs.players.p1);
-  });
-
-  test('returns empty when no zombies', () => {
-    const cm = new CollisionManager(makeGameState(), CONFIG);
-    cm.rebuildQuadtree();
-    expect(cm.checkZombiePlayerCollisions()).toEqual([]);
-  });
-});
-
 describe('isOutOfBounds', () => {
   test('detects each of the 4 walls', () => {
     const cm = new CollisionManager(makeGameState(), CONFIG);
