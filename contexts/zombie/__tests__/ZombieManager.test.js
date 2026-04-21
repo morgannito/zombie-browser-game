@@ -22,15 +22,42 @@ jest.mock('../modules/ZombieSpawnManager', () => {
   }));
 });
 
+jest.mock('../../../lib/runPRNG', () => ({
+  runPRNG: {
+    random: jest.fn(() => 0.5),
+    chance: jest.fn(() => false)
+  },
+  resetRunPRNG: jest.fn()
+}));
+
 const ZombieManager = require('../ZombieManager');
+const { runPRNG } = require('../../../lib/runPRNG');
 
 const ZOMBIE_TYPES = {
   normal: { health: 100, damage: 10, speed: 2, gold: 5, xp: 10, color: '#ff0000', size: 20 },
   tank: { health: 400, damage: 20, speed: 1, gold: 15, xp: 30, color: '#555555', size: 30 },
   fast: { health: 60, damage: 8, speed: 4, gold: 8, xp: 12, color: '#00ff00', size: 15 },
   minion: { health: 40, damage: 5, speed: 3, gold: 2, xp: 5, color: '#aaaaaa', size: 15 },
-  boss: { health: 2000, damage: 50, speed: 1.5, gold: 200, xp: 500, color: '#ff00ff', size: 60, name: 'Boss' },
-  bossCharnier: { health: 3000, damage: 60, speed: 1.2, gold: 300, xp: 600, color: '#800080', size: 70, name: 'Charnier' },
+  boss: {
+    health: 2000,
+    damage: 50,
+    speed: 1.5,
+    gold: 200,
+    xp: 500,
+    color: '#ff00ff',
+    size: 60,
+    name: 'Boss'
+  },
+  bossCharnier: {
+    health: 3000,
+    damage: 60,
+    speed: 1.2,
+    gold: 300,
+    xp: 600,
+    color: '#800080',
+    size: 70,
+    name: 'Charnier'
+  },
   healer: { health: 80, damage: 6, speed: 2, gold: 10, xp: 15, color: '#ffffff', size: 20 },
   shooter: { health: 70, damage: 12, speed: 1.5, gold: 10, xp: 15, color: '#0000ff', size: 20 },
   poison: { health: 90, damage: 8, speed: 2, gold: 10, xp: 15, color: '#00ff88', size: 20 },
@@ -38,7 +65,15 @@ const ZOMBIE_TYPES = {
   summoner: { health: 120, damage: 8, speed: 1.5, gold: 20, xp: 25, color: '#ff8800', size: 25 },
   shielded: { health: 150, damage: 15, speed: 1.5, gold: 20, xp: 25, color: '#88aaff', size: 25 },
   berserker: { health: 130, damage: 18, speed: 3, gold: 20, xp: 25, color: '#ff2200', size: 22 },
-  necromancer: { health: 110, damage: 12, speed: 1.8, gold: 25, xp: 30, color: '#553388', size: 22 },
+  necromancer: {
+    health: 110,
+    damage: 12,
+    speed: 1.8,
+    gold: 25,
+    xp: 30,
+    color: '#553388',
+    size: 22
+  },
   brute: { health: 200, damage: 22, speed: 1.2, gold: 25, xp: 30, color: '#443322', size: 28 },
   mimic: { health: 90, damage: 10, speed: 2.5, gold: 20, xp: 22, color: '#bbbbbb', size: 20 }
 };
@@ -272,15 +307,13 @@ describe('spawnSingleZombie', () => {
     const gs = makeGameState({ wave: 200 });
     const zm = new ZombieManager(gs, CONFIG, ZOMBIE_TYPES, noCollision);
     zm.spawnManager.selectZombieType.mockReturnValue('normal');
-    // Force non-elite path (wave>=5 has 5% elite chance that doubles health)
-    const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    runPRNG.chance.mockReturnValue(false);
 
     zm.spawnSingleZombie();
 
     const zombie = Object.values(gs.zombies)[0];
     const multiplier = 1 + (130 - 1) * 0.15;
     expect(zombie.health).toBe(Math.floor(100 * multiplier));
-    randSpy.mockRestore();
   });
 
   test('initialises type-specific attributes for healer type', () => {
@@ -498,7 +531,7 @@ describe('spawnBoss', () => {
     zm.spawnBoss();
 
     const boss = Object.values(gs.zombies)[0];
-    const expected = Math.floor(ZOMBIE_TYPES.boss.health * (1 + (2 - 1) * 0.20));
+    const expected = Math.floor(ZOMBIE_TYPES.boss.health * (1 + (2 - 1) * 0.2));
     expect(boss.health).toBe(expected);
   });
 
@@ -532,7 +565,12 @@ describe('spawnZombie', () => {
   });
 
   test('spawns boss when wave quota filled and no zombies left', () => {
-    const gs = makeGameState({ wave: 1, zombiesSpawnedThisWave: 10, bossSpawned: false, zombies: {} });
+    const gs = makeGameState({
+      wave: 1,
+      zombiesSpawnedThisWave: 10,
+      bossSpawned: false,
+      zombies: {}
+    });
     const zm = new ZombieManager(gs, CONFIG, ZOMBIE_TYPES, noCollision, null);
     zm.spawnManager.getBossType.mockReturnValue('boss');
 
@@ -542,7 +580,12 @@ describe('spawnZombie', () => {
   });
 
   test('does not spawn boss when zombies still alive at end of quota', () => {
-    const gs = makeGameState({ wave: 1, zombiesSpawnedThisWave: 10, bossSpawned: false, zombies: { 0: {} } });
+    const gs = makeGameState({
+      wave: 1,
+      zombiesSpawnedThisWave: 10,
+      bossSpawned: false,
+      zombies: { 0: {} }
+    });
     const zm = new ZombieManager(gs, CONFIG, ZOMBIE_TYPES, noCollision, null);
 
     zm.spawnZombie();

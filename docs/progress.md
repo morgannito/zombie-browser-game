@@ -303,7 +303,11 @@ Original prompt: comprend le projet, lance le projet, tu serais capable de me cr
 - Tests réalignés:
   - `__tests__/unit/networkManager.viewport.test.js` verrouille désormais `_buildPublicState()` + le chemin de broadcast partagé,
   - le test de fallback `io.emit` couvre les environnements sans helper socket.io complet.
+- Stabilisation hook `pre-push`:
+  - `contexts/zombie/__tests__/ZombieManager.test.js` mocke maintenant `runPRNG` au lieu de tenter de piloter `Math.random`,
+  - le scénario `caps effective wave at 130 for health scaling` verrouille explicitement la branche non-élite réellement utilisée par `ZombieFactory`.
 - Validation:
   - `npx jest __tests__/unit/networkManager.viewport.test.js __tests__/unit/lib/ServerNetworkManager.test.js __tests__/unit/game/regression.bugs.test.js __tests__/unit/server/networkManagerSocketCleanup.test.js --runInBand` OK (`30 passed`).
   - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test e2e/critical-gameplay.spec.js e2e/gameplay.spec.js --project=chromium` OK (`4 passed`).
   - `npx eslint lib/server/NetworkManager.js __tests__/unit/networkManager.viewport.test.js` OK.
+  - `npx jest contexts/zombie/__tests__/ZombieManager.test.js __tests__/unit/networkManager.viewport.test.js __tests__/unit/lib/ServerNetworkManager.test.js __tests__/unit/game/regression.bugs.test.js __tests__/unit/server/networkManagerSocketCleanup.test.js --runInBand` OK (`85 passed`).
