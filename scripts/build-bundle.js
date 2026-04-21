@@ -18,13 +18,16 @@ const fs = require('fs');
 
 const PUBLIC = path.resolve(__dirname, '../public');
 
-// Parse index.html.tpl as single source of truth for script load order.
+// Parse index.html as single source of truth for script load order.
+// Falls back to index.html.tpl if present (legacy deploy artifact).
 function scriptsFromTemplate() {
+  const htmlPath = path.join(PUBLIC, 'index.html');
   const tplPath = path.join(PUBLIC, 'index.html.tpl');
-  if (!fs.existsSync(tplPath)) {
+  const sourcePath = fs.existsSync(htmlPath) ? htmlPath : tplPath;
+  if (!fs.existsSync(sourcePath)) {
     return null;
   }
-  const tpl = fs.readFileSync(tplPath, 'utf8');
+  const tpl = fs.readFileSync(sourcePath, 'utf8');
   const startIdx = tpl.indexOf('APP_SCRIPTS_START');
   const endIdx = tpl.indexOf('APP_SCRIPTS_END');
   if (startIdx === -1 || endIdx === -1) {
