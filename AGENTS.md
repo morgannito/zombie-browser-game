@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **zombie-browser-game** (4461 symbols, 12866 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **zombie-browser-game** (4806 symbols, 13571 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -99,3 +99,11 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Local Note
+
+- `gitnexus_detect_changes()` est référencé dans le bloc GitNexus auto-généré ci-dessus, mais la CLI disponible ici (`gitnexus` `1.5.3` et `1.6.2`) n'expose pas cette commande.
+- Fallback locale utilisée dans ce repo avant commit/push:
+  - `npx gitnexus status`
+  - `git diff --stat`
+  - `git diff --name-only`
